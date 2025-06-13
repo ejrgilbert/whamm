@@ -7,17 +7,33 @@ use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{DataType, Definition};
 use crate::verifier::types::{Record, VarAddr};
 use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::LocalID;
-use orca_wasm::ir::types::DataType as OrcaType;
+use orca_wasm::ir::id::{GlobalID, LocalID};
+use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
-use orca_wasm::Opcode;
+use orca_wasm::{Instructions, Module, Opcode};
 use wasmparser::MemArg;
 
-#[derive(Default)]
-pub struct UnsharedVarHandler;
+pub struct UnsharedVarHandler {
+    prev_fid: GlobalID,
+    prev_fname_ptr: GlobalID
+}
 
 impl UnsharedVarHandler {
+    pub fn new(wasm: &mut Module) -> Self {
+        let mut add_global_i32 = || -> GlobalID {
+            wasm.add_global(
+                InitExpr::new(vec![Instructions::Value(OrcaValue::I32(-1))]),
+                OrcaType::I32,
+                true,
+                false
+            )
+        };
+        Self {
+            prev_fid: add_global_i32(),
+            prev_fname_ptr: add_global_i32()
+        }
+    }
     pub fn emit_alloc_func(
         &self,
         unshared_to_alloc: &mut [UnsharedVar],
@@ -36,169 +52,183 @@ impl UnsharedVarHandler {
         // TODO: `decl_init` statements should be run ONCE (can be in $alloc func)
 
         if unshared_to_alloc.is_empty() {
-            (None, "".to_string())
-        } else {
-            // Generate the used_mem_checker function first
-            emitter.mem_allocator.gen_mem_checker_fn(emitter.app_wasm);
-
-            // Generate the strings necessary for the report variables
-            for var in unshared_to_alloc.iter_mut() {
-                if !var.is_report {
-                    continue;
-                }
-                let Some(ReportMetadata::Local { name, probe_id, .. }) = &mut var.report_metadata
-                else {
-                    err.unexpected_error(
-                        true,
-                        Some("Report variable metadata should be set, but it's not".to_string()),
-                        None,
-                    );
-                    unreachable!()
-                };
-
-                // handle variable name
-                // handle probe_id
-                emitter.mem_allocator.emit_string(emitter.app_wasm, name);
-                emitter
-                    .mem_allocator
-                    .emit_string(emitter.app_wasm, probe_id);
-
-                if matches!(var.ty, DataType::Str) {
-                    // handle variables that are strings
-                    todo!()
-                }
-                // (once they're emitted, the addresses will be available in MemoryAllocator::emitted_strings)
-            }
-
-            // specify params
-            let fid = Local {
-                id: LocalID(0),
-                ty: OrcaType::I32,
-            };
-            let pc = Local {
-                id: LocalID(1),
-                ty: OrcaType::I32,
-            };
-
-            // params: (fid, pc)
-            let alloc_params = vec![fid.ty, pc.ty];
-            // results: mem_offset
-            let alloc_results = vec![OrcaType::I32];
-
-            let mut alloc = FunctionBuilder::new(&alloc_params, &alloc_results);
-            // specify locals
-            let orig_offset = Local {
-                id: alloc.add_local(OrcaType::I32),
-                ty: OrcaType::I32,
-            };
-            let curr_offset = Local {
-                id: alloc.add_local(OrcaType::I32),
-                ty: OrcaType::I32,
-            };
-
-            // remember the original memory offset
-            alloc
-                .global_get(emitter.mem_allocator.mem_tracker_global)
-                .local_tee(orig_offset.id)
-                .local_set(curr_offset.id);
-
-            // track what's been allocated for this function thus far
-            let mut curr_offset = 0;
-
-            // Make sure memory is large enough for the memory that will be allocated!
-            let num_bytes =
-                self.calc_bytes_to_alloc(ReportVars::report_var_header_bytes(), unshared_to_alloc);
-            emitter
-                .mem_allocator
-                .emit_memsize_check(num_bytes, &mut alloc, err);
-
-            // alloc each var
-            for UnsharedVar {
-                ty,
-                name,
-                is_report,
-                report_metadata,
-            } in unshared_to_alloc.iter()
-            {
-                // println!("Allocating var of type: {ty}");
-                let prev_offset = curr_offset;
-
-                if *is_report {
-                    // Emit the `report` var header (linked list)
-                    curr_offset += emitter.report_vars.alloc_report_var_header(
-                        ty,
-                        emitter.mem_allocator.curr_mem_offset as u32,
-                        curr_offset,
-                        emitter.mem_allocator.mem_id,
-                        emitter.mem_allocator.mem_tracker_global,
-                        &mut alloc,
-                        emitter.app_wasm,
-                    );
-                }
-
-                // Store the header for the probe (this could be one per probe...but we're duplicating per variable
-                // to make the flushing logic simpler)
-                curr_offset += self.store_probe_header(&mut alloc, curr_offset, &fid, &pc, emitter);
-                // Store the header for this variable
-                curr_offset +=
-                    self.store_var_header(&mut alloc, curr_offset, report_metadata, emitter, err);
-
-                // allocate the space for the datatype value
-                let var_addr = VarAddr::MemLoc {
-                    mem_id: emitter.mem_allocator.mem_id,
-                    ty: ty.clone(),
-                    var_offset: curr_offset,
-                };
-
-                // If the variable is of a type that must be initialized, do it here!
-                self.init_var_object(&mut alloc, ty, &var_addr, emitter, err);
-
-                emitter.table.put(
-                    name.clone(),
-                    Record::Var {
-                        ty: ty.clone(),
-                        value: None,
-                        def: Definition::User,
-                        addr: Some(var_addr),
-                        loc: None,
-                    },
-                );
-
-                curr_offset += ty.num_bytes().unwrap() as u32;
-
-                if *is_report {
-                    // now that we know the amount of memory we just used, update the next_addr ptr
-                    // in the linked list
-                    let var_mem_usage = curr_offset - prev_offset;
-                    emitter.report_vars.update_next_addr_ptr(
-                        ty,
-                        var_mem_usage,
-                        curr_offset,
-                        emitter.mem_allocator.curr_mem_offset as u32,
-                        emitter.mem_allocator.mem_id,
-                        emitter.mem_allocator.mem_tracker_global,
-                        &mut alloc,
-                        emitter.app_wasm,
-                    );
-                }
-            }
-
-            // update the memory allocator global to account for all the added data
-            emitter
-                .mem_allocator
-                .update_mem_tracker(curr_offset, &mut alloc);
-
-            // return the base memory offset where this function's var block starts
-            // return the location where the value will be stored in memory!
-            alloc.local_get(orig_offset.id);
-
-            let alloc_id = alloc.finish_module(emitter.app_wasm);
-            emitter
-                .app_wasm
-                .exports
-                .add_export_func(format!("${}", *alloc_id), *alloc_id);
-            (Some(*alloc_id), "fid, pc".to_string())
+            return (None, "".to_string())
         }
+        // Generate the used_mem_checker function first
+        emitter.mem_allocator.gen_mem_checker_fns(emitter.app_wasm);
+
+        // Generate the strings necessary for the report variables
+        for var in unshared_to_alloc.iter_mut() {
+            if !var.is_report {
+                continue;
+            }
+            let Some(ReportMetadata::Local { name, probe_id, .. }) = &mut var.report_metadata
+            else {
+                err.unexpected_error(
+                    true,
+                    Some("Report variable metadata should be set, but it's not".to_string()),
+                    None,
+                );
+                unreachable!()
+            };
+
+            // handle variable name
+            // handle probe_id
+            emitter.mem_allocator.emit_string(emitter.app_wasm, name);
+            emitter
+                .mem_allocator
+                .emit_string(emitter.app_wasm, probe_id);
+
+            if matches!(var.ty, DataType::Str) {
+                // handle variables that are strings
+                todo!()
+            }
+            // (once they're emitted, the addresses will be available in MemoryAllocator::emitted_strings)
+        }
+
+        // specify params
+        let fname_ptr = Local {
+            id: LocalID(0),
+            ty: OrcaType::I32,
+        };
+        let fname_len = Local {
+            id: LocalID(1),
+            ty: OrcaType::I32,
+        };
+        let fid = Local {
+            id: LocalID(2),
+            ty: OrcaType::I32,
+        };
+        let pc = Local {
+            id: LocalID(3),
+            ty: OrcaType::I32,
+        };
+
+        // params: (fname_ptr, fname_len, fid, pc)
+        let alloc_params = vec![fname_ptr.ty, fname_len.ty, fid.ty, pc.ty];
+        // results: mem_offset
+        let alloc_results = vec![OrcaType::I32];
+
+        let mut alloc = FunctionBuilder::new(&alloc_params, &alloc_results);
+        // specify locals
+        let orig_offset = Local {
+            id: alloc.add_local(OrcaType::I32),
+            ty: OrcaType::I32,
+        };
+        let curr_offset = Local {
+            id: alloc.add_local(OrcaType::I32),
+            ty: OrcaType::I32,
+        };
+        let new_fname_ptr = Local {
+            id: alloc.add_local(OrcaType::I32),
+            ty: OrcaType::I32,
+        };
+
+        // remember the original memory offset
+        let alloc_var_mem_id = emitter.mem_allocator.alloc_var_mem_id.unwrap_or_else(|| panic!("alloc mem id not set"));
+        let alloc_var_mem_tracker_global = emitter.mem_allocator.alloc_var_mem_tracker_global.unwrap_or_else(|| panic!("alloc mem tracker id not set"));
+        alloc
+            .global_get(alloc_var_mem_tracker_global)
+            .local_tee(orig_offset.id)
+            .local_set(curr_offset.id);
+
+        // track what's been allocated for this function thus far
+        let mut curr_offset = 0;
+
+        // Make sure memory is large enough for the memory that will be allocated!
+        let num_bytes =
+            self.calc_bytes_to_alloc(ReportVars::report_var_header_bytes(), unshared_to_alloc);
+        emitter
+            .mem_allocator
+            .emit_base_memsize_check(num_bytes, &mut alloc, err);
+        emitter
+            .mem_allocator
+            .emit_alloc_memsize_check(num_bytes, &mut alloc, err);
+
+        // alloc each var
+        for UnsharedVar {
+            ty,
+            name,
+            is_report,
+            report_metadata,
+        } in unshared_to_alloc.iter()
+        {
+            // println!("Allocating var of type: {ty}");
+            let prev_offset = curr_offset;
+
+            if *is_report {
+                // Emit the `report` var header (linked list)
+                curr_offset += emitter.report_vars.alloc_report_var_header(
+                    ty,
+                    curr_offset,
+                    alloc_var_mem_id,
+                    alloc_var_mem_tracker_global,
+                    &mut alloc,
+                    emitter.app_wasm,
+                );
+            }
+
+            // Store the header for the probe (this could be one per probe...but we're duplicating per variable
+            // to make the flushing logic simpler)
+            curr_offset += self.store_probe_header(&mut alloc, curr_offset, &fname_ptr, &new_fname_ptr, &fname_len, &fid, &pc, emitter);
+            // Store the header for this variable
+            curr_offset +=
+                self.store_var_header(&mut alloc, curr_offset, report_metadata, emitter, err);
+
+            // allocate the space for the datatype value
+            let var_addr = VarAddr::MemLoc {
+                mem_id: alloc_var_mem_id,
+                ty: ty.clone(),
+                var_offset: curr_offset,
+            };
+
+            // If the variable is of a type that must be initialized, do it here!
+            self.init_var_object(&mut alloc, ty, &var_addr, emitter, err);
+
+            emitter.table.put(
+                name.clone(),
+                Record::Var {
+                    ty: ty.clone(),
+                    value: None,
+                    def: Definition::User,
+                    addr: Some(var_addr),
+                    loc: None,
+                },
+            );
+
+            curr_offset += ty.num_bytes().unwrap() as u32;
+
+            if *is_report {
+                // now that we know the amount of memory we just used, update the next_addr ptr
+                // in the linked list
+                let var_mem_usage = curr_offset - prev_offset;
+                emitter.report_vars.update_next_addr_ptr(
+                    ty,
+                    var_mem_usage,
+                    curr_offset,
+                    alloc_var_mem_id,
+                    alloc_var_mem_tracker_global,
+                    &mut alloc,
+                    emitter.app_wasm,
+                );
+            }
+        }
+
+        // update the memory allocator global to account for all the added data
+        emitter
+            .mem_allocator
+            .update_alloc_mem_tracker(curr_offset, &mut alloc);
+
+        // return the base memory offset where this function's var block starts
+        // return the location where the value will be stored in memory!
+        alloc.local_get(orig_offset.id);
+
+        let alloc_id = alloc.finish_module(emitter.app_wasm);
+        emitter
+            .app_wasm
+            .exports
+            .add_export_func(format!("${}", *alloc_id), *alloc_id);
+        (Some(*alloc_id), "fname, fid, pc".to_string())
     }
 
     fn init_var_object(
@@ -239,19 +269,85 @@ impl UnsharedVarHandler {
         &self,
         func: &mut FunctionBuilder,
         curr_offset: u32,
+        fname_ptr: &Local,
+        new_fname_ptr: &Local,
+        fname_len: &Local,
         fid: &Local,
         pc: &Local,
         emitter: &mut ModuleEmitter,
     ) -> u32 {
-        // | fid | pc  |
-        // | i32 | i32 |
+        // | fname_ptr | fname_len | fid | pc  |
+        // | i32       | i8        | i32 | i32 |
         let mut bytes_used = 0;
+
+        // todo save off fname from engine memory!
+        // todo store the new fname_ptr and same fname_len
+
+        let base_mem = emitter.mem_allocator.mem_id;
+        let base_mem_tracker = emitter.mem_allocator.mem_tracker_global;
+        let engine_mem = emitter.mem_allocator.engine_mem_id.unwrap_or_else(|| panic!("engine memory id not set"));
+        let mem_id = emitter.mem_allocator.alloc_var_mem_id.unwrap_or_else(|| panic!("alloc memory id not set"));
+        let mem_tracker_global = emitter.mem_allocator.alloc_var_mem_tracker_global.unwrap_or_else(|| panic!("alloc memory tracker not set"));
+
+        // Check if we're still visiting the same function that we were in before.
+        // If so, use the already-saved-off fname!
+        #[rustfmt::skip]
+        func.global_get(self.prev_fid)
+            .local_get(fid.id)
+            .i32_eq();
+        func.if_stmt(BlockType::Empty)
+                // if prev_fid == curr_fid:
+                //      we're visiting the same function as before, reuse fname pointer from before
+                .global_get(self.prev_fname_ptr)
+                .local_set(new_fname_ptr.id)
+            .else_stmt()
+                // else:
+                //      we're in a new function, use new fname!
+                .global_get(base_mem_tracker)
+                .local_set(new_fname_ptr.id);
+
+        // save off the fname to the Strings memory
+        emitter.mem_allocator.copy_mem(
+            engine_mem,
+            fname_ptr.id,
+            fname_len.id,
+            base_mem,
+            base_mem_tracker,
+            func
+        );
+
+        // save to the fname tracker globals (for use in next $alloc call)
+        func.local_get(fid.id).global_set(self.prev_fid)
+            .local_get(new_fname_ptr.id).global_set(self.prev_fname_ptr);
+
+        func.end();
+
+        // store fname_ptr
+        bytes_used += emitter.mem_allocator.emit_store_from_local(
+            curr_offset + bytes_used,
+            new_fname_ptr.id,
+            &new_fname_ptr.ty,
+            mem_id,
+            mem_tracker_global,
+            func,
+        );
+
+        // store fname_len
+        bytes_used += emitter.mem_allocator.emit_store8_from_local(
+            curr_offset + bytes_used,
+            fname_len.id,
+            mem_id,
+            mem_tracker_global,
+            func,
+        );
 
         // store fid
         bytes_used += emitter.mem_allocator.emit_store_from_local(
             curr_offset + bytes_used,
             fid.id,
             &fid.ty,
+            mem_id,
+            mem_tracker_global,
             func,
         );
 
@@ -260,6 +356,8 @@ impl UnsharedVarHandler {
             curr_offset + bytes_used,
             pc.id,
             &pc.ty,
+            mem_id,
+            mem_tracker_global,
             func,
         );
 
@@ -277,7 +375,8 @@ impl UnsharedVarHandler {
         // | name_ptr | name_len | script_id | probe_id_ptr | probe_id_len |
         // | i32      | u8       | u8        | i32          | u8           |
         let mut bytes_used = 0;
-        let mem_tracker_global = emitter.mem_allocator.mem_tracker_global;
+        let mem_id = emitter.mem_allocator.alloc_var_mem_id.unwrap_or_else(|| panic!("alloc memory id not set"));
+        let mem_tracker_global = emitter.mem_allocator.alloc_var_mem_tracker_global.unwrap_or_else(|| panic!("alloc memory tracker not set"));
 
         let Some(ReportMetadata::Local {
             name,
@@ -313,7 +412,7 @@ impl UnsharedVarHandler {
                 align: 0,
                 max_align: 0,
                 offset: (curr_offset + bytes_used) as u64,
-                memory: emitter.mem_allocator.mem_id, // instrumentation memory!
+                memory: mem_id, // instrumentation memory!
             });
         bytes_used += size_of_val(&name_ptr) as u32;
 
@@ -327,7 +426,7 @@ impl UnsharedVarHandler {
                 align: 0,
                 max_align: 0,
                 offset: (curr_offset + bytes_used) as u64,
-                memory: emitter.mem_allocator.mem_id, // instrumentation memory!
+                memory: mem_id, // instrumentation memory!
             });
         bytes_used += size_of_val(&name_len) as u32;
 
@@ -338,7 +437,7 @@ impl UnsharedVarHandler {
                 align: 0,
                 max_align: 0,
                 offset: (curr_offset + bytes_used) as u64,
-                memory: emitter.mem_allocator.mem_id, // instrumentation memory!
+                memory: mem_id, // instrumentation memory!
             });
         bytes_used += size_of_val(script_id) as u32;
 
@@ -357,7 +456,7 @@ impl UnsharedVarHandler {
                 align: 0,
                 max_align: 0,
                 offset: (curr_offset + bytes_used) as u64,
-                memory: emitter.mem_allocator.mem_id, // instrumentation memory!
+                memory: mem_id, // instrumentation memory!
             });
         bytes_used += size_of_val(&probe_id_ptr) as u32;
 
@@ -371,7 +470,7 @@ impl UnsharedVarHandler {
                 align: 0,
                 max_align: 0,
                 offset: (curr_offset + bytes_used) as u64,
-                memory: emitter.mem_allocator.mem_id, // instrumentation memory!
+                memory: mem_id, // instrumentation memory!
             });
         bytes_used += size_of_val(&probe_id_len) as u32;
 
@@ -385,8 +484,8 @@ impl UnsharedVarHandler {
     ) -> u32 {
         let mut num_bytes: u32 = 0;
 
-        let i32_bytes = 4;
-        let u8_bytes = 4;
+        let i32_bytes = size_of::<i32>() as u32;
+        let u8_bytes = size_of::<u8>() as u32;
 
         // to store the probe header
         // | fid | pc  |

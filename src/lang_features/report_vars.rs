@@ -425,8 +425,9 @@ impl ReportVars {
             offset: 0,
             memory: mem_id,
         };
-        let i32_bytes = 4;
-        let u8_bytes = 1;
+
+        let i32_bytes = size_of::<i32>() as i32;
+        let u8_bytes = size_of::<u8>() as i32;
 
         // handles all but 'value(s)' since this is common between all variable types
         let dt = LocalID(0); // use to figure out which 'type' to print
@@ -587,7 +588,7 @@ impl ReportVars {
         let (addr, len) = mem_allocator.lookup_emitted_string(", ", err);
         io_adapter.puts(addr, len, &mut flush_fn, err);
 
-        // print 'fname'
+        // print '"fname"'
         flush_fn.local_get(fname_ptr).local_get(fname_len);
         io_adapter.call_puts_internal(&mut flush_fn, err);
         let (addr, len) = mem_allocator.lookup_emitted_string(", ", err);
@@ -1159,7 +1160,6 @@ impl ReportVars {
     pub fn alloc_report_var_header(
         &mut self,
         data_type: &DataType,
-        _curr_addr: u32,
         var_offset: u32,
         mem_id: u32,
         mem_tracker_global: GlobalID,
@@ -1236,7 +1236,6 @@ impl ReportVars {
         data_type: &DataType,
         curr_var_mem_usage: u32,
         total_mem_usage: u32,
-        _mem_ptr_addr: u32,
         mem_id: u32,
         mem_tracker_global: GlobalID,
         alloc_func: &mut FunctionBuilder,
