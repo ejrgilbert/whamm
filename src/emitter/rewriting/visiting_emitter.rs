@@ -647,8 +647,17 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 ..
             } => (*func_idx, instr_idx as u32),
         };
+        let fname = self
+            .app_iter
+            .module
+            .functions
+            .get_name(FunctionID(fid))
+            .clone()
+            .unwrap_or_default();
+
         self.unshared_var_handler.allocate_vars(
             sorted_unshared.as_slice(),
+            &fname,
             fid,
             pc,
             self.table,

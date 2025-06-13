@@ -64,11 +64,11 @@ fn handle_wasm(
             instr_idx,
             ..
         } => {
-            let mut fname = String::default();
-            let name = app_wasm.functions.get_name(func_idx).as_ref();
-            if let Some(name) = name {
-                fname = name.clone();
-            }
+            let fname = app_wasm
+                .functions
+                .get_name(func_idx)
+                .clone()
+                .unwrap_or_default();
             (func_idx, instr_idx, fname)
         }
     };

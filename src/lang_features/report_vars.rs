@@ -416,8 +416,8 @@ impl ReportVars {
         wasm: &mut Module,
         err: &mut ErrorGen,
     ) {
-        // ==================== REPORT CSV FLUSH ========================
-        // type, id_type, id, name, script_id, fid, pc, probe_id, value(s)
+        // ======================== REPORT CSV FLUSH ============================
+        // type, id_type, id, name, script_id, fname, fid, pc, probe_id, value(s)
         let id_type = "memaddr".to_string();
         let mem_arg = MemArg {
             align: 0,
@@ -425,8 +425,9 @@ impl ReportVars {
             offset: 0,
             memory: mem_id,
         };
-        let i32_bytes = 4;
-        let u8_bytes = 1;
+
+        let i32_bytes = size_of::<i32>() as i32;
+        let u8_bytes = size_of::<u8>() as i32;
 
         // handles all but 'value(s)' since this is common between all variable types
         let dt = LocalID(0); // use to figure out which 'type' to print
@@ -434,6 +435,9 @@ impl ReportVars {
         let mut flush_fn = FunctionBuilder::new(&[OrcaType::I64, OrcaType::I32], &[OrcaType::I32]);
 
         let curr_addr = flush_fn.add_local(OrcaType::I32);
+
+        let fname_ptr = flush_fn.add_local(OrcaType::I32); // u32
+        let fname_len = flush_fn.add_local(OrcaType::I32); // u8
 
         let fid = flush_fn.add_local(OrcaType::I32); // u32
         let pc = flush_fn.add_local(OrcaType::I32); // u32
@@ -447,17 +451,34 @@ impl ReportVars {
         let probe_id_len = flush_fn.add_local(OrcaType::I32); // u8
 
         // load values from memory into the locals
-        flush_fn.local_get(addr).local_set(curr_addr);
+        flush_fn.local_get(addr).local_tee(curr_addr);
 
         // header format:
-        // | fid | pc  | name_ptr | name_len | script_id | probe_id_ptr | probe_id_len |
-        // | i32 | i32 | i32      | u8       | u8        | i32          | u8           |
+        // | fname_ptr  | fname_len | fid | pc  | name_ptr | name_len | script_id | probe_id_ptr | probe_id_len |
+        // | i32        | u8        | i32 | i32 | i32      | u8       | u8        | i32          | u8           |
+
+        // load fname_addr (i32)
+        flush_fn.i32_load(mem_arg).local_set(fname_ptr);
+
+        // update memory pointer
+        flush_fn
+            .i32_const(i32_bytes)
+            .local_get(curr_addr)
+            .i32_add()
+            .local_tee(curr_addr);
+
+        // load fname_len (u8)
+        flush_fn.i32_load8_u(mem_arg).local_set(fname_len);
+
+        // update memory pointer
+        flush_fn
+            .i32_const(u8_bytes)
+            .local_get(curr_addr)
+            .i32_add()
+            .local_tee(curr_addr);
 
         // load fid (i32)
-        flush_fn
-            .local_get(curr_addr)
-            .i32_load(mem_arg)
-            .local_set(fid);
+        flush_fn.i32_load(mem_arg).local_set(fid);
 
         // TODO -- use offset in load instead of updating the curr_addr every time
 
@@ -508,9 +529,6 @@ impl ReportVars {
             .i32_add()
             .local_tee(curr_addr);
 
-        // | fid | pc  | name_ptr | name_len | script_id | probe_id_ptr | probe_id_len |
-        // | i32 | i32 | i32      | u8       | u8        | i32          | u8           |
-
         // load probe_id_ptr (i32)
         flush_fn.i32_load(mem_arg).local_set(probe_id_ptr);
 
@@ -542,7 +560,7 @@ impl ReportVars {
         // print 'name'
         flush_fn.local_get(name_ptr).local_get(name_len);
         io_adapter.call_puts_internal(&mut flush_fn, err);
-        let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(", ", err);
         io_adapter.puts(addr, len, &mut flush_fn, err);
 
         // print 'whamm_type' per supported report variable datatype
@@ -563,27 +581,33 @@ impl ReportVars {
         }
 
         // print 'script_id'
-        let (addr, len) = mem_allocator.lookup_emitted_string(&"script".to_string(), err);
+        let (addr, len) = mem_allocator.lookup_emitted_string("script", err);
         io_adapter.puts(addr, len, &mut flush_fn, err);
         flush_fn.local_get(script_id);
         io_adapter.call_puti32(&mut flush_fn, err);
-        let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(", ", err);
+        io_adapter.puts(addr, len, &mut flush_fn, err);
+
+        // print '"fname"'
+        flush_fn.local_get(fname_ptr).local_get(fname_len);
+        io_adapter.call_puts_internal(&mut flush_fn, err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(", ", err);
         io_adapter.puts(addr, len, &mut flush_fn, err);
 
         // print 'fid, pc'
         flush_fn.local_get(fid);
         io_adapter.call_puti32(&mut flush_fn, err);
-        let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(", ", err);
         io_adapter.puts(addr, len, &mut flush_fn, err);
         flush_fn.local_get(pc);
         io_adapter.call_puti32(&mut flush_fn, err);
-        let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(", ", err);
         io_adapter.puts(addr, len, &mut flush_fn, err);
 
         // print 'probe_id'
         flush_fn.local_get(probe_id_ptr).local_get(probe_id_len);
         io_adapter.call_puts_internal(&mut flush_fn, err);
-        let (addr, len) = mem_allocator.lookup_emitted_string(&", ".to_string(), err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(", ", err);
         io_adapter.puts(addr, len, &mut flush_fn, err);
 
         // return the pointer to the next place in memory (should point to value(s))
@@ -656,8 +680,8 @@ impl ReportVars {
             unimplemented!("We can't support flushing this report variable datatype yet.")
         };
 
-        // ============================= REPORT CSV FLUSH ================================
-        // id, id_type, name, whamm_type, wasm_type, script_id, fid, pc, probe_id, value(s)
+        // ================================= REPORT CSV FLUSH ====================================
+        // id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
 
         // handles the 'value(s)' output
         let mut flush_fn = FunctionBuilder::new(&[], &[]);
@@ -1136,7 +1160,6 @@ impl ReportVars {
     pub fn alloc_report_var_header(
         &mut self,
         data_type: &DataType,
-        _curr_addr: u32,
         var_offset: u32,
         mem_id: u32,
         mem_tracker_global: GlobalID,
@@ -1213,7 +1236,6 @@ impl ReportVars {
         data_type: &DataType,
         curr_var_mem_usage: u32,
         total_mem_usage: u32,
-        _mem_ptr_addr: u32,
         mem_id: u32,
         mem_tracker_global: GlobalID,
         alloc_func: &mut FunctionBuilder,
@@ -1363,7 +1385,7 @@ impl Metadata {
         }
     }
     pub fn setup_csv_header(wasm: &mut Module, mem_allocator: &mut MemoryAllocator) -> (u32, u32) {
-        let mut header = "\n============================= REPORT CSV FLUSH ================================\nid, id_type, name, whamm_type, wasm_type, script_id, fid, pc, probe_id, value(s)"
+        let mut header = "\n================================= REPORT CSV FLUSH ====================================\nid, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)"
             .to_string();
         mem_allocator.emit_string(wasm, &mut header);
         let addr = mem_allocator.emitted_strings.get(&header).unwrap();
@@ -1382,7 +1404,8 @@ impl Metadata {
                 whamm_ty.to_string(),
                 get_wasm_ty_str(wasm_ty),
                 *script_id,
-                ", ",
+                // skip: fname, pc, fid
+                ", , ",
                 "",
             ),
             Metadata::Local {

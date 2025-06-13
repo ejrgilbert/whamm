@@ -1,16 +1,16 @@
-============================= REPORT CSV FLUSH ================================
-id, id_type, name, whamm_type, wasm_type, script_id, fid, pc, probe_id, value(s)
-4, memaddr, val, i32, i32, script0, 1, 4, 0_wasm:opcode:i32.const:before, 3
-31, memaddr, val, i32, i32, script0, 1, 8, 0_wasm:opcode:i32.const:before, 3
-58, memaddr, val, i32, i32, script0, 1, 13, 0_wasm:opcode:i32.const:before, 0
-85, memaddr, val, i32, i32, script0, 1, 16, 0_wasm:opcode:i32.const:before, 1
-112, memaddr, val, i32, i32, script0, 1, 19, 0_wasm:opcode:i32.const:before, 3
-139, memaddr, val, i32, i32, script0, 2, 6, 0_wasm:opcode:i32.const:before, 0
-166, memaddr, val, i32, i32, script0, 2, 9, 0_wasm:opcode:i32.const:before, 1
-193, memaddr, val, i32, i32, script0, 2, 12, 0_wasm:opcode:i32.const:before, 2
-220, memaddr, val, i32, i32, script0, 3, 1, 0_wasm:opcode:i32.const:before, 0
-247, memaddr, val, i32, i32, script0, 3, 4, 0_wasm:opcode:i32.const:before, 0
-274, memaddr, val, i32, i32, script0, 3, 7, 0_wasm:opcode:i32.const:before, 0
-301, memaddr, val, i32, i32, script0, 3, 10, 0_wasm:opcode:i32.const:before, 0
-328, memaddr, val, i32, i32, script0, 4, 0, 0_wasm:opcode:i32.const:before, 0
-355, memaddr, val, i32, i32, script0, 4, 1, 0_wasm:opcode:i32.const:before, 0
+================================= REPORT CSV FLUSH ====================================
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
+4, memaddr, val, i32, i32, script0, more_nesting, 1, 4, 0_wasm:opcode:i32.const:before, 3
+36, memaddr, val, i32, i32, script0, more_nesting, 1, 8, 0_wasm:opcode:i32.const:before, 3
+68, memaddr, val, i32, i32, script0, more_nesting, 1, 13, 0_wasm:opcode:i32.const:before, 0
+100, memaddr, val, i32, i32, script0, more_nesting, 1, 16, 0_wasm:opcode:i32.const:before, 1
+132, memaddr, val, i32, i32, script0, more_nesting, 1, 19, 0_wasm:opcode:i32.const:before, 3
+164, memaddr, val, i32, i32, script0, br_table, 2, 6, 0_wasm:opcode:i32.const:before, 0
+196, memaddr, val, i32, i32, script0, br_table, 2, 9, 0_wasm:opcode:i32.const:before, 1
+228, memaddr, val, i32, i32, script0, br_table, 2, 12, 0_wasm:opcode:i32.const:before, 2
+260, memaddr, val, i32, i32, script0, if_stmt, 3, 1, 0_wasm:opcode:i32.const:before, 0
+292, memaddr, val, i32, i32, script0, if_stmt, 3, 4, 0_wasm:opcode:i32.const:before, 0
+324, memaddr, val, i32, i32, script0, if_stmt, 3, 7, 0_wasm:opcode:i32.const:before, 0
+356, memaddr, val, i32, i32, script0, if_stmt, 3, 10, 0_wasm:opcode:i32.const:before, 0
+388, memaddr, val, i32, i32, script0, select_stmt, 4, 0, 0_wasm:opcode:i32.const:before, 0
+420, memaddr, val, i32, i32, script0, select_stmt, 4, 1, 0_wasm:opcode:i32.const:before, 0

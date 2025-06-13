@@ -1,12 +1,12 @@
-============================= REPORT CSV FLUSH ================================
-id, id_type, name, whamm_type, wasm_type, script_id, fid, pc, probe_id, value(s)
-558, memaddr, selected_first, u32, i32, script0, 3, 8, 3_wasm:opcode:select, 1
-585, memaddr, selected_second, u32, i32, script0, 3, 8, 3_wasm:opcode:select, 0
-342, memaddr, taken, i32, i32, script0, 0, 10, 1_wasm:opcode:br_if, 0
-369, memaddr, not_taken, i32, i32, script0, 0, 10, 1_wasm:opcode:br_if, 1
-396, memaddr, taken, i32, i32, script0, 1, 12, 1_wasm:opcode:br_if, 1
-423, memaddr, not_taken, i32, i32, script0, 1, 12, 1_wasm:opcode:br_if, 3
-450, memaddr, taken, i32, i32, script0, 1, 19, 1_wasm:opcode:br_if, 1
-477, memaddr, not_taken, i32, i32, script0, 1, 19, 1_wasm:opcode:br_if, 2
-504, memaddr, taken, i32, i32, script0, 2, 6, 0_wasm:opcode:if, 0
-531, memaddr, not_taken, i32, i32, script0, 2, 6, 0_wasm:opcode:if, 1
+================================= REPORT CSV FLUSH ====================================
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
+260, memaddr, selected_first, u32, i32, script0, "select_stmt", 3, 8, 3_wasm:opcode:select, 1
+292, memaddr, selected_second, u32, i32, script0, "select_stmt", 3, 8, 3_wasm:opcode:select, 0
+4, memaddr, taken, i32, i32, script0, "basic_br", 0, 10, 1_wasm:opcode:br_if, 0
+36, memaddr, not_taken, i32, i32, script0, "basic_br", 0, 10, 1_wasm:opcode:br_if, 1
+68, memaddr, taken, i32, i32, script0, "more_nesting", 1, 12, 1_wasm:opcode:br_if, 1
+100, memaddr, not_taken, i32, i32, script0, "more_nesting", 1, 12, 1_wasm:opcode:br_if, 3
+132, memaddr, taken, i32, i32, script0, "more_nesting", 1, 19, 1_wasm:opcode:br_if, 1
+164, memaddr, not_taken, i32, i32, script0, "more_nesting", 1, 19, 1_wasm:opcode:br_if, 2
+196, memaddr, taken, i32, i32, script0, "if_stmt", 2, 6, 0_wasm:opcode:if, 0
+228, memaddr, not_taken, i32, i32, script0, "if_stmt", 2, 6, 0_wasm:opcode:if, 1
