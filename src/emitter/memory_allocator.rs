@@ -37,7 +37,13 @@ pub struct MemoryAllocator {
     pub alloc_mem_checker_fid: Option<u32>,
 }
 impl MemoryAllocator {
-    pub fn new(mem_id: u32, mem_tracker_global: GlobalID, alloc_var_mem_id: Option<u32>, alloc_var_mem_tracker_global: Option<GlobalID>, engine_mem_id: Option<u32>) -> Self {
+    pub fn new(
+        mem_id: u32,
+        mem_tracker_global: GlobalID,
+        alloc_var_mem_id: Option<u32>,
+        alloc_var_mem_tracker_global: Option<GlobalID>,
+        engine_mem_id: Option<u32>,
+    ) -> Self {
         Self {
             mem_id,
             mem_tracker_global,
@@ -47,7 +53,7 @@ impl MemoryAllocator {
             curr_mem_offset: 0,
             emitted_strings: HashMap::new(),
             base_mem_checker_fid: None,
-            alloc_mem_checker_fid: None
+            alloc_mem_checker_fid: None,
         }
     }
 
@@ -253,8 +259,7 @@ impl MemoryAllocator {
         .end();
 
         // update the destination memory's tracker
-        func
-            .local_get(src_len)
+        func.local_get(src_len)
             .global_get(dst_mem_tracker)
             .i32_add()
             .global_set(dst_mem_tracker);
@@ -400,7 +405,12 @@ impl MemoryAllocator {
             panic!("alloc tracker not set")
         }
     }
-    fn gen_mem_checker_fn_for(&mut self, wasm: &mut Module, mem_id: u32, tracker: GlobalID) -> FunctionID {
+    fn gen_mem_checker_fn_for(
+        &mut self,
+        wasm: &mut Module,
+        mem_id: u32,
+        tracker: GlobalID,
+    ) -> FunctionID {
         // specify params
         let bytes_needed = LocalID(0);
         let check_memsize_params = vec![OrcaType::I32];
@@ -440,19 +450,27 @@ impl MemoryAllocator {
             .end();
 
         let check_memsize_fid = check_memsize.finish_module(wasm);
-        wasm.set_fn_name(check_memsize_fid, format!("check_memsize_for_mem{}", mem_id));
+        wasm.set_fn_name(
+            check_memsize_fid,
+            format!("check_memsize_for_mem{}", mem_id),
+        );
         check_memsize_fid
     }
     pub fn gen_mem_checker_fns(&mut self, wasm: &mut Module) {
         if self.base_mem_checker_fid.is_none() {
-            self.base_mem_checker_fid = Some(*self.gen_mem_checker_fn_for(wasm, self.mem_id, self.mem_tracker_global));
+            self.base_mem_checker_fid =
+                Some(*self.gen_mem_checker_fn_for(wasm, self.mem_id, self.mem_tracker_global));
         }
         if self.alloc_mem_checker_fid.is_none() {
-            self.alloc_mem_checker_fid = Some(*self.gen_mem_checker_fn_for(
-                wasm,
-                self.alloc_var_mem_id.unwrap_or_else(|| panic!("alloc mem id not set")),
-                self.alloc_var_mem_tracker_global.unwrap_or_else(|| panic!("alloc mem tracker id not set")),
-            ));
+            self.alloc_mem_checker_fid = Some(
+                *self.gen_mem_checker_fn_for(
+                    wasm,
+                    self.alloc_var_mem_id
+                        .unwrap_or_else(|| panic!("alloc mem id not set")),
+                    self.alloc_var_mem_tracker_global
+                        .unwrap_or_else(|| panic!("alloc mem tracker id not set")),
+                ),
+            );
         }
     }
     fn emit_memsize_check_with(

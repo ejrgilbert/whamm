@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::StringAddr;
 use crate::emitter::module_emitter::ModuleEmitter;
@@ -16,7 +18,7 @@ use wasmparser::MemArg;
 
 pub struct UnsharedVarHandler {
     prev_fid: GlobalID,
-    prev_fname_ptr: GlobalID
+    prev_fname_ptr: GlobalID,
 }
 
 impl UnsharedVarHandler {
@@ -26,12 +28,12 @@ impl UnsharedVarHandler {
                 InitExpr::new(vec![Instructions::Value(OrcaValue::I32(-1))]),
                 OrcaType::I32,
                 true,
-                false
+                false,
             )
         };
         Self {
             prev_fid: add_global_i32(),
-            prev_fname_ptr: add_global_i32()
+            prev_fname_ptr: add_global_i32(),
         }
     }
     pub fn emit_alloc_func(
@@ -52,7 +54,7 @@ impl UnsharedVarHandler {
         // TODO: `decl_init` statements should be run ONCE (can be in $alloc func)
 
         if unshared_to_alloc.is_empty() {
-            return (None, "".to_string())
+            return (None, "".to_string());
         }
         // Generate the used_mem_checker function first
         emitter.mem_allocator.gen_mem_checker_fns(emitter.app_wasm);
@@ -125,8 +127,14 @@ impl UnsharedVarHandler {
         };
 
         // remember the original memory offset
-        let alloc_var_mem_id = emitter.mem_allocator.alloc_var_mem_id.unwrap_or_else(|| panic!("alloc mem id not set"));
-        let alloc_var_mem_tracker_global = emitter.mem_allocator.alloc_var_mem_tracker_global.unwrap_or_else(|| panic!("alloc mem tracker id not set"));
+        let alloc_var_mem_id = emitter
+            .mem_allocator
+            .alloc_var_mem_id
+            .unwrap_or_else(|| panic!("alloc mem id not set"));
+        let alloc_var_mem_tracker_global = emitter
+            .mem_allocator
+            .alloc_var_mem_tracker_global
+            .unwrap_or_else(|| panic!("alloc mem tracker id not set"));
         alloc
             .global_get(alloc_var_mem_tracker_global)
             .local_tee(orig_offset.id)
@@ -170,7 +178,16 @@ impl UnsharedVarHandler {
 
             // Store the header for the probe (this could be one per probe...but we're duplicating per variable
             // to make the flushing logic simpler)
-            curr_offset += self.store_probe_header(&mut alloc, curr_offset, &fname_ptr, &new_fname_ptr, &fname_len, &fid, &pc, emitter);
+            curr_offset += self.store_probe_header(
+                &mut alloc,
+                curr_offset,
+                &fname_ptr,
+                &new_fname_ptr,
+                &fname_len,
+                &fid,
+                &pc,
+                emitter,
+            );
             // Store the header for this variable
             curr_offset +=
                 self.store_var_header(&mut alloc, curr_offset, report_metadata, emitter, err);
@@ -285,9 +302,18 @@ impl UnsharedVarHandler {
 
         let base_mem = emitter.mem_allocator.mem_id;
         let base_mem_tracker = emitter.mem_allocator.mem_tracker_global;
-        let engine_mem = emitter.mem_allocator.engine_mem_id.unwrap_or_else(|| panic!("engine memory id not set"));
-        let mem_id = emitter.mem_allocator.alloc_var_mem_id.unwrap_or_else(|| panic!("alloc memory id not set"));
-        let mem_tracker_global = emitter.mem_allocator.alloc_var_mem_tracker_global.unwrap_or_else(|| panic!("alloc memory tracker not set"));
+        let engine_mem = emitter
+            .mem_allocator
+            .engine_mem_id
+            .unwrap_or_else(|| panic!("engine memory id not set"));
+        let mem_id = emitter
+            .mem_allocator
+            .alloc_var_mem_id
+            .unwrap_or_else(|| panic!("alloc memory id not set"));
+        let mem_tracker_global = emitter
+            .mem_allocator
+            .alloc_var_mem_tracker_global
+            .unwrap_or_else(|| panic!("alloc memory tracker not set"));
 
         // Check if we're still visiting the same function that we were in before.
         // If so, use the already-saved-off fname!
@@ -296,15 +322,15 @@ impl UnsharedVarHandler {
             .local_get(fid.id)
             .i32_eq();
         func.if_stmt(BlockType::Empty)
-                // if prev_fid == curr_fid:
-                //      we're visiting the same function as before, reuse fname pointer from before
-                .global_get(self.prev_fname_ptr)
-                .local_set(new_fname_ptr.id)
+            // if prev_fid == curr_fid:
+            //      we're visiting the same function as before, reuse fname pointer from before
+            .global_get(self.prev_fname_ptr)
+            .local_set(new_fname_ptr.id)
             .else_stmt()
-                // else:
-                //      we're in a new function, use new fname!
-                .global_get(base_mem_tracker)
-                .local_set(new_fname_ptr.id);
+            // else:
+            //      we're in a new function, use new fname!
+            .global_get(base_mem_tracker)
+            .local_set(new_fname_ptr.id);
 
         // save off the fname to the Strings memory
         emitter.mem_allocator.copy_mem(
@@ -313,12 +339,14 @@ impl UnsharedVarHandler {
             fname_len.id,
             base_mem,
             base_mem_tracker,
-            func
+            func,
         );
 
         // save to the fname tracker globals (for use in next $alloc call)
-        func.local_get(fid.id).global_set(self.prev_fid)
-            .local_get(new_fname_ptr.id).global_set(self.prev_fname_ptr);
+        func.local_get(fid.id)
+            .global_set(self.prev_fid)
+            .local_get(new_fname_ptr.id)
+            .global_set(self.prev_fname_ptr);
 
         func.end();
 
@@ -375,8 +403,14 @@ impl UnsharedVarHandler {
         // | name_ptr | name_len | script_id | probe_id_ptr | probe_id_len |
         // | i32      | u8       | u8        | i32          | u8           |
         let mut bytes_used = 0;
-        let mem_id = emitter.mem_allocator.alloc_var_mem_id.unwrap_or_else(|| panic!("alloc memory id not set"));
-        let mem_tracker_global = emitter.mem_allocator.alloc_var_mem_tracker_global.unwrap_or_else(|| panic!("alloc memory tracker not set"));
+        let mem_id = emitter
+            .mem_allocator
+            .alloc_var_mem_id
+            .unwrap_or_else(|| panic!("alloc memory id not set"));
+        let mem_tracker_global = emitter
+            .mem_allocator
+            .alloc_var_mem_tracker_global
+            .unwrap_or_else(|| panic!("alloc memory tracker not set"));
 
         let Some(ReportMetadata::Local {
             name,

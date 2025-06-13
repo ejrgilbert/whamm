@@ -377,7 +377,11 @@ fn run_instr_rewrite(
     err.check_has_errors();
 }
 
-fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool, as_monitor_module: bool) -> MemoryAllocator {
+fn get_memory_allocator(
+    target_wasm: &mut Module,
+    create_new_mem: bool,
+    as_monitor_module: bool,
+) -> MemoryAllocator {
     // Create the memory tracker + the map and metadata tracker
     let mem_id = if create_new_mem {
         *target_wasm.add_local_memory(MemoryType {
@@ -421,7 +425,9 @@ fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool, as_monit
             maximum: None,
             page_size_log2: None,
         });
-        target_wasm.exports.add_export_mem("engine:data".to_string(), engine_id);
+        target_wasm
+            .exports
+            .add_export_mem("engine:data".to_string(), engine_id);
 
         (Some(alloc_id), Some(alloc_tracker_global), Some(engine_id))
     } else {
