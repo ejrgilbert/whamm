@@ -1,0 +1,30 @@
+mkdir: &mkdir
+  name: mkdir
+  bound_vars:
+    - name: id
+      type: u32
+      docs: "The id of the syscall"
+      lifetime: static
+      derived_from: 100
+    - name: path_name
+      type: str
+      docs: "The path name to mkdir"
+      lifetime: dynamic
+      derived_from: arg0
+    - name: arg0
+      type: str
+      docs: "The path name to mkdir"
+      lifetime: dynamic
+      derived_from: null
+    - name: arg1
+      type: u16
+      docs: "The mode of the directory"
+      lifetime: dynamic
+      derived_from: null
+  bound_fns: []
+  supported_modes:
+    - alias_to: null
+      name: before
+      docs: This mode will cause the instrumentation logic to run *before* the probed event (if the predicate evaluates to `true`).
+
+  docs: "mkdir syscall"

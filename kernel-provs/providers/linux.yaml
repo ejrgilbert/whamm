@@ -1,0 +1,7 @@
+providers:
+  - name: linux
+    docs: Defines the linux provider.
+    bound_vars: []
+    bound_fns: []
+    packages:
+      - *syscall

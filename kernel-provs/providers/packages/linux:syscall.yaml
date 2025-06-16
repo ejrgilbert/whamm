@@ -1,0 +1,11 @@
+# =====================
+# ==== wasm:opcode ====
+# =====================
+
+syscall: &syscall
+  name: syscall
+  docs: This package within the wasm provider contains enables the instrumentation of WebAssembly bytecode instructions.
+  bound_vars: []
+  bound_fns: []
+  events:
+    - *mkdir
