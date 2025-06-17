@@ -193,7 +193,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 228, memaddr, not_taken, i32, i32, script0, #7, 7, 120, 0_wasm:opcode:if, 5
 324, memaddr, taken, i32, i32, script0, #7, 7, 159, 0_wasm:opcode:if, 0
 356, memaddr, not_taken, i32, i32, script0, #7, 7, 159, 0_wasm:opcode:if, 0
-388, memaddr, tak, i32, i32, script0, #7, 33554439, 0, taken0_wasm:opco, 0
+388, memaddr, taken, i32, i32, script0, #7, 7, 211, 0_wasm:opcode:if, 0
 420, memaddr, not_taken, i32, i32, script0, #7, 7, 211, 0_wasm:opcode:if, 0
 452, memaddr, taken, i32, i32, script0, #7, 7, 292, 1_wasm:opcode:br_if, 0
 484, memaddr, not_taken, i32, i32, script0, #7, 7, 292, 1_wasm:opcode:br_if, 0

@@ -13,7 +13,6 @@ use orca_wasm::ir::types::{InitExpr, Value as OrcaValue};
 use orca_wasm::{DataSegment, DataSegmentKind, Instructions, Module};
 use std::collections::HashMap;
 
-const UNKNOWN_FNAME: &str = "<UNKNOWN>";
 
 pub struct UnsharedVarHandler {
     allocated_vars: Vec<AllocatedVar>,
@@ -194,7 +193,7 @@ impl UnsharedVarHandler {
             // 3. Store the header for the probe (this could be one per probe...but we're duplicating per variable
             //    to make the flushing logic simpler)
             let fname = if _fname.is_empty() {
-                UNKNOWN_FNAME
+                &format!("#{fid}")
             } else {
                 _fname
             };
