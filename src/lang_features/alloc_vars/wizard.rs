@@ -42,6 +42,9 @@ impl UnsharedVarHandler {
         emitter: &mut ModuleEmitter,
         err: &mut ErrorGen,
     ) -> (Option<u32>, String) {
+        // | next_ptr | fname_ptr | fname_len | fid | pc  | name_ptr | name_len | script_id | probe_id_ptr | probe_id_len |
+        // | i32      | i32       | i8        | i32 | i32 | i32      | u8       | u8        | i32          | u8           |
+
         // Called once per probe definition with `unshared` OR `report` vars.
 
         // $alloc description:
@@ -148,7 +151,7 @@ impl UnsharedVarHandler {
             self.calc_bytes_to_alloc(ReportVars::report_var_header_bytes(), unshared_to_alloc);
         emitter
             .mem_allocator
-            .emit_base_memsize_check(num_bytes, &mut alloc, err);
+            .emit_base_memsize_check(fname_len.id, &mut alloc, err);
         emitter
             .mem_allocator
             .emit_alloc_memsize_check(num_bytes, &mut alloc, err);
@@ -176,6 +179,7 @@ impl UnsharedVarHandler {
                 );
             }
 
+            // TODO -- if it's not a report variable...I shouldn't need to store this metadata.
             // Store the header for the probe (this could be one per probe...but we're duplicating per variable
             // to make the flushing logic simpler)
             curr_offset += self.store_probe_header(
@@ -266,7 +270,11 @@ impl UnsharedVarHandler {
                     var_addr
                 )
             };
-            func.global_get(emitter.mem_allocator.mem_tracker_global);
+            let mem_tracker_global = emitter
+                .mem_allocator
+                .alloc_var_mem_tracker_global
+                .unwrap_or_else(|| panic!("alloc memory tracker not set"));
+            func.global_get(mem_tracker_global);
             emitter
                 .map_lib_adapter
                 .map_create_dynamic(ty.clone(), func, err);
@@ -389,6 +397,7 @@ impl UnsharedVarHandler {
             func,
         );
 
+        assert_eq!(13, bytes_used);
         bytes_used
     }
 
@@ -508,6 +517,7 @@ impl UnsharedVarHandler {
             });
         bytes_used += size_of_val(&probe_id_len) as u32;
 
+        assert_eq!(11, bytes_used);
         bytes_used
     }
 
@@ -521,20 +531,16 @@ impl UnsharedVarHandler {
         let i32_bytes = size_of::<i32>() as u32;
         let u8_bytes = size_of::<u8>() as u32;
 
-        // to store the probe header
-        // | fid | pc  |
-        // | i32 | i32 |
-        num_bytes += 2 * i32_bytes;
-
         unshared_to_alloc.iter().for_each(|var| {
             if var.is_report {
-                // will need to account for the pointer to next report var probably...
+                // to store the pointer to next report var
                 num_bytes += report_header_bytes;
+
+                // to store the header (per var)
+                // | fname_ptr  | fname_len | fid | pc  | name_ptr | name_len | script_id | probe_id_ptr | probe_id_len |
+                // | i32        | u8        | i32 | i32 | i32      | u8       | u8        | i32          | u8           |
+                num_bytes += (5 * i32_bytes) + (4 * u8_bytes);
             }
-            // to store the header (per var)
-            // | name_ptr | name_len | script_id | probe_id_ptr | probe_id_len |
-            // | i32      | u8       | u8        | i32          | u8           |
-            num_bytes += (2 * i32_bytes) + (3 * u8_bytes);
 
             // to store the value
             num_bytes += var.ty.num_bytes().unwrap() as u32;

@@ -419,22 +419,14 @@ impl ReportVars {
         // ======================== REPORT CSV FLUSH ============================
         // type, id_type, id, name, script_id, fname, fid, pc, probe_id, value(s)
         let id_type = "memaddr".to_string();
-        let mem_arg = MemArg {
-            align: 0,
-            max_align: 0,
-            offset: 0,
-            memory: mem_id,
-        };
 
         let i32_bytes = size_of::<i32>() as i32;
         let u8_bytes = size_of::<u8>() as i32;
 
         // handles all but 'value(s)' since this is common between all variable types
         let dt = LocalID(0); // use to figure out which 'type' to print
-        let addr = LocalID(1);
+        let orig_addr = LocalID(1);
         let mut flush_fn = FunctionBuilder::new(&[OrcaType::I64, OrcaType::I32], &[OrcaType::I32]);
-
-        let curr_addr = flush_fn.add_local(OrcaType::I32);
 
         let fname_ptr = flush_fn.add_local(OrcaType::I32); // u32
         let fname_len = flush_fn.add_local(OrcaType::I32); // u8
@@ -450,107 +442,78 @@ impl ReportVars {
         let probe_id_ptr = flush_fn.add_local(OrcaType::I32); // u32
         let probe_id_len = flush_fn.add_local(OrcaType::I32); // u8
 
-        // load values from memory into the locals
-        flush_fn.local_get(addr).local_tee(curr_addr);
+        let mut curr_offset = 0;
+        let mut memarg = |num_bytes: i32| -> MemArg {
+            let arg = MemArg {
+                align: 0,
+                max_align: 0,
+                offset: curr_offset,
+                memory: mem_id,
+            };
+            curr_offset += num_bytes as u64;
+            arg
+        };
 
         // header format:
         // | fname_ptr  | fname_len | fid | pc  | name_ptr | name_len | script_id | probe_id_ptr | probe_id_len |
         // | i32        | u8        | i32 | i32 | i32      | u8       | u8        | i32          | u8           |
 
         // load fname_addr (i32)
-        flush_fn.i32_load(mem_arg).local_set(fname_ptr);
-
-        // update memory pointer
         flush_fn
-            .i32_const(i32_bytes)
-            .local_get(curr_addr)
-            .i32_add()
-            .local_tee(curr_addr);
+            .local_get(orig_addr)
+            .i32_load(memarg(i32_bytes))
+            .local_set(fname_ptr);
 
         // load fname_len (u8)
-        flush_fn.i32_load8_u(mem_arg).local_set(fname_len);
-
-        // update memory pointer
         flush_fn
-            .i32_const(u8_bytes)
-            .local_get(curr_addr)
-            .i32_add()
-            .local_tee(curr_addr);
+            .local_get(orig_addr)
+            .i32_load8_u(memarg(u8_bytes))
+            .local_set(fname_len);
 
         // load fid (i32)
-        flush_fn.i32_load(mem_arg).local_set(fid);
-
-        // TODO -- use offset in load instead of updating the curr_addr every time
-
-        // update memory pointer
         flush_fn
-            .i32_const(i32_bytes)
-            .local_get(curr_addr)
-            .i32_add()
-            .local_tee(curr_addr);
+            .local_get(orig_addr)
+            .i32_load(memarg(i32_bytes))
+            .local_set(fid);
 
         // load pc (i32)
-        flush_fn.i32_load(mem_arg).local_set(pc);
-
-        // update memory pointer
         flush_fn
-            .i32_const(i32_bytes)
-            .local_get(curr_addr)
-            .i32_add()
-            .local_tee(curr_addr);
+            .local_get(orig_addr)
+            .i32_load(memarg(i32_bytes))
+            .local_set(pc);
 
         // load name_ptr (i32)
-        flush_fn.i32_load(mem_arg).local_set(name_ptr);
-
-        // update memory pointer
         flush_fn
-            .i32_const(i32_bytes)
-            .local_get(curr_addr)
-            .i32_add()
-            .local_tee(curr_addr);
+            .local_get(orig_addr)
+            .i32_load(memarg(i32_bytes))
+            .local_set(name_ptr);
 
         // load name_len (u8)
-        flush_fn.i32_load8_u(mem_arg).local_set(name_len);
-
-        // update memory pointer
         flush_fn
-            .i32_const(u8_bytes)
-            .local_get(curr_addr)
-            .i32_add()
-            .local_tee(curr_addr);
+            .local_get(orig_addr)
+            .i32_load8_u(memarg(u8_bytes))
+            .local_set(name_len);
 
         // load script_id (u8)
-        flush_fn.i32_load8_u(mem_arg).local_set(script_id);
-
-        // update memory pointer
         flush_fn
-            .i32_const(u8_bytes)
-            .local_get(curr_addr)
-            .i32_add()
-            .local_tee(curr_addr);
+            .local_get(orig_addr)
+            .i32_load8_u(memarg(u8_bytes))
+            .local_set(script_id);
 
         // load probe_id_ptr (i32)
-        flush_fn.i32_load(mem_arg).local_set(probe_id_ptr);
-
-        // update memory pointer
         flush_fn
-            .i32_const(i32_bytes)
-            .local_get(curr_addr)
-            .i32_add()
-            .local_tee(curr_addr);
+            .local_get(orig_addr)
+            .i32_load(memarg(i32_bytes))
+            .local_set(probe_id_ptr);
 
         // load probe_id_len (u8)
-        flush_fn.i32_load8_u(mem_arg).local_set(probe_id_len);
-
-        // update memory pointer
         flush_fn
-            .i32_const(u8_bytes)
-            .local_get(curr_addr)
-            .i32_add()
-            .local_set(curr_addr);
+            .local_get(orig_addr)
+            .i32_load8_u(memarg(u8_bytes))
+            .local_set(probe_id_len);
 
         // print 'id'
-        flush_fn.local_get(addr);
+        flush_fn.local_get(orig_addr);
         io_adapter.call_puti32(&mut flush_fn, err);
 
         // print 'id_type'
@@ -560,8 +523,8 @@ impl ReportVars {
         // print 'name'
         flush_fn.local_get(name_ptr).local_get(name_len);
         io_adapter.call_puts_internal(&mut flush_fn, err);
-        let (addr, len) = mem_allocator.lookup_emitted_string(", ", err);
-        io_adapter.puts(addr, len, &mut flush_fn, err);
+        let (comma_addr, comma_len) = mem_allocator.lookup_emitted_string(", ", err);
+        io_adapter.puts(comma_addr, comma_len, &mut flush_fn, err);
 
         // print 'whamm_type' per supported report variable datatype
         assert!(!self.all_used_report_dts.is_empty());
@@ -585,33 +548,31 @@ impl ReportVars {
         io_adapter.puts(addr, len, &mut flush_fn, err);
         flush_fn.local_get(script_id);
         io_adapter.call_puti32(&mut flush_fn, err);
-        let (addr, len) = mem_allocator.lookup_emitted_string(", ", err);
-        io_adapter.puts(addr, len, &mut flush_fn, err);
+        io_adapter.puts(comma_addr, comma_len, &mut flush_fn, err);
 
         // print '"fname"'
         flush_fn.local_get(fname_ptr).local_get(fname_len);
         io_adapter.call_puts_internal(&mut flush_fn, err);
-        let (addr, len) = mem_allocator.lookup_emitted_string(", ", err);
-        io_adapter.puts(addr, len, &mut flush_fn, err);
+        io_adapter.puts(comma_addr, comma_len, &mut flush_fn, err);
 
         // print 'fid, pc'
         flush_fn.local_get(fid);
         io_adapter.call_puti32(&mut flush_fn, err);
-        let (addr, len) = mem_allocator.lookup_emitted_string(", ", err);
-        io_adapter.puts(addr, len, &mut flush_fn, err);
+        io_adapter.puts(comma_addr, comma_len, &mut flush_fn, err);
         flush_fn.local_get(pc);
         io_adapter.call_puti32(&mut flush_fn, err);
-        let (addr, len) = mem_allocator.lookup_emitted_string(", ", err);
-        io_adapter.puts(addr, len, &mut flush_fn, err);
+        io_adapter.puts(comma_addr, comma_len, &mut flush_fn, err);
 
         // print 'probe_id'
         flush_fn.local_get(probe_id_ptr).local_get(probe_id_len);
         io_adapter.call_puts_internal(&mut flush_fn, err);
-        let (addr, len) = mem_allocator.lookup_emitted_string(", ", err);
-        io_adapter.puts(addr, len, &mut flush_fn, err);
+        io_adapter.puts(comma_addr, comma_len, &mut flush_fn, err);
 
         // return the pointer to the next place in memory (should point to value(s))
-        flush_fn.local_get(curr_addr);
+        flush_fn
+            .local_get(orig_addr)
+            .i32_const(curr_offset as i32)
+            .i32_add();
 
         let flush_fid = flush_fn.finish_module(wasm);
         wasm.set_fn_name(flush_fid, "flush_var_metadata".to_string());
@@ -674,11 +635,6 @@ impl ReportVars {
             offset: 0,
             memory: mem_id,
         };
-        let val_bytes = if let Some(num) = dt.num_bytes() {
-            num as i32
-        } else {
-            unimplemented!("We can't support flushing this report variable datatype yet.")
-        };
 
         // ================================= REPORT CSV FLUSH ====================================
         // id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
@@ -721,10 +677,16 @@ impl ReportVars {
             .i32_const(NULL_PTR_IN_MEM)
             .i32_ne()
             .if_stmt(BlockType::Empty)
-            .local_get(curr_addr)
-            .local_get(next_addr)
-            .i32_add()
-            .local_set(next_addr)
+                // check if there's a bug that would cause an infinite loop
+                .local_get(next_addr)
+                .i32_eqz()
+                .if_stmt(BlockType::Empty)
+                    .unreachable()
+                .end()
+                .local_get(curr_addr)
+                .local_get(next_addr)
+                .i32_add()
+                .local_set(next_addr)
             .end();
 
         // update memory pointer
@@ -744,28 +706,21 @@ impl ReportVars {
             .call(FunctionID(flush_metadata_fid))
             .local_tee(curr_addr);
 
-        // print the value(s)
+        // print the value(s), uses returned curr_addr that is now pointing to
+        // the true location of the value in memory
         flush_dt(&mut flush_fn, &mem_arg, io_adapter, map_lib_adapter, err);
-
-        // update memory pointer
-        flush_fn
-            .i32_const(val_bytes)
-            .local_get(curr_addr)
-            .i32_add()
-            .local_set(curr_addr);
 
         // check if we should loop
         // while next_addr != NULL_PTR: curr_addr = next_addr; continue;
-
         #[rustfmt::skip]
         flush_fn
             .local_get(next_addr)
             .i32_const(NULL_PTR_IN_MEM)
             .i32_ne()
             .if_stmt(BlockType::Empty)
-            .local_get(next_addr)
-            .local_set(curr_addr)
-            .br(1)
+                .local_get(next_addr)
+                .local_set(curr_addr)
+                .br(1)
             .end();
         // otherwise, fall through to end.
 
@@ -1153,8 +1108,6 @@ impl ReportVars {
     pub fn report_var_header_bytes() -> u32 {
         // | next_addr |
         // | i32       |
-        // let i32_bytes = 4;
-        // i32_bytes
         size_of::<i32>() as u32
     }
     pub fn alloc_report_var_header(
@@ -1216,7 +1169,6 @@ impl ReportVars {
                 .global_set(first_var)
             .end();
 
-        // TODO -- may be able to just skip this
         // put header in memory at curr_addr, value is: NULL_PTR
         alloc_func.global_get(mem_tracker_global); // (where to store)
         alloc_func.i32_const(NULL_PTR_IN_GLOBAL); // (what to store)
@@ -1228,6 +1180,7 @@ impl ReportVars {
         });
         used_bytes += size_of_val(&NULL_PTR_IN_GLOBAL);
 
+        assert_eq!(4, used_bytes);
         used_bytes as u32
     }
 

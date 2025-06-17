@@ -498,11 +498,25 @@ impl MemoryAllocator {
     }
     pub fn emit_base_memsize_check(
         &self,
-        needed_bytes: u32,
+        needed_bytes: LocalID,
         func: &mut FunctionBuilder,
         err: &mut ErrorGen,
     ) {
-        self.emit_memsize_check_with(self.base_mem_checker_fid, needed_bytes, func, err);
+        let check_memsize_fid = match self.base_mem_checker_fid {
+            Some(fid) => fid,
+            None => {
+                err.wizard_error(
+                    true,
+                    "Unexpected state while generating the memory allocation function. \
+                    The memory size checker function has not been generated yet."
+                        .to_string(),
+                    &None,
+                );
+                unreachable!()
+            }
+        };
+        func.local_get(needed_bytes);
+        func.call(FunctionID(check_memsize_fid));
     }
     pub fn emit_alloc_memsize_check(
         &self,
