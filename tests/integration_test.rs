@@ -580,7 +580,14 @@ fn run_testcase_wizard(
         cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
     }
 
-    let res = cmd.arg("--env=TO_CONSOLE=true")
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        cmd.arg("-mode=jit");
+    }
+
+    let res = cmd
+        // .arg("-tw")
+        .arg("--env=TO_CONSOLE=true")
         .arg(format!("--monitors={}+{}{}", instr_app_path, whamm_core_lib_path, libs_to_link))
         .arg(app_path_str)
         .output()

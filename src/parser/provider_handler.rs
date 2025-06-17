@@ -833,7 +833,7 @@ pub struct Probe {
 
 fn print_bound_vars(vars: &[BoundVar], print_vars: bool, buff: &mut Buffer, tabs: &mut usize) {
     if print_vars && !vars.is_empty() {
-        white(true, format!("{}GLOBALS:\n", " ".repeat(*tabs * 4)), buff);
+        white(true, format!("{}VARIABLES:\n", " ".repeat(*tabs * 4)), buff);
         *tabs += 1;
         for var in vars.iter() {
             var.print_info(buff, tabs);

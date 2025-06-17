@@ -101,6 +101,7 @@ impl UnsharedVarHandler {
     pub fn allocate_vars(
         &mut self,
         vars: &[&UnsharedVar],
+        _fname: &str,
         fid: u32,
         pc: u32,
         table: &mut SymbolTable,
@@ -190,7 +191,14 @@ impl UnsharedVarHandler {
 
             // 3. Store the header for the probe (this could be one per probe...but we're duplicating per variable
             //    to make the flushing logic simpler)
-            let probe_header = ProbeHeader::new(fid, pc);
+            let fname = if _fname.is_empty() {
+                &format!("#{fid}")
+            } else {
+                _fname
+            };
+            mem_allocator.emit_string(wasm, &mut fname.to_string());
+            let (fname_addr, fname_len) = mem_allocator.lookup_emitted_string(fname, err);
+            let probe_header = ProbeHeader::new((fname_addr, fname_len as u8), fid, pc);
 
             // 4. Store the header for this variable
             let var_header = VarHeader::new(report_metadata, mem_allocator, err);
@@ -308,21 +316,24 @@ impl ReportVarHeader {
 }
 #[derive(Default)]
 struct ProbeHeader {
+    fname: (u32, u8),
     fid: u32,
     pc: u32,
 }
 impl ProbeHeader {
-    fn new(fid: u32, pc: u32) -> Self {
-        Self { fid, pc }
+    fn new(fname: (u32, u8), fid: u32, pc: u32) -> Self {
+        Self { fname, fid, pc }
     }
     fn encode(&self) -> Vec<u8> {
-        let mut res = self.fid.to_le_bytes().to_vec();
+        let mut res = self.fname.0.to_le_bytes().to_vec();
+        res.extend(self.fname.1.to_le_bytes());
+        res.extend(self.fid.to_le_bytes());
         res.extend(self.pc.to_le_bytes());
 
         res
     }
     fn num_bytes() -> usize {
-        size_of::<i32>() * 2
+        size_of::<i32>() * 3 + size_of::<u8>()
     }
 }
 #[derive(Default)]

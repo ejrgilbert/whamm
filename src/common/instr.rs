@@ -155,7 +155,7 @@ pub fn run(
 
     // If there were any errors encountered, report and exit!
     err.check_has_errors();
-    let mut mem_allocator = get_memory_allocator(target_wasm, true);
+    let mut mem_allocator = get_memory_allocator(target_wasm, true, config.as_monitor_module);
 
     // Collect the metadata for the AST and transform to different representation
     // specifically used for targeting Wizard during compilation.
@@ -193,14 +193,6 @@ pub fn run(
     let mut map_lib_adapter = map_package.adapter;
     let mut io_adapter = io_package.adapter;
     let mut report_vars = ReportVars::new();
-    let mut unshared_var_handler =
-        UnsharedVarHandler::new(*target_wasm.add_local_memory(MemoryType {
-            memory64: false,
-            shared: false,
-            initial: 1,
-            maximum: None,
-            page_size_log2: None,
-        }));
 
     // If there were any errors encountered, report and exit!
     metadata_collector.err.check_has_errors();
@@ -219,6 +211,15 @@ pub fn run(
             &mut report_vars,
         );
     } else {
+        let mut unshared_var_handler =
+            UnsharedVarHandler::new(*target_wasm.add_local_memory(MemoryType {
+                memory64: false,
+                shared: false,
+                initial: 1,
+                maximum: None,
+                page_size_log2: None,
+            }));
+
         run_instr_rewrite(
             &mut metrics,
             &mut whamm,
@@ -234,10 +235,11 @@ pub fn run(
             &mut unshared_var_handler,
             &mut injected_core_lib_funcs,
         );
+
+        // Bump the memory pages to account for used memory
+        unshared_var_handler.memory_grow(target_wasm);
     }
 
-    // Bump the memory pages to account for used memory
-    unshared_var_handler.memory_grow(target_wasm);
     // Bump the memory pages to account for used memory
     mem_allocator.memory_grow(target_wasm);
     // Update the memory tracker global to point to the start of free memory
@@ -275,7 +277,7 @@ fn run_instr_wizard(
 
     let mut injected_funcs = vec![];
     let mut wizard_unshared_var_handler =
-        crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
+        crate::lang_features::alloc_vars::wizard::UnsharedVarHandler::new(target_wasm);
     let mut gen = crate::generator::wizard::WizardGenerator {
         emitter: ModuleEmitter::new(
             InjectStrategy::Wizard,
@@ -375,7 +377,11 @@ fn run_instr_rewrite(
     err.check_has_errors();
 }
 
-fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> MemoryAllocator {
+fn get_memory_allocator(
+    target_wasm: &mut Module,
+    create_new_mem: bool,
+    as_monitor_module: bool,
+) -> MemoryAllocator {
     // Create the memory tracker + the map and metadata tracker
     let mem_id = if create_new_mem {
         *target_wasm.add_local_memory(MemoryType {
@@ -398,13 +404,43 @@ fn get_memory_allocator(target_wasm: &mut Module, create_new_mem: bool) -> Memor
         false,
     );
 
-    MemoryAllocator {
+    let (alloc_var_mem_id, alloc_var_mem_tracker_global, engine_mem_id) = if as_monitor_module {
+        let alloc_id = *target_wasm.add_local_memory(MemoryType {
+            memory64: false,
+            shared: false,
+            initial: 1,
+            maximum: None,
+            page_size_log2: None,
+        });
+        let alloc_tracker_global = target_wasm.add_global(
+            InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
+            OrcaType::I32,
+            true,
+            false,
+        );
+        let engine_id = *target_wasm.add_local_memory(MemoryType {
+            memory64: false,
+            shared: false,
+            initial: 1,
+            maximum: None,
+            page_size_log2: None,
+        });
+        target_wasm
+            .exports
+            .add_export_mem("engine:data".to_string(), engine_id);
+
+        (Some(alloc_id), Some(alloc_tracker_global), Some(engine_id))
+    } else {
+        (None, None, None)
+    };
+
+    MemoryAllocator::new(
         mem_id,
-        curr_mem_offset: 0,
-        emitted_strings: HashMap::new(),
         mem_tracker_global,
-        used_mem_checker_fid: None,
-    }
+        alloc_var_mem_id,
+        alloc_var_mem_tracker_global,
+        engine_mem_id,
+    )
 }
 
 fn get_symbol_table(

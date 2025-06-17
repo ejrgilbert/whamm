@@ -1401,7 +1401,11 @@ impl Global {
 
 pub(crate) fn print_bound_vars(tabs: &mut usize, vars: &[BoundVar], buffer: &mut Buffer) {
     if !vars.is_empty() {
-        white(true, format!("{}GLOBALS:\n", " ".repeat(*tabs * 4)), buffer);
+        white(
+            true,
+            format!("{}VARIABLES:\n", " ".repeat(*tabs * 4)),
+            buffer,
+        );
         *tabs += 1;
         for var in vars.iter() {
             var.print_info(buffer, tabs);

@@ -284,7 +284,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 io_adapter,
                 self.map_lib_adapter,
                 (header_addr, header_len),
-                self.mem_allocator.mem_id,
+                if let Some(id) = self.mem_allocator.alloc_var_mem_id {
+                    id
+                } else {
+                    self.mem_allocator.mem_id
+                },
                 self.app_wasm,
                 err,
             );
