@@ -1,7 +1,7 @@
 // Matches _if and br_if events
 wasm::*if:before {
-    report unshared var taken: u32;
-    report unshared var not_taken: u32;
+    report unshared var taken: i32;
+    report unshared var not_taken: i32;
 
     // which branch was taken?
     if (arg0 != 0) {

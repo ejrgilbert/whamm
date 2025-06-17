@@ -13,7 +13,6 @@ use orca_wasm::ir::types::{InitExpr, Value as OrcaValue};
 use orca_wasm::{DataSegment, DataSegmentKind, Instructions, Module};
 use std::collections::HashMap;
 
-
 pub struct UnsharedVarHandler {
     allocated_vars: Vec<AllocatedVar>,
     report_trackers: HashMap<DataType, ReportAllocTracker>,

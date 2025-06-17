@@ -156,6 +156,18 @@ impl UnsharedVarHandler {
             .mem_allocator
             .emit_alloc_memsize_check(num_bytes, &mut alloc, err);
 
+        // save fname
+        if !unshared_to_alloc.is_empty() {
+            self.store_fname(
+                &mut alloc,
+                &fname_ptr,
+                &new_fname_ptr,
+                &fname_len,
+                &fid,
+                emitter,
+            );
+        }
+
         // alloc each var
         for UnsharedVar {
             ty,
@@ -164,7 +176,6 @@ impl UnsharedVarHandler {
             report_metadata,
         } in unshared_to_alloc.iter()
         {
-            // println!("Allocating var of type: {ty}");
             let prev_offset = curr_offset;
 
             if *is_report {
@@ -185,7 +196,6 @@ impl UnsharedVarHandler {
             curr_offset += self.store_probe_header(
                 &mut alloc,
                 curr_offset,
-                &fname_ptr,
                 &new_fname_ptr,
                 &fname_len,
                 &fid,
@@ -290,38 +300,21 @@ impl UnsharedVarHandler {
         }
     }
 
-    fn store_probe_header(
+    fn store_fname(
         &self,
         func: &mut FunctionBuilder,
-        curr_offset: u32,
         fname_ptr: &Local,
         new_fname_ptr: &Local,
         fname_len: &Local,
         fid: &Local,
-        pc: &Local,
         emitter: &mut ModuleEmitter,
-    ) -> u32 {
-        // | fname_ptr | fname_len | fid | pc  |
-        // | i32       | i8        | i32 | i32 |
-        let mut bytes_used = 0;
-
-        // todo save off fname from engine memory!
-        // todo store the new fname_ptr and same fname_len
-
+    ) {
         let base_mem = emitter.mem_allocator.mem_id;
         let base_mem_tracker = emitter.mem_allocator.mem_tracker_global;
         let engine_mem = emitter
             .mem_allocator
             .engine_mem_id
             .unwrap_or_else(|| panic!("engine memory id not set"));
-        let mem_id = emitter
-            .mem_allocator
-            .alloc_var_mem_id
-            .unwrap_or_else(|| panic!("alloc memory id not set"));
-        let mem_tracker_global = emitter
-            .mem_allocator
-            .alloc_var_mem_tracker_global
-            .unwrap_or_else(|| panic!("alloc memory tracker not set"));
 
         // Check if we're still visiting the same function that we were in before.
         // If so, use the already-saved-off fname!
@@ -357,12 +350,36 @@ impl UnsharedVarHandler {
             .global_set(self.prev_fname_ptr);
 
         func.end();
+    }
+
+    fn store_probe_header(
+        &self,
+        func: &mut FunctionBuilder,
+        curr_offset: u32,
+        fname_ptr: &Local,
+        fname_len: &Local,
+        fid: &Local,
+        pc: &Local,
+        emitter: &mut ModuleEmitter,
+    ) -> u32 {
+        // | fname_ptr | fname_len | fid | pc  |
+        // | i32       | i8        | i32 | i32 |
+        let mut bytes_used = 0;
+
+        let mem_id = emitter
+            .mem_allocator
+            .alloc_var_mem_id
+            .unwrap_or_else(|| panic!("alloc memory id not set"));
+        let mem_tracker_global = emitter
+            .mem_allocator
+            .alloc_var_mem_tracker_global
+            .unwrap_or_else(|| panic!("alloc memory tracker not set"));
 
         // store fname_ptr
         bytes_used += emitter.mem_allocator.emit_store_from_local(
             curr_offset + bytes_used,
-            new_fname_ptr.id,
-            &new_fname_ptr.ty,
+            fname_ptr.id,
+            &fname_ptr.ty,
             mem_id,
             mem_tracker_global,
             func,
