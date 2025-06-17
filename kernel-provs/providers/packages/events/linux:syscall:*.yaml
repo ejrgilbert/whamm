@@ -11,6 +11,11 @@ mkdir: &mkdir
       docs: "The path name to mkdir"
       lifetime: dynamic
       derived_from: arg0
+    - name: dirmode
+      type: u16
+      docs: "The mode of the directory"
+      lifetime: dynamic
+      derived_from: arg1
     - name: arg0
       type: str
       docs: "The path name to mkdir"
