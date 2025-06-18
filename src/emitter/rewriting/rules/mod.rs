@@ -5,7 +5,7 @@ use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, 
 use crate::verifier::types::VarAddr;
 use log::warn;
 use orca_wasm::ir::id::{FunctionID, GlobalID, TypeID};
-use orca_wasm::ir::module::module_functions::{FuncKind, ImportedFunction, LocalFunction};
+use orca_wasm::ir::module::module_functions::{FuncKind, ImportedFunction};
 use orca_wasm::ir::module::module_globals::{GlobalKind, ImportedGlobal, LocalGlobal};
 use orca_wasm::ir::module::module_types::Types;
 use orca_wasm::ir::module::Module;
@@ -1897,17 +1897,17 @@ fn bind_vars_call(
                 ty_id: *ty_id,
             }
         }
-        FuncKind::Local(LocalFunction { func_id, ty_id, .. }) => FuncInfo {
+        FuncKind::Local(func) => FuncInfo {
             func_kind: "local".to_string(),
             module: match &app_wasm.module_name {
                 Some(name) => name.clone(),
                 None => "".to_string(),
             },
-            name: match &app_wasm.functions.get_name(*func_id) {
+            name: match &app_wasm.functions.get_name(func.func_id) {
                 Some(name) => name.clone(),
                 None => "".to_string(),
             },
-            ty_id: *ty_id,
+            ty_id: func.ty_id,
         },
     };
 
@@ -1993,21 +1993,20 @@ pub fn get_ty_info_for_instr(
         Operator::Call {
             function_index: fid,
         } => {
-            match app_wasm.functions.get_kind(FunctionID(*fid)) {
-                FuncKind::Import(ImportedFunction { ty_id, .. })
-                | FuncKind::Local(LocalFunction { ty_id, .. }) => {
-                    if let Some(ty) = app_wasm.types.get(*ty_id) {
-                        let mut res = vec![];
-                        for t in ty.params().iter().rev() {
-                            res.push(Some(*t));
-                        }
-                        (res, Some(**ty_id))
-                    } else {
-                        // no type info found!!
-                        warn!("No type information found for import with FID {fid}");
-                        (vec![], None)
-                    }
+            let ty_id = match app_wasm.functions.get_kind(FunctionID(*fid)) {
+                FuncKind::Import(ImportedFunction { ty_id, .. }) => *ty_id,
+                FuncKind::Local(func) => func.ty_id
+            };
+            if let Some(ty) = app_wasm.types.get(ty_id) {
+                let mut res = vec![];
+                for t in ty.params().iter().rev() {
+                    res.push(Some(*t));
                 }
+                (res, Some(*ty_id))
+            } else {
+                // no type info found!!
+                warn!("No type information found for import with FID {fid}");
+                (vec![], None)
             }
         }
         Operator::If { .. } | Operator::BrIf { .. } | Operator::BrTable { .. } => {
@@ -2061,10 +2060,10 @@ pub fn get_ty_info_for_instr(
             (vec![None, None, Some(OrcaType::I32)], None)
         }
         Operator::LocalSet { local_index } | Operator::LocalTee { local_index } => {
-            if let FuncKind::Local(LocalFunction { body, .. }) =
+            if let FuncKind::Local(func) =
                 app_wasm.functions.get_kind(*curr_fid)
             {
-                if let Some((_, ty)) = body.locals.get(*local_index as usize) {
+                if let Some((_, ty)) = func.body.locals.get(*local_index as usize) {
                     (vec![Some(*ty)], None)
                 } else {
                     (vec![], None) // ignore
@@ -2411,12 +2410,12 @@ pub fn is_prog_exit_call(opcode: &Operator, wasm: &Module) -> bool {
                 let func_name = import.name.to_string();
                 format!("{mod_name}:{func_name}")
             }
-            FuncKind::Local(LocalFunction { func_id, .. }) => {
+            FuncKind::Local(func) => {
                 let mod_name = match &wasm.module_name {
                     Some(name) => name.clone(),
                     None => "".to_string(),
                 };
-                let func_name = match &wasm.functions.get_name(*func_id) {
+                let func_name = match &wasm.functions.get_name(func.func_id) {
                     Some(name) => name.clone(),
                     None => "".to_string(),
                 };

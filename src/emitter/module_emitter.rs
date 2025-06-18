@@ -226,16 +226,19 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         // emit the function
         if let Some(func) = self.emitting_func.take() {
-            let fid = func.finish_module(self.app_wasm);
+            let fid = func.finish_module(self.app_wasm,
+                                         None);
             if let Some(name) = name {
                 self.app_wasm.set_fn_name(fid, name.clone());
                 if export {
-                    self.app_wasm.exports.add_export_func(name, *fid);
+                    self.app_wasm.exports.add_export_func(name, *fid,
+                                                          None);
                 }
             } else if export {
                 self.app_wasm
                     .exports
-                    .add_export_func(format!("${}", *fid), *fid);
+                    .add_export_func(format!("${}", *fid), *fid,
+                                     None);
             }
             Some(*fid)
         } else {
@@ -293,12 +296,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 err,
             );
 
-            let on_exit_id = on_exit.finish_module(self.app_wasm);
+            let on_exit_id = on_exit.finish_module(self.app_wasm,
+                                                   None);
             self.app_wasm.set_fn_name(on_exit_id, "on_exit".to_string());
 
             self.app_wasm
                 .exports
-                .add_export_func("wasm:exit".to_string(), *on_exit_id);
+                .add_export_func("wasm:exit".to_string(), *on_exit_id,
+                                 None);
             Some(on_exit_id)
         } else {
             None
@@ -405,7 +410,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             .i32_const(0)
             .return_stmt();
 
-        let strcmp_id = strcmp.finish_module(self.app_wasm);
+        let strcmp_id = strcmp.finish_module(self.app_wasm,
+                                             None);
         self.app_wasm.set_fn_name(strcmp_id, "strcmp".to_string());
 
         let Record::Fn { addr, .. } = self.table.lookup_fn_mut(&f.name.name, err)? else {
@@ -428,6 +434,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             OrcaType::I32,
             true,
             false,
+            None
         );
         match self.app_wasm.functions.get_local_fid_by_name("instr_init") {
             Some(_) => {
@@ -446,7 +453,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 //time to make a instr_init fn
                 debug!("No instr_init function found, creating one");
                 let instr_init_fn = FunctionBuilder::new(&[], &[]);
-                let instr_init_id = instr_init_fn.finish_module(self.app_wasm);
+                let instr_init_id = instr_init_fn.finish_module(self.app_wasm,
+                                                                None);
                 self.app_wasm
                     .set_fn_name(instr_init_id, "instr_init".to_string());
                 instr_init_id
@@ -507,10 +515,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
         getter.global_get(GlobalID(*global_id));
 
-        let getter_id = getter.finish_module(self.app_wasm);
+        let getter_id = getter.finish_module(self.app_wasm,
+                                             None);
         let fn_name = format!("get_{name}");
         self.app_wasm.set_fn_name(getter_id, fn_name.clone());
-        self.app_wasm.exports.add_export_func(fn_name, *getter_id);
+        self.app_wasm.exports.add_export_func(fn_name, *getter_id,
+                                              None);
 
         getter_id
     }

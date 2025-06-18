@@ -126,7 +126,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                 if loc_info.is_prog_exit {
                     if self.on_exit_fid.is_none() {
                         let on_exit = FunctionBuilder::new(&[], &[]);
-                        let on_exit_id = on_exit.finish_module(self.emitter.app_iter.module);
+                        let on_exit_id = on_exit.finish_module(self.emitter.app_iter.module, None);
                         self.emitter
                             .app_iter
                             .module

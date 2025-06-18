@@ -574,7 +574,8 @@ impl ReportVars {
             .i32_const(curr_offset as i32)
             .i32_add();
 
-        let flush_fid = flush_fn.finish_module(wasm);
+        let flush_fid = flush_fn.finish_module(wasm,
+                                               None);
         wasm.set_fn_name(flush_fid, "flush_var_metadata".to_string());
         self.flush_tracker.flush_var_metadata_fid = Some(*flush_fid);
     }
@@ -726,7 +727,8 @@ impl ReportVars {
 
         flush_fn.end().end();
 
-        let flush_fid = flush_fn.finish_module(wasm);
+        let flush_fid = flush_fn.finish_module(wasm,
+                                               None);
         wasm.set_fn_name(flush_fid, format!("flush_{}_vars", dt));
 
         *flush_fid
@@ -1151,6 +1153,7 @@ impl ReportVars {
                 OrcaType::I32,
                 true,
                 false,
+                None
             );
             tracker.first_var = Some(*gid);
 
@@ -1210,6 +1213,7 @@ impl ReportVars {
                 OrcaType::I32,
                 true,
                 false,
+                None
             );
             tracker.last_var = Some(*gid);
             GlobalID(*gid)

@@ -29,6 +29,7 @@ impl UnsharedVarHandler {
                 OrcaType::I32,
                 true,
                 false,
+                None
             )
         };
         Self {
@@ -254,11 +255,13 @@ impl UnsharedVarHandler {
         // return the location where the value will be stored in memory!
         alloc.local_get(orig_offset.id);
 
-        let alloc_id = alloc.finish_module(emitter.app_wasm);
+        let alloc_id = alloc.finish_module(emitter.app_wasm,
+                                           None);
         emitter
             .app_wasm
             .exports
-            .add_export_func(format!("${}", *alloc_id), *alloc_id);
+            .add_export_func(format!("${}", *alloc_id), *alloc_id,
+                             None);
         (Some(*alloc_id), "fname, fid, pc".to_string())
     }
 
