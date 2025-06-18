@@ -355,7 +355,7 @@ pub fn whamm_type_to_wasm_global(
                     OrcaType::I32,
                     true,
                     false,
-                    None
+                    None,
                 );
                 (global_id, OrcaType::I32)
             }
@@ -366,7 +366,7 @@ pub fn whamm_type_to_wasm_global(
                     OrcaType::I64,
                     true,
                     false,
-                    None
+                    None,
                 );
                 (global_id, OrcaType::I64)
             }
@@ -378,7 +378,7 @@ pub fn whamm_type_to_wasm_global(
                     OrcaType::F32,
                     true,
                     false,
-                    None
+                    None,
                 );
                 (global_id, OrcaType::F32)
             }
@@ -390,7 +390,7 @@ pub fn whamm_type_to_wasm_global(
                     OrcaType::F64,
                     true,
                     false,
-                    None
+                    None,
                 );
                 (global_id, OrcaType::F64)
             }

@@ -188,7 +188,7 @@ fn import_memory(module_name: &str, mem_name: &str, use_name: &str, app_wasm: &m
             maximum: None,
             page_size_log2: None,
         },
-        None
+        None,
     );
     app_wasm.imports.set_name(use_name.to_string(), imp_id);
 
@@ -202,10 +202,9 @@ pub fn import_func(
     results: &[DataType],
     app_wasm: &mut Module,
 ) -> u32 {
-    let ty_id = app_wasm.types.add_func_type(params, results,
-                                             None);
-    let (fid, imp_id) = app_wasm.add_import_func(module_name.to_string(), fname.to_string(), ty_id,
-                                                 None);
+    let ty_id = app_wasm.types.add_func_type(params, results, None);
+    let (fid, imp_id) =
+        app_wasm.add_import_func(module_name.to_string(), fname.to_string(), ty_id, None);
     app_wasm.imports.set_name(fname.to_string(), imp_id);
 
     *fid

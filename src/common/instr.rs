@@ -211,15 +211,16 @@ pub fn run(
             &mut report_vars,
         );
     } else {
-        let mut unshared_var_handler =
-            UnsharedVarHandler::new(*target_wasm.add_local_memory(MemoryType {
+        let mut unshared_var_handler = UnsharedVarHandler::new(*target_wasm.add_local_memory(
+            MemoryType {
                 memory64: false,
                 shared: false,
                 initial: 1,
                 maximum: None,
                 page_size_log2: None,
             },
-            None));
+            None,
+        ));
 
         run_instr_rewrite(
             &mut metrics,
@@ -385,14 +386,16 @@ fn get_memory_allocator(
 ) -> MemoryAllocator {
     // Create the memory tracker + the map and metadata tracker
     let mem_id = if create_new_mem {
-        *target_wasm.add_local_memory(MemoryType {
-            memory64: false,
-            shared: false,
-            initial: 1,
-            maximum: None,
-            page_size_log2: None,
-        },
-                                      None)
+        *target_wasm.add_local_memory(
+            MemoryType {
+                memory64: false,
+                shared: false,
+                initial: 1,
+                maximum: None,
+                page_size_log2: None,
+            },
+            None,
+        )
     } else {
         // memory ID is just zero
         0
@@ -404,37 +407,40 @@ fn get_memory_allocator(
         OrcaType::I32,
         true,
         false,
-        None
+        None,
     );
 
     let (alloc_var_mem_id, alloc_var_mem_tracker_global, engine_mem_id) = if as_monitor_module {
-        let alloc_id = *target_wasm.add_local_memory(MemoryType {
-            memory64: false,
-            shared: false,
-            initial: 1,
-            maximum: None,
-            page_size_log2: None,
-        },
-                                                     None);
+        let alloc_id = *target_wasm.add_local_memory(
+            MemoryType {
+                memory64: false,
+                shared: false,
+                initial: 1,
+                maximum: None,
+                page_size_log2: None,
+            },
+            None,
+        );
         let alloc_tracker_global = target_wasm.add_global(
             InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
             OrcaType::I32,
             true,
             false,
-            None
+            None,
         );
-        let engine_id = *target_wasm.add_local_memory(MemoryType {
-            memory64: false,
-            shared: false,
-            initial: 1,
-            maximum: None,
-            page_size_log2: None,
-        },
-                                                      None);
+        let engine_id = *target_wasm.add_local_memory(
+            MemoryType {
+                memory64: false,
+                shared: false,
+                initial: 1,
+                maximum: None,
+                page_size_log2: None,
+            },
+            None,
+        );
         target_wasm
             .exports
-            .add_export_mem("engine:data".to_string(), engine_id,
-                            None);
+            .add_export_mem("engine:data".to_string(), engine_id, None);
 
         (Some(alloc_id), Some(alloc_tracker_global), Some(engine_id))
     } else {

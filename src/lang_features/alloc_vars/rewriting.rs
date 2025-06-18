@@ -69,7 +69,7 @@ impl UnsharedVarHandler {
                 memory_index: self.mem_id,
                 offset_expr: InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
             },
-            tag: None
+            tag: None,
         };
         wasm.add_data(data);
     }

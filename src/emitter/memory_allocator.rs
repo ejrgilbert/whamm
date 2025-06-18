@@ -449,8 +449,7 @@ impl MemoryAllocator {
             .drop()
             .end();
 
-        let check_memsize_fid = check_memsize.finish_module(wasm,
-                                                            None);
+        let check_memsize_fid = check_memsize.finish_module(wasm, None);
         wasm.set_fn_name(
             check_memsize_fid,
             format!("check_memsize_for_mem{}", mem_id),
@@ -587,7 +586,7 @@ impl MemoryAllocator {
                     self.curr_mem_offset as i32,
                 ))]),
             },
-            tag: None
+            tag: None,
         };
         wasm.data.push(data_segment);
 

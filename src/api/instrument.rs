@@ -1,16 +1,16 @@
 #![allow(clippy::too_many_arguments)]
 
-use std::iter::Map;
+use crate::common::error::WhammError;
 use crate::common::instr;
 use log::error;
-use orca_wasm::Module;
-use std::process::exit;
 use orca_wasm::ir::module::module_types::Types;
-use crate::common::error::WhammError;
+use orca_wasm::Module;
+use std::iter::Map;
+use std::process::exit;
 
+use crate::parser::provider_handler::ModeKind;
 use orca_wasm::ir::types::DataType as OrcaType;
 use wasmparser::{ExternalKind, TypeRef};
-use crate::parser::provider_handler::ModeKind;
 
 pub const MAX_ERRORS: i32 = 15;
 
@@ -128,8 +128,8 @@ pub fn instrument_as_dry_run(
     _app_wasm_path: String,
     _script_path: String,
     _user_lib_paths: Option<Vec<String>>,
-// ) {
-) -> Result<Map<InjectType, Vec<Injection>>, Vec<WhammError>>{
+    // ) {
+) -> Result<Map<InjectType, Vec<Injection>>, Vec<WhammError>> {
     todo!()
 }
 
@@ -245,7 +245,7 @@ pub enum InjectType {
     Element,
 
     // Probes
-    Probe
+    Probe,
 }
 
 // TODO -- maybe handle this like Metrics?
@@ -263,7 +263,7 @@ pub enum Injection {
         type_ref: TypeRef,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>
+        metadata: Option<Metadata>,
     },
     // TODO -- this probably makes sense to do the wrapper macro...
     /// Represents an export that has been added to the module.
@@ -276,14 +276,14 @@ pub enum Injection {
         index: u32,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>
+        metadata: Option<Metadata>,
     },
     // TODO -- this probably makes sense to do the wrapper macro...
     Type {
         ty: Types,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>
+        metadata: Option<Metadata>,
     },
 
     // TODO -- this probably makes sense to do the wrapper macro...
@@ -297,7 +297,7 @@ pub enum Injection {
         maximum: Option<u64>,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>
+        metadata: Option<Metadata>,
     },
 
     // TODO -- this probably makes sense to do the wrapper macro...
@@ -313,7 +313,7 @@ pub enum Injection {
         data: Vec<u8>,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>
+        metadata: Option<Metadata>,
     },
 
     // TODO -- this probably makes sense to do the wrapper macro...
@@ -331,7 +331,7 @@ pub enum Injection {
         init_expr: Vec<String>,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>
+        metadata: Option<Metadata>,
     },
 
     // TODO -- this probably makes sense to do the wrapper macro...
@@ -350,7 +350,7 @@ pub enum Injection {
 
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>
+        metadata: Option<Metadata>,
     },
 
     // TODO -- Point everything to LocalsTracker and collect metadata there!
@@ -361,7 +361,7 @@ pub enum Injection {
 
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>
+        metadata: Option<Metadata>,
     },
 
     // TODO -- this probably makes sense to do the wrapper macro...
@@ -387,17 +387,17 @@ pub enum Injection {
 
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>
-    }
+        metadata: Option<Metadata>,
+    },
 }
 
 /// Encodes metadata about the injected module contents that map back
 /// to the Whamm script location that resulted in the insertion.
 pub struct Metadata {
     script_start: ScriptLoc,
-    script_end: Option<ScriptLoc>
+    script_end: Option<ScriptLoc>,
 }
 pub struct ScriptLoc {
     l: u32,
-    c: u32
+    c: u32,
 }

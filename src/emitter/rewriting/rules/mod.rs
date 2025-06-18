@@ -1995,7 +1995,7 @@ pub fn get_ty_info_for_instr(
         } => {
             let ty_id = match app_wasm.functions.get_kind(FunctionID(*fid)) {
                 FuncKind::Import(ImportedFunction { ty_id, .. }) => *ty_id,
-                FuncKind::Local(func) => func.ty_id
+                FuncKind::Local(func) => func.ty_id,
             };
             if let Some(ty) = app_wasm.types.get(ty_id) {
                 let mut res = vec![];
@@ -2060,9 +2060,7 @@ pub fn get_ty_info_for_instr(
             (vec![None, None, Some(OrcaType::I32)], None)
         }
         Operator::LocalSet { local_index } | Operator::LocalTee { local_index } => {
-            if let FuncKind::Local(func) =
-                app_wasm.functions.get_kind(*curr_fid)
-            {
+            if let FuncKind::Local(func) = app_wasm.functions.get_kind(*curr_fid) {
                 if let Some((_, ty)) = func.body.locals.get(*local_index as usize) {
                     (vec![Some(*ty)], None)
                 } else {
