@@ -9,7 +9,7 @@ The original program is _not touched_ **and** _not provided_ when using this str
 
 The first three phases of `whamm!` compilation are identical for both strategies.
 The `translate` and `emit` phases vary between injection strategy.
-This is because "emitting" for **bytecode rewriting** means using the `orcs` library to insert new instructions into the program.
+This is because "emitting" for **bytecode rewriting** means using the `orca` library to insert new instructions into the program.
 Whereas "emitting" for **direct engine support** means emitting a Wasm module encoding _where to instrument_ and the callbacks to attach at the probed sites by interfacing with the engine at application runtime.
 
 These are the four phases of compilation:
