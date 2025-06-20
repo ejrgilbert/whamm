@@ -10,7 +10,7 @@ use crate::parser::types::{DataType, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use orca_wasm::ir::id::MemoryID;
 use orca_wasm::ir::types::{InitExpr, Value as OrcaValue};
-use orca_wasm::{DataSegment, DataSegmentKind, Instructions, Module};
+use orca_wasm::{DataSegment, DataSegmentKind, InitInstr, Module};
 use std::collections::HashMap;
 
 pub struct UnsharedVarHandler {
@@ -67,7 +67,7 @@ impl UnsharedVarHandler {
             data: bytes,
             kind: DataSegmentKind::Active {
                 memory_index: self.mem_id,
-                offset_expr: InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
+                offset_expr: InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(0))]),
             },
             tag: None,
         };
@@ -84,7 +84,7 @@ impl UnsharedVarHandler {
                     let (global_id, _) = whamm_type_to_wasm_global(
                         wasm,
                         &DataType::I32,
-                        Some(InitExpr::new(vec![Instructions::Value(OrcaValue::I32(
+                        Some(InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(
                             *mem_offset as i32,
                         ))])),
                     );

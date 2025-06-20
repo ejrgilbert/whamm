@@ -24,7 +24,7 @@ use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info};
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::types::{DataType as OrcaType, InitExpr, Value as OrcaValue};
-use orca_wasm::{Instructions, Module};
+use orca_wasm::{InitInstr, Module};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::process::exit;
@@ -403,7 +403,7 @@ fn get_memory_allocator(
 
     // todo -- only add if needed!
     let mem_tracker_global = target_wasm.add_global(
-        InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
+        InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(0))]),
         OrcaType::I32,
         true,
         false,
@@ -422,7 +422,7 @@ fn get_memory_allocator(
             None,
         );
         let alloc_tracker_global = target_wasm.add_global(
-            InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
+            InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(0))]),
             OrcaType::I32,
             true,
             false,

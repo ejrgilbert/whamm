@@ -13,7 +13,7 @@ use orca_wasm::ir::id::{GlobalID, LocalID};
 use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
-use orca_wasm::{Instructions, Module, Opcode};
+use orca_wasm::{InitInstr, Module, Opcode};
 use wasmparser::MemArg;
 
 pub struct UnsharedVarHandler {
@@ -25,7 +25,7 @@ impl UnsharedVarHandler {
     pub fn new(wasm: &mut Module) -> Self {
         let mut add_global_i32 = || -> GlobalID {
             wasm.add_global(
-                InitExpr::new(vec![Instructions::Value(OrcaValue::I32(-1))]),
+                InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(-1))]),
                 OrcaType::I32,
                 true,
                 false,

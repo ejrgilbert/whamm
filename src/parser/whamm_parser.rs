@@ -1155,7 +1155,7 @@ pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     PRATT_PARSER
         .map_primary(|primary| -> Result<Expr, Vec<WhammError>> { expr_primary(primary) })
         .map_prefix(|op, rhs| -> Result<Expr, Vec<WhammError>> {
-            return match rhs {
+            match rhs {
                 Ok(rhs) => {
                     let op = match op.as_rule() {
                         Rule::neg => UnOp::Not,
@@ -1180,10 +1180,10 @@ pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                     })
                 }
                 Err(errors) => Err(errors),
-            };
+            }
         })
         .map_infix(|lhs, op, rhs| -> Result<Expr, Vec<WhammError>> {
-            return match (lhs, rhs) {
+            match (lhs, rhs) {
                 (Ok(lhs), Ok(rhs)) => {
                     let op = match op.as_rule() {
                         // Logical operators
@@ -1271,10 +1271,10 @@ pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
                     Err(errors)
                 }
-            };
+            }
         })
         .map_postfix(|lhs, op| -> Result<Expr, Vec<WhammError>> {
-            return match lhs {
+            match lhs {
                 Ok(lhs) => {
                     let op_rule = op.as_rule();
                     let op_span = op.as_span();
@@ -1305,7 +1305,7 @@ pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                     })
                 }
                 Err(errors) => Err(errors),
-            };
+            }
         })
         .parse(pairs)
 }
@@ -1446,7 +1446,7 @@ fn type_from_rule_handler(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
 
 pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
     trace!("Entering type_from_rule");
-    return match pair.as_rule() {
+    match pair.as_rule() {
         Rule::TY_U8 => Ok(DataType::U8),
         Rule::TY_I8 => Ok(DataType::I8),
         Rule::TY_U16 => Ok(DataType::U16),
@@ -1468,13 +1468,13 @@ pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
                     Err(e) => return Err(e),
                 }
             }
-            return if tuple_content_types.is_empty() {
+            if tuple_content_types.is_empty() {
                 Ok(DataType::Tuple { ty_info: vec![] })
             } else {
                 Ok(DataType::Tuple {
                     ty_info: tuple_content_types,
                 })
-            };
+            }
         }
         Rule::TY_MAP => {
             let mut pair = pair.into_inner();
@@ -1490,13 +1490,13 @@ pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
                 Err(e) => return Err(e),
             };
 
-            return Ok(DataType::Map {
+            Ok(DataType::Map {
                 key_ty: Box::new(key_ty),
                 val_ty: Box::new(val_ty),
-            });
+            })
         }
         rule => {
-            return Err(vec![ErrorGen::get_parse_error(
+            Err(vec![ErrorGen::get_parse_error(
                 true,
                 Some(UNEXPECTED_ERR_MSG.to_string()),
                 Some(LineColLocation::from(pair.as_span())),
@@ -1517,9 +1517,9 @@ pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
                     Rule::TY_MAP,
                 ],
                 vec![rule],
-            )]);
+            )])
         }
-    };
+    }
 }
 
 // EXPRESSIONS

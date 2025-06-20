@@ -7,7 +7,7 @@ use orca_wasm::ir::types::DataType as OrcaType;
 use orca_wasm::ir::types::{BlockType, InitExpr, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
-use orca_wasm::{DataSegment, DataSegmentKind, Instructions, Module, Opcode};
+use orca_wasm::{DataSegment, DataSegmentKind, InitInstr, Module, Opcode};
 use std::collections::HashMap;
 use wasmparser::MemArg;
 
@@ -582,7 +582,7 @@ impl MemoryAllocator {
             data: val_bytes,
             kind: DataSegmentKind::Active {
                 memory_index: self.mem_id,
-                offset_expr: InitExpr::new(vec![Instructions::Value(OrcaValue::I32(
+                offset_expr: InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(
                     self.curr_mem_offset as i32,
                 ))]),
             },
@@ -634,7 +634,7 @@ impl MemoryAllocator {
         // use this function to account for the statically-used memory
         wasm.mod_global_init_expr(
             self.mem_tracker_global,
-            InitExpr::new(vec![Instructions::Value(OrcaValue::I32(
+            InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(
                 self.curr_mem_offset as i32,
             ))]),
         )

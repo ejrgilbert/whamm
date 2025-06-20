@@ -11,7 +11,7 @@ use crate::parser::provider_handler::ModeKind;
 use crate::parser::types::{Block, Expr};
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::FunctionID;
-use orca_wasm::iterator::iterator_trait::Iterator;
+use orca_wasm::iterator::iterator_trait::{IteratingInstrumenter, Iterator};
 use orca_wasm::{Location as OrcaLocation, Opcode};
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
@@ -189,6 +189,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                         // emit the probe (since the predicate is not false)
                         is_success &= self.emit_probe(&loc_info.dynamic_data);
                     }
+                    // TODO
+                    // self.emitter.app_iter.curr_instr_len()
+                    // self.emitter.app_iter.append_to_tag();
 
                     // Now that we've emitted this probe, reset the symbol table's static/dynamic
                     // data defined for this instr
@@ -237,7 +240,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
         };
     }
 }
-impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_, '_> {
+impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn emit_probe(&mut self, dynamic_data: &HashMap<String, Block>) -> bool {
         let mut is_success = true;
 

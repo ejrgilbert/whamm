@@ -11,18 +11,19 @@ use orca_wasm::{DataType, Module};
 use std::collections::HashSet;
 use wasmparser::{ExternalKind, MemoryType};
 
-/// Some documentation on why it's difficult to only import the *used* functions.
-///
-/// TLDR; Rust ownership.
-/// If I pass in a reference to both the application module (to conditionally import
-/// if not already done) AND a function modifier to the library adapter, I'll have
-/// two mutable references to the app module.
-/// This means that the caller will have to check for needed imports BEFORE actually
-/// delegating to the adapter...which means that I'd have to break the practice of
-/// information hiding. Or, I could create a 'check_OPERATION()' per 'OPERATION()',
-/// which would just be more clunky.
-///
-/// So for now, we'll do this, but it can be changed later if I get a better idea.
+// Some documentation on why it's difficult to only import the *used* functions.
+//
+// TLDR; Rust ownership.
+// If I pass in a reference to both the application module (to conditionally import
+// if not already done) AND a function modifier to the library adapter, I'll have
+// two mutable references to the app module.
+// This means that the caller will have to check for needed imports BEFORE actually
+// delegating to the adapter...which means that I'd have to break the practice of
+// information hiding. Or, I could create a 'check_OPERATION()' per 'OPERATION()',
+// which would just be more clunky.
+//
+// So for now, we'll do this, but it can be changed later if I get a better idea.
+
 
 pub fn link_core_lib(
     ast: &[Script],

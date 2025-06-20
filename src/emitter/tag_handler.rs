@@ -1,5 +1,5 @@
-use pest::error::LineColLocation;
 use crate::parser::types::Location;
+use pest::error::LineColLocation;
 
 type TagData = Vec<u8>;
 
@@ -10,9 +10,9 @@ pub fn get_probe_tag_data(loc: &Location, num_ops: u32) -> TagData {
             lc0: LineCol::from(lc0),
             lc1: LineCol::from(lc1),
             num_ops,
-        }.into()
+        }
+        .into(),
     }
-
 }
 pub fn get_tag_data_for(loc: &Option<Location>) -> TagData {
     Reason::from(loc).into()
@@ -25,13 +25,13 @@ pub enum Reason {
     // There's a reason in the Whamm script for this addition
     // it's due to a single character.
     UserPos {
-        lc: LineCol
+        lc: LineCol,
     },
     // There's a reason in the Whamm script for this addition
     // it's due to a span in the script.
     UserSpan {
         lc0: LineCol,
-        lc1: LineCol
+        lc1: LineCol,
     },
     // There's a reason in the Whamm script for this addition
     // it's due to a probe.
@@ -43,24 +43,24 @@ pub enum Reason {
         // If there are multiple probes at a single tag,
         // they will be in order of injection.
         // num_ops0 + ... + num_opsN = total_ops
-        num_ops: u32
+        num_ops: u32,
     },
     // The injection was for the Whamm language runtime
-    Whamm
+    Whamm,
 }
 impl From<&Option<Location>> for Reason {
     fn from(loc: &Option<Location>) -> Self {
         match loc {
-            Some(loc) => {
-                match loc.line_col {
-                    LineColLocation::Pos(lc) => Reason::UserPos { lc: LineCol::from(lc) },
-                    LineColLocation::Span(lc0, lc1) => Reason::UserSpan {
-                        lc0: LineCol::from(lc0),
-                        lc1: LineCol::from(lc1)
-                    },
-                }
+            Some(loc) => match loc.line_col {
+                LineColLocation::Pos(lc) => Reason::UserPos {
+                    lc: LineCol::from(lc),
+                },
+                LineColLocation::Span(lc0, lc1) => Reason::UserSpan {
+                    lc0: LineCol::from(lc0),
+                    lc1: LineCol::from(lc1),
+                },
             },
-            None => Reason::Whamm
+            None => Reason::Whamm,
         }
     }
 }
@@ -68,16 +68,16 @@ impl Into<Vec<u8>> for Reason {
     fn into(self) -> Vec<u8> {
         let mut data = vec![self.id()];
         match self {
-            Reason::UserPos {lc} => data.extend::<Vec<u8>>(lc.into()),
-            Reason::UserSpan {lc0, lc1}=> {
+            Reason::UserPos { lc } => data.extend::<Vec<u8>>(lc.into()),
+            Reason::UserSpan { lc0, lc1 } => {
                 data.extend::<Vec<u8>>(lc0.into());
                 data.extend::<Vec<u8>>(lc1.into());
-            },
-            Reason::UserProbe {lc0, lc1, num_ops}=> {
+            }
+            Reason::UserProbe { lc0, lc1, num_ops } => {
                 data.extend::<Vec<u8>>(lc0.into());
                 data.extend::<Vec<u8>>(lc1.into());
                 data.extend(num_ops.to_le_bytes());
-            },
+            }
             Reason::Whamm => {}
         }
         data
@@ -86,10 +86,10 @@ impl Into<Vec<u8>> for Reason {
 impl Reason {
     fn id(&self) -> u8 {
         match self {
-            Reason::Whamm {..} => 0,
-            Reason::UserPos {..} => 1,
-            Reason::UserSpan {..} => 2,
-            Reason::UserProbe {..} => 3,
+            Reason::Whamm { .. } => 0,
+            Reason::UserPos { .. } => 1,
+            Reason::UserSpan { .. } => 2,
+            Reason::UserProbe { .. } => 3,
         }
     }
     fn from_bytes(mut bytes: &[u8]) -> Vec<Reason> {
@@ -102,14 +102,14 @@ impl Reason {
             }),
             2 => reasons.push(Self::UserSpan {
                 lc0: LineCol::from(bytes),
-                lc1: LineCol::from(bytes)
+                lc1: LineCol::from(bytes),
             }),
             3 => reasons.push(Self::UserProbe {
                 lc0: LineCol::from(bytes),
                 lc1: LineCol::from(bytes),
-                num_ops: read_le_u32(&mut bytes)
+                num_ops: read_le_u32(&mut bytes),
             }),
-            _ => panic!("Invalid reason ID in tag: {id}")
+            _ => panic!("Invalid reason ID in tag: {id}"),
         }
         reasons
     }
@@ -117,13 +117,13 @@ impl Reason {
 
 pub struct LineCol {
     l: u32,
-    c: u32
+    c: u32,
 }
 impl From<(usize, usize)> for LineCol {
     fn from(lc: (usize, usize)) -> Self {
         Self {
             l: lc.0 as u32,
-            c: lc.1 as u32
+            c: lc.1 as u32,
         }
     }
 }
@@ -131,7 +131,7 @@ impl From<&[u8]> for LineCol {
     fn from(mut bytes: &[u8]) -> Self {
         Self {
             l: read_le_u32(&mut bytes),
-            c: read_le_u32(&mut bytes)
+            c: read_le_u32(&mut bytes),
         }
     }
 }

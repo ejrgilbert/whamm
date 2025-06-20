@@ -12,7 +12,7 @@ use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
-use orca_wasm::{Instructions, Module, Opcode};
+use orca_wasm::{InitInstr, Module, Opcode};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -1147,7 +1147,7 @@ impl ReportVars {
             // On the first allocation for a datatype, the global that points to the first memory
             // location is updated to point to the memory address.
             let gid = wasm.add_global(
-                InitExpr::new(vec![Instructions::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
+                InitExpr::new(vec![InitInstr::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
                 OrcaType::I32,
                 true,
                 false,
@@ -1207,7 +1207,7 @@ impl ReportVars {
             GlobalID(last_var)
         } else {
             let gid = wasm.add_global(
-                InitExpr::new(vec![Instructions::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
+                InitExpr::new(vec![InitInstr::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
                 OrcaType::I32,
                 true,
                 false,

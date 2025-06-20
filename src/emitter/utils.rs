@@ -13,7 +13,7 @@ use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{MacroOpcode, Opcode};
-use orca_wasm::{Instructions, Module};
+use orca_wasm::{InitInstr, Module};
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -350,8 +350,7 @@ pub fn whamm_type_to_wasm_global(
         match orca_wasm_ty.first().unwrap() {
             OrcaType::I32 => {
                 let global_id = app_wasm.add_global(
-                    init_expr
-                        .unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))])),
+                    init_expr.unwrap_or(InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(0))])),
                     OrcaType::I32,
                     true,
                     false,
@@ -361,8 +360,7 @@ pub fn whamm_type_to_wasm_global(
             }
             OrcaType::I64 => {
                 let global_id = app_wasm.add_global(
-                    init_expr
-                        .unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::I64(0))])),
+                    init_expr.unwrap_or(InitExpr::new(vec![InitInstr::Value(OrcaValue::I64(0))])),
                     OrcaType::I64,
                     true,
                     false,
@@ -372,9 +370,8 @@ pub fn whamm_type_to_wasm_global(
             }
             OrcaType::F32 => {
                 let global_id = app_wasm.add_global(
-                    init_expr.unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::F32(
-                        0f32,
-                    ))])),
+                    init_expr
+                        .unwrap_or(InitExpr::new(vec![InitInstr::Value(OrcaValue::F32(0f32))])),
                     OrcaType::F32,
                     true,
                     false,
@@ -384,9 +381,8 @@ pub fn whamm_type_to_wasm_global(
             }
             OrcaType::F64 => {
                 let global_id = app_wasm.add_global(
-                    init_expr.unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::F64(
-                        0f64,
-                    ))])),
+                    init_expr
+                        .unwrap_or(InitExpr::new(vec![InitInstr::Value(OrcaValue::F64(0f64))])),
                     OrcaType::F64,
                     true,
                     false,
@@ -704,7 +700,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         name);
             }
             // this will be different based on if this is a global or local var
-            return match addr {
+            match addr {
                 Some(VarAddr::Global { addr }) => {
                     injector.global_get(GlobalID(*addr));
                     true
@@ -738,7 +734,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         )),
                         None,
                     );
-                    return false;
+                    false
                 }
                 None => {
                     panic!(
@@ -747,7 +743,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         ctx.err_msg, name
                     );
                 }
-            };
+            }
         }
         Expr::Primitive { val, .. } => emit_value(val, strategy, injector, ctx),
         Expr::MapGet { .. } => emit_map_get(expr, strategy, injector, ctx),

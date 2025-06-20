@@ -19,7 +19,7 @@ use orca_wasm::ir::types::{
 };
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::Opcode;
-use orca_wasm::Instructions;
+use orca_wasm::InitInstr;
 use std::collections::HashSet;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -424,7 +424,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         // TODO -- move this into the MapAdapter
         //make a global bool for whether to run the instr_init fn
         self.map_lib_adapter.init_bool_location = *self.app_wasm.add_global(
-            InitExpr::new(vec![Instructions::Value(OrcaValue::I32(1))]),
+            InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(1))]),
             OrcaType::I32,
             true,
             false,
