@@ -3,16 +3,21 @@ use pest::error::LineColLocation;
 
 type TagData = Vec<u8>;
 
-pub fn get_probe_tag_data(loc: &Location, op_idx: u32) -> TagData {
-    match loc.line_col {
-        LineColLocation::Pos(_) => panic!("A probe should be associated with a span location"),
-        LineColLocation::Span(lc0, lc1) => Reason::UserProbe {
-            lc0: LineCol::from(lc0),
-            lc1: LineCol::from(lc1),
-            op_idx,
+pub fn get_probe_tag_data(loc: &Option<Location>, op_idx: u32) -> TagData {
+    if let Some(loc) = loc {
+        match loc.line_col {
+            LineColLocation::Pos(_) => panic!("A probe should be associated with a span location"),
+            LineColLocation::Span(lc0, lc1) => Reason::UserProbe {
+                lc0: LineCol::from(lc0),
+                lc1: LineCol::from(lc1),
+                op_idx,
+            }
+                .into(),
         }
-        .into(),
+    } else {
+        panic!()
     }
+
 }
 pub fn get_tag_data_for(loc: &Option<Location>) -> TagData {
     Reason::from(loc).into()
@@ -91,7 +96,7 @@ impl Reason {
             Reason::UserProbe { .. } => 3,
         }
     }
-    fn from_bytes(mut bytes: &mut Vec<u8>) -> Vec<Reason> {
+    fn from_bytes(bytes: &mut Vec<u8>) -> Vec<Reason> {
         let mut reasons = vec![];
         let id = read_le_u8(bytes);
         match id {

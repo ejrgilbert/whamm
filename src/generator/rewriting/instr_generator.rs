@@ -15,6 +15,8 @@ use orca_wasm::iterator::iterator_trait::{IteratingInstrumenter, Iterator};
 use orca_wasm::{Location as OrcaLocation, Opcode};
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
+use orca_wasm::opcode::Instrumenter;
+use crate::emitter::tag_handler::get_probe_tag_data;
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -182,6 +184,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                     self.curr_probe_mode = probe_rule.mode.as_ref().unwrap().clone();
                     self.curr_probe = Some((body_clone, pred_clone));
 
+                    let op_idx = self.emitter.app_iter.curr_instr_len() as u32;
+                    let tag = get_probe_tag_data(&probe.loc, op_idx);
+                    self.emitter.app_iter.append_to_tag(tag);
+
                     if !self.config.no_bundle {
                         // since we're only supporting 'no_bundle' when 'no_body' and 'no_pred' are also true
                         // we can simplify the check to just not emitting the probe altogether
@@ -189,9 +195,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                         // emit the probe (since the predicate is not false)
                         is_success &= self.emit_probe(&loc_info.dynamic_data);
                     }
-                    // TODO
-                    // self.emitter.app_iter.curr_instr_len()
-                    // self.emitter.app_iter.append_to_tag();
 
                     // Now that we've emitted this probe, reset the symbol table's static/dynamic
                     // data defined for this instr

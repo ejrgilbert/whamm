@@ -3,7 +3,7 @@ mod locals_tracker;
 pub mod memory_allocator;
 pub mod module_emitter;
 pub mod rewriting;
-mod tag_handler;
+pub mod tag_handler;
 #[cfg(test)]
 pub mod tests;
 pub mod utils;

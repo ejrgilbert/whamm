@@ -1,6 +1,6 @@
 use crate::emitter::rewriting::rules::Arg;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
-use crate::parser::types::{Block, DataType, Expr, Global, RulePart, Statement};
+use crate::parser::types::{Block, DataType, Expr, Global, Location, RulePart, Statement};
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
@@ -32,6 +32,7 @@ pub struct Probe {
     pub unshared_to_alloc: Vec<UnsharedVar>,
     pub probe_number: u32,
     pub script_id: u8,
+    pub loc: Option<Location>
 }
 impl Display for Probe {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -39,7 +40,7 @@ impl Display for Probe {
     }
 }
 impl Probe {
-    pub(crate) fn new(rule_str: String, probe_number: u32, script_id: u8) -> Self {
+    pub(crate) fn new(rule_str: String, probe_number: u32, script_id: u8, loc: Location) -> Self {
         Self {
             rule: ProbeRule::from(rule_str),
             predicate: None,
@@ -48,6 +49,7 @@ impl Probe {
             unshared_to_alloc: Vec::default(),
             probe_number,
             script_id,
+            loc: Some(loc)
         }
     }
     pub(crate) fn add_unshared(

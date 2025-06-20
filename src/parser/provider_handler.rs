@@ -80,6 +80,7 @@ impl Provider {
     }
     pub fn add_probes(
         &mut self,
+        loc: Location,
         matched_pkgs: &[PackageDef],
         rule: &ProbeRule,
         predicate: Option<Expr>,
@@ -92,6 +93,7 @@ impl Provider {
                 .or_insert(Package::new(matched_pkg.def.clone(), rule));
 
             pkg.add_probes(
+                loc.clone(),
                 &matched_pkg.events,
                 rule,
                 predicate.clone(),
@@ -126,6 +128,7 @@ impl Package {
     }
     pub fn add_probes(
         &mut self,
+        loc: Location,
         matched_evts: &[EventDef],
         rule: &ProbeRule,
         predicate: Option<Expr>,
@@ -138,7 +141,7 @@ impl Package {
                 .entry(matched_evt.def.name.clone())
                 .or_insert(Event::new(matched_evt.def.clone(), rule));
 
-            evt.add_probes(&matched_evt.modes, predicate.clone(), body.clone(), next_id);
+            evt.add_probes(loc.clone(), &matched_evt.modes, predicate.clone(), body.clone(), next_id);
         }
     }
 }
@@ -167,6 +170,7 @@ impl Event {
     }
     pub fn add_probes(
         &mut self,
+        loc: Location,
         matched_modes: &[ModeDef],
         predicate: Option<Expr>,
         body: Option<Block>,
@@ -182,6 +186,7 @@ impl Event {
                 def: matched_mode.def.clone(),
                 predicate: predicate.clone(),
                 body: body.clone(),
+                loc: loc.clone()
             });
             *next_id += 1;
         }
@@ -825,6 +830,7 @@ pub struct Probe {
     pub def: Def,
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
+    pub loc: Location
 }
 
 // ===========================

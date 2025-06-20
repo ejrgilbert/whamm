@@ -223,7 +223,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                     self.append_curr_rule(format!(":{}", probe.kind.name()));
                 }
                 self.curr_probe =
-                    Probe::new(self.get_curr_rule().clone(), probe.id, self.curr_script.id);
+                    Probe::new(self.get_curr_rule().clone(), probe.id, self.curr_script.id, probe.loc.clone());
                 self.visit_probe(probe);
 
                 // copy over data from original probe

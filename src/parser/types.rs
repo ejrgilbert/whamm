@@ -1693,6 +1693,26 @@ impl Script {
         if matches.is_empty() {
             assert!(err.has_errors);
         }
+
+        // create the location for the entire probe
+        let loc_start = if let Some(provider) = &probe_rule.provider {
+            provider.loc.as_ref().unwrap_or_else(|| panic!()).clone()
+        } else {
+            unreachable!()
+        };
+
+        let loc_end = if let Some(body) = &body {
+            body.loc.as_ref().unwrap_or_else(|| panic!()).clone()
+        } else if let Some(pred) = &predicate {
+            pred.loc().as_ref().unwrap_or_else(|| panic!()).clone()
+        } else if let Some(mode) = &probe_rule.mode {
+            mode.loc.as_ref().unwrap_or_else(|| panic!()).clone()
+        } else {
+            panic!("No mode pattern in the rule!")
+        };
+
+        let loc = Location::from(&loc_start.line_col, &loc_end.line_col, loc_start.path.clone());
+
         for prov_match in matches.iter() {
             let provider = self
                 .providers
@@ -1700,6 +1720,7 @@ impl Script {
                 .or_insert(Provider::new(prov_match.def.clone(), probe_rule));
 
             provider.add_probes(
+                loc.clone(),
                 &prov_match.packages,
                 probe_rule,
                 predicate.clone(),
