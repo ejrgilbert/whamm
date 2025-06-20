@@ -3,13 +3,13 @@ use pest::error::LineColLocation;
 
 type TagData = Vec<u8>;
 
-pub fn get_probe_tag_data(loc: &Location, num_ops: u32) -> TagData {
+pub fn get_probe_tag_data(loc: &Location, op_idx: u32) -> TagData {
     match loc.line_col {
         LineColLocation::Pos(_) => panic!("A probe should be associated with a span location"),
         LineColLocation::Span(lc0, lc1) => Reason::UserProbe {
             lc0: LineCol::from(lc0),
             lc1: LineCol::from(lc1),
-            num_ops,
+            op_idx,
         }
         .into(),
     }
@@ -17,7 +17,7 @@ pub fn get_probe_tag_data(loc: &Location, num_ops: u32) -> TagData {
 pub fn get_tag_data_for(loc: &Option<Location>) -> TagData {
     Reason::from(loc).into()
 }
-pub fn get_reasons_from_tag(tag: &TagData) -> Vec<Reason> {
+pub fn get_reasons_from_tag(tag: &mut TagData) -> Vec<Reason> {
     Reason::from_bytes(tag)
 }
 
@@ -39,11 +39,10 @@ pub enum Reason {
         lc0: LineCol,
         lc1: LineCol,
 
-        // number of opcodes devoted to this probe
         // If there are multiple probes at a single tag,
         // they will be in order of injection.
-        // num_ops0 + ... + num_opsN = total_ops
-        num_ops: u32,
+        // Stores the index in the vec<op> where this probe starts.
+        op_idx: u32,
     },
     // The injection was for the Whamm language runtime
     Whamm,
@@ -64,19 +63,19 @@ impl From<&Option<Location>> for Reason {
         }
     }
 }
-impl Into<Vec<u8>> for Reason {
-    fn into(self) -> Vec<u8> {
-        let mut data = vec![self.id()];
-        match self {
+impl From<Reason> for Vec<u8> {
+    fn from(reason: Reason) -> Self {
+        let mut data = vec![reason.id()];
+        match reason {
             Reason::UserPos { lc } => data.extend::<Vec<u8>>(lc.into()),
             Reason::UserSpan { lc0, lc1 } => {
                 data.extend::<Vec<u8>>(lc0.into());
                 data.extend::<Vec<u8>>(lc1.into());
             }
-            Reason::UserProbe { lc0, lc1, num_ops } => {
+            Reason::UserProbe { lc0, lc1, op_idx } => {
                 data.extend::<Vec<u8>>(lc0.into());
                 data.extend::<Vec<u8>>(lc1.into());
-                data.extend(num_ops.to_le_bytes());
+                data.extend(op_idx.to_le_bytes());
             }
             Reason::Whamm => {}
         }
@@ -92,25 +91,26 @@ impl Reason {
             Reason::UserProbe { .. } => 3,
         }
     }
-    fn from_bytes(mut bytes: &[u8]) -> Vec<Reason> {
+    fn from_bytes(mut bytes: &mut Vec<u8>) -> Vec<Reason> {
         let mut reasons = vec![];
-        let id = read_le_u8(&mut bytes);
+        let id = read_le_u8(bytes);
         match id {
             0 => reasons.push(Self::Whamm),
             1 => reasons.push(Self::UserPos {
-                lc: LineCol::from(bytes),
+                lc: LineCol::read(bytes),
             }),
             2 => reasons.push(Self::UserSpan {
-                lc0: LineCol::from(bytes),
-                lc1: LineCol::from(bytes),
+                lc0: LineCol::read(bytes),
+                lc1: LineCol::read(bytes),
             }),
             3 => reasons.push(Self::UserProbe {
-                lc0: LineCol::from(bytes),
-                lc1: LineCol::from(bytes),
-                num_ops: read_le_u32(&mut bytes),
+                lc0: LineCol::read(bytes),
+                lc1: LineCol::read(bytes),
+                op_idx: read_le_u32(bytes),
             }),
             _ => panic!("Invalid reason ID in tag: {id}"),
         }
+        assert_eq!(0, bytes.len());
         reasons
     }
 }
@@ -127,33 +127,35 @@ impl From<(usize, usize)> for LineCol {
         }
     }
 }
-impl From<&[u8]> for LineCol {
-    fn from(mut bytes: &[u8]) -> Self {
+impl LineCol {
+    fn read(bytes: &mut Vec<u8>) -> Self {
         Self {
-            l: read_le_u32(&mut bytes),
-            c: read_le_u32(&mut bytes),
+            l: read_le_u32(bytes),
+            c: read_le_u32(bytes),
         }
     }
 }
-impl Into<Vec<u8>> for LineCol {
-    fn into(self) -> Vec<u8> {
+impl From<LineCol> for Vec<u8> {
+    fn from(lc: LineCol) -> Self {
         let mut data = vec![];
 
-        data.extend(self.l.to_le_bytes());
-        data.extend(self.c.to_le_bytes());
+        data.extend(lc.l.to_le_bytes());
+        data.extend(lc.c.to_le_bytes());
 
         data
     }
 }
 
-fn read_le_u32(input: &mut &[u8]) -> u32 {
+fn read_le_u32(input: &mut Vec<u8>) -> u32 {
     let (int_bytes, rest) = input.split_at(size_of::<u32>());
-    *input = rest;
-    u32::from_le_bytes(int_bytes.try_into().unwrap())
+    let res = u32::from_le_bytes(int_bytes.try_into().unwrap());
+    *input = rest.to_vec();
+    res
 }
 
-fn read_le_u8(input: &mut &[u8]) -> u8 {
+fn read_le_u8(input: &mut Vec<u8>) -> u8 {
     let (int_bytes, rest) = input.split_at(size_of::<u8>());
-    *input = rest;
-    u8::from_le_bytes(int_bytes.try_into().unwrap())
+    let res = u8::from_le_bytes(int_bytes.try_into().unwrap());
+    *input = rest.to_vec();
+    res
 }

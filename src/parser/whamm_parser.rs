@@ -1495,30 +1495,28 @@ pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
                 val_ty: Box::new(val_ty),
             })
         }
-        rule => {
-            Err(vec![ErrorGen::get_parse_error(
-                true,
-                Some(UNEXPECTED_ERR_MSG.to_string()),
-                Some(LineColLocation::from(pair.as_span())),
-                vec![
-                    Rule::TY_U8,
-                    Rule::TY_I8,
-                    Rule::TY_U16,
-                    Rule::TY_I16,
-                    Rule::TY_U32,
-                    Rule::TY_I32,
-                    Rule::TY_F32,
-                    Rule::TY_U64,
-                    Rule::TY_I64,
-                    Rule::TY_F64,
-                    Rule::TY_BOOL,
-                    Rule::TY_STRING,
-                    Rule::TY_TUPLE,
-                    Rule::TY_MAP,
-                ],
-                vec![rule],
-            )])
-        }
+        rule => Err(vec![ErrorGen::get_parse_error(
+            true,
+            Some(UNEXPECTED_ERR_MSG.to_string()),
+            Some(LineColLocation::from(pair.as_span())),
+            vec![
+                Rule::TY_U8,
+                Rule::TY_I8,
+                Rule::TY_U16,
+                Rule::TY_I16,
+                Rule::TY_U32,
+                Rule::TY_I32,
+                Rule::TY_F32,
+                Rule::TY_U64,
+                Rule::TY_I64,
+                Rule::TY_F64,
+                Rule::TY_BOOL,
+                Rule::TY_STRING,
+                Rule::TY_TUPLE,
+                Rule::TY_MAP,
+            ],
+            vec![rule],
+        )]),
     }
 }
 

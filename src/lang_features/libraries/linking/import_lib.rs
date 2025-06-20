@@ -24,7 +24,6 @@ use wasmparser::{ExternalKind, MemoryType};
 //
 // So for now, we'll do this, but it can be changed later if I get a better idea.
 
-
 pub fn link_core_lib(
     ast: &[Script],
     app_wasm: &mut Module,
