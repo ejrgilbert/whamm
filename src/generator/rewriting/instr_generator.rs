@@ -16,7 +16,7 @@ use orca_wasm::{Location as OrcaLocation, Opcode};
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
 use orca_wasm::opcode::Instrumenter;
-use crate::emitter::tag_handler::get_probe_tag_data;
+use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -128,7 +128,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                 if loc_info.is_prog_exit {
                     if self.on_exit_fid.is_none() {
                         let on_exit = FunctionBuilder::new(&[], &[]);
-                        let on_exit_id = on_exit.finish_module(self.emitter.app_iter.module, None);
+                        let on_exit_id = on_exit.finish_module(self.emitter.app_iter.module,
+                                                               get_tag_for(&None));
                         self.emitter
                             .app_iter
                             .module

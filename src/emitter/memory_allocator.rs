@@ -10,6 +10,7 @@ use orca_wasm::opcode::MacroOpcode;
 use orca_wasm::{DataSegment, DataSegmentKind, InitInstr, Module, Opcode};
 use std::collections::HashMap;
 use wasmparser::MemArg;
+use crate::emitter::tag_handler::get_tag_for;
 
 pub const WASM_PAGE_SIZE: u32 = 65_536;
 pub const VAR_BLOCK_BASE_VAR: &str = "var_block_base_offset";
@@ -449,7 +450,8 @@ impl MemoryAllocator {
             .drop()
             .end();
 
-        let check_memsize_fid = check_memsize.finish_module(wasm, None);
+        let check_memsize_fid = check_memsize.finish_module(wasm,
+                                                            get_tag_for(&None));
         wasm.set_fn_name(
             check_memsize_fid,
             format!("check_memsize_for_mem{}", mem_id),

@@ -29,6 +29,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
+use crate::emitter::tag_handler::get_tag_for;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -219,7 +220,7 @@ pub fn run(
                 maximum: None,
                 page_size_log2: None,
             },
-            None,
+            get_tag_for(&None)
         ));
 
         run_instr_rewrite(
@@ -394,7 +395,8 @@ fn get_memory_allocator(
                 maximum: None,
                 page_size_log2: None,
             },
-            None,
+
+            get_tag_for(&None),
         )
     } else {
         // memory ID is just zero
@@ -407,7 +409,8 @@ fn get_memory_allocator(
         OrcaType::I32,
         true,
         false,
-        None,
+
+        get_tag_for(&None),
     );
 
     let (alloc_var_mem_id, alloc_var_mem_tracker_global, engine_mem_id) = if as_monitor_module {
@@ -419,14 +422,16 @@ fn get_memory_allocator(
                 maximum: None,
                 page_size_log2: None,
             },
-            None,
+
+            get_tag_for(&None),
         );
         let alloc_tracker_global = target_wasm.add_global(
             InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(0))]),
             OrcaType::I32,
             true,
             false,
-            None,
+
+            get_tag_for(&None),
         );
         let engine_id = *target_wasm.add_local_memory(
             MemoryType {
@@ -436,7 +441,8 @@ fn get_memory_allocator(
                 maximum: None,
                 page_size_log2: None,
             },
-            None,
+
+            get_tag_for(&None),
         );
         target_wasm
             .exports

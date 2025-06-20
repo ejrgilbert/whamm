@@ -117,6 +117,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                     &[OrcaType::I32],
                     &mut block,
                     true,
+                    &probe.loc,
                     self.err,
                 );
                 (fid, str, None)
@@ -174,6 +175,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 &[],
                 body_block,
                 false,
+                &probe.loc,
                 self.err,
             )
         } else {

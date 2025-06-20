@@ -15,6 +15,7 @@ use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
 use orca_wasm::{InitInstr, Module, Opcode};
 use wasmparser::MemArg;
+use crate::emitter::tag_handler::get_tag_for;
 
 pub struct UnsharedVarHandler {
     prev_fid: GlobalID,
@@ -29,7 +30,8 @@ impl UnsharedVarHandler {
                 OrcaType::I32,
                 true,
                 false,
-                None,
+
+                get_tag_for(&None)
             )
         };
         Self {
@@ -175,6 +177,7 @@ impl UnsharedVarHandler {
             name,
             is_report,
             report_metadata,
+            ..
         } in unshared_to_alloc.iter()
         {
             let prev_offset = curr_offset;
@@ -255,7 +258,8 @@ impl UnsharedVarHandler {
         // return the location where the value will be stored in memory!
         alloc.local_get(orig_offset.id);
 
-        let alloc_id = alloc.finish_module(emitter.app_wasm, None);
+        let alloc_id = alloc.finish_module(emitter.app_wasm,
+                                           get_tag_for(&None));
         emitter
             .app_wasm
             .exports

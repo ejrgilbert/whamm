@@ -10,6 +10,7 @@ use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
 use orca_wasm::{Module, Opcode};
 use std::collections::HashMap;
+use crate::emitter::tag_handler::get_tag_for;
 
 // FROM LIB
 pub const PUTS: &str = "puts";
@@ -127,7 +128,8 @@ impl IOAdapter {
             .br(0) // (;3;)
             .end();
 
-        let puts_fid = puts.finish_module(app_wasm, None);
+        let puts_fid = puts.finish_module(app_wasm,
+                                          get_tag_for(&None));
         app_wasm.set_fn_name(puts_fid, PUTS_INTERNAL.to_string());
         self.add_fid(PUTS_INTERNAL, *puts_fid);
 
@@ -157,7 +159,8 @@ impl IOAdapter {
 
         mem_allocator.copy_back_saved_mem(len, self.lib_mem as u32, 0, &mut puts);
 
-        let puts_fid = puts.finish_module(app_wasm, None);
+        let puts_fid = puts.finish_module(app_wasm,
+                                          get_tag_for(&None));
         app_wasm.set_fn_name(puts_fid, INTRUSIVE_PUTS.to_string());
         self.add_fid(INTRUSIVE_PUTS, *puts_fid);
 

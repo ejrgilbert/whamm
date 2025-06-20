@@ -296,7 +296,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
             } => {
                 if let Statement::Decl {
                     ty,
-                    var_id: Expr::VarId { name, .. },
+                    var_id: Expr::VarId { name, loc, .. },
                     ..
                 } = decl.as_ref()
                 {
@@ -326,6 +326,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                         ty.clone(),
                         *is_report,
                         report_metadata,
+                        loc
                     );
                 } else {
                     self.err.unexpected_error(

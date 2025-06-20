@@ -14,6 +14,8 @@ use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as O
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{MacroOpcode, Opcode};
 use orca_wasm::{InitInstr, Module};
+use orca_wasm::ir::function::FunctionBuilder;
+use crate::emitter::tag_handler::get_tag_for;
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -342,10 +344,12 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 pub fn whamm_type_to_wasm_global(
     app_wasm: &mut Module,
     ty: &DataType,
+    loc: &Option<Location>,
     init_expr: Option<InitExpr>,
 ) -> (GlobalID, OrcaType) {
     let orca_wasm_ty = ty.to_wasm_type();
 
+    // TODO -- pull location of the global
     if orca_wasm_ty.len() == 1 {
         match orca_wasm_ty.first().unwrap() {
             OrcaType::I32 => {
@@ -354,7 +358,7 @@ pub fn whamm_type_to_wasm_global(
                     OrcaType::I32,
                     true,
                     false,
-                    None,
+                    get_tag_for(loc)
                 );
                 (global_id, OrcaType::I32)
             }
@@ -364,7 +368,7 @@ pub fn whamm_type_to_wasm_global(
                     OrcaType::I64,
                     true,
                     false,
-                    None,
+                    get_tag_for(loc)
                 );
                 (global_id, OrcaType::I64)
             }
@@ -375,7 +379,7 @@ pub fn whamm_type_to_wasm_global(
                     OrcaType::F32,
                     true,
                     false,
-                    None,
+                    get_tag_for(loc)
                 );
                 (global_id, OrcaType::F32)
             }
@@ -386,7 +390,7 @@ pub fn whamm_type_to_wasm_global(
                     OrcaType::F64,
                     true,
                     false,
-                    None,
+                    get_tag_for(loc)
                 );
                 (global_id, OrcaType::F64)
             }
@@ -395,6 +399,31 @@ pub fn whamm_type_to_wasm_global(
     } else {
         unimplemented!()
     }
+}
+
+pub fn emit_global_getter(
+    app_wasm: &mut Module,
+    global_id: &u32,
+    name: String,
+    ty: OrcaType,
+    loc: &Option<Location>
+) -> FunctionID {
+    // todo -- make this conditional on 'testing' mode
+    let getter_params = vec![];
+    let getter_res = vec![ty];
+
+    let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
+    getter.global_get(GlobalID(*global_id));
+
+    // TODO -- pull the global's location
+    let getter_id = getter.finish_module(app_wasm, get_tag_for(loc));
+    let fn_name = format!("get_{name}");
+    app_wasm.set_fn_name(getter_id, fn_name.clone());
+    app_wasm
+        .exports
+        .add_export_func(fn_name, *getter_id, None);
+
+    getter_id
 }
 
 pub fn block_type_to_wasm(block: &Block) -> BlockType {

@@ -30,6 +30,7 @@ use orca_wasm::iterator::module_iterator::ModuleIterator;
 use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
 use orca_wasm::Location;
 use std::iter::Iterator;
+use crate::emitter::tag_handler::get_tag_for;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -547,7 +548,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 if let Some(flush_fid) = var_flush {
                     on_exit.call(FunctionID(flush_fid));
                 }
-                let on_exit_id = on_exit.finish_module(self.app_iter.module, None);
+                let on_exit_id = on_exit.finish_module(self.app_iter.module,
+                                                       get_tag_for(&None));
                 self.app_iter
                     .module
                     .set_fn_name(on_exit_id, "on_exit".to_string());

@@ -1,3 +1,4 @@
+use orca_wasm::ir::types::Tag;
 use crate::parser::types::Location;
 use pest::error::LineColLocation;
 
@@ -19,8 +20,8 @@ pub fn get_probe_tag_data(loc: &Option<Location>, op_idx: u32) -> TagData {
     }
 
 }
-pub fn get_tag_data_for(loc: &Option<Location>) -> TagData {
-    Reason::from(loc).into()
+pub fn get_tag_for(loc: &Option<Location>) -> Tag {
+    Tag::new(Reason::from(loc).into())
 }
 pub fn get_reasons_from_tag(tag: &mut TagData) -> Vec<Reason> {
     Reason::from_bytes(tag)

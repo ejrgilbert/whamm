@@ -21,6 +21,7 @@ pub struct UnsharedVar {
     pub ty: DataType,
     pub is_report: bool,
     pub report_metadata: Option<ReportMetadata>,
+    pub loc: Option<Location>
 }
 
 #[derive(Clone, Debug, Default)]
@@ -58,12 +59,14 @@ impl Probe {
         ty: DataType,
         is_report: bool,
         report_metadata: Option<ReportMetadata>,
+        loc: &Option<Location>
     ) {
         self.unshared_to_alloc.push(UnsharedVar {
             name,
             ty,
             is_report,
             report_metadata,
+            loc: loc.clone()
         });
     }
 }
