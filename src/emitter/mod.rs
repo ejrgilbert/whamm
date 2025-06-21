@@ -3,6 +3,7 @@ mod locals_tracker;
 pub mod memory_allocator;
 pub mod module_emitter;
 pub mod rewriting;
+pub mod tag_handler;
 #[cfg(test)]
 pub mod tests;
 pub mod utils;
@@ -17,6 +18,7 @@ use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::parser::types::{Block, Expr, Statement};
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::Module;
+use crate::emitter::tag_handler::get_tag_for;
 
 #[derive(Copy, Clone)]
 pub enum InjectStrategy {
@@ -77,7 +79,8 @@ pub fn configure_flush_routines(
         err,
     );
 
-    let on_exit = flush_reports.finish_module(wasm);
+    let on_exit = flush_reports.finish_module(wasm,
+                                              get_tag_for(&None));
     wasm.set_fn_name(on_exit, "flush_reports".to_string());
 
     Some(*on_exit)

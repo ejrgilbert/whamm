@@ -117,6 +117,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                     &[OrcaType::I32],
                     &mut block,
                     true,
+                    &probe.loc,
                     self.err,
                 );
                 (fid, str, None)
@@ -174,6 +175,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 &[],
                 body_block,
                 false,
+                &probe.loc,
                 self.err,
             )
         } else {
@@ -192,7 +194,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             self.emitter
                 .app_wasm
                 .exports
-                .add_export_func(match_rule, fid);
+                .add_export_func(match_rule, fid, None);
         } else {
             unreachable!()
         }

@@ -24,11 +24,12 @@ use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info};
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::ir::types::{DataType as OrcaType, InitExpr, Value as OrcaValue};
-use orca_wasm::{Instructions, Module};
+use orca_wasm::{InitInstr, Module};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
+use crate::emitter::tag_handler::get_tag_for;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -211,14 +212,16 @@ pub fn run(
             &mut report_vars,
         );
     } else {
-        let mut unshared_var_handler =
-            UnsharedVarHandler::new(*target_wasm.add_local_memory(MemoryType {
+        let mut unshared_var_handler = UnsharedVarHandler::new(*target_wasm.add_local_memory(
+            MemoryType {
                 memory64: false,
                 shared: false,
                 initial: 1,
                 maximum: None,
                 page_size_log2: None,
-            }));
+            },
+            get_tag_for(&None)
+        ));
 
         run_instr_rewrite(
             &mut metrics,
@@ -384,13 +387,17 @@ fn get_memory_allocator(
 ) -> MemoryAllocator {
     // Create the memory tracker + the map and metadata tracker
     let mem_id = if create_new_mem {
-        *target_wasm.add_local_memory(MemoryType {
-            memory64: false,
-            shared: false,
-            initial: 1,
-            maximum: None,
-            page_size_log2: None,
-        })
+        *target_wasm.add_local_memory(
+            MemoryType {
+                memory64: false,
+                shared: false,
+                initial: 1,
+                maximum: None,
+                page_size_log2: None,
+            },
+
+            get_tag_for(&None),
+        )
     } else {
         // memory ID is just zero
         0
@@ -398,36 +405,48 @@ fn get_memory_allocator(
 
     // todo -- only add if needed!
     let mem_tracker_global = target_wasm.add_global(
-        InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
+        InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(0))]),
         OrcaType::I32,
         true,
         false,
+
+        get_tag_for(&None),
     );
 
     let (alloc_var_mem_id, alloc_var_mem_tracker_global, engine_mem_id) = if as_monitor_module {
-        let alloc_id = *target_wasm.add_local_memory(MemoryType {
-            memory64: false,
-            shared: false,
-            initial: 1,
-            maximum: None,
-            page_size_log2: None,
-        });
+        let alloc_id = *target_wasm.add_local_memory(
+            MemoryType {
+                memory64: false,
+                shared: false,
+                initial: 1,
+                maximum: None,
+                page_size_log2: None,
+            },
+
+            get_tag_for(&None),
+        );
         let alloc_tracker_global = target_wasm.add_global(
-            InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
+            InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(0))]),
             OrcaType::I32,
             true,
             false,
+
+            get_tag_for(&None),
         );
-        let engine_id = *target_wasm.add_local_memory(MemoryType {
-            memory64: false,
-            shared: false,
-            initial: 1,
-            maximum: None,
-            page_size_log2: None,
-        });
+        let engine_id = *target_wasm.add_local_memory(
+            MemoryType {
+                memory64: false,
+                shared: false,
+                initial: 1,
+                maximum: None,
+                page_size_log2: None,
+            },
+
+            get_tag_for(&None),
+        );
         target_wasm
             .exports
-            .add_export_mem("engine:data".to_string(), engine_id);
+            .add_export_mem("engine:data".to_string(), engine_id, None);
 
         (Some(alloc_id), Some(alloc_tracker_global), Some(engine_id))
     } else {
