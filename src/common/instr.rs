@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::api::instrument::Config;
-use crate::common::error::ErrorGen;
+use crate::common::error::{ErrorGen, WhammError};
 use crate::common::metrics::Metrics;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::module_emitter::ModuleEmitter;
@@ -30,6 +30,10 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
+
+use orca_wasm::ir::module::side_effects::{
+    InjectType as OrcaInjectType, Injection as OrcaInjection,
+};
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -61,7 +65,7 @@ pub fn run_with_path(
         Module::default()
     };
 
-    run_on_module(
+    run_on_module_and_encode(
         core_wasm_path,
         defs_path,
         &mut target_wasm,
@@ -70,6 +74,32 @@ pub fn run_with_path(
         max_errors,
         config,
     )
+}
+
+pub fn dry_run_on_bytes<'a>(
+    core_wasm_path: &str,
+    defs_path: &str,
+    target_wasm: &'a mut Module,
+    script_path: String,
+    user_lib_paths: Vec<String>,
+    max_errors: i32,
+    config: Config,
+) -> Result<HashMap<OrcaInjectType, Vec<OrcaInjection<'a>>>, Vec<WhammError>> {
+    let mut metrics = Metrics::default();
+    if let Err(err) = run_on_module(
+        core_wasm_path,
+        defs_path,
+        target_wasm,
+        script_path,
+        user_lib_paths,
+        max_errors,
+        &mut metrics,
+        config,
+    ) {
+        Err(err.pull_errs())
+    } else {
+        Ok(target_wasm.pull_side_effects())
+    }
 }
 
 pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, String, Vec<u8>)> {
@@ -88,7 +118,7 @@ pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, String, Vec<u8>)
     res
 }
 
-pub fn run_on_module(
+pub fn run_on_module_and_encode(
     core_wasm_path: &str,
     defs_path: &str,
     target_wasm: &mut Module,
@@ -97,6 +127,35 @@ pub fn run_on_module(
     max_errors: i32,
     config: Config,
 ) -> Vec<u8> {
+    let mut metrics = Metrics::default();
+    if let Err(mut err) = run_on_module(
+        core_wasm_path,
+        defs_path,
+        target_wasm,
+        script_path,
+        user_lib_paths,
+        max_errors,
+        &mut metrics,
+        config,
+    ) {
+        err.check_has_errors();
+    }
+
+    let wasm = target_wasm.encode();
+    metrics.flush();
+    wasm
+}
+
+pub fn run_on_module(
+    core_wasm_path: &str,
+    defs_path: &str,
+    target_wasm: &mut Module,
+    script_path: String,
+    user_lib_paths: Vec<String>,
+    max_errors: i32,
+    metrics: &mut Metrics,
+    config: Config,
+) -> Result<(), Box<ErrorGen>> {
     let user_libs = parse_user_lib_paths(user_lib_paths);
 
     // read in the whamm script
@@ -116,6 +175,7 @@ pub fn run_on_module(
         &script_path,
         user_libs,
         max_errors,
+        metrics,
         config,
     )
 }
@@ -138,8 +198,9 @@ pub fn run(
     script_path: &str,
     user_libs: Vec<(String, String, Vec<u8>)>,
     max_errors: i32,
+    metrics: &mut Metrics,
     config: Config,
-) -> Vec<u8> {
+) -> Result<(), Box<ErrorGen>> {
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
 
@@ -152,10 +213,11 @@ pub fn run(
     // Process the script
     let mut whamm = get_script_ast(defs_path, whamm_script, &mut err);
     let (mut symbol_table, has_reports) = get_symbol_table(&mut whamm, &user_lib_modules, &mut err);
-    err.check_too_many();
 
     // If there were any errors encountered, report and exit!
-    err.check_has_errors();
+    if err.has_errors {
+        return Err(Box::new(err));
+    }
     let mut mem_allocator = get_memory_allocator(target_wasm, true, config.as_monitor_module);
 
     // Collect the metadata for the AST and transform to different representation
@@ -196,12 +258,13 @@ pub fn run(
     let mut report_vars = ReportVars::new();
 
     // If there were any errors encountered, report and exit!
-    metadata_collector.err.check_has_errors();
+    if metadata_collector.err.has_errors {
+        return Err(Box::new(err));
+    }
 
-    let mut metrics = Metrics::default();
     if config.as_monitor_module {
         run_instr_wizard(
-            &mut metrics,
+            metrics,
             metadata_collector,
             used_fns_per_lib,
             user_lib_modules,
@@ -224,7 +287,7 @@ pub fn run(
         ));
 
         run_instr_rewrite(
-            &mut metrics,
+            metrics,
             &mut whamm,
             metadata_collector,
             used_fns_per_lib,
@@ -251,12 +314,12 @@ pub fn run(
     // for debugging
     report_vars.print_metadata();
 
-    // If there were any errors encountered, report and exit!
-    err.check_has_errors();
-
-    let wasm = target_wasm.encode();
-    metrics.flush();
-    wasm
+    if err.has_errors {
+        // If there were any errors encountered, report and exit!
+        Err(Box::new(err))
+    } else {
+        Ok(())
+    }
 }
 
 fn run_instr_wizard(

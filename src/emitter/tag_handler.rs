@@ -26,6 +26,7 @@ pub fn get_reasons_from_tag(tag: &mut TagData) -> Vec<Reason> {
     Reason::from_bytes(tag)
 }
 
+#[derive(Clone)]
 pub enum Reason {
     // There's a reason in the Whamm script for this addition
     // it's due to a single character.
@@ -46,7 +47,7 @@ pub enum Reason {
 
         // If there are multiple probes at a single tag,
         // they will be in order of injection.
-        // Stores the index in the vec<op> where this probe starts.
+        // Stores the index in the vec<op> where this probe ends.
         op_idx: u32,
     },
     // The injection was for the Whamm language runtime
@@ -120,6 +121,7 @@ impl Reason {
     }
 }
 
+#[derive(Clone)]
 pub struct LineCol {
     l: u32,
     c: u32,

@@ -255,10 +255,6 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter.inject_map_init();
         self.configure_probe_mode();
 
-        let op_idx = self.emitter.app_iter.curr_instr_len() as u32;
-        let tag = get_probe_tag_data(&self.curr_probe_loc, op_idx);
-        self.emitter.app_iter.append_to_tag(tag);
-
         // Now we know we're going to insert the probe, let's define
         // the dynamic information
         emit_dynamic_compiler_data(dynamic_data, &mut self.emitter, self.err);
@@ -300,6 +296,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
             }
         }
         self.emitter.reset_locals_for_probe();
+
+        let op_idx = self.emitter.app_iter.curr_instr_len() as u32;
+        let tag = get_probe_tag_data(&self.curr_probe_loc, op_idx);
+        self.emitter.app_iter.append_to_tag(tag);
 
         is_success
     }

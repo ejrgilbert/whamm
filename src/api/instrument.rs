@@ -2,14 +2,16 @@
 
 use crate::common::error::WhammError;
 use crate::common::instr;
+use crate::emitter::tag_handler::{get_reasons_from_tag, Reason};
 use log::error;
 use orca_wasm::ir::module::module_types::Types;
+use orca_wasm::ir::module::side_effects::{
+    InjectType as OrcaInjectType, Injection as OrcaInjection,
+};
+use orca_wasm::ir::types::{DataType as OrcaType, FuncInstrMode, InstrumentationMode};
 use orca_wasm::Module;
-use std::iter::Map;
+use std::collections::HashMap;
 use std::process::exit;
-
-use crate::parser::provider_handler::ModeKind;
-use orca_wasm::ir::types::DataType as OrcaType;
 use wasmparser::{ExternalKind, TypeRef};
 
 pub const MAX_ERRORS: i32 = 15;
@@ -79,7 +81,7 @@ pub fn instrument_module_with_rewriting(
     script_path: String,
     user_lib_paths: Vec<String>,
 ) -> Vec<u8> {
-    instr::run_on_module(
+    instr::run_on_module_and_encode(
         core_wasm_path,
         defs_path,
         target_wasm,
@@ -123,14 +125,37 @@ pub fn generate_monitor_module(
 /// * `script_path`: The path to the whamm script .mm file.
 /// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules.
 pub fn instrument_as_dry_run(
-    _core_wasm_path: &str,
-    _defs_path: &str,
-    _app_wasm_path: String,
-    _script_path: String,
-    _user_lib_paths: Option<Vec<String>>,
-    // ) {
-) -> Result<Map<InjectType, Vec<Injection>>, Vec<WhammError>> {
-    todo!()
+    core_wasm_path: &str,
+    defs_path: &str,
+    app_wasm_path: String,
+    script_path: String,
+    user_lib_paths: Vec<String>,
+) -> Result<HashMap<OrcaInjectType, Vec<Injection>>, Vec<WhammError>> {
+    let buff = std::fs::read(app_wasm_path).unwrap();
+    let mut target_wasm = Module::parse(&buff, false).unwrap();
+
+    match instr::dry_run_on_bytes(
+        core_wasm_path,
+        defs_path,
+        &mut target_wasm,
+        script_path,
+        user_lib_paths,
+        MAX_ERRORS,
+        Config::default_rewriting(),
+    ) {
+        Ok(mut side_effects) => {
+            let mut injections = HashMap::new();
+            for (ty, l) in side_effects.iter_mut() {
+                let mut list = Vec::new();
+                for inj in l.iter_mut() {
+                    list.extend(Injection::from(inj));
+                }
+                injections.insert(*ty, list);
+            }
+            Ok(injections)
+        }
+        Err(errs) => Err(errs),
+    }
 }
 
 /// The instrumentation configuration
@@ -232,27 +257,24 @@ impl Default for LibraryLinkStrategy {
     }
 }
 
-pub enum InjectType {
-    // Module additions
-    Import,
-    Export,
-    Memory,
-    Data,
-    Global,
-    Func,
-    Local,
-    Table,
-    Element,
+// pub enum InjectType {
+//     // Module additions
+//     Import,
+//     Export,
+//     Memory,
+//     Data,
+//     Global,
+//     Func,
+//     Local,
+//     Table,
+//     Element,
+//
+//     // Probes
+//     Probe,
+// }
 
-    // Probes
-    Probe,
-}
-
-// TODO -- maybe handle this like Metrics?
 pub enum Injection {
     // Module additions
-
-    // TODO -- this probably makes sense to do the wrapper macro...
     /// Represents an import that has been added to the module.
     Import {
         /// The module being imported from.
@@ -263,9 +285,8 @@ pub enum Injection {
         type_ref: TypeRef,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>,
+        reasons: Vec<Reason>,
     },
-    // TODO -- this probably makes sense to do the wrapper macro...
     /// Represents an export that has been added to the module.
     Export {
         /// The name of the exported item.
@@ -276,17 +297,15 @@ pub enum Injection {
         index: u32,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>,
+        reasons: Vec<Reason>,
     },
-    // TODO -- this probably makes sense to do the wrapper macro...
     Type {
         ty: Types,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>,
+        reasons: Vec<Reason>,
     },
 
-    // TODO -- this probably makes sense to do the wrapper macro...
     /// Represents a memory that has been added to the module.
     Memory {
         /// The memory's ID.
@@ -297,10 +316,9 @@ pub enum Injection {
         maximum: Option<u64>,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>,
+        reasons: Vec<Reason>,
     },
 
-    // TODO -- this probably makes sense to do the wrapper macro...
     /// Represents a data segment that has been added to the module.
     Data {
         /// The memory index for the data segment.
@@ -313,10 +331,9 @@ pub enum Injection {
         data: Vec<u8>,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>,
+        reasons: Vec<Reason>,
     },
 
-    // TODO -- this probably makes sense to do the wrapper macro...
     /// Represents a global that has been added to the module.
     Global {
         /// The global's ID.
@@ -331,10 +348,9 @@ pub enum Injection {
         init_expr: Vec<String>,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>,
+        reasons: Vec<Reason>,
     },
 
-    // TODO -- this probably makes sense to do the wrapper macro...
     /// Represents a local function that has been added to the module.
     Func {
         /// The function's ID.
@@ -350,54 +366,214 @@ pub enum Injection {
 
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>,
+        reasons: Vec<Reason>,
     },
 
-    // TODO -- Point everything to LocalsTracker and collect metadata there!
-    // TODO -- or maybe this makes sense to do the wrapper macro?
     /// Represents a local variable that has been added to a module's local function.
     Local {
+        /// The ID of the function this local is inserted into.
+        target_fid: u32,
         ty: OrcaType,
 
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        metadata: Option<Metadata>,
+        reasons: Vec<Reason>,
     },
 
-    // TODO -- this probably makes sense to do the wrapper macro...
     /// Represents a table that has been added to the module.
-    Table,
-    // TODO -- this probably makes sense to do the wrapper macro...
+    Table { reasons: Vec<Reason> },
     /// Represents a table element that has been added to the module.
-    Element,
+    Element { reasons: Vec<Reason> },
 
     // Probes
-
-    // TODO -- maybe wrap the before/after/etc. functions to save off what we have?
-    /// Represents a probe that has been injected into the module.
-    Probe {
+    /// Represents a probe that has been injected into the module at a specific location in a function.
+    FuncBodyProbe {
         /// The ID of the function this probe is inserted into.
         target_fid: u32,
         /// The opcode offset in the target that this probe is inserted at.
         target_opcode_idx: u32,
         /// The mode of the probe to use during insertion.
-        mode: ModeKind,
+        mode: InstrumentationMode,
         /// The body of the probe (in WAT).
         body: Vec<String>,
-
-        /// Explains why this was injected (if it can be isolated to a
-        /// specific Whamm script location).
-        metadata: Option<Metadata>,
+        reasons: Vec<Reason>,
+    },
+    /// Represents a probe that has been injected into the module's function, at the function-level.
+    FuncProbe {
+        /// The ID of the function this probe is inserted into.
+        target_fid: u32,
+        /// The mode of the probe to use during insertion.
+        mode: FuncInstrMode,
+        /// The body of the probe (in WAT).
+        body: Vec<String>,
+        reasons: Vec<Reason>,
     },
 }
+impl Injection {
+    fn from(injection: &mut OrcaInjection) -> Vec<Self> {
+        match injection {
+            OrcaInjection::Import {
+                module,
+                name,
+                type_ref,
+                tag,
+            } => vec![Self::Import {
+                module: module.to_owned(),
+                name: name.to_owned(),
+                type_ref: type_ref.to_owned(),
+                reasons: get_reasons_from_tag(tag.data_mut()),
+            }],
+            OrcaInjection::Export {
+                name,
+                kind,
+                index,
+                tag,
+            } => vec![Self::Export {
+                name: name.to_owned(),
+                kind: kind.to_owned(),
+                index: *index,
+                reasons: get_reasons_from_tag(tag.data_mut()),
+            }],
+            OrcaInjection::Type { ty, tag, .. } => vec![Self::Type {
+                ty: ty.to_owned(),
+                reasons: get_reasons_from_tag(tag.data_mut()),
+            }],
+            OrcaInjection::Memory {
+                id,
+                initial,
+                maximum,
+                tag,
+            } => vec![Self::Memory {
+                id: *id,
+                initial: *initial,
+                maximum: maximum.to_owned(),
+                reasons: get_reasons_from_tag(tag.data_mut()),
+            }],
+            OrcaInjection::Data {
+                memory_index,
+                offset_expr,
+                data,
+                tag,
+            } => {
+                let offset_expr_wat = format!("{:?}", offset_expr);
+                vec![Self::Data {
+                    memory_index: *memory_index,
+                    offset_expr: vec![offset_expr_wat],
+                    data: data.to_owned(),
+                    reasons: get_reasons_from_tag(tag.data_mut()),
+                }]
+            }
+            OrcaInjection::Global {
+                id,
+                ty,
+                shared,
+                mutable,
+                init_expr,
+                tag,
+            } => {
+                let init_expr_wat = format!("{:?}", init_expr);
+                vec![Self::Global {
+                    id: *id,
+                    ty: ty.to_owned(),
+                    shared: *shared,
+                    mutable: *mutable,
+                    init_expr: vec![init_expr_wat],
+                    reasons: get_reasons_from_tag(tag.data_mut()),
+                }]
+            }
+            OrcaInjection::Func {
+                id,
+                fname,
+                sig,
+                locals,
+                body,
+                tag,
+            } => vec![Self::Func {
+                id: *id,
+                fname: fname.to_owned(),
+                sig: sig.to_owned(),
+                locals: locals.to_owned(),
+                body: body.to_owned(),
+                reasons: get_reasons_from_tag(tag.data_mut()),
+            }],
+            OrcaInjection::Local {
+                target_fid,
+                ty,
+                tag,
+            } => vec![Self::Local {
+                target_fid: *target_fid,
+                ty: ty.to_owned(),
+                reasons: get_reasons_from_tag(tag.data_mut()),
+            }],
+            OrcaInjection::Table { tag } => vec![Self::Table {
+                reasons: get_reasons_from_tag(tag.data_mut()),
+            }],
+            OrcaInjection::Element { tag } => vec![Self::Table {
+                reasons: get_reasons_from_tag(tag.data_mut()),
+            }],
+            OrcaInjection::FuncBodyProbe {
+                target_fid,
+                target_opcode_idx,
+                mode,
+                body,
+                tag,
+            } => {
+                let mut injections = vec![];
 
-/// Encodes metadata about the injected module contents that map back
-/// to the Whamm script location that resulted in the insertion.
-pub struct Metadata {
-    script_start: ScriptLoc,
-    script_end: Option<ScriptLoc>,
-}
-pub struct ScriptLoc {
-    l: u32,
-    c: u32,
+                let mut start_idx = 0;
+                let reasons = get_reasons_from_tag(tag.data_mut());
+                for reason in reasons.iter() {
+                    if let Reason::UserProbe { op_idx, .. } = reason {
+                        let mut body_wat = vec![];
+                        for op in body[start_idx..*op_idx as usize].iter() {
+                            body_wat.push(format!("{:?}\n", op));
+                        }
+                        injections.push(Self::FuncBodyProbe {
+                            target_fid: *target_fid,
+                            target_opcode_idx: *target_opcode_idx,
+                            mode: mode.to_owned(),
+                            body: body_wat,
+                            reasons: vec![reason.clone()],
+                        });
+
+                        start_idx = *op_idx as usize;
+                    } else {
+                        panic!("Should be a user probe reason!")
+                    }
+                }
+
+                injections
+            }
+            OrcaInjection::FuncProbe {
+                target_fid,
+                mode,
+                body,
+                tag,
+            } => {
+                let mut injections = vec![];
+                let mut start_idx = 0;
+                let reasons = get_reasons_from_tag(tag.data_mut());
+                for reason in reasons.iter() {
+                    if let Reason::UserProbe { op_idx, .. } = reason {
+                        let mut body_wat = vec![];
+                        for op in body[start_idx..*op_idx as usize].iter() {
+                            body_wat.push(format!("{:?}\n", op));
+                        }
+                        injections.push(Self::FuncProbe {
+                            target_fid: *target_fid,
+                            mode: mode.to_owned(),
+                            body: body_wat,
+                            reasons: get_reasons_from_tag(tag.data_mut()),
+                        });
+
+                        start_idx = *op_idx as usize;
+                    } else {
+                        panic!("Should be a user probe reason!")
+                    }
+                }
+
+                injections
+            }
+        }
+    }
 }
