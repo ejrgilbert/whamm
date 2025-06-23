@@ -1695,23 +1695,53 @@ impl Script {
         }
 
         // create the location for the entire probe
-        let loc_start = if let Some(provider) = &probe_rule.provider {
-            provider.loc.as_ref().unwrap_or_else(|| panic!()).clone()
-        } else {
-            unreachable!()
-        };
+        let loc_start = get_loc_with_priority(
+            &probe_rule.provider,
+            &probe_rule.package,
+            &probe_rule.event,
+            &probe_rule.mode,
+            "start",
+        );
 
         let loc_end = if let Some(body) = &body {
-            body.loc.as_ref().unwrap_or_else(|| panic!()).clone()
-        } else if let Some(pred) = &predicate {
-            pred.loc().as_ref().unwrap_or_else(|| panic!()).clone()
-        } else if let Some(mode) = &probe_rule.mode {
-            mode.loc.as_ref().unwrap_or_else(|| panic!()).clone()
+            if let Some(loc) = body.loc.as_ref() {
+                loc.clone()
+            } else if let Some(predicate) = &predicate {
+                if let Some(loc) = predicate.loc().as_ref() {
+                    loc.clone()
+                } else {
+                    get_loc_with_priority(
+                        &probe_rule.mode,
+                        &probe_rule.event,
+                        &probe_rule.package,
+                        &probe_rule.provider,
+                        "start",
+                    )
+                }
+            } else {
+                get_loc_with_priority(
+                    &probe_rule.mode,
+                    &probe_rule.event,
+                    &probe_rule.package,
+                    &probe_rule.provider,
+                    "start",
+                )
+            }
         } else {
-            panic!("No mode pattern in the rule!")
+            get_loc_with_priority(
+                &probe_rule.mode,
+                &probe_rule.event,
+                &probe_rule.package,
+                &probe_rule.provider,
+                "start",
+            )
         };
 
-        let loc = Location::from(&loc_start.line_col, &loc_end.line_col, loc_start.path.clone());
+        let loc = Location::from(
+            &loc_start.line_col,
+            &loc_end.line_col,
+            loc_start.path.clone(),
+        );
 
         for prov_match in matches.iter() {
             let provider = self
@@ -1728,6 +1758,35 @@ impl Script {
             );
         }
     }
+}
+
+fn get_loc_with_priority(
+    p0: &Option<RulePart>,
+    p1: &Option<RulePart>,
+    p2: &Option<RulePart>,
+    p3: &Option<RulePart>,
+    err: &str,
+) -> Location {
+    if let Some(p0) = get_loc(p0) {
+        p0
+    } else if let Some(p1) = get_loc(p1) {
+        p1
+    } else if let Some(p2) = get_loc(p2) {
+        p2
+    } else if let Some(p3) = get_loc(p3) {
+        p3
+    } else {
+        panic!("Could not find a {err} for the probe's location!")
+    }
+}
+
+fn get_loc(rule_part: &Option<RulePart>) -> Option<Location> {
+    if let Some(part) = &rule_part {
+        if let Some(loc) = part.loc.as_ref() {
+            return Some(loc.clone());
+        }
+    }
+    None
 }
 
 #[derive(Clone, Debug)]

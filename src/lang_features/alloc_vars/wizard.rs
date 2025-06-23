@@ -3,6 +3,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::StringAddr;
 use crate::emitter::module_emitter::ModuleEmitter;
+use crate::emitter::tag_handler::get_tag_for;
 use crate::generator::ast::UnsharedVar;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::lang_features::report_vars::ReportVars;
@@ -15,7 +16,6 @@ use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
 use orca_wasm::{InitInstr, Module, Opcode};
 use wasmparser::MemArg;
-use crate::emitter::tag_handler::get_tag_for;
 
 pub struct UnsharedVarHandler {
     prev_fid: GlobalID,
@@ -30,8 +30,7 @@ impl UnsharedVarHandler {
                 OrcaType::I32,
                 true,
                 false,
-
-                get_tag_for(&None)
+                get_tag_for(&None),
             )
         };
         Self {
@@ -258,8 +257,7 @@ impl UnsharedVarHandler {
         // return the location where the value will be stored in memory!
         alloc.local_get(orig_offset.id);
 
-        let alloc_id = alloc.finish_module(emitter.app_wasm,
-                                           get_tag_for(&None));
+        let alloc_id = alloc.finish_module(emitter.app_wasm, get_tag_for(&None));
         emitter
             .app_wasm
             .exports

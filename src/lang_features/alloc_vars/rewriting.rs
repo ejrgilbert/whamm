@@ -78,8 +78,9 @@ impl UnsharedVarHandler {
 
         for (ty, ReportAllocTracker { first_var, .. }) in self.report_trackers.iter() {
             if let Some(first_var) = first_var {
-                if let Some(AllocatedVar { mem_offset, loc, .. }) =
-                    self.allocated_vars.get(*first_var as usize)
+                if let Some(AllocatedVar {
+                    mem_offset, loc, ..
+                }) = self.allocated_vars.get(*first_var as usize)
                 {
                     let (global_id, _) = whamm_type_to_wasm_global(
                         wasm,
@@ -160,7 +161,7 @@ impl UnsharedVarHandler {
             name,
             is_report,
             report_metadata,
-            loc
+            loc,
         } in vars.iter()
         {
             let ty_tracker = self.report_trackers.entry(ty.clone()).or_default();
@@ -232,7 +233,7 @@ impl UnsharedVarHandler {
                 },
                 probe_header,
                 var_header,
-                loc: loc.clone()
+                loc: loc.clone(),
             };
 
             // var_addr points to the memory location of the value, skips the header!
@@ -258,7 +259,7 @@ struct AllocatedVar {
     report_var_header: Option<ReportVarHeader>,
     probe_header: ProbeHeader,
     var_header: VarHeader,
-    loc: Option<Location>
+    loc: Option<Location>,
 }
 impl AllocatedVar {
     fn encode(&self) -> Vec<u8> {

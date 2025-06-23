@@ -1,5 +1,5 @@
-use orca_wasm::ir::types::Tag;
 use crate::parser::types::Location;
+use orca_wasm::ir::types::Tag;
 use pest::error::LineColLocation;
 
 type TagData = Vec<u8>;
@@ -13,12 +13,11 @@ pub fn get_probe_tag_data(loc: &Option<Location>, op_idx: u32) -> TagData {
                 lc1: LineCol::from(lc1),
                 op_idx,
             }
-                .into(),
+            .into(),
         }
     } else {
         panic!()
     }
-
 }
 pub fn get_tag_for(loc: &Option<Location>) -> Tag {
     Tag::new(Reason::from(loc).into())

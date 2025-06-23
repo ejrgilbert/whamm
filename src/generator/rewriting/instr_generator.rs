@@ -2,21 +2,21 @@ use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
+use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::Emitter;
 use crate::generator::ast::Probe;
 use crate::generator::folding::ExprFolder;
 use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::provider_handler::ModeKind;
-use crate::parser::types::{Block, Expr};
+use crate::parser::types::{Block, Expr, Location};
 use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::iterator::iterator_trait::{IteratingInstrumenter, Iterator};
+use orca_wasm::opcode::Instrumenter;
 use orca_wasm::{Location as OrcaLocation, Opcode};
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
-use orca_wasm::opcode::Instrumenter;
-use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -57,6 +57,7 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub err: &'h mut ErrorGen,
     curr_instr_args: Vec<Arg>,
     curr_probe_mode: ModeKind,
+    curr_probe_loc: Option<Location>,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Block>, Option<Expr>)>,
 
@@ -79,6 +80,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
             err,
             curr_instr_args: vec![],
             curr_probe_mode: ModeKind::Before,
+            curr_probe_loc: None,
             curr_probe: None,
             has_reports,
             on_exit_fid: None,
@@ -128,8 +130,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                 if loc_info.is_prog_exit {
                     if self.on_exit_fid.is_none() {
                         let on_exit = FunctionBuilder::new(&[], &[]);
-                        let on_exit_id = on_exit.finish_module(self.emitter.app_iter.module,
-                                                               get_tag_for(&None));
+                        let on_exit_id =
+                            on_exit.finish_module(self.emitter.app_iter.module, get_tag_for(&None));
                         self.emitter
                             .app_iter
                             .module
@@ -166,8 +168,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
 
                     // Create a new clone of the probe, fold the predicate.
                     // NOTE: We make a clone so that the probe is reset for each instruction!
-                    let (body_clone, mut pred_clone) =
-                        (probe.body.clone(), probe.predicate.clone());
+                    let (body_clone, mut pred_clone, loc_clone) = (
+                        probe.body.clone(),
+                        probe.predicate.clone(),
+                        probe.loc.clone(),
+                    );
                     if let Some(pred) = &mut pred_clone {
                         // Fold predicate
                         is_success = self.emitter.fold_expr(pred, self.err);
@@ -183,11 +188,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
 
                     self.curr_instr_args = loc_info.args.clone(); // must clone so that this lives long enough
                     self.curr_probe_mode = probe_rule.mode.as_ref().unwrap().clone();
+                    self.curr_probe_loc = loc_clone;
                     self.curr_probe = Some((body_clone, pred_clone));
-
-                    let op_idx = self.emitter.app_iter.curr_instr_len() as u32;
-                    let tag = get_probe_tag_data(&probe.loc, op_idx);
-                    self.emitter.app_iter.append_to_tag(tag);
 
                     if !self.config.no_bundle {
                         // since we're only supporting 'no_bundle' when 'no_body' and 'no_pred' are also true
@@ -252,6 +254,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         //after saving args, we run the check if we need to initialize global maps
         self.emitter.inject_map_init();
         self.configure_probe_mode();
+
+        let op_idx = self.emitter.app_iter.curr_instr_len() as u32;
+        let tag = get_probe_tag_data(&self.curr_probe_loc, op_idx);
+        self.emitter.app_iter.append_to_tag(tag);
 
         // Now we know we're going to insert the probe, let's define
         // the dynamic information

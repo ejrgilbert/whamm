@@ -6,7 +6,7 @@ use crate::generator::{create_curr_loc, emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::LocationData;
-use crate::parser::types::{Block, DataType, Statement, Value, WhammVisitorMut};
+use crate::parser::types::{Block, DataType, Location, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::Record;
 use log::trace;
 use orca_wasm::ir::id::{FunctionID, LocalID};
@@ -253,7 +253,7 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '
         self.emitter.emit_report_global(name, ty, value, self.err)
     }
 
-    fn link_user_lib(&mut self, lib_name: &str) {
+    fn link_user_lib(&mut self, lib_name: &str, loc: &Option<Location>) {
         // Perform import now! (we'll be in the right table scope at this point)
         if let Some(used_fns) = self.used_fns_per_lib.get(lib_name) {
             let Some(lib_wasm) = self.user_lib_modules.get(lib_name) else {
@@ -262,6 +262,7 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '
             self.injected_funcs.extend(
                 crate::lang_features::libraries::linking::import_lib::link_user_lib(
                     self.emitter.app_wasm,
+                    loc,
                     lib_wasm,
                     lib_name.to_string(),
                     used_fns,

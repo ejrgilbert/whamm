@@ -5,6 +5,7 @@ use crate::common::metrics::Metrics;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
+use crate::emitter::tag_handler::get_tag_for;
 use crate::emitter::InjectStrategy;
 use crate::generator::metadata_collector::MetadataCollector;
 use crate::generator::rewriting::init_generator::InitGenerator;
@@ -29,7 +30,6 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
-use crate::emitter::tag_handler::get_tag_for;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -220,7 +220,7 @@ pub fn run(
                 maximum: None,
                 page_size_log2: None,
             },
-            get_tag_for(&None)
+            get_tag_for(&None),
         ));
 
         run_instr_rewrite(
@@ -395,7 +395,6 @@ fn get_memory_allocator(
                 maximum: None,
                 page_size_log2: None,
             },
-
             get_tag_for(&None),
         )
     } else {
@@ -409,7 +408,6 @@ fn get_memory_allocator(
         OrcaType::I32,
         true,
         false,
-
         get_tag_for(&None),
     );
 
@@ -422,7 +420,6 @@ fn get_memory_allocator(
                 maximum: None,
                 page_size_log2: None,
             },
-
             get_tag_for(&None),
         );
         let alloc_tracker_global = target_wasm.add_global(
@@ -430,7 +427,6 @@ fn get_memory_allocator(
             OrcaType::I32,
             true,
             false,
-
             get_tag_for(&None),
         );
         let engine_id = *target_wasm.add_local_memory(
@@ -441,7 +437,6 @@ fn get_memory_allocator(
                 maximum: None,
                 page_size_log2: None,
             },
-
             get_tag_for(&None),
         );
         target_wasm

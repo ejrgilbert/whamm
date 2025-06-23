@@ -1,17 +1,17 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::emitter::tag_handler::get_tag_for;
 use crate::generator::ast::Script;
 use crate::lang_features::libraries::core::{
     LibPackage, WHAMM_CORE_LIB_MEM_NAME, WHAMM_CORE_LIB_NAME,
 };
+use crate::parser::types::Location;
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
 use orca_wasm::ir::id::FunctionID;
 use orca_wasm::{DataType, Module};
 use std::collections::HashSet;
 use wasmparser::{ExternalKind, MemoryType};
-use crate::emitter::tag_handler::get_tag_for;
-use crate::parser::types::Location;
 // Some documentation on why it's difficult to only import the *used* functions.
 //
 // TLDR; Rust ownership.
@@ -48,7 +48,8 @@ pub fn link_core_lib(
             });
             let core_lib = Module::parse(&buff, false).unwrap();
             if package.import_memory() {
-                let lib_mem_id = import_lib_memory(app_wasm, &None, WHAMM_CORE_LIB_NAME.to_string());
+                let lib_mem_id =
+                    import_lib_memory(app_wasm, &None, WHAMM_CORE_LIB_NAME.to_string());
                 package.set_lib_mem_id(lib_mem_id);
             }
             package.set_instr_mem_id(mem_allocator.mem_id as i32);
@@ -74,7 +75,15 @@ pub fn link_user_lib(
     table: &mut SymbolTable,
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
-    let added = import_lib_fn_names(app_wasm, loc, lib_name, lib_wasm, used_lib_fns, Some(table), err);
+    let added = import_lib_fn_names(
+        app_wasm,
+        loc,
+        lib_name,
+        lib_wasm,
+        used_lib_fns,
+        Some(table),
+        err,
+    );
 
     let mut injected_funcs = vec![];
     for (_, fid) in added.iter() {
@@ -84,8 +93,7 @@ pub fn link_user_lib(
     injected_funcs
 }
 
-fn import_lib_memory(app_wasm: &mut Module,
-                     loc: &Option<Location>, lib_name: String) -> i32 {
+fn import_lib_memory(app_wasm: &mut Module, loc: &Option<Location>, lib_name: String) -> i32 {
     trace!("Enter import_lib_memory");
     let mem_id = import_memory(
         lib_name.as_str(),
@@ -155,7 +163,7 @@ fn import_lib_fn_names(
                         &ty.params().clone(),
                         &ty.results().clone(),
                         loc,
-                        app_wasm
+                        app_wasm,
                     );
                     // save the FID to the symbol table
                     if let Some(table) = table.as_mut() {
@@ -186,8 +194,13 @@ fn import_lib_fn_names(
     injected_fns
 }
 
-fn import_memory(module_name: &str, mem_name: &str, use_name: &str,
-                 loc: &Option<Location>, app_wasm: &mut Module) -> u32 {
+fn import_memory(
+    module_name: &str,
+    mem_name: &str,
+    use_name: &str,
+    loc: &Option<Location>,
+    app_wasm: &mut Module,
+) -> u32 {
     // TODO point to 'use'
     let (mem_id, imp_id) = app_wasm.add_import_memory(
         module_name.to_string(),
@@ -199,7 +212,7 @@ fn import_memory(module_name: &str, mem_name: &str, use_name: &str,
             maximum: None,
             page_size_log2: None,
         },
-        get_tag_for(loc)
+        get_tag_for(loc),
     );
     app_wasm.imports.set_name(use_name.to_string(), imp_id);
 
@@ -216,8 +229,12 @@ pub fn import_func(
 ) -> u32 {
     let ty_id = app_wasm.types.add_func_type(params, results, None);
     // todo -- point to the 'use'
-    let (fid, imp_id) =
-        app_wasm.add_import_func(module_name.to_string(), fname.to_string(), ty_id, get_tag_for(loc));
+    let (fid, imp_id) = app_wasm.add_import_func(
+        module_name.to_string(),
+        fname.to_string(),
+        ty_id,
+        get_tag_for(loc),
+    );
     app_wasm.imports.set_name(fname.to_string(), imp_id);
 
     *fid

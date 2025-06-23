@@ -2,6 +2,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::emitter::tag_handler::get_tag_for;
 use crate::emitter::InjectStrategy;
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::libraries::core::maps::map_adapter::{MapLibAdapter, MAP_LIB_MEM_OFFSET};
@@ -9,13 +10,12 @@ use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
 };
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable, VarAddr};
+use orca_wasm::ir::function::FunctionBuilder;
 use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::{MacroOpcode, Opcode};
 use orca_wasm::{InitInstr, Module};
-use orca_wasm::ir::function::FunctionBuilder;
-use crate::emitter::tag_handler::get_tag_for;
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -358,7 +358,7 @@ pub fn whamm_type_to_wasm_global(
                     OrcaType::I32,
                     true,
                     false,
-                    get_tag_for(loc)
+                    get_tag_for(loc),
                 );
                 (global_id, OrcaType::I32)
             }
@@ -368,7 +368,7 @@ pub fn whamm_type_to_wasm_global(
                     OrcaType::I64,
                     true,
                     false,
-                    get_tag_for(loc)
+                    get_tag_for(loc),
                 );
                 (global_id, OrcaType::I64)
             }
@@ -379,7 +379,7 @@ pub fn whamm_type_to_wasm_global(
                     OrcaType::F32,
                     true,
                     false,
-                    get_tag_for(loc)
+                    get_tag_for(loc),
                 );
                 (global_id, OrcaType::F32)
             }
@@ -390,7 +390,7 @@ pub fn whamm_type_to_wasm_global(
                     OrcaType::F64,
                     true,
                     false,
-                    get_tag_for(loc)
+                    get_tag_for(loc),
                 );
                 (global_id, OrcaType::F64)
             }
@@ -406,7 +406,7 @@ pub fn emit_global_getter(
     global_id: &u32,
     name: String,
     ty: OrcaType,
-    loc: &Option<Location>
+    loc: &Option<Location>,
 ) -> FunctionID {
     // todo -- make this conditional on 'testing' mode
     let getter_params = vec![];
@@ -419,9 +419,7 @@ pub fn emit_global_getter(
     let getter_id = getter.finish_module(app_wasm, get_tag_for(loc));
     let fn_name = format!("get_{name}");
     app_wasm.set_fn_name(getter_id, fn_name.clone());
-    app_wasm
-        .exports
-        .add_export_func(fn_name, *getter_id, None);
+    app_wasm.exports.add_export_func(fn_name, *getter_id, None);
 
     getter_id
 }

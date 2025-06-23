@@ -21,7 +21,7 @@ pub struct UnsharedVar {
     pub ty: DataType,
     pub is_report: bool,
     pub report_metadata: Option<ReportMetadata>,
-    pub loc: Option<Location>
+    pub loc: Option<Location>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -33,7 +33,7 @@ pub struct Probe {
     pub unshared_to_alloc: Vec<UnsharedVar>,
     pub probe_number: u32,
     pub script_id: u8,
-    pub loc: Option<Location>
+    pub loc: Option<Location>,
 }
 impl Display for Probe {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -50,7 +50,7 @@ impl Probe {
             unshared_to_alloc: Vec::default(),
             probe_number,
             script_id,
-            loc: Some(loc)
+            loc: Some(loc),
         }
     }
     pub(crate) fn add_unshared(
@@ -59,14 +59,14 @@ impl Probe {
         ty: DataType,
         is_report: bool,
         report_metadata: Option<ReportMetadata>,
-        loc: &Option<Location>
+        loc: &Option<Location>,
     ) {
         self.unshared_to_alloc.push(UnsharedVar {
             name,
             ty,
             is_report,
             report_metadata,
-            loc: loc.clone()
+            loc: loc.clone(),
         });
     }
 }

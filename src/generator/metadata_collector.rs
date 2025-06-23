@@ -222,8 +222,12 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                     // add the mode when not on the wizard target
                     self.append_curr_rule(format!(":{}", probe.kind.name()));
                 }
-                self.curr_probe =
-                    Probe::new(self.get_curr_rule().clone(), probe.id, self.curr_script.id, probe.loc.clone());
+                self.curr_probe = Probe::new(
+                    self.get_curr_rule().clone(),
+                    probe.id,
+                    self.curr_script.id,
+                    probe.loc.clone(),
+                );
                 self.visit_probe(probe);
 
                 // copy over data from original probe
@@ -326,7 +330,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                         ty.clone(),
                         *is_report,
                         report_metadata,
-                        loc
+                        loc,
                     );
                 } else {
                     self.err.unexpected_error(

@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::emitter::tag_handler::get_tag_for;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::parser::types::DataType;
@@ -17,7 +18,6 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use wasmparser::MemArg;
-use crate::emitter::tag_handler::get_tag_for;
 
 pub const NULL_PTR_IN_MEM: i32 = -1;
 pub const NULL_PTR_IN_GLOBAL: i32 = -1;
@@ -575,8 +575,7 @@ impl ReportVars {
             .i32_const(curr_offset as i32)
             .i32_add();
 
-        let flush_fid = flush_fn.finish_module(wasm,
-                                               get_tag_for(&None));
+        let flush_fid = flush_fn.finish_module(wasm, get_tag_for(&None));
         wasm.set_fn_name(flush_fid, "flush_var_metadata".to_string());
         self.flush_tracker.flush_var_metadata_fid = Some(*flush_fid);
     }
@@ -728,8 +727,7 @@ impl ReportVars {
 
         flush_fn.end().end();
 
-        let flush_fid = flush_fn.finish_module(wasm,
-                                               get_tag_for(&None));
+        let flush_fid = flush_fn.finish_module(wasm, get_tag_for(&None));
         wasm.set_fn_name(flush_fid, format!("flush_{}_vars", dt));
 
         *flush_fid
@@ -1154,8 +1152,7 @@ impl ReportVars {
                 OrcaType::I32,
                 true,
                 false,
-
-                get_tag_for(&None)
+                get_tag_for(&None),
             );
             tracker.first_var = Some(*gid);
 
@@ -1215,7 +1212,7 @@ impl ReportVars {
                 OrcaType::I32,
                 true,
                 false,
-                get_tag_for(&None)
+                get_tag_for(&None),
             );
             tracker.last_var = Some(*gid);
             GlobalID(*gid)

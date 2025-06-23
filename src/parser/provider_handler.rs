@@ -141,7 +141,13 @@ impl Package {
                 .entry(matched_evt.def.name.clone())
                 .or_insert(Event::new(matched_evt.def.clone(), rule));
 
-            evt.add_probes(loc.clone(), &matched_evt.modes, predicate.clone(), body.clone(), next_id);
+            evt.add_probes(
+                loc.clone(),
+                &matched_evt.modes,
+                predicate.clone(),
+                body.clone(),
+                next_id,
+            );
         }
     }
 }
@@ -186,7 +192,7 @@ impl Event {
                 def: matched_mode.def.clone(),
                 predicate: predicate.clone(),
                 body: body.clone(),
-                loc: loc.clone()
+                loc: loc.clone(),
             });
             *next_id += 1;
         }
@@ -830,7 +836,7 @@ pub struct Probe {
     pub def: Def,
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
-    pub loc: Location
+    pub loc: Location,
 }
 
 // ===========================
