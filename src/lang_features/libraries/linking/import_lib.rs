@@ -228,8 +228,7 @@ pub fn import_func(
     app_wasm: &mut Module,
 ) -> u32 {
     let ty_id = app_wasm.types.add_func_type(params, results, None);
-    // todo -- point to the 'use'
-    let (fid, imp_id) = app_wasm.add_import_func(
+    let (fid, imp_id) = app_wasm.add_import_func_with_tag(
         module_name.to_string(),
         fname.to_string(),
         ty_id,

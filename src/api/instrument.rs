@@ -257,22 +257,7 @@ impl Default for LibraryLinkStrategy {
     }
 }
 
-// pub enum InjectType {
-//     // Module additions
-//     Import,
-//     Export,
-//     Memory,
-//     Data,
-//     Global,
-//     Func,
-//     Local,
-//     Table,
-//     Element,
-//
-//     // Probes
-//     Probe,
-// }
-
+#[derive(Debug)]
 pub enum Injection {
     // Module additions
     /// Represents an import that has been added to the module.
@@ -319,14 +304,23 @@ pub enum Injection {
         reasons: Vec<Reason>,
     },
 
-    /// Represents a data segment that has been added to the module.
-    Data {
+    /// Represents an active data segment that has been added to the module.
+    ActiveData {
         /// The memory index for the data segment.
         memory_index: u32,
         /// The memory offset where this active data segment will be automatically
         /// initialized.
         /// Contains the WAT of the instructions.
         offset_expr: Vec<String>,
+        /// The data of the data segment.
+        data: Vec<u8>,
+        /// Explains why this was injected (if it can be isolated to a
+        /// specific Whamm script location).
+        reasons: Vec<Reason>,
+    },
+
+    /// Represents a passive data segment that has been added to the module.
+    PassiveData {
         /// The data of the data segment.
         data: Vec<u8>,
         /// Explains why this was injected (if it can be isolated to a
@@ -387,7 +381,7 @@ pub enum Injection {
 
     // Probes
     /// Represents a probe that has been injected into the module at a specific location in a function.
-    FuncBodyProbe {
+    OpProbe {
         /// The ID of the function this probe is inserted into.
         target_fid: u32,
         /// The opcode offset in the target that this probe is inserted at.
@@ -398,7 +392,7 @@ pub enum Injection {
         body: Vec<String>,
         reasons: Vec<Reason>,
     },
-    /// Represents a probe that has been injected into the module's function, at the function-level.
+    /// Represents a probe that has been injected into a module's function (as a specialized function mode).
     FuncProbe {
         /// The ID of the function this probe is inserted into.
         target_fid: u32,
@@ -449,16 +443,22 @@ impl Injection {
                 maximum: maximum.to_owned(),
                 reasons: get_reasons_from_tag(tag.data_mut()),
             }],
-            OrcaInjection::Data {
+            OrcaInjection::ActiveData {
                 memory_index,
                 offset_expr,
                 data,
                 tag,
             } => {
                 let offset_expr_wat = format!("{:?}", offset_expr);
-                vec![Self::Data {
+                vec![Self::ActiveData {
                     memory_index: *memory_index,
                     offset_expr: vec![offset_expr_wat],
+                    data: data.to_owned(),
+                    reasons: get_reasons_from_tag(tag.data_mut()),
+                }]
+            }
+            OrcaInjection::PassiveData { data, tag } => {
+                vec![Self::PassiveData {
                     data: data.to_owned(),
                     reasons: get_reasons_from_tag(tag.data_mut()),
                 }]
@@ -488,14 +488,20 @@ impl Injection {
                 locals,
                 body,
                 tag,
-            } => vec![Self::Func {
-                id: *id,
-                fname: fname.to_owned(),
-                sig: sig.to_owned(),
-                locals: locals.to_owned(),
-                body: body.to_owned(),
-                reasons: get_reasons_from_tag(tag.data_mut()),
-            }],
+            } => {
+                let mut body_ops = vec![];
+                for instr in body.iter() {
+                    body_ops.push(format!("{:?}", instr.op));
+                }
+                vec![Self::Func {
+                    id: *id,
+                    fname: fname.to_owned(),
+                    sig: sig.to_owned(),
+                    locals: locals.to_owned(),
+                    body: body_ops,
+                    reasons: get_reasons_from_tag(tag.data_mut()),
+                }]
+            }
             OrcaInjection::Local {
                 target_fid,
                 ty,
@@ -511,39 +517,6 @@ impl Injection {
             OrcaInjection::Element { tag } => vec![Self::Table {
                 reasons: get_reasons_from_tag(tag.data_mut()),
             }],
-            OrcaInjection::FuncBodyProbe {
-                target_fid,
-                target_opcode_idx,
-                mode,
-                body,
-                tag,
-            } => {
-                let mut injections = vec![];
-
-                let mut start_idx = 0;
-                let reasons = get_reasons_from_tag(tag.data_mut());
-                for reason in reasons.iter() {
-                    if let Reason::UserProbe { op_idx, .. } = reason {
-                        let mut body_wat = vec![];
-                        for op in body[start_idx..*op_idx as usize].iter() {
-                            body_wat.push(format!("{:?}\n", op));
-                        }
-                        injections.push(Self::FuncBodyProbe {
-                            target_fid: *target_fid,
-                            target_opcode_idx: *target_opcode_idx,
-                            mode: mode.to_owned(),
-                            body: body_wat,
-                            reasons: vec![reason.clone()],
-                        });
-
-                        start_idx = *op_idx as usize;
-                    } else {
-                        panic!("Should be a user probe reason!")
-                    }
-                }
-
-                injections
-            }
             OrcaInjection::FuncProbe {
                 target_fid,
                 mode,
@@ -554,19 +527,54 @@ impl Injection {
                 let mut start_idx = 0;
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 for reason in reasons.iter() {
-                    if let Reason::UserProbe { op_idx, .. } = reason {
+                    if let Reason::UserProbe { op_idx_end, .. }
+                    | Reason::WhammProbe { op_idx_end } = reason
+                    {
                         let mut body_wat = vec![];
-                        for op in body[start_idx..*op_idx as usize].iter() {
+                        for op in body[start_idx..*op_idx_end as usize].iter() {
                             body_wat.push(format!("{:?}\n", op));
                         }
                         injections.push(Self::FuncProbe {
                             target_fid: *target_fid,
                             mode: mode.to_owned(),
                             body: body_wat,
-                            reasons: get_reasons_from_tag(tag.data_mut()),
+                            reasons: vec![reason.clone()],
                         });
 
-                        start_idx = *op_idx as usize;
+                        start_idx = *op_idx_end as usize;
+                    } else {
+                        panic!("Should be a probe reason, but got: {:?}", reason)
+                    }
+                }
+
+                injections
+            }
+            OrcaInjection::FuncLocProbe {
+                target_fid,
+                target_opcode_idx,
+                mode,
+                body,
+                tag,
+            } => {
+                let mut injections = vec![];
+                let mut start_idx = 0;
+                // println!("{:#?}", body);
+                let reasons = get_reasons_from_tag(tag.data_mut());
+                for reason in reasons.iter() {
+                    if let Reason::UserProbe { op_idx_end, .. } = reason {
+                        let mut body_wat = vec![];
+                        for op in body[start_idx..*op_idx_end as usize].iter() {
+                            body_wat.push(format!("{:?}\n", op));
+                        }
+                        injections.push(Self::OpProbe {
+                            target_fid: *target_fid,
+                            target_opcode_idx: *target_opcode_idx,
+                            mode: mode.to_owned(),
+                            body: body_wat,
+                            reasons: vec![reason.clone()],
+                        });
+
+                        start_idx = *op_idx_end as usize;
                     } else {
                         panic!("Should be a user probe reason!")
                     }

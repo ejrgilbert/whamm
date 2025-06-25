@@ -79,7 +79,7 @@ pub fn configure_flush_routines(
         err,
     );
 
-    let on_exit = flush_reports.finish_module(wasm, get_tag_for(&None));
+    let on_exit = flush_reports.finish_module_with_tag(wasm, get_tag_for(&None));
     wasm.set_fn_name(on_exit, "flush_reports".to_string());
 
     Some(*on_exit)

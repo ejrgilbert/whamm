@@ -1,16 +1,17 @@
 mod common;
 
-use crate::common::{run_basic_instrumentation, run_whamm_bin, wat2wasm_on_dir};
+use crate::common::{run_basic_instrumentation, run_whamm_bin, wat2wasm_on_dir, CORE_WASM_PATH};
 use log::error;
 use orca_wasm::Module;
 use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 use std::process::Command;
+use whamm::api::instrument::instrument_as_dry_run;
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
 
+const TEST_DRY_RUN: bool = true;
 const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic.wasm";
-const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 
 #[test]
 fn run_wast_tests() {
@@ -448,6 +449,7 @@ pub(crate) fn try_path(path: &String) {
 
 fn run_script(
     script_path: &PathBuf,
+    wasm_path: &str,
     target_wasm: &mut Module,
     user_libs: Vec<String>,
     output_path: Option<String>,
@@ -459,7 +461,7 @@ fn run_script(
             CORE_WASM_PATH,
             "./",
             script_path_str,
-            user_libs,
+            user_libs.clone(),
         )
     } else {
         whamm::api::instrument::instrument_module_with_rewriting(
@@ -467,9 +469,21 @@ fn run_script(
             "./",
             target_wasm,
             script_path_str,
-            user_libs,
+            user_libs.clone(),
         )
     };
+    if TEST_DRY_RUN {
+        let side_effects = instrument_as_dry_run(
+            CORE_WASM_PATH,
+            "./",
+            wasm_path.to_string(),
+            script_path.to_string(),
+            user_libs,
+        )
+        .expect("Failed to run dry-run");
+
+        println!("{:#?}", side_effects);
+    }
     if let Some(path) = output_path {
         write_to_file(wasm_result, path);
     }
@@ -488,6 +502,7 @@ fn run_testcase_rewriting(
     let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
     run_script(
         &script,
+        app_path_str,
         &mut module_to_instrument,
         user_libs.clone(),
         Some(instr_app_path.clone()),
@@ -562,6 +577,7 @@ fn run_testcase_wizard(
     let mut module_to_instrument = Module::default();
     run_script(
         &script,
+        app_path_str,
         &mut module_to_instrument,
         user_libs,
         Some(instr_app_path.clone()),

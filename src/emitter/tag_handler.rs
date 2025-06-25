@@ -4,19 +4,19 @@ use pest::error::LineColLocation;
 
 type TagData = Vec<u8>;
 
-pub fn get_probe_tag_data(loc: &Option<Location>, op_idx: u32) -> TagData {
+pub fn get_probe_tag_data(loc: &Option<Location>, op_idx_end: u32) -> TagData {
     if let Some(loc) = loc {
         match loc.line_col {
             LineColLocation::Pos(_) => panic!("A probe should be associated with a span location"),
             LineColLocation::Span(lc0, lc1) => Reason::UserProbe {
                 lc0: LineCol::from(lc0),
                 lc1: LineCol::from(lc1),
-                op_idx,
+                op_idx_end,
             }
             .into(),
         }
     } else {
-        panic!()
+        Reason::WhammProbe { op_idx_end }.into()
     }
 }
 pub fn get_tag_for(loc: &Option<Location>) -> Tag {
@@ -26,7 +26,7 @@ pub fn get_reasons_from_tag(tag: &mut TagData) -> Vec<Reason> {
     Reason::from_bytes(tag)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Reason {
     // There's a reason in the Whamm script for this addition
     // it's due to a single character.
@@ -48,10 +48,13 @@ pub enum Reason {
         // If there are multiple probes at a single tag,
         // they will be in order of injection.
         // Stores the index in the vec<op> where this probe ends.
-        op_idx: u32,
+        op_idx_end: u32,
     },
     // The injection was for the Whamm language runtime
     Whamm,
+    WhammProbe {
+        op_idx_end: u32,
+    },
 }
 impl From<&Option<Location>> for Reason {
     fn from(loc: &Option<Location>) -> Self {
@@ -78,12 +81,17 @@ impl From<Reason> for Vec<u8> {
                 data.extend::<Vec<u8>>(lc0.into());
                 data.extend::<Vec<u8>>(lc1.into());
             }
-            Reason::UserProbe { lc0, lc1, op_idx } => {
+            Reason::UserProbe {
+                lc0,
+                lc1,
+                op_idx_end,
+            } => {
                 data.extend::<Vec<u8>>(lc0.into());
                 data.extend::<Vec<u8>>(lc1.into());
-                data.extend(op_idx.to_le_bytes());
+                data.extend(op_idx_end.to_le_bytes());
             }
             Reason::Whamm => {}
+            Reason::WhammProbe { op_idx_end } => data.extend(op_idx_end.to_le_bytes()),
         }
         data
     }
@@ -91,10 +99,11 @@ impl From<Reason> for Vec<u8> {
 impl Reason {
     fn id(&self) -> u8 {
         match self {
-            Reason::Whamm { .. } => 0,
-            Reason::UserPos { .. } => 1,
-            Reason::UserSpan { .. } => 2,
-            Reason::UserProbe { .. } => 3,
+            Reason::Whamm => 0,
+            Reason::WhammProbe { .. } => 1,
+            Reason::UserPos { .. } => 2,
+            Reason::UserSpan { .. } => 3,
+            Reason::UserProbe { .. } => 4,
         }
     }
     fn from_bytes(bytes: &mut Vec<u8>) -> Vec<Reason> {
@@ -102,17 +111,20 @@ impl Reason {
         let id = read_le_u8(bytes);
         match id {
             0 => reasons.push(Self::Whamm),
-            1 => reasons.push(Self::UserPos {
+            1 => reasons.push(Self::WhammProbe {
+                op_idx_end: read_le_u32(bytes),
+            }),
+            2 => reasons.push(Self::UserPos {
                 lc: LineCol::read(bytes),
             }),
-            2 => reasons.push(Self::UserSpan {
+            3 => reasons.push(Self::UserSpan {
                 lc0: LineCol::read(bytes),
                 lc1: LineCol::read(bytes),
             }),
-            3 => reasons.push(Self::UserProbe {
+            4 => reasons.push(Self::UserProbe {
                 lc0: LineCol::read(bytes),
                 lc1: LineCol::read(bytes),
-                op_idx: read_le_u32(bytes),
+                op_idx_end: read_le_u32(bytes),
             }),
             _ => panic!("Invalid reason ID in tag: {id}"),
         }
@@ -121,7 +133,7 @@ impl Reason {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LineCol {
     l: u32,
     c: u32,

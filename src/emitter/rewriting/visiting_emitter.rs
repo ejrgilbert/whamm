@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
-use crate::emitter::tag_handler::get_tag_for;
+use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::utils::{block_type_to_wasm, emit_expr, emit_stmt, EmitCtx};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::ast::UnsharedVar;
@@ -548,7 +548,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 if let Some(flush_fid) = var_flush {
                     on_exit.call(FunctionID(flush_fid));
                 }
-                let on_exit_id = on_exit.finish_module(self.app_iter.module, get_tag_for(&None));
+                let on_exit_id =
+                    on_exit.finish_module_with_tag(self.app_iter.module, get_tag_for(&None));
                 self.app_iter
                     .module
                     .set_fn_name(on_exit_id, "on_exit".to_string());
@@ -583,6 +584,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
             main.func_exit();
             main.call(on_exit_id);
+            // location is unused
+            let op_idx = main.curr_instr_len() as u32;
+            main.append_tag_at(
+                get_probe_tag_data(&None, op_idx),
+                Location::Module {
+                    func_idx: FunctionID(0),
+                    instr_idx: 0,
+                },
+            );
+
             main.finish_instr();
         }
     }

@@ -130,8 +130,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                 if loc_info.is_prog_exit {
                     if self.on_exit_fid.is_none() {
                         let on_exit = FunctionBuilder::new(&[], &[]);
-                        let on_exit_id =
-                            on_exit.finish_module(self.emitter.app_iter.module, get_tag_for(&None));
+                        let on_exit_id = on_exit.finish_module_with_tag(
+                            self.emitter.app_iter.module,
+                            get_tag_for(&None),
+                        );
                         self.emitter
                             .app_iter
                             .module
@@ -298,8 +300,9 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter.reset_locals_for_probe();
 
         let op_idx = self.emitter.app_iter.curr_instr_len() as u32;
-        let tag = get_probe_tag_data(&self.curr_probe_loc, op_idx);
-        self.emitter.app_iter.append_to_tag(tag);
+        self.emitter
+            .app_iter
+            .append_to_tag(get_probe_tag_data(&self.curr_probe_loc, op_idx));
 
         is_success
     }

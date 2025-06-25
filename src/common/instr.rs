@@ -466,7 +466,7 @@ fn get_memory_allocator(
     };
 
     // todo -- only add if needed!
-    let mem_tracker_global = target_wasm.add_global(
+    let mem_tracker_global = target_wasm.add_global_with_tag(
         InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(0))]),
         OrcaType::I32,
         true,
@@ -485,7 +485,7 @@ fn get_memory_allocator(
             },
             get_tag_for(&None),
         );
-        let alloc_tracker_global = target_wasm.add_global(
+        let alloc_tracker_global = target_wasm.add_global_with_tag(
             InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(0))]),
             OrcaType::I32,
             true,

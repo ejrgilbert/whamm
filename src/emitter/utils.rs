@@ -353,7 +353,7 @@ pub fn whamm_type_to_wasm_global(
     if orca_wasm_ty.len() == 1 {
         match orca_wasm_ty.first().unwrap() {
             OrcaType::I32 => {
-                let global_id = app_wasm.add_global(
+                let global_id = app_wasm.add_global_with_tag(
                     init_expr.unwrap_or(InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(0))])),
                     OrcaType::I32,
                     true,
@@ -363,7 +363,7 @@ pub fn whamm_type_to_wasm_global(
                 (global_id, OrcaType::I32)
             }
             OrcaType::I64 => {
-                let global_id = app_wasm.add_global(
+                let global_id = app_wasm.add_global_with_tag(
                     init_expr.unwrap_or(InitExpr::new(vec![InitInstr::Value(OrcaValue::I64(0))])),
                     OrcaType::I64,
                     true,
@@ -373,7 +373,7 @@ pub fn whamm_type_to_wasm_global(
                 (global_id, OrcaType::I64)
             }
             OrcaType::F32 => {
-                let global_id = app_wasm.add_global(
+                let global_id = app_wasm.add_global_with_tag(
                     init_expr
                         .unwrap_or(InitExpr::new(vec![InitInstr::Value(OrcaValue::F32(0f32))])),
                     OrcaType::F32,
@@ -384,7 +384,7 @@ pub fn whamm_type_to_wasm_global(
                 (global_id, OrcaType::F32)
             }
             OrcaType::F64 => {
-                let global_id = app_wasm.add_global(
+                let global_id = app_wasm.add_global_with_tag(
                     init_expr
                         .unwrap_or(InitExpr::new(vec![InitInstr::Value(OrcaValue::F64(0f64))])),
                     OrcaType::F64,
@@ -416,7 +416,7 @@ pub fn emit_global_getter(
     getter.global_get(GlobalID(*global_id));
 
     // TODO -- pull the global's location
-    let getter_id = getter.finish_module(app_wasm, get_tag_for(loc));
+    let getter_id = getter.finish_module_with_tag(app_wasm, get_tag_for(loc));
     let fn_name = format!("get_{name}");
     app_wasm.set_fn_name(getter_id, fn_name.clone());
     app_wasm.exports.add_export_func(fn_name, *getter_id, None);

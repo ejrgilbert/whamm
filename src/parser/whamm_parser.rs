@@ -1278,10 +1278,7 @@ pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                 Ok(lhs) => {
                     let op_rule = op.as_rule();
                     let op_span = op.as_span();
-                    let target = match type_from_rule(op.into_inner().next().unwrap()) {
-                        Ok(ty) => ty,
-                        Err(e) => return Err(e),
-                    };
+                    let target = type_from_rule(op.into_inner().next().unwrap())?;
 
                     let op = match op_rule {
                         Rule::cast => UnOp::Cast { target },
@@ -1481,14 +1478,8 @@ pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
             let key_ty_rule = pair.next().unwrap();
             let val_ty_rule = pair.next().unwrap();
 
-            let key_ty = match type_from_rule(key_ty_rule) {
-                Ok(res) => res,
-                Err(e) => return Err(e),
-            };
-            let val_ty = match type_from_rule(val_ty_rule) {
-                Ok(res) => res,
-                Err(e) => return Err(e),
-            };
+            let key_ty = type_from_rule(key_ty_rule)?;
+            let val_ty = type_from_rule(val_ty_rule)?;
 
             Ok(DataType::Map {
                 key_ty: Box::new(key_ty),

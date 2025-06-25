@@ -213,6 +213,7 @@ impl UnsharedVarHandler {
                     ty,
                     *is_report,
                     false,
+                    loc,
                     report_vars,
                     wasm,
                     err,

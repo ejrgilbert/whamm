@@ -450,7 +450,7 @@ impl MemoryAllocator {
             .drop()
             .end();
 
-        let check_memsize_fid = check_memsize.finish_module(wasm, get_tag_for(&None));
+        let check_memsize_fid = check_memsize.finish_module_with_tag(wasm, get_tag_for(&None));
         wasm.set_fn_name(
             check_memsize_fid,
             format!("check_memsize_for_mem{}", mem_id),

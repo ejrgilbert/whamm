@@ -25,7 +25,7 @@ pub struct UnsharedVarHandler {
 impl UnsharedVarHandler {
     pub fn new(wasm: &mut Module) -> Self {
         let mut add_global_i32 = || -> GlobalID {
-            wasm.add_global(
+            wasm.add_global_with_tag(
                 InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(-1))]),
                 OrcaType::I32,
                 true,
@@ -257,7 +257,7 @@ impl UnsharedVarHandler {
         // return the location where the value will be stored in memory!
         alloc.local_get(orig_offset.id);
 
-        let alloc_id = alloc.finish_module(emitter.app_wasm, get_tag_for(&None));
+        let alloc_id = alloc.finish_module_with_tag(emitter.app_wasm, get_tag_for(&None));
         emitter
             .app_wasm
             .exports

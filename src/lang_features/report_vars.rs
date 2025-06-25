@@ -575,7 +575,7 @@ impl ReportVars {
             .i32_const(curr_offset as i32)
             .i32_add();
 
-        let flush_fid = flush_fn.finish_module(wasm, get_tag_for(&None));
+        let flush_fid = flush_fn.finish_module_with_tag(wasm, get_tag_for(&None));
         wasm.set_fn_name(flush_fid, "flush_var_metadata".to_string());
         self.flush_tracker.flush_var_metadata_fid = Some(*flush_fid);
     }
@@ -727,7 +727,7 @@ impl ReportVars {
 
         flush_fn.end().end();
 
-        let flush_fid = flush_fn.finish_module(wasm, get_tag_for(&None));
+        let flush_fid = flush_fn.finish_module_with_tag(wasm, get_tag_for(&None));
         wasm.set_fn_name(flush_fid, format!("flush_{}_vars", dt));
 
         *flush_fid
@@ -1147,7 +1147,7 @@ impl ReportVars {
         } else {
             // On the first allocation for a datatype, the global that points to the first memory
             // location is updated to point to the memory address.
-            let gid = wasm.add_global(
+            let gid = wasm.add_global_with_tag(
                 InitExpr::new(vec![InitInstr::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
                 OrcaType::I32,
                 true,
@@ -1207,7 +1207,7 @@ impl ReportVars {
         let last_var = if let Some(last_var) = tracker.last_var {
             GlobalID(last_var)
         } else {
-            let gid = wasm.add_global(
+            let gid = wasm.add_global_with_tag(
                 InitExpr::new(vec![InitInstr::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
                 OrcaType::I32,
                 true,

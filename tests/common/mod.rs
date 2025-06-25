@@ -13,6 +13,7 @@ pub fn setup_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
 }
 
+pub const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 const TEST_RSC_DIR: &str = "tests/scripts/";
 const WAT_PATTERN: &str = "*.wat";
 const DOT_WAT: &str = ".wat";

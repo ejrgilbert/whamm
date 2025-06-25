@@ -239,8 +239,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         // emit the function
         if let Some(func) = self.emitting_func.take() {
-            // todo -- use a probe tag
-            let fid = func.finish_module(self.app_wasm, get_tag_for(loc));
+            let fid = func.finish_module_with_tag(self.app_wasm, get_tag_for(loc));
             if let Some(name) = name {
                 self.app_wasm.set_fn_name(fid, name.clone());
                 if export {
@@ -307,7 +306,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 err,
             );
 
-            let on_exit_id = on_exit.finish_module(self.app_wasm, get_tag_for(&None));
+            let on_exit_id = on_exit.finish_module_with_tag(self.app_wasm, get_tag_for(&None));
             self.app_wasm.set_fn_name(on_exit_id, "on_exit".to_string());
 
             self.app_wasm
@@ -419,7 +418,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             .i32_const(0)
             .return_stmt();
 
-        let strcmp_id = strcmp.finish_module(self.app_wasm, get_tag_for(&None));
+        let strcmp_id = strcmp.finish_module_with_tag(self.app_wasm, get_tag_for(&None));
         self.app_wasm.set_fn_name(strcmp_id, "strcmp".to_string());
 
         let Record::Fn { addr, .. } = self.table.lookup_fn_mut(&f.name.name, err)? else {
@@ -437,7 +436,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     fn create_instr_init(&mut self, err: &mut ErrorGen) -> FunctionID {
         // TODO -- move this into the MapAdapter
         //make a global bool for whether to run the instr_init fn
-        self.map_lib_adapter.init_bool_location = *self.app_wasm.add_global(
+        self.map_lib_adapter.init_bool_location = *self.app_wasm.add_global_with_tag(
             InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(1))]),
             OrcaType::I32,
             true,
@@ -461,7 +460,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 //time to make a instr_init fn
                 debug!("No instr_init function found, creating one");
                 let instr_init_fn = FunctionBuilder::new(&[], &[]);
-                let instr_init_id = instr_init_fn.finish_module(self.app_wasm, get_tag_for(&None));
+                let instr_init_id =
+                    instr_init_fn.finish_module_with_tag(self.app_wasm, get_tag_for(&None));
                 self.app_wasm
                     .set_fn_name(instr_init_id, "instr_init".to_string());
                 instr_init_id
@@ -541,6 +541,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     ty,
                     report_mode,
                     true,
+                    loc,
                     self.report_vars,
                     self.app_wasm,
                     err,
