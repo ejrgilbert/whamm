@@ -541,6 +541,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 };
                 if let Some(flush_fid) = var_flush {
                     on_exit.call(FunctionID(flush_fid));
+                    let op_idx = on_exit.curr_instr_len() as u32;
+                    on_exit.append_tag_at(get_probe_tag_data(&None, op_idx), Location::Module {
+                        func_idx: FunctionID(flush_fid),
+                        instr_idx: 0,
+                    });
+                    // on_exit.finish_instr();
                 }
                 fid
             } else {

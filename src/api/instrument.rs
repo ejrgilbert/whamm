@@ -558,10 +558,10 @@ impl Injection {
             } => {
                 let mut injections = vec![];
                 let mut start_idx = 0;
-                // println!("{:#?}", body);
+                // println!("{:?}@{}:{} --> {:#?}", mode, target_fid, target_opcode_idx, body);
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 for reason in reasons.iter() {
-                    if let Reason::UserProbe { op_idx_end, .. } = reason {
+                    if let Reason::UserProbe { op_idx_end, .. } | Reason::WhammProbe { op_idx_end, .. } = reason {
                         let mut body_wat = vec![];
                         for op in body[start_idx..*op_idx_end as usize].iter() {
                             body_wat.push(format!("{:?}\n", op));
@@ -576,7 +576,7 @@ impl Injection {
 
                         start_idx = *op_idx_end as usize;
                     } else {
-                        panic!("Should be a user probe reason!")
+                        panic!("Should be a probe reason with an op index, but got: {:#?}", reason);
                     }
                 }
 

@@ -4,7 +4,7 @@ mod cli;
 use cli::{Cmd, WhammCli};
 use std::env;
 
-use crate::cli::LibraryLinkStrategyArg;
+use cli::LibraryLinkStrategyArg;
 use clap::Parser;
 use std::path::PathBuf;
 use std::process::exit;

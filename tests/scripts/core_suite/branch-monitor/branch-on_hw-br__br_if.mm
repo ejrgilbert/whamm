@@ -1,6 +1,8 @@
 // TODO -- support pulling fname on Wizard target!
 report var count: map<(u32, u32, u32), i32>;
 
+// TODO -- check if unshared map var is also an incorrect location
+
 wasm::br:before /
     fid == 0 ||
     fid == 1 ||

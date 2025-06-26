@@ -145,6 +145,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                     if let Some(fid) = self.on_exit_fid {
                         self.emitter.before();
                         self.emitter.app_iter.call(FunctionID(fid));
+                        let op_idx = self.emitter.app_iter.curr_instr_len() as u32;
+                        self.emitter
+                            .app_iter
+                            .append_to_tag(get_probe_tag_data(&self.curr_probe_loc, op_idx));
+                        // self.emitter.app_iter.finish_instr();
                     } else {
                         panic!("something went horribly wrong")
                     }

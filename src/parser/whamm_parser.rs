@@ -520,7 +520,7 @@ fn handle_decl(pair: &mut Pairs<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     vec![Statement::Decl {
         ty,
         var_id: handle_id(var_id_rule),
-        loc: Some(Location::from(&type_line_col, &var_id_line_col, None)),
+        loc: Some(Location::from(&var_id_line_col, &type_line_col, None))
     }]
 }
 
