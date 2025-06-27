@@ -2,24 +2,27 @@ use crate::common::error::ErrorGen;
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::rewriting::rules::Arg;
-use crate::emitter::utils::{emit_body, emit_expr, emit_stmt, whamm_type_to_wasm_global, EmitCtx};
+use crate::emitter::tag_handler::get_tag_for;
+use crate::emitter::utils::{
+    emit_body, emit_expr, emit_global_getter, emit_stmt, whamm_type_to_wasm_global, EmitCtx,
+};
 use crate::emitter::{Emitter, InjectStrategy};
 use crate::generator::ast::WhammParams;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::{Metadata, ReportVars};
-use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Statement, Value};
+use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Location, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use log::debug;
 use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
+use orca_wasm::ir::id::{FunctionID, LocalID};
 use orca_wasm::ir::module::Module;
 use orca_wasm::ir::types::{
     BlockType as OrcaBlockType, DataType as OrcaType, InitExpr, Value as OrcaValue,
 };
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::Opcode;
-use orca_wasm::Instructions;
+use orca_wasm::InitInstr;
 use std::collections::HashSet;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -132,6 +135,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         results: &[OrcaType],
         body: &mut Block,
         export: bool,
+        loc: &Option<Location>,
         err: &mut ErrorGen,
     ) -> (Option<u32>, String) {
         // create the function
@@ -179,8 +183,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             );
         }
 
-        let fid =
-            self.emit_special_fn_inner(None, &params, dynamic_pred, results, body, export, err);
+        let fid = self.emit_special_fn_inner(
+            None,
+            &params,
+            dynamic_pred,
+            results,
+            body,
+            export,
+            loc,
+            err,
+        );
 
         self.reset_locals_for_function();
 
@@ -195,6 +207,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         results: &[OrcaType],
         block: &mut Block,
         export: bool,
+        loc: &Option<Location>,
         err: &mut ErrorGen,
     ) -> Option<u32> {
         let func = FunctionBuilder::new(params, results);
@@ -226,16 +239,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         // emit the function
         if let Some(func) = self.emitting_func.take() {
-            let fid = func.finish_module(self.app_wasm);
+            let fid = func.finish_module_with_tag(self.app_wasm, get_tag_for(loc));
             if let Some(name) = name {
                 self.app_wasm.set_fn_name(fid, name.clone());
                 if export {
-                    self.app_wasm.exports.add_export_func(name, *fid);
+                    self.app_wasm.exports.add_export_func(name, *fid, None);
                 }
             } else if export {
                 self.app_wasm
                     .exports
-                    .add_export_func(format!("${}", *fid), *fid);
+                    .add_export_func(format!("${}", *fid), *fid, None);
             }
             Some(*fid)
         } else {
@@ -293,12 +306,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 err,
             );
 
-            let on_exit_id = on_exit.finish_module(self.app_wasm);
+            let on_exit_id = on_exit.finish_module_with_tag(self.app_wasm, get_tag_for(&None));
             self.app_wasm.set_fn_name(on_exit_id, "on_exit".to_string());
 
             self.app_wasm
                 .exports
-                .add_export_func("wasm:exit".to_string(), *on_exit_id);
+                .add_export_func("wasm:exit".to_string(), *on_exit_id, None);
             Some(on_exit_id)
         } else {
             None
@@ -405,7 +418,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             .i32_const(0)
             .return_stmt();
 
-        let strcmp_id = strcmp.finish_module(self.app_wasm);
+        let strcmp_id = strcmp.finish_module_with_tag(self.app_wasm, get_tag_for(&None));
         self.app_wasm.set_fn_name(strcmp_id, "strcmp".to_string());
 
         let Record::Fn { addr, .. } = self.table.lookup_fn_mut(&f.name.name, err)? else {
@@ -423,11 +436,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     fn create_instr_init(&mut self, err: &mut ErrorGen) -> FunctionID {
         // TODO -- move this into the MapAdapter
         //make a global bool for whether to run the instr_init fn
-        self.map_lib_adapter.init_bool_location = *self.app_wasm.add_global(
-            InitExpr::new(vec![Instructions::Value(OrcaValue::I32(1))]),
+        self.map_lib_adapter.init_bool_location = *self.app_wasm.add_global_with_tag(
+            InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(1))]),
             OrcaType::I32,
             true,
             false,
+            get_tag_for(&None),
         );
         match self.app_wasm.functions.get_local_fid_by_name("instr_init") {
             Some(_) => {
@@ -446,7 +460,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 //time to make a instr_init fn
                 debug!("No instr_init function found, creating one");
                 let instr_init_fn = FunctionBuilder::new(&[], &[]);
-                let instr_init_id = instr_init_fn.finish_module(self.app_wasm);
+                let instr_init_id =
+                    instr_init_fn.finish_module_with_tag(self.app_wasm, get_tag_for(&None));
                 self.app_wasm
                     .set_fn_name(instr_init_id, "instr_init".to_string());
                 instr_init_id
@@ -494,27 +509,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // ==== EMIT `global` LOGIC ====
     // =============================
 
-    pub(crate) fn emit_global_getter(
-        &mut self,
-        global_id: &u32,
-        name: String,
-        ty: OrcaType,
-    ) -> FunctionID {
-        // todo -- make this conditional on 'testing' mode
-        let getter_params = vec![];
-        let getter_res = vec![ty];
-
-        let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
-        getter.global_get(GlobalID(*global_id));
-
-        let getter_id = getter.finish_module(self.app_wasm);
-        let fn_name = format!("get_{name}");
-        self.app_wasm.set_fn_name(getter_id, fn_name.clone());
-        self.app_wasm.exports.add_export_func(fn_name, *getter_id);
-
-        getter_id
-    }
-
     pub(crate) fn emit_global(
         &mut self,
         name: String,
@@ -533,7 +527,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         report_mode: bool,
         err: &mut ErrorGen,
     ) -> Option<FunctionID> {
-        let Record::Var { addr, ty, .. } = self.table.lookup_var_mut(&name, true)? else {
+        let Record::Var { addr, ty, loc, .. } = self.table.lookup_var_mut(&name, true)? else {
             err.unexpected_error(true, Some("unexpected type".to_string()), None);
             return None;
         };
@@ -547,6 +541,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     ty,
                     report_mode,
                     true,
+                    loc,
                     self.report_vars,
                     self.app_wasm,
                     err,
@@ -555,14 +550,21 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 None
             }
             _ => {
-                let (global_id, global_ty) = whamm_type_to_wasm_global(self.app_wasm, ty, None);
+                let (global_id, global_ty) =
+                    whamm_type_to_wasm_global(self.app_wasm, ty, loc, None);
                 *addr = Some(VarAddr::Global { addr: *global_id });
                 //now save off the global variable metadata
                 if report_mode {
                     self.report_vars
                         .put_global_metadata(*global_id, name.clone(), ty, err);
                 }
-                Some(self.emit_global_getter(&global_id, name, global_ty))
+                Some(emit_global_getter(
+                    self.app_wasm,
+                    &global_id,
+                    name,
+                    global_ty,
+                    loc,
+                ))
             }
         }
     }

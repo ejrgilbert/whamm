@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::emitter::tag_handler::get_tag_for;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::parser::types::DataType;
@@ -12,7 +13,7 @@ use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
 use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
-use orca_wasm::{Instructions, Module, Opcode};
+use orca_wasm::{InitInstr, Module, Opcode};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -574,7 +575,7 @@ impl ReportVars {
             .i32_const(curr_offset as i32)
             .i32_add();
 
-        let flush_fid = flush_fn.finish_module(wasm);
+        let flush_fid = flush_fn.finish_module_with_tag(wasm, get_tag_for(&None));
         wasm.set_fn_name(flush_fid, "flush_var_metadata".to_string());
         self.flush_tracker.flush_var_metadata_fid = Some(*flush_fid);
     }
@@ -726,7 +727,7 @@ impl ReportVars {
 
         flush_fn.end().end();
 
-        let flush_fid = flush_fn.finish_module(wasm);
+        let flush_fid = flush_fn.finish_module_with_tag(wasm, get_tag_for(&None));
         wasm.set_fn_name(flush_fid, format!("flush_{}_vars", dt));
 
         *flush_fid
@@ -1146,11 +1147,12 @@ impl ReportVars {
         } else {
             // On the first allocation for a datatype, the global that points to the first memory
             // location is updated to point to the memory address.
-            let gid = wasm.add_global(
-                InitExpr::new(vec![Instructions::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
+            let gid = wasm.add_global_with_tag(
+                InitExpr::new(vec![InitInstr::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
                 OrcaType::I32,
                 true,
                 false,
+                get_tag_for(&None),
             );
             tracker.first_var = Some(*gid);
 
@@ -1205,11 +1207,12 @@ impl ReportVars {
         let last_var = if let Some(last_var) = tracker.last_var {
             GlobalID(last_var)
         } else {
-            let gid = wasm.add_global(
-                InitExpr::new(vec![Instructions::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
+            let gid = wasm.add_global_with_tag(
+                InitExpr::new(vec![InitInstr::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
                 OrcaType::I32,
                 true,
                 false,
+                get_tag_for(&None),
             );
             tracker.last_var = Some(*gid);
             GlobalID(*gid)

@@ -64,9 +64,18 @@ impl Location {
         };
 
         let pos1 = match loc1 {
-            LineColLocation::Pos(pos0) => pos0,
+            LineColLocation::Pos(pos1) => pos1,
             LineColLocation::Span(.., span1) => span1,
         };
+
+        // make sure pos0 < pos1
+        let ((l0, c0), (l1, c1)) = (pos0, pos1);
+        if l0 > l1 || (l0 == l1 && c0 > c1) {
+            panic!(
+                "loc0 comes after loc1...something's gone horribly wrong! loc0: {:?}, loc1: {:?}",
+                pos0, pos1
+            );
+        }
 
         Location {
             line_col: LineColLocation::Span(*pos0, *pos1),
@@ -1693,6 +1702,56 @@ impl Script {
         if matches.is_empty() {
             assert!(err.has_errors);
         }
+
+        // create the location for the entire probe
+        let loc_start = get_loc_with_priority(
+            &probe_rule.provider,
+            &probe_rule.package,
+            &probe_rule.event,
+            &probe_rule.mode,
+            "start",
+        );
+
+        let loc_end = if let Some(body) = &body {
+            if let Some(loc) = body.loc.as_ref() {
+                loc.clone()
+            } else if let Some(predicate) = &predicate {
+                if let Some(loc) = predicate.loc().as_ref() {
+                    loc.clone()
+                } else {
+                    get_loc_with_priority(
+                        &probe_rule.mode,
+                        &probe_rule.event,
+                        &probe_rule.package,
+                        &probe_rule.provider,
+                        "start",
+                    )
+                }
+            } else {
+                get_loc_with_priority(
+                    &probe_rule.mode,
+                    &probe_rule.event,
+                    &probe_rule.package,
+                    &probe_rule.provider,
+                    "start",
+                )
+            }
+        } else {
+            get_loc_with_priority(
+                &probe_rule.mode,
+                &probe_rule.event,
+                &probe_rule.package,
+                &probe_rule.provider,
+                "start",
+            )
+        };
+
+        let loc = Location::from(
+            &loc_start.line_col,
+            &loc_end.line_col,
+            loc_start.path.clone(),
+        );
+
         for prov_match in matches.iter() {
             let provider = self
                 .providers
@@ -1700,6 +1759,7 @@ impl Script {
                 .or_insert(Provider::new(prov_match.def.clone(), probe_rule));
 
             provider.add_probes(
+                loc.clone(),
                 &prov_match.packages,
                 probe_rule,
                 predicate.clone(),
@@ -1707,6 +1767,35 @@ impl Script {
             );
         }
     }
+}
+
+fn get_loc_with_priority(
+    p0: &Option<RulePart>,
+    p1: &Option<RulePart>,
+    p2: &Option<RulePart>,
+    p3: &Option<RulePart>,
+    err: &str,
+) -> Location {
+    if let Some(p0) = get_loc(p0) {
+        p0
+    } else if let Some(p1) = get_loc(p1) {
+        p1
+    } else if let Some(p2) = get_loc(p2) {
+        p2
+    } else if let Some(p3) = get_loc(p3) {
+        p3
+    } else {
+        panic!("Could not find a {err} for the probe's location!")
+    }
+}
+
+fn get_loc(rule_part: &Option<RulePart>) -> Option<Location> {
+    if let Some(part) = &rule_part {
+        if let Some(loc) = part.loc.as_ref() {
+            return Some(loc.clone());
+        }
+    }
+    None
 }
 
 #[derive(Clone, Debug)]

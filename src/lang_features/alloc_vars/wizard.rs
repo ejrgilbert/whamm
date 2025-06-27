@@ -3,6 +3,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::StringAddr;
 use crate::emitter::module_emitter::ModuleEmitter;
+use crate::emitter::tag_handler::get_tag_for;
 use crate::generator::ast::UnsharedVar;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::lang_features::report_vars::ReportVars;
@@ -13,7 +14,7 @@ use orca_wasm::ir::id::{GlobalID, LocalID};
 use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as OrcaValue};
 use orca_wasm::module_builder::AddLocal;
 use orca_wasm::opcode::MacroOpcode;
-use orca_wasm::{Instructions, Module, Opcode};
+use orca_wasm::{InitInstr, Module, Opcode};
 use wasmparser::MemArg;
 
 pub struct UnsharedVarHandler {
@@ -24,11 +25,12 @@ pub struct UnsharedVarHandler {
 impl UnsharedVarHandler {
     pub fn new(wasm: &mut Module) -> Self {
         let mut add_global_i32 = || -> GlobalID {
-            wasm.add_global(
-                InitExpr::new(vec![Instructions::Value(OrcaValue::I32(-1))]),
+            wasm.add_global_with_tag(
+                InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(-1))]),
                 OrcaType::I32,
                 true,
                 false,
+                get_tag_for(&None),
             )
         };
         Self {
@@ -174,6 +176,7 @@ impl UnsharedVarHandler {
             name,
             is_report,
             report_metadata,
+            ..
         } in unshared_to_alloc.iter()
         {
             let prev_offset = curr_offset;
@@ -254,11 +257,11 @@ impl UnsharedVarHandler {
         // return the location where the value will be stored in memory!
         alloc.local_get(orig_offset.id);
 
-        let alloc_id = alloc.finish_module(emitter.app_wasm);
+        let alloc_id = alloc.finish_module_with_tag(emitter.app_wasm, get_tag_for(&None));
         emitter
             .app_wasm
             .exports
-            .add_export_func(format!("${}", *alloc_id), *alloc_id);
+            .add_export_func(format!("${}", *alloc_id), *alloc_id, None);
         (Some(*alloc_id), "fname, fid, pc".to_string())
     }
 

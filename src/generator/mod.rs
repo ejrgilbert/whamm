@@ -3,8 +3,8 @@ use crate::emitter::module_emitter::ModuleEmitter;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::provider_handler::{BoundFunc, Event, ModeKind, Package, Probe, Provider};
 use crate::parser::types::{
-    Block, BoundFunction, DataType, Definition, Expr, Fn, FnId, Global, Script, Statement, Value,
-    Whamm, WhammVisitorMut,
+    Block, BoundFunction, DataType, Definition, Expr, Fn, FnId, Global, Location, Script,
+    Statement, Value, Whamm, WhammVisitorMut,
 };
 use crate::verifier::types::Record;
 use itertools::Itertools;
@@ -72,7 +72,7 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
         ty: DataType,
         value: &Option<Value>,
     ) -> Option<FunctionID>;
-    fn link_user_lib(&mut self, lib_name: &str);
+    fn link_user_lib(&mut self, lib_name: &str, loc: &Option<Location>);
     fn add_injected_func(&mut self, fid: FunctionID);
     fn get_context_name_mut(&mut self) -> &mut String;
     fn get_context_name(&self) -> &String;
@@ -387,8 +387,8 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
     fn visit_stmt(&mut self, stmt: &mut Statement) -> bool {
         match stmt {
-            Statement::LibImport { lib_name, .. } => {
-                self.link_user_lib(lib_name);
+            Statement::LibImport { lib_name, loc, .. } => {
+                self.link_user_lib(lib_name, loc);
                 true
             }
             Statement::Decl { .. } => {
