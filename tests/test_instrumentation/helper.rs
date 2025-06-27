@@ -7,7 +7,7 @@ use log::{error, warn};
 use orca_wasm::Module;
 use whamm::api::instrument::instrument_as_dry_run;
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
-use crate::util::{CORE_WASM_PATH, setup_logger};
+use crate::util::{CORE_WASM_PATH, print_side_effects, setup_logger};
 
 const TEST_DRY_RUN: bool = true;
 const TEST_RSC_DIR: &str = "tests/scripts/";
@@ -402,7 +402,7 @@ pub(crate) fn run_script(
         )
             .expect("Failed to run dry-run");
 
-        println!("{:#?}", side_effects);
+        print_side_effects(&side_effects);
     }
     if let Some(path) = output_path {
         write_to_file(wasm_result, path);

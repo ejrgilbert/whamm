@@ -584,7 +584,7 @@ impl Injection {
             } => {
                 let mut injections = vec![];
                 let mut start_idx = 0;
-                println!("{:?}@{}:{} --> {:#?}", mode, target_fid, target_opcode_idx, body);
+                // println!("{:?}@{}:{} --> {:#?}", mode, target_fid, target_opcode_idx, body);
                 if tag.is_empty() {
                     // This is an injection that was created by Orca...to handle function entry/exit
                     return vec![];

@@ -1,4 +1,4 @@
-use crate::util::{CORE_WASM_PATH, setup_logger};
+use crate::util::{CORE_WASM_PATH, print_side_effects, setup_logger};
 use whamm::api::instrument::instrument_as_dry_run;
 
 // TODO add tests for:
@@ -22,17 +22,5 @@ fn dry_run() {
     )
     .expect("Failed to run dry-run");
 
-
-    let mut sorted_side_effects: Vec<_> = side_effects.iter().collect();
-    sorted_side_effects.sort_by_key(|&(key, _)| key);
-    for (ty, injections) in sorted_side_effects.iter() {
-        println!("====={}=====", "=".repeat(ty.to_string().len()));
-        println!("==== {} ====", ty.to_string().to_uppercase());
-        println!("====={}=====", "=".repeat(ty.to_string().len()));
-
-        for inj in injections.iter() {
-            println!("{:#?}", inj);
-        }
-        println!();
-    }
+    print_side_effects(&side_effects);
 }
