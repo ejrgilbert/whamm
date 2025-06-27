@@ -2,7 +2,7 @@
 
 use crate::common::error::WhammError;
 use crate::common::instr;
-use crate::emitter::tag_handler::{get_reasons_from_tag, Reason};
+use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
 use log::error;
 use orca_wasm::ir::module::module_types::Types;
 use orca_wasm::ir::module::side_effects::{
@@ -270,7 +270,7 @@ pub enum Injection {
         type_ref: TypeRef,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        reasons: Vec<Reason>,
+        cause: Cause
     },
     /// Represents an export that has been added to the module.
     Export {
@@ -282,13 +282,13 @@ pub enum Injection {
         index: u32,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        reasons: Vec<Reason>,
+        cause: Cause
     },
     Type {
         ty: Types,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        reasons: Vec<Reason>,
+        cause: Cause
     },
 
     /// Represents a memory that has been added to the module.
@@ -301,7 +301,7 @@ pub enum Injection {
         maximum: Option<u64>,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        reasons: Vec<Reason>,
+        cause: Cause
     },
 
     /// Represents an active data segment that has been added to the module.
@@ -316,7 +316,7 @@ pub enum Injection {
         data: Vec<u8>,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        reasons: Vec<Reason>,
+        cause: Cause
     },
 
     /// Represents a passive data segment that has been added to the module.
@@ -325,7 +325,7 @@ pub enum Injection {
         data: Vec<u8>,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        reasons: Vec<Reason>,
+        cause: Cause
     },
 
     /// Represents a global that has been added to the module.
@@ -342,7 +342,7 @@ pub enum Injection {
         init_expr: Vec<String>,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        reasons: Vec<Reason>,
+        cause: Cause
     },
 
     /// Represents a local function that has been added to the module.
@@ -360,7 +360,7 @@ pub enum Injection {
 
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        reasons: Vec<Reason>,
+        cause: Cause
     },
 
     /// Represents a local variable that has been added to a module's local function.
@@ -371,13 +371,13 @@ pub enum Injection {
 
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        reasons: Vec<Reason>,
+        cause: Cause
     },
 
     /// Represents a table that has been added to the module.
-    Table { reasons: Vec<Reason> },
+    Table { cause: Cause },
     /// Represents a table element that has been added to the module.
-    Element { reasons: Vec<Reason> },
+    Element { cause: Cause },
 
     // Probes
     /// Represents a probe that has been injected into the module at a specific location in a function.
@@ -390,7 +390,7 @@ pub enum Injection {
         mode: InstrumentationMode,
         /// The body of the probe (in WAT).
         body: Vec<String>,
-        reasons: Vec<Reason>,
+        cause: Cause
     },
     /// Represents a probe that has been injected into a module's function (as a specialized function mode).
     FuncProbe {
@@ -400,7 +400,7 @@ pub enum Injection {
         mode: FuncInstrMode,
         /// The body of the probe (in WAT).
         body: Vec<String>,
-        reasons: Vec<Reason>,
+        cause: Cause
     },
 }
 impl Injection {
@@ -411,38 +411,51 @@ impl Injection {
                 name,
                 type_ref,
                 tag,
-            } => vec![Self::Import {
-                module: module.to_owned(),
-                name: name.to_owned(),
-                type_ref: type_ref.to_owned(),
-                reasons: get_reasons_from_tag(tag.data_mut()),
-            }],
+            } => {
+                let reasons = get_reasons_from_tag(tag.data_mut());
+                assert_eq!(1, reasons.len());
+                vec![Self::Import {
+                    module: module.to_owned(),
+                    name: name.to_owned(),
+                    type_ref: type_ref.to_owned(),
+                    cause: Cause::from(reasons.first().unwrap())
+                }]
+            },
             OrcaInjection::Export {
                 name,
                 kind,
                 index,
                 tag,
-            } => vec![Self::Export {
-                name: name.to_owned(),
-                kind: kind.to_owned(),
-                index: *index,
-                reasons: get_reasons_from_tag(tag.data_mut()),
-            }],
-            OrcaInjection::Type { ty, tag, .. } => vec![Self::Type {
-                ty: ty.to_owned(),
-                reasons: get_reasons_from_tag(tag.data_mut()),
-            }],
+            } => {
+                let reasons = get_reasons_from_tag(tag.data_mut());
+                vec![Self::Export {
+                    name: name.to_owned(),
+                    kind: kind.to_owned(),
+                    index: *index,
+                    cause: Cause::from(reasons.first().unwrap())
+                }]
+            },
+            OrcaInjection::Type { ty, tag, .. } => {
+                let reasons = get_reasons_from_tag(tag.data_mut());
+                vec![Self::Type {
+                    ty: ty.to_owned(),
+                    cause: Cause::from(reasons.first().unwrap())
+                }]
+            },
             OrcaInjection::Memory {
                 id,
                 initial,
                 maximum,
                 tag,
-            } => vec![Self::Memory {
-                id: *id,
-                initial: *initial,
-                maximum: maximum.to_owned(),
-                reasons: get_reasons_from_tag(tag.data_mut()),
-            }],
+            } => {
+                let reasons = get_reasons_from_tag(tag.data_mut());
+                vec![Self::Memory {
+                    id: *id,
+                    initial: *initial,
+                    maximum: maximum.to_owned(),
+                    cause: Cause::from(reasons.first().unwrap())
+                }]
+            },
             OrcaInjection::ActiveData {
                 memory_index,
                 offset_expr,
@@ -450,17 +463,19 @@ impl Injection {
                 tag,
             } => {
                 let offset_expr_wat = format!("{:?}", offset_expr);
+                let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::ActiveData {
                     memory_index: *memory_index,
                     offset_expr: vec![offset_expr_wat],
                     data: data.to_owned(),
-                    reasons: get_reasons_from_tag(tag.data_mut()),
+                    cause: Cause::from(reasons.first().unwrap())
                 }]
             }
             OrcaInjection::PassiveData { data, tag } => {
+                let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::PassiveData {
                     data: data.to_owned(),
-                    reasons: get_reasons_from_tag(tag.data_mut()),
+                    cause: Cause::from(reasons.first().unwrap())
                 }]
             }
             OrcaInjection::Global {
@@ -472,13 +487,14 @@ impl Injection {
                 tag,
             } => {
                 let init_expr_wat = format!("{:?}", init_expr);
+                let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Global {
                     id: *id,
                     ty: ty.to_owned(),
                     shared: *shared,
                     mutable: *mutable,
                     init_expr: vec![init_expr_wat],
-                    reasons: get_reasons_from_tag(tag.data_mut()),
+                    cause: Cause::from(reasons.first().unwrap())
                 }]
             }
             OrcaInjection::Func {
@@ -493,30 +509,40 @@ impl Injection {
                 for instr in body.iter() {
                     body_ops.push(format!("{:?}", instr.op));
                 }
+                let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Func {
                     id: *id,
                     fname: fname.to_owned(),
                     sig: sig.to_owned(),
                     locals: locals.to_owned(),
                     body: body_ops,
-                    reasons: get_reasons_from_tag(tag.data_mut()),
+                    cause: Cause::from(reasons.first().unwrap())
                 }]
             }
             OrcaInjection::Local {
                 target_fid,
                 ty,
                 tag,
-            } => vec![Self::Local {
-                target_fid: *target_fid,
-                ty: ty.to_owned(),
-                reasons: get_reasons_from_tag(tag.data_mut()),
-            }],
-            OrcaInjection::Table { tag } => vec![Self::Table {
-                reasons: get_reasons_from_tag(tag.data_mut()),
-            }],
-            OrcaInjection::Element { tag } => vec![Self::Table {
-                reasons: get_reasons_from_tag(tag.data_mut()),
-            }],
+            } => {
+                let reasons = get_reasons_from_tag(tag.data_mut());
+                vec![Self::Local {
+                    target_fid: *target_fid,
+                    ty: ty.to_owned(),
+                    cause: Cause::from(reasons.first().unwrap()),
+                }]
+            },
+            OrcaInjection::Table { tag } => {
+                let reasons = get_reasons_from_tag(tag.data_mut());
+                vec![Self::Table {
+                    cause: Cause::from(reasons.first().unwrap())
+                }]
+            },
+            OrcaInjection::Element { tag } => {
+                let reasons = get_reasons_from_tag(tag.data_mut());
+                vec![Self::Element {
+                    cause: Cause::from(reasons.first().unwrap())
+                }]
+            },
             OrcaInjection::FuncProbe {
                 target_fid,
                 mode,
@@ -538,7 +564,7 @@ impl Injection {
                             target_fid: *target_fid,
                             mode: mode.to_owned(),
                             body: body_wat,
-                            reasons: vec![reason.clone()],
+                            cause: Cause::from(reason)
                         });
 
                         start_idx = *op_idx_end as usize;
@@ -558,7 +584,11 @@ impl Injection {
             } => {
                 let mut injections = vec![];
                 let mut start_idx = 0;
-                // println!("{:?}@{}:{} --> {:#?}", mode, target_fid, target_opcode_idx, body);
+                println!("{:?}@{}:{} --> {:#?}", mode, target_fid, target_opcode_idx, body);
+                if tag.is_empty() {
+                    // This is an injection that was created by Orca...to handle function entry/exit
+                    return vec![];
+                }
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 for reason in reasons.iter() {
                     if let Reason::UserProbe { op_idx_end, .. } | Reason::WhammProbe { op_idx_end, .. } = reason {
@@ -571,7 +601,7 @@ impl Injection {
                             target_opcode_idx: *target_opcode_idx,
                             mode: mode.to_owned(),
                             body: body_wat,
-                            reasons: vec![reason.clone()],
+                            cause: Cause::from(reason)
                         });
 
                         start_idx = *op_idx_end as usize;
@@ -582,6 +612,40 @@ impl Injection {
 
                 injections
             }
+        }
+    }
+}
+
+
+#[derive(Clone, Debug)]
+pub enum Cause {
+    // There's a reason in the Whamm script for this addition
+    // it's due to a single character.
+    UserPos {
+        lc: LineCol
+    },
+    // There's a reason in the Whamm script for this addition
+    // it's due to a span in the script.
+    UserSpan {
+        lc0: LineCol,
+        lc1: LineCol
+    },
+    // There's a reason in the Whamm script for this addition
+    // it's due to a probe.
+    UserProbe {
+        lc0: LineCol,
+        lc1: LineCol
+    },
+    // The injection was for the Whamm language runtime
+    Whamm
+}
+impl From<&Reason> for Cause {
+    fn from(value: &Reason) -> Self {
+        match value {
+            Reason::UserPos {lc} => Self::UserPos {lc: *lc},
+            Reason::UserSpan {lc0, lc1} => Self::UserSpan {lc0: *lc0, lc1: *lc1},
+            Reason::UserProbe {lc0, lc1, ..} => Self::UserProbe {lc0: *lc0, lc1: *lc1},
+            Reason::Whamm | Reason::WhammProbe {..} => Self::Whamm
         }
     }
 }

@@ -11,8 +11,8 @@ use whamm::api::instrument::instrument_as_dry_run;
 #[test]
 fn dry_run() {
     setup_logger();
-    let wasm_path = "tests/apps/core_suite/handwritten/branches.wasm";
-    let script_path = "tests/scripts/core_suite/branch-monitor/branch-on_hw-br__br_if.mm";
+    let wasm_path = "tests/apps/core_suite/rust/cf.wasm";
+    let script_path = "tests/scripts/core_suite/branch-monitor_rewriting/branch-br__br_if__br_table.mm";
     let side_effects = instrument_as_dry_run(
         CORE_WASM_PATH,
         "./",
@@ -22,5 +22,17 @@ fn dry_run() {
     )
     .expect("Failed to run dry-run");
 
-    println!("{:#?}", side_effects);
+
+    let mut sorted_side_effects: Vec<_> = side_effects.iter().collect();
+    sorted_side_effects.sort_by_key(|&(key, _)| key);
+    for (ty, injections) in sorted_side_effects.iter() {
+        println!("====={}=====", "=".repeat(ty.to_string().len()));
+        println!("==== {} ====", ty.to_string().to_uppercase());
+        println!("====={}=====", "=".repeat(ty.to_string().len()));
+
+        for inj in injections.iter() {
+            println!("{:#?}", inj);
+        }
+        println!();
+    }
 }

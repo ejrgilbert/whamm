@@ -133,7 +133,7 @@ impl Reason {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct LineCol {
     l: u32,
     c: u32,
