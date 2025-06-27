@@ -1,15 +1,17 @@
+use crate::util::{print_side_effects, setup_logger, CORE_WASM_PATH};
+use glob::{glob, glob_with};
+use log::{error, warn};
+use orca_wasm::Module;
 use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 use std::process::Command;
-use glob::{glob, glob_with};
-use log::{error, warn};
-use orca_wasm::Module;
 use whamm::api::instrument::instrument_as_dry_run;
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
-use crate::util::{CORE_WASM_PATH, print_side_effects, setup_logger};
 
 const TEST_DRY_RUN: bool = true;
+pub const DEFAULT_CORE_LIB_PATH: &str = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
+pub const DEFAULT_DEFS_PATH: &str = "./";
 const TEST_RSC_DIR: &str = "tests/scripts/";
 const WAT_PATTERN: &str = "*.wat";
 const DOT_WAT: &str = ".wat";
@@ -38,7 +40,7 @@ fn get_test_scripts(sub_dir: &str) -> Vec<(PathBuf, String)> {
         &(TEST_RSC_DIR.to_owned() + sub_dir + "/" + &*TODO.to_owned()),
         options,
     )
-        .expect("Failed to read glob pattern")
+    .expect("Failed to read glob pattern")
     {
         warn!(
             "File marked with TODO: {}",
@@ -49,7 +51,13 @@ fn get_test_scripts(sub_dir: &str) -> Vec<(PathBuf, String)> {
     scripts
 }
 
-pub fn run_whamm_bin(original_wasm_path: &str, monitor_path: &str, instrumented_wasm_path: &str) {
+pub fn run_whamm_bin(
+    original_wasm_path: &str,
+    monitor_path: &str,
+    instrumented_wasm_path: &str,
+    defs_path: &str,
+    core_lib_path: &str,
+) {
     // executable is located at target/debug/whamm
     let executable = "target/debug/whamm";
 
@@ -61,6 +69,10 @@ pub fn run_whamm_bin(original_wasm_path: &str, monitor_path: &str, instrumented_
         .arg(original_wasm_path)
         .arg("--output-path")
         .arg(instrumented_wasm_path)
+        .arg("--defs-path")
+        .arg(defs_path)
+        .arg("--core-lib")
+        .arg(core_lib_path)
         .output()
         .expect("failed to execute process");
     if !res.status.success() {
@@ -80,7 +92,13 @@ pub fn run_basic_instrumentation(
     instrumented_wasm_path: &str,
 ) {
     wat2wasm_on_file(original_wat_path, original_wasm_path);
-    run_whamm_bin(original_wasm_path, monitor_path, instrumented_wasm_path);
+    run_whamm_bin(
+        original_wasm_path,
+        monitor_path,
+        instrumented_wasm_path,
+        DEFAULT_DEFS_PATH,
+        DEFAULT_CORE_LIB_PATH,
+    );
     wasm2wat_on_file(instrumented_wasm_path);
 }
 
@@ -378,31 +396,32 @@ pub(crate) fn run_script(
     let script_path_str = script_path.to_str().unwrap().replace("\"", "");
     let wasm_result = if target_wizard {
         whamm::api::instrument::generate_monitor_module(
-            CORE_WASM_PATH,
-            "./",
             script_path_str,
             user_libs.clone(),
+            Some(CORE_WASM_PATH.to_string()),
+            Some("./".to_string()),
         )
     } else {
         whamm::api::instrument::instrument_module_with_rewriting(
-            CORE_WASM_PATH,
-            "./",
             target_wasm,
             script_path_str,
             user_libs.clone(),
+            Some(CORE_WASM_PATH.to_string()),
+            Some("./".to_string()),
         )
     };
     if TEST_DRY_RUN {
-        let side_effects = instrument_as_dry_run(
-            CORE_WASM_PATH,
-            "./",
+        let _side_effects = instrument_as_dry_run(
             wasm_path.to_string(),
             script_path.to_str().unwrap().to_string(),
             user_libs,
+            Some(CORE_WASM_PATH.to_string()),
+            Some("./".to_string()),
         )
-            .expect("Failed to run dry-run");
+        .expect("Failed to run dry-run");
 
-        print_side_effects(&side_effects);
+        // NOTE: uncomment to debug side effects...just don't commit this uncommented! it'll slow EVERYTHING down
+        // print_side_effects(&_side_effects);
     }
     if let Some(path) = output_path {
         write_to_file(wasm_result, path);
@@ -548,7 +567,6 @@ fn run_testcase_wizard(
         };
     }
 }
-
 
 struct TestCase {
     script: PathBuf,

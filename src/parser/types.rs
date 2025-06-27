@@ -71,7 +71,10 @@ impl Location {
         // make sure pos0 < pos1
         let ((l0, c0), (l1, c1)) = (pos0, pos1);
         if l0 > l1 || (l0 == l1 && c0 > c1) {
-            panic!("loc0 comes after loc1...something's gone horribly wrong! loc0: {:?}, loc1: {:?}", pos0, pos1);
+            panic!(
+                "loc0 comes after loc1...something's gone horribly wrong! loc0: {:?}, loc1: {:?}",
+                pos0, pos1
+            );
         }
 
         Location {

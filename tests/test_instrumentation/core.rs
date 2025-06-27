@@ -1,10 +1,14 @@
-use std::fs;
-use std::process::Command;
+use crate::test_instrumentation::helper::{
+    build_whamm_core_lib, run_basic_instrumentation, run_core_suite, run_script, run_whamm_bin,
+    setup_fault_injection, setup_numerics_monitors, setup_replay, setup_tests,
+    setup_wizard_monitors, wat2wasm_on_dir, DEFAULT_CORE_LIB_PATH, DEFAULT_DEFS_PATH,
+};
+use crate::util::setup_logger;
 use log::error;
 use orca_wasm::Module;
+use std::fs;
+use std::process::Command;
 use whamm::api::utils::wasm2wat_on_file;
-use crate::test_instrumentation::helper::{build_whamm_core_lib, run_basic_instrumentation, run_core_suite, run_script, run_whamm_bin, setup_fault_injection, setup_numerics_monitors, setup_replay, setup_tests, setup_wizard_monitors, wat2wasm_on_dir};
-use crate::util::setup_logger;
 
 const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic.wasm";
 
@@ -22,7 +26,14 @@ fn instrument_dfinity_with_fault_injection() {
 
     for (script_path, ..) in processed_scripts {
         let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
-        run_script(&script_path, wasm_path, &mut module_to_instrument, vec![], None, false);
+        run_script(
+            &script_path,
+            wasm_path,
+            &mut module_to_instrument,
+            vec![],
+            None,
+            false,
+        );
     }
 }
 
@@ -98,7 +109,13 @@ fn instrument_control_flow() {
     let original_wasm_path = "wasm_playground/control_flow/target/wasm32-wasip1/debug/cf.wasm";
     let instrumented_wasm_path = "output/tests/integration-control_flow.wasm";
 
-    run_whamm_bin(original_wasm_path, monitor_path, instrumented_wasm_path);
+    run_whamm_bin(
+        original_wasm_path,
+        monitor_path,
+        instrumented_wasm_path,
+        DEFAULT_DEFS_PATH,
+        DEFAULT_CORE_LIB_PATH,
+    );
     wasm2wat_on_file(instrumented_wasm_path);
 }
 
@@ -121,7 +138,14 @@ fn instrument_with_wizard_monitors() {
     let wasm = fs::read(APP_WASM_PATH).unwrap();
     for (script_path, ..) in processed_scripts {
         let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
-        run_script(&script_path, APP_WASM_PATH, &mut module_to_instrument, vec![], None, false);
+        run_script(
+            &script_path,
+            APP_WASM_PATH,
+            &mut module_to_instrument,
+            vec![],
+            None,
+            false,
+        );
     }
 }
 

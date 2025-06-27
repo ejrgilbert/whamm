@@ -1,4 +1,4 @@
-mod wast;
-mod paper_eval;
-mod helper;
 mod core;
+mod helper;
+mod paper_eval;
+mod wast;

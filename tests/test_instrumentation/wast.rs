@@ -1,4 +1,3 @@
-
 #[test]
 fn run_wast_tests() {
     crate::util::setup_logger();

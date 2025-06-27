@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use orca_wasm::ir::module::side_effects::InjectType;
+use std::collections::HashMap;
 use whamm::api::instrument::Injection;
 
 pub const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";

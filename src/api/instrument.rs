@@ -11,30 +11,33 @@ use orca_wasm::ir::module::side_effects::{
 use orca_wasm::ir::types::{DataType as OrcaType, FuncInstrMode, InstrumentationMode};
 use orca_wasm::Module;
 use std::collections::HashMap;
+use std::env;
 use std::process::exit;
 use wasmparser::{ExternalKind, TypeRef};
 
 pub const MAX_ERRORS: i32 = 15;
+const CORE_LIB_PATH: &str = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 
 /// Using the passed Whamm script and configuration, instrument the target Wasm module via bytecode rewriting.
 ///
-/// * `core_wasm_path`: The path to the core library wasm module.
-/// * `defs_path`: The path to the provider definitions.
 /// * `app_wasm_path`: The path to the target application to instrument.
 /// * `script_path`: The path to the whamm script .mm file.
 /// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules.
 /// * `config`: The configuration to use when performing the instrumentation.
+/// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
+/// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn instrument_with_config(
-    core_wasm_path: &str,
-    defs_path: &str,
     app_wasm_path: String,
     script_path: String,
     user_lib_paths: Vec<String>,
     config: Config,
+    core_lib_path: Option<String>,
+    defs_path: Option<String>,
 ) -> Vec<u8> {
+    let (core_lib_path, defs_path) = get_paths_for(&core_lib_path, &defs_path);
     instr::run_with_path(
-        core_wasm_path,
-        defs_path,
+        &core_lib_path,
+        &defs_path,
         app_wasm_path,
         script_path,
         user_lib_paths,
@@ -45,45 +48,46 @@ pub fn instrument_with_config(
 
 /// Using the passed Whamm script, instrument the target Wasm module via bytecode rewriting.
 ///
-/// * `core_wasm_path`: The path to the core library wasm module.
-/// * `defs_path`: The path to the provider definitions.
 /// * `app_wasm_path`: The path to the target application to instrument.
 /// * `script_path`: The path to the whamm script .mm file.
 /// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules.
+/// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
+/// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn instrument_with_rewriting(
-    core_wasm_path: &str,
-    defs_path: &str,
     app_wasm_path: String,
     script_path: String,
     user_lib_paths: Vec<String>,
+    core_lib_path: Option<String>,
+    defs_path: Option<String>,
 ) -> Vec<u8> {
     instrument_with_config(
-        core_wasm_path,
-        defs_path,
         app_wasm_path,
         script_path,
         user_lib_paths,
         Config::default_rewriting(),
+        core_lib_path,
+        defs_path,
     )
 }
 
 /// Using the passed Whamm script, instrument the target Wasm module via bytecode rewriting.
 ///
-/// * `core_wasm_path`: The path to the core library wasm module.
-/// * `defs_path`: The path to the provider definitions.
 /// * `app_wasm_path`: The path to the target application to instrument.
 /// * `script_path`: The path to the whamm script .mm file.
 /// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules.
+/// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
+/// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn instrument_module_with_rewriting(
-    core_wasm_path: &str,
-    defs_path: &str,
     target_wasm: &mut Module,
     script_path: String,
     user_lib_paths: Vec<String>,
+    core_lib_path: Option<String>,
+    defs_path: Option<String>,
 ) -> Vec<u8> {
+    let (core_lib_path, defs_path) = get_paths_for(&core_lib_path, &defs_path);
     instr::run_on_module_and_encode(
-        core_wasm_path,
-        defs_path,
+        &core_lib_path,
+        &defs_path,
         target_wasm,
         script_path,
         user_lib_paths,
@@ -95,48 +99,49 @@ pub fn instrument_module_with_rewriting(
 /// Using the passed Whamm script, generate a monitor module that encodes instructions for
 /// dynamically applying instrumentation to an arbitrary Wasm module at runtime.
 ///
-/// * `core_wasm_path`: The path to the core library wasm module.
-/// * `defs_path`: The path to the provider definitions.
 /// * `app_wasm_path`: The path to the target application to instrument.
 /// * `script_path`: The path to the whamm script .mm file.
 /// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules.
+/// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
+/// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn generate_monitor_module(
-    core_wasm_path: &str,
-    defs_path: &str,
     script_path: String,
     user_lib_paths: Vec<String>,
+    core_lib_path: Option<String>,
+    defs_path: Option<String>,
 ) -> Vec<u8> {
     instrument_with_config(
-        core_wasm_path,
-        defs_path,
         "".to_string(),
         script_path,
         user_lib_paths,
         Config::default_monitor_module(),
+        core_lib_path,
+        defs_path,
     )
 }
 
 /// Using the passed Whamm script, perform a dry run of instrumentation and return metadata
 /// encoding the side effects that would occur for some program (`app_wasm_path`).
 ///
-/// * `core_wasm_path`: The path to the core library wasm module.
-/// * `defs_path`: The path to the provider definitions.
 /// * `app_wasm_path`: The path to the target application to instrument.
 /// * `script_path`: The path to the whamm script .mm file.
 /// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules.
+/// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
+/// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn instrument_as_dry_run(
-    core_wasm_path: &str,
-    defs_path: &str,
     app_wasm_path: String,
     script_path: String,
     user_lib_paths: Vec<String>,
+    core_lib_path: Option<String>,
+    defs_path: Option<String>,
 ) -> Result<HashMap<OrcaInjectType, Vec<Injection>>, Vec<WhammError>> {
     let buff = std::fs::read(app_wasm_path).unwrap();
     let mut target_wasm = Module::parse(&buff, false).unwrap();
 
+    let (core_lib_path, defs_path) = get_paths_for(&core_lib_path, &defs_path);
     match instr::dry_run_on_bytes(
-        core_wasm_path,
-        defs_path,
+        &core_lib_path,
+        &defs_path,
         &mut target_wasm,
         script_path,
         user_lib_paths,
@@ -155,6 +160,29 @@ pub fn instrument_as_dry_run(
             Ok(injections)
         }
         Err(errs) => Err(errs),
+    }
+}
+
+fn get_paths_for(core_lib_path: &Option<String>, defs_path: &Option<String>) -> (String, String) {
+    // Set up the whamm home directory
+    let whamm_home = format!(
+        "{}/",
+        env::var("WHAMM_HOME")
+            .unwrap_or_else(|_| "./".to_string())
+            .trim_end_matches("/")
+    );
+
+    (
+        get_path_for(core_lib_path, &whamm_home, CORE_LIB_PATH),
+        get_path_for(defs_path, &whamm_home, "."),
+    )
+}
+
+fn get_path_for(path: &Option<String>, whamm_home: &str, rel_to_whamm_home: &str) -> String {
+    if let Some(path) = path {
+        path.to_string()
+    } else {
+        format!("{}/{}", whamm_home, rel_to_whamm_home)
     }
 }
 
@@ -270,7 +298,7 @@ pub enum Injection {
         type_ref: TypeRef,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        cause: Cause
+        cause: Cause,
     },
     /// Represents an export that has been added to the module.
     Export {
@@ -282,13 +310,13 @@ pub enum Injection {
         index: u32,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        cause: Cause
+        cause: Cause,
     },
     Type {
         ty: Types,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        cause: Cause
+        cause: Cause,
     },
 
     /// Represents a memory that has been added to the module.
@@ -301,7 +329,7 @@ pub enum Injection {
         maximum: Option<u64>,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        cause: Cause
+        cause: Cause,
     },
 
     /// Represents an active data segment that has been added to the module.
@@ -316,7 +344,7 @@ pub enum Injection {
         data: Vec<u8>,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        cause: Cause
+        cause: Cause,
     },
 
     /// Represents a passive data segment that has been added to the module.
@@ -325,7 +353,7 @@ pub enum Injection {
         data: Vec<u8>,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        cause: Cause
+        cause: Cause,
     },
 
     /// Represents a global that has been added to the module.
@@ -342,7 +370,7 @@ pub enum Injection {
         init_expr: Vec<String>,
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        cause: Cause
+        cause: Cause,
     },
 
     /// Represents a local function that has been added to the module.
@@ -360,7 +388,7 @@ pub enum Injection {
 
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        cause: Cause
+        cause: Cause,
     },
 
     /// Represents a local variable that has been added to a module's local function.
@@ -371,7 +399,7 @@ pub enum Injection {
 
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
-        cause: Cause
+        cause: Cause,
     },
 
     /// Represents a table that has been added to the module.
@@ -390,7 +418,7 @@ pub enum Injection {
         mode: InstrumentationMode,
         /// The body of the probe (in WAT).
         body: Vec<String>,
-        cause: Cause
+        cause: Cause,
     },
     /// Represents a probe that has been injected into a module's function (as a specialized function mode).
     FuncProbe {
@@ -400,7 +428,7 @@ pub enum Injection {
         mode: FuncInstrMode,
         /// The body of the probe (in WAT).
         body: Vec<String>,
-        cause: Cause
+        cause: Cause,
     },
 }
 impl Injection {
@@ -418,9 +446,9 @@ impl Injection {
                     module: module.to_owned(),
                     name: name.to_owned(),
                     type_ref: type_ref.to_owned(),
-                    cause: Cause::from(reasons.first().unwrap())
+                    cause: Cause::from(reasons.first().unwrap()),
                 }]
-            },
+            }
             OrcaInjection::Export {
                 name,
                 kind,
@@ -432,16 +460,16 @@ impl Injection {
                     name: name.to_owned(),
                     kind: kind.to_owned(),
                     index: *index,
-                    cause: Cause::from(reasons.first().unwrap())
+                    cause: Cause::from(reasons.first().unwrap()),
                 }]
-            },
+            }
             OrcaInjection::Type { ty, tag, .. } => {
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Type {
                     ty: ty.to_owned(),
-                    cause: Cause::from(reasons.first().unwrap())
+                    cause: Cause::from(reasons.first().unwrap()),
                 }]
-            },
+            }
             OrcaInjection::Memory {
                 id,
                 initial,
@@ -453,9 +481,9 @@ impl Injection {
                     id: *id,
                     initial: *initial,
                     maximum: maximum.to_owned(),
-                    cause: Cause::from(reasons.first().unwrap())
+                    cause: Cause::from(reasons.first().unwrap()),
                 }]
-            },
+            }
             OrcaInjection::ActiveData {
                 memory_index,
                 offset_expr,
@@ -468,14 +496,14 @@ impl Injection {
                     memory_index: *memory_index,
                     offset_expr: vec![offset_expr_wat],
                     data: data.to_owned(),
-                    cause: Cause::from(reasons.first().unwrap())
+                    cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
             OrcaInjection::PassiveData { data, tag } => {
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::PassiveData {
                     data: data.to_owned(),
-                    cause: Cause::from(reasons.first().unwrap())
+                    cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
             OrcaInjection::Global {
@@ -494,7 +522,7 @@ impl Injection {
                     shared: *shared,
                     mutable: *mutable,
                     init_expr: vec![init_expr_wat],
-                    cause: Cause::from(reasons.first().unwrap())
+                    cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
             OrcaInjection::Func {
@@ -516,7 +544,7 @@ impl Injection {
                     sig: sig.to_owned(),
                     locals: locals.to_owned(),
                     body: body_ops,
-                    cause: Cause::from(reasons.first().unwrap())
+                    cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
             OrcaInjection::Local {
@@ -530,19 +558,19 @@ impl Injection {
                     ty: ty.to_owned(),
                     cause: Cause::from(reasons.first().unwrap()),
                 }]
-            },
+            }
             OrcaInjection::Table { tag } => {
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Table {
-                    cause: Cause::from(reasons.first().unwrap())
+                    cause: Cause::from(reasons.first().unwrap()),
                 }]
-            },
+            }
             OrcaInjection::Element { tag } => {
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Element {
-                    cause: Cause::from(reasons.first().unwrap())
+                    cause: Cause::from(reasons.first().unwrap()),
                 }]
-            },
+            }
             OrcaInjection::FuncProbe {
                 target_fid,
                 mode,
@@ -564,7 +592,7 @@ impl Injection {
                             target_fid: *target_fid,
                             mode: mode.to_owned(),
                             body: body_wat,
-                            cause: Cause::from(reason)
+                            cause: Cause::from(reason),
                         });
 
                         start_idx = *op_idx_end as usize;
@@ -591,7 +619,9 @@ impl Injection {
                 }
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 for reason in reasons.iter() {
-                    if let Reason::UserProbe { op_idx_end, .. } | Reason::WhammProbe { op_idx_end, .. } = reason {
+                    if let Reason::UserProbe { op_idx_end, .. }
+                    | Reason::WhammProbe { op_idx_end, .. } = reason
+                    {
                         let mut body_wat = vec![];
                         for op in body[start_idx..*op_idx_end as usize].iter() {
                             body_wat.push(format!("{:?}\n", op));
@@ -601,12 +631,15 @@ impl Injection {
                             target_opcode_idx: *target_opcode_idx,
                             mode: mode.to_owned(),
                             body: body_wat,
-                            cause: Cause::from(reason)
+                            cause: Cause::from(reason),
                         });
 
                         start_idx = *op_idx_end as usize;
                     } else {
-                        panic!("Should be a probe reason with an op index, but got: {:#?}", reason);
+                        panic!(
+                            "Should be a probe reason with an op index, but got: {:#?}",
+                            reason
+                        );
                     }
                 }
 
@@ -616,36 +649,33 @@ impl Injection {
     }
 }
 
-
 #[derive(Clone, Debug)]
 pub enum Cause {
     // There's a reason in the Whamm script for this addition
     // it's due to a single character.
-    UserPos {
-        lc: LineCol
-    },
+    UserPos { lc: LineCol },
     // There's a reason in the Whamm script for this addition
     // it's due to a span in the script.
-    UserSpan {
-        lc0: LineCol,
-        lc1: LineCol
-    },
+    UserSpan { lc0: LineCol, lc1: LineCol },
     // There's a reason in the Whamm script for this addition
     // it's due to a probe.
-    UserProbe {
-        lc0: LineCol,
-        lc1: LineCol
-    },
+    UserProbe { lc0: LineCol, lc1: LineCol },
     // The injection was for the Whamm language runtime
-    Whamm
+    Whamm,
 }
 impl From<&Reason> for Cause {
     fn from(value: &Reason) -> Self {
         match value {
-            Reason::UserPos {lc} => Self::UserPos {lc: *lc},
-            Reason::UserSpan {lc0, lc1} => Self::UserSpan {lc0: *lc0, lc1: *lc1},
-            Reason::UserProbe {lc0, lc1, ..} => Self::UserProbe {lc0: *lc0, lc1: *lc1},
-            Reason::Whamm | Reason::WhammProbe {..} => Self::Whamm
+            Reason::UserPos { lc } => Self::UserPos { lc: *lc },
+            Reason::UserSpan { lc0, lc1 } => Self::UserSpan {
+                lc0: *lc0,
+                lc1: *lc1,
+            },
+            Reason::UserProbe { lc0, lc1, .. } => Self::UserProbe {
+                lc0: *lc0,
+                lc1: *lc1,
+            },
+            Reason::Whamm | Reason::WhammProbe { .. } => Self::Whamm,
         }
     }
 }
