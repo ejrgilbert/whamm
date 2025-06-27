@@ -481,6 +481,7 @@ impl MapLibAdapter {
         let op_idx = init_fn.curr_instr_len() as u32;
         init_fn.append_tag_at(
             get_probe_tag_data(loc, op_idx),
+            // location is unused
             OrcaLocation::Module {
                 func_idx: FunctionID(0),
                 instr_idx: 0,

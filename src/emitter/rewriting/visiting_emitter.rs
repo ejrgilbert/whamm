@@ -543,7 +543,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     on_exit.call(FunctionID(flush_fid));
                     let op_idx = on_exit.curr_instr_len() as u32;
                     on_exit.append_tag_at(get_probe_tag_data(&None, op_idx), Location::Module {
-                        func_idx: FunctionID(flush_fid),
+                        func_idx: FunctionID(*fid),
                         instr_idx: 0,
                     });
                     // on_exit.finish_instr();
@@ -590,10 +590,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
             main.func_exit();
             main.call(on_exit_id);
-            // location is unused
             let op_idx = main.curr_instr_len() as u32;
             main.append_tag_at(
                 get_probe_tag_data(&None, op_idx),
+                // location is unused
                 Location::Module {
                     func_idx: FunctionID(0),
                     instr_idx: 0,

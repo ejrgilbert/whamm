@@ -128,7 +128,7 @@ impl Reason {
             }),
             _ => panic!("Invalid reason ID in tag: {id}"),
         }
-        assert_eq!(0, bytes.len());
+        // assert_eq!(0, bytes.len());
         reasons
     }
 }

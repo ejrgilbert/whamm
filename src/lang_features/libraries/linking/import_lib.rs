@@ -201,7 +201,6 @@ fn import_memory(
     loc: &Option<Location>,
     app_wasm: &mut Module,
 ) -> u32 {
-    // TODO point to 'use'
     let (mem_id, imp_id) = app_wasm.add_import_memory(
         module_name.to_string(),
         mem_name.to_string(),

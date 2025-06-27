@@ -349,7 +349,6 @@ pub fn whamm_type_to_wasm_global(
 ) -> (GlobalID, OrcaType) {
     let orca_wasm_ty = ty.to_wasm_type();
 
-    // TODO -- pull location of the global
     if orca_wasm_ty.len() == 1 {
         match orca_wasm_ty.first().unwrap() {
             OrcaType::I32 => {
