@@ -4,6 +4,7 @@ use crate::api::instrument::{Config, LibraryLinkStrategy};
 use crate::api::utils::wasm2wat_on_file;
 use crate::common::instr::{run, try_path};
 use crate::common::metrics::Metrics;
+use crate::parser::yml_processor::pull_all_yml_files;
 use log::{debug, error};
 use std::fs::{remove_dir_all, File};
 use std::io::{BufRead, BufReader, Write};
@@ -229,10 +230,18 @@ fn generate_instrumented_bin_wast(
         );
         let wast_path_str = wast_path.to_str().unwrap().replace("\"", "");
 
+        let core_lib = std::fs::read(CORE_WASM_PATH).unwrap_or_else(|_| {
+            panic!(
+                "Could not read the core wasm module expected to be at location: {}",
+                CORE_WASM_PATH
+            )
+        });
+        let def_yamls = pull_all_yml_files(DEFS_PATH);
+
         let mut metrics = Metrics::default();
         if let Err(mut err) = run(
-            CORE_WASM_PATH,
-            DEFS_PATH,
+            &core_lib,
+            &def_yamls,
             &mut module_to_instrument,
             &test_case.whamm_script,
             &wast_path_str,

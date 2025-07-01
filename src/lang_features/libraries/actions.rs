@@ -10,7 +10,7 @@ pub fn link_core_lib(
     method: LibraryLinkStrategy,
     ast: &[Script],
     app_wasm: &mut Module,
-    core_wasm_path: &str,
+    core_lib: &[u8],
     mem_allocator: &mut MemoryAllocator,
     packages: &mut [&mut dyn LibPackage],
     err: &mut ErrorGen,
@@ -20,7 +20,7 @@ pub fn link_core_lib(
             crate::lang_features::libraries::linking::import_lib::link_core_lib(
                 ast,
                 app_wasm,
-                core_wasm_path,
+                core_lib,
                 mem_allocator,
                 packages,
                 err,

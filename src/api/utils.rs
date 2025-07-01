@@ -1,3 +1,4 @@
+use crate::api::get_defs;
 use crate::api::instrument::MAX_ERRORS;
 use crate::common::error::ErrorGen;
 use crate::common::instr;
@@ -13,10 +14,16 @@ use std::process::Command;
 /// * `defs_path`: The path to follow to find the provider definitions
 /// * `print_vars`: Whether to print the bound variables for the match rule
 /// * `print_functions`: Whether to print the bound functions for the match rule
-pub fn print_info(rule: String, defs_path: &str, print_vars: bool, print_functions: bool) {
+pub fn print_info(
+    rule: String,
+    defs_path: Option<String>,
+    print_vars: bool,
+    print_functions: bool,
+) {
     // Parse the script and generate the information
     let mut err = ErrorGen::new("".to_string(), rule.clone(), MAX_ERRORS);
-    parser::whamm_parser::print_info(rule, defs_path, print_vars, print_functions, &mut err);
+    let def_yamls = get_defs(defs_path);
+    parser::whamm_parser::print_info(rule, &def_yamls, print_vars, print_functions, &mut err);
 
     err.fatal_report("PrintInfo");
 }

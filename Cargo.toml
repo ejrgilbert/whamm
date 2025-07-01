@@ -40,4 +40,4 @@ wat = "1.214.0"
 clap = { version = "4.5.4", features = ["derive", "cargo", "env"] }
 clap_complete = "4.5.2"
 clap_mangen = "0.2.20"
-project-root = "0.2.2"
+glob = "0.3.1"
