@@ -4,15 +4,14 @@ mod cli;
 use cli::{Cmd, WhammCli};
 use std::env;
 
-use crate::cli::LibraryLinkStrategyArg;
 use clap::Parser;
+use cli::LibraryLinkStrategyArg;
 use std::path::PathBuf;
 use std::process::exit;
 use whamm::api::instrument::{instrument_with_config, Config, LibraryLinkStrategy};
 use whamm::api::utils::{print_info, run_wast_tests_at, write_to_file};
 
 const ENABLE_WIZARD_ALT: bool = false;
-const CORE_WASM_PATH: &str = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 
 fn setup_logger() {
     env_logger::init();
@@ -68,19 +67,7 @@ fn try_main() -> Result<(), failure::Error> {
             } else {
                 "".to_string()
             };
-            let core_lib_path = if let Some(core_lib) = args.core_lib {
-                core_lib
-            } else {
-                format!("{}/{}", whamm_home, CORE_WASM_PATH)
-            };
-            let defs = if let Some(path) = args.defs_path {
-                path
-            } else {
-                whamm_home
-            };
             let result = instrument_with_config(
-                &core_lib_path,
-                &defs,
                 app_path,
                 args.script,
                 args.user_libs,
@@ -95,6 +82,8 @@ fn try_main() -> Result<(), failure::Error> {
                     args.testing,
                     args.link_strategy.map(|s| s.into()),
                 ),
+                args.core_lib,
+                args.defs_path,
             );
             write_to_file(result, args.output_path);
         }

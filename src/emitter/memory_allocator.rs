@@ -1,15 +1,16 @@
 use crate::common::error::ErrorGen;
+use crate::emitter::tag_handler::get_tag_for;
 use crate::parser::types::DataType;
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID, MemoryID};
-use orca_wasm::ir::types::DataType as OrcaType;
-use orca_wasm::ir::types::{BlockType, InitExpr, Value as OrcaValue};
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::MacroOpcode;
-use orca_wasm::{DataSegment, DataSegmentKind, Instructions, Module, Opcode};
 use std::collections::HashMap;
 use wasmparser::MemArg;
+use wirm::ir::function::FunctionBuilder;
+use wirm::ir::id::{FunctionID, GlobalID, LocalID, MemoryID};
+use wirm::ir::types::DataType as WirmType;
+use wirm::ir::types::{BlockType, InitExpr, Value as WirmValue};
+use wirm::module_builder::AddLocal;
+use wirm::opcode::MacroOpcode;
+use wirm::{DataSegment, DataSegmentKind, InitInstr, Module, Opcode};
 
 pub const WASM_PAGE_SIZE: u32 = 65_536;
 pub const VAR_BLOCK_BASE_VAR: &str = "var_block_base_offset";
@@ -215,8 +216,8 @@ impl MemoryAllocator {
         dst_mem_tracker: GlobalID,
         func: &mut T,
     ) {
-        let i = func.add_local(OrcaType::I32);
-        let tmp = func.add_local(OrcaType::I32);
+        let i = func.add_local(WirmType::I32);
+        let tmp = func.add_local(WirmType::I32);
 
         let src_mem = MemArg {
             align: 0,
@@ -274,8 +275,8 @@ impl MemoryAllocator {
         dst_offset: u32,
         func: &mut T,
     ) {
-        let i = func.add_local(OrcaType::I32);
-        let tmp = func.add_local(OrcaType::I32);
+        let i = func.add_local(WirmType::I32);
+        let tmp = func.add_local(WirmType::I32);
 
         let app_mem = MemArg {
             align: 0,
@@ -345,8 +346,8 @@ impl MemoryAllocator {
         dst_offset: u32,
         func: &mut T,
     ) {
-        let i = func.add_local(OrcaType::I32);
-        let tmp = func.add_local(OrcaType::I32);
+        let i = func.add_local(WirmType::I32);
+        let tmp = func.add_local(WirmType::I32);
 
         let app_mem = MemArg {
             align: 0,
@@ -413,14 +414,14 @@ impl MemoryAllocator {
     ) -> FunctionID {
         // specify params
         let bytes_needed = LocalID(0);
-        let check_memsize_params = vec![OrcaType::I32];
+        let check_memsize_params = vec![WirmType::I32];
 
         let mut check_memsize = FunctionBuilder::new(&check_memsize_params, &[]);
 
         // specify locals
-        let bytes_per_page = check_memsize.add_local(OrcaType::I32);
-        let curr_pages = check_memsize.add_local(OrcaType::I32);
-        let max_needed_addr = check_memsize.add_local(OrcaType::I32);
+        let bytes_per_page = check_memsize.add_local(WirmType::I32);
+        let curr_pages = check_memsize.add_local(WirmType::I32);
+        let max_needed_addr = check_memsize.add_local(WirmType::I32);
 
         check_memsize
             .u32_const(WASM_PAGE_SIZE)
@@ -449,7 +450,7 @@ impl MemoryAllocator {
             .drop()
             .end();
 
-        let check_memsize_fid = check_memsize.finish_module(wasm);
+        let check_memsize_fid = check_memsize.finish_module_with_tag(wasm, get_tag_for(&None));
         wasm.set_fn_name(
             check_memsize_fid,
             format!("check_memsize_for_mem{}", mem_id),
@@ -530,7 +531,7 @@ impl MemoryAllocator {
         &mut self,
         curr_offset: u32,
         local: LocalID,
-        local_ty: &OrcaType,
+        local_ty: &WirmType,
         mem_id: u32,
         mem_tracker: GlobalID,
         func: &mut FunctionBuilder,
@@ -582,10 +583,11 @@ impl MemoryAllocator {
             data: val_bytes,
             kind: DataSegmentKind::Active {
                 memory_index: self.mem_id,
-                offset_expr: InitExpr::new(vec![Instructions::Value(OrcaValue::I32(
+                offset_expr: InitExpr::new(vec![InitInstr::Value(WirmValue::I32(
                     self.curr_mem_offset as i32,
                 ))]),
             },
+            tag: None,
         };
         wasm.data.push(data_segment);
 
@@ -633,7 +635,7 @@ impl MemoryAllocator {
         // use this function to account for the statically-used memory
         wasm.mod_global_init_expr(
             self.mem_tracker_global,
-            InitExpr::new(vec![Instructions::Value(OrcaValue::I32(
+            InitExpr::new(vec![InitInstr::Value(WirmValue::I32(
                 self.curr_mem_offset as i32,
             ))]),
         )

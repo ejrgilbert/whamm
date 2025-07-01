@@ -1,28 +1,29 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::emitter::tag_handler::get_tag_for;
 use crate::generator::ast::Script;
 use crate::lang_features::libraries::core::{
     LibPackage, WHAMM_CORE_LIB_MEM_NAME, WHAMM_CORE_LIB_NAME,
 };
+use crate::parser::types::Location;
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
-use orca_wasm::ir::id::FunctionID;
-use orca_wasm::{DataType, Module};
 use std::collections::HashSet;
 use wasmparser::{ExternalKind, MemoryType};
-
-/// Some documentation on why it's difficult to only import the *used* functions.
-///
-/// TLDR; Rust ownership.
-/// If I pass in a reference to both the application module (to conditionally import
-/// if not already done) AND a function modifier to the library adapter, I'll have
-/// two mutable references to the app module.
-/// This means that the caller will have to check for needed imports BEFORE actually
-/// delegating to the adapter...which means that I'd have to break the practice of
-/// information hiding. Or, I could create a 'check_OPERATION()' per 'OPERATION()',
-/// which would just be more clunky.
-///
-/// So for now, we'll do this, but it can be changed later if I get a better idea.
+use wirm::ir::id::FunctionID;
+use wirm::{DataType, Module};
+// Some documentation on why it's difficult to only import the *used* functions.
+//
+// TLDR; Rust ownership.
+// If I pass in a reference to both the application module (to conditionally import
+// if not already done) AND a function modifier to the library adapter, I'll have
+// two mutable references to the app module.
+// This means that the caller will have to check for needed imports BEFORE actually
+// delegating to the adapter...which means that I'd have to break the practice of
+// information hiding. Or, I could create a 'check_OPERATION()' per 'OPERATION()',
+// which would just be more clunky.
+//
+// So for now, we'll do this, but it can be changed later if I get a better idea.
 
 pub fn link_core_lib(
     ast: &[Script],
@@ -38,7 +39,7 @@ pub fn link_core_lib(
         package.set_adapter_usage(package.is_used());
         package.set_global_adapter_usage(package.is_used_in_global_scope());
         if package.is_used() {
-            // Read core library Wasm into Orca module
+            // Read core library Wasm into Wirm module
             let buff = std::fs::read(core_wasm_path).unwrap_or_else(|_| {
                 panic!(
                     "Could not read the core wasm module expected to be at location: {}",
@@ -47,12 +48,14 @@ pub fn link_core_lib(
             });
             let core_lib = Module::parse(&buff, false).unwrap();
             if package.import_memory() {
-                let lib_mem_id = import_lib_memory(app_wasm, WHAMM_CORE_LIB_NAME.to_string());
+                let lib_mem_id =
+                    import_lib_memory(app_wasm, &None, WHAMM_CORE_LIB_NAME.to_string());
                 package.set_lib_mem_id(lib_mem_id);
             }
             package.set_instr_mem_id(mem_allocator.mem_id as i32);
             injected_funcs.extend(import_lib_package(
                 app_wasm,
+                &None,
                 WHAMM_CORE_LIB_NAME.to_string(),
                 &core_lib,
                 *package,
@@ -65,13 +68,22 @@ pub fn link_core_lib(
 
 pub fn link_user_lib(
     app_wasm: &mut Module,
+    loc: &Option<Location>,
     lib_wasm: &Module,
     lib_name: String,
     used_lib_fns: &HashSet<String>,
     table: &mut SymbolTable,
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
-    let added = import_lib_fn_names(app_wasm, lib_name, lib_wasm, used_lib_fns, Some(table), err);
+    let added = import_lib_fn_names(
+        app_wasm,
+        loc,
+        lib_name,
+        lib_wasm,
+        used_lib_fns,
+        Some(table),
+        err,
+    );
 
     let mut injected_funcs = vec![];
     for (_, fid) in added.iter() {
@@ -81,12 +93,13 @@ pub fn link_user_lib(
     injected_funcs
 }
 
-fn import_lib_memory(app_wasm: &mut Module, lib_name: String) -> i32 {
+fn import_lib_memory(app_wasm: &mut Module, loc: &Option<Location>, lib_name: String) -> i32 {
     trace!("Enter import_lib_memory");
     let mem_id = import_memory(
         lib_name.as_str(),
         WHAMM_CORE_LIB_MEM_NAME,
         "lib_mem",
+        loc,
         app_wasm,
     );
 
@@ -96,6 +109,7 @@ fn import_lib_memory(app_wasm: &mut Module, lib_name: String) -> i32 {
 
 fn import_lib_package(
     app_wasm: &mut Module,
+    loc: &Option<Location>,
     lib_name: String,
     lib_wasm: &Module,
     package: &mut dyn LibPackage,
@@ -106,6 +120,7 @@ fn import_lib_package(
     // should only import the EXPORTED contents of the lib_wasm
     let added = import_lib_fn_names(
         app_wasm,
+        loc,
         lib_name,
         lib_wasm,
         &HashSet::from_iter(package.get_fn_names().iter().cloned()),
@@ -127,6 +142,7 @@ fn import_lib_package(
 
 fn import_lib_fn_names(
     app_wasm: &mut Module,
+    loc: &Option<Location>,
     lib_name: String,
     lib_wasm: &Module,
     lib_fns: &HashSet<String>,
@@ -146,6 +162,7 @@ fn import_lib_fn_names(
                         fn_name,
                         &ty.params().clone(),
                         &ty.results().clone(),
+                        loc,
                         app_wasm,
                     );
                     // save the FID to the symbol table
@@ -177,8 +194,14 @@ fn import_lib_fn_names(
     injected_fns
 }
 
-fn import_memory(module_name: &str, mem_name: &str, use_name: &str, app_wasm: &mut Module) -> u32 {
-    let (mem_id, imp_id) = app_wasm.add_import_memory(
+fn import_memory(
+    module_name: &str,
+    mem_name: &str,
+    use_name: &str,
+    loc: &Option<Location>,
+    app_wasm: &mut Module,
+) -> u32 {
+    let (mem_id, imp_id) = app_wasm.add_import_memory_with_tag(
         module_name.to_string(),
         mem_name.to_string(),
         MemoryType {
@@ -188,6 +211,7 @@ fn import_memory(module_name: &str, mem_name: &str, use_name: &str, app_wasm: &m
             maximum: None,
             page_size_log2: None,
         },
+        get_tag_for(loc),
     );
     app_wasm.imports.set_name(use_name.to_string(), imp_id);
 
@@ -199,10 +223,16 @@ pub fn import_func(
     fname: &str,
     params: &[DataType],
     results: &[DataType],
+    loc: &Option<Location>,
     app_wasm: &mut Module,
 ) -> u32 {
-    let ty_id = app_wasm.types.add_func_type(params, results);
-    let (fid, imp_id) = app_wasm.add_import_func(module_name.to_string(), fname.to_string(), ty_id);
+    let ty_id = app_wasm.types.add_func_type(params, results, None);
+    let (fid, imp_id) = app_wasm.add_import_func_with_tag(
+        module_name.to_string(),
+        fname.to_string(),
+        ty_id,
+        get_tag_for(loc),
+    );
     app_wasm.imports.set_name(fname.to_string(), imp_id);
 
     *fid

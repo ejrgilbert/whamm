@@ -37,6 +37,10 @@ impl ErrorGen {
         }
     }
 
+    pub fn pull_errs(&self) -> Vec<WhammError> {
+        self.errors.to_owned()
+    }
+
     pub fn update_match_rule(&mut self, match_rule: Option<String>) {
         self.curr_match_rule = match_rule;
     }

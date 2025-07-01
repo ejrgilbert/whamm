@@ -12,9 +12,9 @@ use crate::generator::ast::ReqArgs;
 use crate::parser::provider_handler::{
     get_matches, BoundVar, Event, Package, Probe, Provider, ProviderDef,
 };
-use orca_wasm::ir::types::DataType as OrcaType;
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
+use wirm::ir::types::DataType as WirmType;
 
 #[derive(Parser)]
 #[grammar = "./parser/whamm.pest"] // Path relative to base `src` dir
@@ -64,9 +64,18 @@ impl Location {
         };
 
         let pos1 = match loc1 {
-            LineColLocation::Pos(pos0) => pos0,
+            LineColLocation::Pos(pos1) => pos1,
             LineColLocation::Span(.., span1) => span1,
         };
+
+        // make sure pos0 < pos1
+        let ((l0, c0), (l1, c1)) = (pos0, pos1);
+        if l0 > l1 || (l0 == l1 && c0 > c1) {
+            panic!(
+                "loc0 comes after loc1...something's gone horribly wrong! loc0: {:?}, loc1: {:?}",
+                pos0, pos1
+            );
+        }
 
         Location {
             line_col: LineColLocation::Span(*pos0, *pos1),
@@ -248,12 +257,12 @@ impl DataType {
         }
     }
     fn as_i32_in_wasm(&self) -> bool {
-        self.to_wasm_type() == vec![OrcaType::I32]
+        self.to_wasm_type() == vec![WirmType::I32]
     }
     fn as_i64_in_wasm(&self) -> bool {
-        self.to_wasm_type() == vec![OrcaType::I64]
+        self.to_wasm_type() == vec![WirmType::I64]
     }
-    pub fn to_wasm_type(&self) -> Vec<OrcaType> {
+    pub fn to_wasm_type(&self) -> Vec<WirmType> {
         match self {
             DataType::U8
             | DataType::I8
@@ -261,52 +270,55 @@ impl DataType {
             | DataType::I16
             | DataType::I32
             | DataType::U32
-            | DataType::Boolean => vec![OrcaType::I32],
-            DataType::F32 => vec![OrcaType::F32],
-            DataType::I64 | DataType::U64 => vec![OrcaType::I64],
-            DataType::F64 => vec![OrcaType::F64],
+            | DataType::Boolean => vec![WirmType::I32],
+            DataType::F32 => vec![WirmType::F32],
+            DataType::I64 | DataType::U64 => vec![WirmType::I64],
+            DataType::F64 => vec![WirmType::F64],
             // the ID used to track this var in the lib
-            DataType::Map { .. } => vec![OrcaType::I32],
+            DataType::Map { .. } => vec![WirmType::I32],
             DataType::Null => unimplemented!(),
-            DataType::Str => vec![OrcaType::I32, OrcaType::I32],
+            DataType::Str => vec![WirmType::I32, WirmType::I32],
             DataType::Tuple { .. } => unimplemented!(),
             DataType::Unknown => unimplemented!(),
             DataType::AssumeGood => unimplemented!(),
         }
     }
-    pub fn from_wasm_type(ty: &OrcaType) -> Self {
+    pub fn from_wasm_type(ty: &WirmType) -> Self {
         match ty {
-            OrcaType::I8 => DataType::I8,
-            OrcaType::I16 => DataType::I16,
-            OrcaType::I32 => DataType::I32,
-            OrcaType::I64 => DataType::I64,
-            OrcaType::F32 => DataType::F32,
-            OrcaType::F64 => DataType::F64,
-            OrcaType::FuncRef
-            | OrcaType::FuncRefNull
-            | OrcaType::Cont
-            | OrcaType::NoCont
-            | OrcaType::ExternRef
-            | OrcaType::ExternRefNull
-            | OrcaType::Any
-            | OrcaType::AnyNull
-            | OrcaType::None
-            | OrcaType::NoExtern
-            | OrcaType::NoFunc
-            | OrcaType::Eq
-            | OrcaType::EqNull
-            | OrcaType::Struct
-            | OrcaType::StructNull
-            | OrcaType::Array
-            | OrcaType::ArrayNull
-            | OrcaType::I31
-            | OrcaType::I31Null
-            | OrcaType::Exn
-            | OrcaType::NoExn
-            | OrcaType::Module { .. }
-            | OrcaType::RecGroup(_)
-            | OrcaType::CoreTypeId(_)
-            | OrcaType::V128 => unimplemented!(),
+            WirmType::I8 => DataType::I8,
+            WirmType::I16 => DataType::I16,
+            WirmType::I32 => DataType::I32,
+            WirmType::I64 => DataType::I64,
+            WirmType::F32 => DataType::F32,
+            WirmType::F64 => DataType::F64,
+            WirmType::FuncRef
+            | WirmType::FuncRefNull
+            | WirmType::Cont
+            | WirmType::NoCont
+            | WirmType::ExternRef
+            | WirmType::ExternRefNull
+            | WirmType::Any
+            | WirmType::AnyNull
+            | WirmType::None
+            | WirmType::NoneNull
+            | WirmType::NoExtern
+            | WirmType::NoExternNull
+            | WirmType::NoFunc
+            | WirmType::NoFuncNull
+            | WirmType::Eq
+            | WirmType::EqNull
+            | WirmType::Struct
+            | WirmType::StructNull
+            | WirmType::Array
+            | WirmType::ArrayNull
+            | WirmType::I31
+            | WirmType::I31Null
+            | WirmType::Exn
+            | WirmType::NoExn
+            | WirmType::Module { .. }
+            | WirmType::RecGroup(_)
+            | WirmType::CoreTypeId(_)
+            | WirmType::V128 => unimplemented!(),
         }
     }
     pub fn can_implicitly_cast(&self) -> bool {
@@ -1693,6 +1705,56 @@ impl Script {
         if matches.is_empty() {
             assert!(err.has_errors);
         }
+
+        // create the location for the entire probe
+        let loc_start = get_loc_with_priority(
+            &probe_rule.provider,
+            &probe_rule.package,
+            &probe_rule.event,
+            &probe_rule.mode,
+            "start",
+        );
+
+        let loc_end = if let Some(body) = &body {
+            if let Some(loc) = body.loc.as_ref() {
+                loc.clone()
+            } else if let Some(predicate) = &predicate {
+                if let Some(loc) = predicate.loc().as_ref() {
+                    loc.clone()
+                } else {
+                    get_loc_with_priority(
+                        &probe_rule.mode,
+                        &probe_rule.event,
+                        &probe_rule.package,
+                        &probe_rule.provider,
+                        "start",
+                    )
+                }
+            } else {
+                get_loc_with_priority(
+                    &probe_rule.mode,
+                    &probe_rule.event,
+                    &probe_rule.package,
+                    &probe_rule.provider,
+                    "start",
+                )
+            }
+        } else {
+            get_loc_with_priority(
+                &probe_rule.mode,
+                &probe_rule.event,
+                &probe_rule.package,
+                &probe_rule.provider,
+                "start",
+            )
+        };
+
+        let loc = Location::from(
+            &loc_start.line_col,
+            &loc_end.line_col,
+            loc_start.path.clone(),
+        );
+
         for prov_match in matches.iter() {
             let provider = self
                 .providers
@@ -1700,6 +1762,7 @@ impl Script {
                 .or_insert(Provider::new(prov_match.def.clone(), probe_rule));
 
             provider.add_probes(
+                loc.clone(),
                 &prov_match.packages,
                 probe_rule,
                 predicate.clone(),
@@ -1707,6 +1770,35 @@ impl Script {
             );
         }
     }
+}
+
+fn get_loc_with_priority(
+    p0: &Option<RulePart>,
+    p1: &Option<RulePart>,
+    p2: &Option<RulePart>,
+    p3: &Option<RulePart>,
+    err: &str,
+) -> Location {
+    if let Some(p0) = get_loc(p0) {
+        p0
+    } else if let Some(p1) = get_loc(p1) {
+        p1
+    } else if let Some(p2) = get_loc(p2) {
+        p2
+    } else if let Some(p3) = get_loc(p3) {
+        p3
+    } else {
+        panic!("Could not find a {err} for the probe's location!")
+    }
+}
+
+fn get_loc(rule_part: &Option<RulePart>) -> Option<Location> {
+    if let Some(part) = &rule_part {
+        if let Some(loc) = part.loc.as_ref() {
+            return Some(loc.clone());
+        }
+    }
+    None
 }
 
 #[derive(Clone, Debug)]

@@ -574,28 +574,28 @@ pub enum ScopeType {
 impl Display for ScopeType {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            ScopeType::Whamm { .. } => {
+            ScopeType::Whamm => {
                 write!(f, "Whamm")
             }
-            ScopeType::Script { .. } => {
+            ScopeType::Script => {
                 write!(f, "Script")
             }
-            ScopeType::Provider { .. } => {
+            ScopeType::Provider => {
                 write!(f, "Provider")
             }
-            ScopeType::Package { .. } => {
+            ScopeType::Package => {
                 write!(f, "Package")
             }
-            ScopeType::Event { .. } => {
+            ScopeType::Event => {
                 write!(f, "Event")
             }
-            ScopeType::Probe { .. } => {
+            ScopeType::Probe => {
                 write!(f, "Probe")
             }
-            ScopeType::Fn { .. } => {
+            ScopeType::Fn => {
                 write!(f, "Fn")
             }
-            ScopeType::Null { .. } => {
+            ScopeType::Null => {
                 write!(f, "Null")
             }
         }

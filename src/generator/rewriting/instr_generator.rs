@@ -2,19 +2,21 @@ use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
+use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::Emitter;
 use crate::generator::ast::Probe;
 use crate::generator::folding::ExprFolder;
 use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::provider_handler::ModeKind;
-use crate::parser::types::{Block, Expr};
-use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::FunctionID;
-use orca_wasm::iterator::iterator_trait::Iterator;
-use orca_wasm::{Location as OrcaLocation, Opcode};
+use crate::parser::types::{Block, Expr, Location};
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
+use wirm::ir::function::FunctionBuilder;
+use wirm::ir::id::FunctionID;
+use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator};
+use wirm::opcode::Instrumenter;
+use wirm::{Location as WirmLocation, Opcode};
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -55,6 +57,7 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub err: &'h mut ErrorGen,
     curr_instr_args: Vec<Arg>,
     curr_probe_mode: ModeKind,
+    curr_probe_loc: Option<Location>,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Block>, Option<Expr>)>,
 
@@ -77,6 +80,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
             err,
             curr_instr_args: vec![],
             curr_probe_mode: ModeKind::Before,
+            curr_probe_loc: None,
             curr_probe: None,
             has_reports,
             on_exit_fid: None,
@@ -126,7 +130,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                 if loc_info.is_prog_exit {
                     if self.on_exit_fid.is_none() {
                         let on_exit = FunctionBuilder::new(&[], &[]);
-                        let on_exit_id = on_exit.finish_module(self.emitter.app_iter.module);
+                        let on_exit_id = on_exit.finish_module_with_tag(
+                            self.emitter.app_iter.module,
+                            get_tag_for(&None),
+                        );
                         self.emitter
                             .app_iter
                             .module
@@ -138,6 +145,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                     if let Some(fid) = self.on_exit_fid {
                         self.emitter.before();
                         self.emitter.app_iter.call(FunctionID(fid));
+                        let op_idx = self.emitter.app_iter.curr_instr_len() as u32;
+                        // this is for Whamm reporting, not tied to this probe specifically
+                        self.emitter
+                            .app_iter
+                            .append_to_tag(get_probe_tag_data(&None, op_idx));
                     } else {
                         panic!("something went horribly wrong")
                     }
@@ -163,8 +175,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
 
                     // Create a new clone of the probe, fold the predicate.
                     // NOTE: We make a clone so that the probe is reset for each instruction!
-                    let (body_clone, mut pred_clone) =
-                        (probe.body.clone(), probe.predicate.clone());
+                    let (body_clone, mut pred_clone, loc_clone) = (
+                        probe.body.clone(),
+                        probe.predicate.clone(),
+                        probe.loc.clone(),
+                    );
                     if let Some(pred) = &mut pred_clone {
                         // Fold predicate
                         is_success = self.emitter.fold_expr(pred, self.err);
@@ -180,6 +195,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
 
                     self.curr_instr_args = loc_info.args.clone(); // must clone so that this lives long enough
                     self.curr_probe_mode = probe_rule.mode.as_ref().unwrap().clone();
+                    self.curr_probe_loc = loc_clone;
                     self.curr_probe = Some((body_clone, pred_clone));
 
                     if !self.config.no_bundle {
@@ -206,12 +222,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
         let probe_rule_str = probe_rule.to_string();
         let curr_probe_id = format!("{}_{}", probe.probe_number, probe_rule_str);
         let (loc, new_fid) = match self.emitter.app_iter.curr_loc().0 {
-            OrcaLocation::Module {
+            WirmLocation::Module {
                 func_idx,
                 instr_idx,
                 ..
             }
-            | OrcaLocation::Component {
+            | WirmLocation::Component {
                 func_idx,
                 instr_idx,
                 ..
@@ -237,7 +253,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
         };
     }
 }
-impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_, '_> {
+impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn emit_probe(&mut self, dynamic_data: &HashMap<String, Block>) -> bool {
         let mut is_success = true;
 
@@ -287,6 +303,11 @@ impl<'b> InstrGenerator<'_, 'b, '_, '_, '_, '_, '_, '_, '_> {
             }
         }
         self.emitter.reset_locals_for_probe();
+
+        let op_idx = self.emitter.app_iter.curr_instr_len() as u32;
+        self.emitter
+            .app_iter
+            .append_to_tag(get_probe_tag_data(&self.curr_probe_loc, op_idx));
 
         is_success
     }

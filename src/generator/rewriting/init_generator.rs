@@ -6,11 +6,11 @@ use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::generator::{emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::report_vars::LocationData;
-use crate::parser::types::{DataType, Statement, Value, Whamm, WhammVisitorMut};
+use crate::parser::types::{DataType, Location, Statement, Value, Whamm, WhammVisitorMut};
 use crate::verifier::types::Record;
-use orca_wasm::ir::id::FunctionID;
-use orca_wasm::Module;
 use std::collections::{HashMap, HashSet};
+use wirm::ir::id::FunctionID;
+use wirm::Module;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -76,7 +76,7 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter.emit_report_global(name, ty, value, self.err)
     }
 
-    fn link_user_lib(&mut self, lib_name: &str) {
+    fn link_user_lib(&mut self, lib_name: &str, loc: &Option<Location>) {
         // Perform import now! (we'll be in the right table scope at this point)
         if let Some(used_fns) = self.used_fns_per_lib.get(lib_name) {
             let Some(lib_wasm) = self.user_lib_modules.get(lib_name) else {
@@ -85,6 +85,7 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
             self.injected_funcs.extend(
                 crate::lang_features::libraries::linking::import_lib::link_user_lib(
                     self.emitter.app_wasm,
+                    loc,
                     lib_wasm,
                     lib_name.to_string(),
                     used_fns,

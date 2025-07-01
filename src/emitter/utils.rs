@@ -2,6 +2,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::emitter::tag_handler::get_tag_for;
 use crate::emitter::InjectStrategy;
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::libraries::core::maps::map_adapter::{MapLibAdapter, MAP_LIB_MEM_OFFSET};
@@ -9,11 +10,12 @@ use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
 };
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable, VarAddr};
-use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
-use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as OrcaValue};
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::{MacroOpcode, Opcode};
-use orca_wasm::{Instructions, Module};
+use wirm::ir::function::FunctionBuilder;
+use wirm::ir::id::{FunctionID, GlobalID, LocalID};
+use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmValue};
+use wirm::module_builder::AddLocal;
+use wirm::opcode::{MacroOpcode, Opcode};
+use wirm::{InitInstr, Module};
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -342,59 +344,82 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 pub fn whamm_type_to_wasm_global(
     app_wasm: &mut Module,
     ty: &DataType,
+    loc: &Option<Location>,
     init_expr: Option<InitExpr>,
-) -> (GlobalID, OrcaType) {
-    let orca_wasm_ty = ty.to_wasm_type();
+) -> (GlobalID, WirmType) {
+    let wirm_ty = ty.to_wasm_type();
 
-    if orca_wasm_ty.len() == 1 {
-        match orca_wasm_ty.first().unwrap() {
-            OrcaType::I32 => {
-                let global_id = app_wasm.add_global(
+    if wirm_ty.len() == 1 {
+        match wirm_ty.first().unwrap() {
+            WirmType::I32 => {
+                let global_id = app_wasm.add_global_with_tag(
+                    init_expr.unwrap_or(InitExpr::new(vec![InitInstr::Value(WirmValue::I32(0))])),
+                    WirmType::I32,
+                    true,
+                    false,
+                    get_tag_for(loc),
+                );
+                (global_id, WirmType::I32)
+            }
+            WirmType::I64 => {
+                let global_id = app_wasm.add_global_with_tag(
+                    init_expr.unwrap_or(InitExpr::new(vec![InitInstr::Value(WirmValue::I64(0))])),
+                    WirmType::I64,
+                    true,
+                    false,
+                    get_tag_for(loc),
+                );
+                (global_id, WirmType::I64)
+            }
+            WirmType::F32 => {
+                let global_id = app_wasm.add_global_with_tag(
                     init_expr
-                        .unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))])),
-                    OrcaType::I32,
+                        .unwrap_or(InitExpr::new(vec![InitInstr::Value(WirmValue::F32(0f32))])),
+                    WirmType::F32,
                     true,
                     false,
+                    get_tag_for(loc),
                 );
-                (global_id, OrcaType::I32)
+                (global_id, WirmType::F32)
             }
-            OrcaType::I64 => {
-                let global_id = app_wasm.add_global(
+            WirmType::F64 => {
+                let global_id = app_wasm.add_global_with_tag(
                     init_expr
-                        .unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::I64(0))])),
-                    OrcaType::I64,
+                        .unwrap_or(InitExpr::new(vec![InitInstr::Value(WirmValue::F64(0f64))])),
+                    WirmType::F64,
                     true,
                     false,
+                    get_tag_for(loc),
                 );
-                (global_id, OrcaType::I64)
-            }
-            OrcaType::F32 => {
-                let global_id = app_wasm.add_global(
-                    init_expr.unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::F32(
-                        0f32,
-                    ))])),
-                    OrcaType::F32,
-                    true,
-                    false,
-                );
-                (global_id, OrcaType::F32)
-            }
-            OrcaType::F64 => {
-                let global_id = app_wasm.add_global(
-                    init_expr.unwrap_or(InitExpr::new(vec![Instructions::Value(OrcaValue::F64(
-                        0f64,
-                    ))])),
-                    OrcaType::F64,
-                    true,
-                    false,
-                );
-                (global_id, OrcaType::F64)
+                (global_id, WirmType::F64)
             }
             _ => unimplemented!(),
         }
     } else {
         unimplemented!()
     }
+}
+
+pub fn emit_global_getter(
+    app_wasm: &mut Module,
+    global_id: &u32,
+    name: String,
+    ty: WirmType,
+    loc: &Option<Location>,
+) -> FunctionID {
+    // todo -- make this conditional on 'testing' mode
+    let getter_params = vec![];
+    let getter_res = vec![ty];
+
+    let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
+    getter.global_get(GlobalID(*global_id));
+
+    let getter_id = getter.finish_module_with_tag(app_wasm, get_tag_for(loc));
+    let fn_name = format!("get_{name}");
+    app_wasm.set_fn_name(getter_id, fn_name.clone());
+    app_wasm.exports.add_export_func(fn_name, *getter_id, None);
+
+    getter_id
 }
 
 pub fn block_type_to_wasm(block: &Block) -> BlockType {
@@ -700,7 +725,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         name);
             }
             // this will be different based on if this is a global or local var
-            return match addr {
+            match addr {
                 Some(VarAddr::Global { addr }) => {
                     injector.global_get(GlobalID(*addr));
                     true
@@ -734,7 +759,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         )),
                         None,
                     );
-                    return false;
+                    false
                 }
                 None => {
                     panic!(
@@ -743,7 +768,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         ctx.err_msg, name
                     );
                 }
-            };
+            }
         }
         Expr::Primitive { val, .. } => emit_value(val, strategy, injector, ctx),
         Expr::MapGet { .. } => emit_map_get(expr, strategy, injector, ctx),
@@ -1151,8 +1176,8 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I64 => injector.i64_rem_signed(),
                 #[rustfmt::skip]
                 DataType::F32 => {
-                    let a = LocalID(ctx.locals_tracker.use_local(OrcaType::F32, injector));
-                    let b = LocalID(ctx.locals_tracker.use_local(OrcaType::F32, injector));
+                    let a = LocalID(ctx.locals_tracker.use_local(WirmType::F32, injector));
+                    let b = LocalID(ctx.locals_tracker.use_local(WirmType::F32, injector));
 
                     // Step 0: Do some stack juggling
                     injector.local_set(b)
@@ -1182,8 +1207,8 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 }
                 #[rustfmt::skip]
                 DataType::F64 => {
-                    let a = LocalID(ctx.locals_tracker.use_local(OrcaType::F64, injector));
-                    let b = LocalID(ctx.locals_tracker.use_local(OrcaType::F64, injector));
+                    let a = LocalID(ctx.locals_tracker.use_local(WirmType::F64, injector));
+                    let b = LocalID(ctx.locals_tracker.use_local(WirmType::F64, injector));
 
                     // Step 0: Do some stack juggling
                     injector.local_set(b)

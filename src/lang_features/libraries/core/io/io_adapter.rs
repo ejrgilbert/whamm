@@ -2,14 +2,15 @@
 #![allow(dead_code)]
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::emitter::tag_handler::get_tag_for;
 use crate::lang_features::libraries::core::LibAdapter;
-use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::{FunctionID, LocalID};
-use orca_wasm::ir::types::{BlockType, DataType as OrcaType};
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::MacroOpcode;
-use orca_wasm::{Module, Opcode};
 use std::collections::HashMap;
+use wirm::ir::function::FunctionBuilder;
+use wirm::ir::id::{FunctionID, LocalID};
+use wirm::ir::types::{BlockType, DataType as WirmType};
+use wirm::module_builder::AddLocal;
+use wirm::opcode::MacroOpcode;
+use wirm::{Module, Opcode};
 
 // FROM LIB
 pub const PUTS: &str = "puts";
@@ -90,9 +91,9 @@ impl IOAdapter {
     fn emit_puts_internal(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
         let start_addr = LocalID(0);
         let len = LocalID(1);
-        let mut puts = FunctionBuilder::new(&[OrcaType::I32, OrcaType::I32], &[]);
+        let mut puts = FunctionBuilder::new(&[WirmType::I32, WirmType::I32], &[]);
 
-        let i = puts.add_local(OrcaType::I32);
+        let i = puts.add_local(WirmType::I32);
 
         #[rustfmt::skip]
         puts.loop_stmt(BlockType::Empty)
@@ -127,7 +128,7 @@ impl IOAdapter {
             .br(0) // (;3;)
             .end();
 
-        let puts_fid = puts.finish_module(app_wasm);
+        let puts_fid = puts.finish_module_with_tag(app_wasm, get_tag_for(&None));
         app_wasm.set_fn_name(puts_fid, PUTS_INTERNAL.to_string());
         self.add_fid(PUTS_INTERNAL, *puts_fid);
 
@@ -141,7 +142,7 @@ impl IOAdapter {
     ) -> FunctionID {
         let str_addr = LocalID(0);
         let len = LocalID(1);
-        let mut puts = FunctionBuilder::new(&[OrcaType::I32, OrcaType::I32], &[]);
+        let mut puts = FunctionBuilder::new(&[WirmType::I32, WirmType::I32], &[]);
 
         mem_allocator.copy_to_mem_and_save(
             self.instr_mem as u32,
@@ -157,7 +158,7 @@ impl IOAdapter {
 
         mem_allocator.copy_back_saved_mem(len, self.lib_mem as u32, 0, &mut puts);
 
-        let puts_fid = puts.finish_module(app_wasm);
+        let puts_fid = puts.finish_module_with_tag(app_wasm, get_tag_for(&None));
         app_wasm.set_fn_name(puts_fid, INTRUSIVE_PUTS.to_string());
         self.add_fid(INTRUSIVE_PUTS, *puts_fid);
 

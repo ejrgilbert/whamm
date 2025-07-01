@@ -1,16 +1,17 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::emitter::tag_handler::get_probe_tag_data;
 use crate::lang_features::libraries::core::LibAdapter;
 use crate::lang_features::report_vars::ReportVars;
-use crate::parser::types::DataType;
-use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
-use orca_wasm::ir::types::BlockType as OrcaBlockType;
-use orca_wasm::ir::types::DataType as OrcaType;
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::{Instrumenter, MacroOpcode};
-use orca_wasm::{Location, Module, Opcode};
+use crate::parser::types::{DataType, Location};
 use std::collections::HashMap;
+use wirm::ir::id::{FunctionID, GlobalID, LocalID};
+use wirm::ir::types::BlockType as WirmBlockType;
+use wirm::ir::types::DataType as WirmType;
+use wirm::module_builder::AddLocal;
+use wirm::opcode::{Instrumenter, MacroOpcode};
+use wirm::{Location as WirmLocation, Module, Opcode};
 
 const UNEXPECTED_ERR_MSG: &str =
     "MapLibAdapter: Looks like you've found a bug...please report this behavior!";
@@ -167,8 +168,8 @@ impl MapLibAdapter {
             panic!("Expected the offset and len to be set for the key String!");
         };
 
-        let src_offset = func.add_local(OrcaType::I32);
-        let src_len = func.add_local(OrcaType::I32);
+        let src_offset = func.add_local(WirmType::I32);
+        let src_len = func.add_local(WirmType::I32);
 
         func.u32_const(curr_str_offset).local_set(src_offset);
         func.u32_const(curr_str_len).local_set(src_len);
@@ -456,6 +457,7 @@ impl MapLibAdapter {
         ty: &DataType,
         is_report: bool,
         is_global: bool,
+        loc: &Option<Location>,
         report_vars: &mut ReportVars,
         app_wasm: &mut Module,
         err: &mut ErrorGen,
@@ -469,15 +471,25 @@ impl MapLibAdapter {
                                 No instr_init found in the module!"
             );
         };
-        init_fn.before_at(Location::Module {
-            func_idx: init_id, // not used
-            instr_idx: 0,
-        });
-        if is_report {
+        init_fn.func_entry();
+        let map_id = if is_report {
             self.map_create_report(name, is_global, ty.clone(), &mut init_fn, report_vars, err)
         } else {
             self.map_create(ty.clone(), &mut init_fn, err)
-        }
+        };
+
+        let op_idx = init_fn.curr_instr_len() as u32;
+        init_fn.append_tag_at(
+            get_probe_tag_data(loc, op_idx),
+            // location is unused
+            WirmLocation::Module {
+                func_idx: FunctionID(0),
+                instr_idx: 0,
+            },
+        );
+
+        init_fn.finish_instr();
+        map_id
     }
 
     pub fn inject_map_init_check<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -493,7 +505,7 @@ impl MapLibAdapter {
 
         // 1 means the maps have not been initialized, 0 means they have
         func.global_get(GlobalID(self.init_bool_location));
-        func.if_stmt(OrcaBlockType::Empty);
+        func.if_stmt(WirmBlockType::Empty);
         func.i32_const(0);
         func.global_set(GlobalID(self.init_bool_location));
         func.call(map_init_fid);

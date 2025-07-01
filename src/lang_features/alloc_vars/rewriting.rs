@@ -6,12 +6,12 @@ use crate::emitter::utils::whamm_type_to_wasm_global;
 use crate::generator::ast::UnsharedVar;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::{Metadata, ReportVars, NULL_PTR_IN_MEM};
-use crate::parser::types::{DataType, Value};
+use crate::parser::types::{DataType, Location, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca_wasm::ir::id::MemoryID;
-use orca_wasm::ir::types::{InitExpr, Value as OrcaValue};
-use orca_wasm::{DataSegment, DataSegmentKind, Instructions, Module};
 use std::collections::HashMap;
+use wirm::ir::id::MemoryID;
+use wirm::ir::types::{InitExpr, Value as WirmValue};
+use wirm::{DataSegment, DataSegmentKind, InitInstr, Module};
 
 pub struct UnsharedVarHandler {
     allocated_vars: Vec<AllocatedVar>,
@@ -67,8 +67,9 @@ impl UnsharedVarHandler {
             data: bytes,
             kind: DataSegmentKind::Active {
                 memory_index: self.mem_id,
-                offset_expr: InitExpr::new(vec![Instructions::Value(OrcaValue::I32(0))]),
+                offset_expr: InitExpr::new(vec![InitInstr::Value(WirmValue::I32(0))]),
             },
+            tag: None,
         };
         wasm.add_data(data);
     }
@@ -77,13 +78,15 @@ impl UnsharedVarHandler {
 
         for (ty, ReportAllocTracker { first_var, .. }) in self.report_trackers.iter() {
             if let Some(first_var) = first_var {
-                if let Some(AllocatedVar { mem_offset, .. }) =
-                    self.allocated_vars.get(*first_var as usize)
+                if let Some(AllocatedVar {
+                    mem_offset, loc, ..
+                }) = self.allocated_vars.get(*first_var as usize)
                 {
                     let (global_id, _) = whamm_type_to_wasm_global(
                         wasm,
                         &DataType::I32,
-                        Some(InitExpr::new(vec![Instructions::Value(OrcaValue::I32(
+                        loc,
+                        Some(InitExpr::new(vec![InitInstr::Value(WirmValue::I32(
                             *mem_offset as i32,
                         ))])),
                     );
@@ -158,6 +161,7 @@ impl UnsharedVarHandler {
             name,
             is_report,
             report_metadata,
+            loc,
         } in vars.iter()
         {
             let ty_tracker = self.report_trackers.entry(ty.clone()).or_default();
@@ -209,6 +213,7 @@ impl UnsharedVarHandler {
                     ty,
                     *is_report,
                     false,
+                    loc,
                     report_vars,
                     wasm,
                     err,
@@ -229,6 +234,7 @@ impl UnsharedVarHandler {
                 },
                 probe_header,
                 var_header,
+                loc: loc.clone(),
             };
 
             // var_addr points to the memory location of the value, skips the header!
@@ -254,6 +260,7 @@ struct AllocatedVar {
     report_var_header: Option<ReportVarHeader>,
     probe_header: ProbeHeader,
     var_header: VarHeader,
+    loc: Option<Location>,
 }
 impl AllocatedVar {
     fn encode(&self) -> Vec<u8> {

@@ -3,18 +3,19 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::StringAddr;
 use crate::emitter::module_emitter::ModuleEmitter;
+use crate::emitter::tag_handler::get_tag_for;
 use crate::generator::ast::UnsharedVar;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{DataType, Definition};
 use crate::verifier::types::{Record, VarAddr};
-use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::{GlobalID, LocalID};
-use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as OrcaValue};
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::MacroOpcode;
-use orca_wasm::{Instructions, Module, Opcode};
 use wasmparser::MemArg;
+use wirm::ir::function::FunctionBuilder;
+use wirm::ir::id::{GlobalID, LocalID};
+use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmValue};
+use wirm::module_builder::AddLocal;
+use wirm::opcode::MacroOpcode;
+use wirm::{InitInstr, Module, Opcode};
 
 pub struct UnsharedVarHandler {
     prev_fid: GlobalID,
@@ -24,11 +25,12 @@ pub struct UnsharedVarHandler {
 impl UnsharedVarHandler {
     pub fn new(wasm: &mut Module) -> Self {
         let mut add_global_i32 = || -> GlobalID {
-            wasm.add_global(
-                InitExpr::new(vec![Instructions::Value(OrcaValue::I32(-1))]),
-                OrcaType::I32,
+            wasm.add_global_with_tag(
+                InitExpr::new(vec![InitInstr::Value(WirmValue::I32(-1))]),
+                WirmType::I32,
                 true,
                 false,
+                get_tag_for(&None),
             )
         };
         Self {
@@ -94,39 +96,39 @@ impl UnsharedVarHandler {
         // specify params
         let fname_ptr = Local {
             id: LocalID(0),
-            ty: OrcaType::I32,
+            ty: WirmType::I32,
         };
         let fname_len = Local {
             id: LocalID(1),
-            ty: OrcaType::I32,
+            ty: WirmType::I32,
         };
         let fid = Local {
             id: LocalID(2),
-            ty: OrcaType::I32,
+            ty: WirmType::I32,
         };
         let pc = Local {
             id: LocalID(3),
-            ty: OrcaType::I32,
+            ty: WirmType::I32,
         };
 
         // params: (fname_ptr, fname_len, fid, pc)
         let alloc_params = vec![fname_ptr.ty, fname_len.ty, fid.ty, pc.ty];
         // results: mem_offset
-        let alloc_results = vec![OrcaType::I32];
+        let alloc_results = vec![WirmType::I32];
 
         let mut alloc = FunctionBuilder::new(&alloc_params, &alloc_results);
         // specify locals
         let orig_offset = Local {
-            id: alloc.add_local(OrcaType::I32),
-            ty: OrcaType::I32,
+            id: alloc.add_local(WirmType::I32),
+            ty: WirmType::I32,
         };
         let curr_offset = Local {
-            id: alloc.add_local(OrcaType::I32),
-            ty: OrcaType::I32,
+            id: alloc.add_local(WirmType::I32),
+            ty: WirmType::I32,
         };
         let new_fname_ptr = Local {
-            id: alloc.add_local(OrcaType::I32),
-            ty: OrcaType::I32,
+            id: alloc.add_local(WirmType::I32),
+            ty: WirmType::I32,
         };
 
         // remember the original memory offset
@@ -174,6 +176,7 @@ impl UnsharedVarHandler {
             name,
             is_report,
             report_metadata,
+            ..
         } in unshared_to_alloc.iter()
         {
             let prev_offset = curr_offset;
@@ -254,11 +257,11 @@ impl UnsharedVarHandler {
         // return the location where the value will be stored in memory!
         alloc.local_get(orig_offset.id);
 
-        let alloc_id = alloc.finish_module(emitter.app_wasm);
+        let alloc_id = alloc.finish_module_with_tag(emitter.app_wasm, get_tag_for(&None));
         emitter
             .app_wasm
             .exports
-            .add_export_func(format!("${}", *alloc_id), *alloc_id);
+            .add_export_func(format!("${}", *alloc_id), *alloc_id, None);
         (Some(*alloc_id), "fname, fid, pc".to_string())
     }
 
@@ -569,5 +572,5 @@ impl UnsharedVarHandler {
 
 struct Local {
     id: LocalID,
-    ty: OrcaType,
+    ty: WirmType,
 }

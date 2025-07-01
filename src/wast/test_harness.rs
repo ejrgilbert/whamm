@@ -3,12 +3,13 @@
 use crate::api::instrument::{Config, LibraryLinkStrategy};
 use crate::api::utils::wasm2wat_on_file;
 use crate::common::instr::{run, try_path};
+use crate::common::metrics::Metrics;
 use log::{debug, error};
-use orca_wasm::Module;
 use std::fs::{remove_dir_all, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use wirm::Module;
 
 const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 const DEFS_PATH: &str = "./";
@@ -227,7 +228,9 @@ fn generate_instrumented_bin_wast(
             wast_path.file_name().unwrap().to_str().unwrap()
         );
         let wast_path_str = wast_path.to_str().unwrap().replace("\"", "");
-        let instrumented_module_wasm = run(
+
+        let mut metrics = Metrics::default();
+        if let Err(mut err) = run(
             CORE_WASM_PATH,
             DEFS_PATH,
             &mut module_to_instrument,
@@ -235,6 +238,7 @@ fn generate_instrumented_bin_wast(
             &wast_path_str,
             vec![],
             0,
+            &mut metrics,
             Config {
                 as_monitor_module: false,
                 enable_wizard_alt: false,
@@ -246,7 +250,12 @@ fn generate_instrumented_bin_wast(
                 testing: true,
                 library_strategy: LibraryLinkStrategy::Imported,
             },
-        );
+        ) {
+            err.report();
+            unreachable!("Shouldn't have had errors!")
+        }
+
+        let instrumented_module_wasm = module_to_instrument.encode();
 
         try_path(&debug_file_path);
         if let Err(e) = std::fs::write(&debug_file_path, instrumented_module_wasm.clone()) {
