@@ -8,10 +8,10 @@ use crate::lang_features::libraries::core::{
 use crate::parser::types::Location;
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
-use orca_wasm::ir::id::FunctionID;
-use orca_wasm::{DataType, Module};
 use std::collections::HashSet;
 use wasmparser::{ExternalKind, MemoryType};
+use wirm::ir::id::FunctionID;
+use wirm::{DataType, Module};
 // Some documentation on why it's difficult to only import the *used* functions.
 //
 // TLDR; Rust ownership.
@@ -39,7 +39,7 @@ pub fn link_core_lib(
         package.set_adapter_usage(package.is_used());
         package.set_global_adapter_usage(package.is_used_in_global_scope());
         if package.is_used() {
-            // Read core library Wasm into Orca module
+            // Read core library Wasm into Wirm module
             let buff = std::fs::read(core_wasm_path).unwrap_or_else(|_| {
                 panic!(
                     "Could not read the core wasm module expected to be at location: {}",
@@ -201,7 +201,7 @@ fn import_memory(
     loc: &Option<Location>,
     app_wasm: &mut Module,
 ) -> u32 {
-    let (mem_id, imp_id) = app_wasm.add_import_memory(
+    let (mem_id, imp_id) = app_wasm.add_import_memory_with_tag(
         module_name.to_string(),
         mem_name.to_string(),
         MemoryType {

@@ -3,9 +3,9 @@ pub mod maps;
 
 use crate::common::error::ErrorGen;
 use crate::generator::ast::AstVisitor;
-use orca_wasm::ir::id::FunctionID;
-use orca_wasm::Module;
 use std::collections::HashMap;
+use wirm::ir::id::FunctionID;
+use wirm::Module;
 
 pub const WHAMM_CORE_LIB_NAME: &str = "whamm_core";
 pub const WHAMM_CORE_LIB_MEM_NAME: &str = "memory";

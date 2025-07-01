@@ -14,16 +14,16 @@ use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Location, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use log::debug;
-use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::{FunctionID, LocalID};
-use orca_wasm::ir::module::Module;
-use orca_wasm::ir::types::{
-    BlockType as OrcaBlockType, DataType as OrcaType, InitExpr, Value as OrcaValue,
-};
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::Opcode;
-use orca_wasm::InitInstr;
 use std::collections::HashSet;
+use wirm::ir::function::FunctionBuilder;
+use wirm::ir::id::{FunctionID, LocalID};
+use wirm::ir::module::Module;
+use wirm::ir::types::{
+    BlockType as WirmBlockType, DataType as WirmType, InitExpr, Value as WirmValue,
+};
+use wirm::module_builder::AddLocal;
+use wirm::opcode::Opcode;
+use wirm::InitInstr;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -132,7 +132,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         alloc_base: Option<LocalID>,
         whamm_params: &WhammParams,
         dynamic_pred: Option<&mut Expr>,
-        results: &[OrcaType],
+        results: &[WirmType],
         body: &mut Block,
         export: bool,
         loc: &Option<Location>,
@@ -144,7 +144,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         // handle $alloc param (if there are unshared vars)
         if let Some(alloc) = alloc_base {
-            params.push(OrcaType::I32);
+            params.push(WirmType::I32);
             // add param definition to the symbol table
             self.table.put(
                 VAR_BLOCK_BASE_VAR.to_string(),
@@ -202,9 +202,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     fn emit_special_fn_inner(
         &mut self,
         name: Option<String>,
-        params: &[OrcaType],
+        params: &[WirmType],
         dynamic_pred: Option<&mut Expr>,
-        results: &[OrcaType],
+        results: &[WirmType],
         block: &mut Block,
         export: bool,
         loc: &Option<Location>,
@@ -319,8 +319,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     }
 
     fn emit_whamm_strcmp_fn(&mut self, f: &Fn, err: &mut ErrorGen) -> Option<FunctionID> {
-        let strcmp_params = vec![OrcaType::I32, OrcaType::I32, OrcaType::I32, OrcaType::I32];
-        let strcmp_result = vec![OrcaType::I32];
+        let strcmp_params = vec![WirmType::I32, WirmType::I32, WirmType::I32, WirmType::I32];
+        let strcmp_result = vec![WirmType::I32];
 
         let mut strcmp = FunctionBuilder::new(&strcmp_params, &strcmp_result);
 
@@ -331,14 +331,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         let str1_size = LocalID(3);
 
         // create locals
-        let i = strcmp.add_local(OrcaType::I32);
-        let str0_char = strcmp.add_local(OrcaType::I32);
-        let str1_char = strcmp.add_local(OrcaType::I32);
+        let i = strcmp.add_local(WirmType::I32);
+        let str0_char = strcmp.add_local(WirmType::I32);
+        let str1_char = strcmp.add_local(WirmType::I32);
 
         #[rustfmt::skip]
         strcmp
-            .block(OrcaBlockType::Empty) // label = @1
-            .block(OrcaBlockType::Empty) // label = @2
+            .block(WirmBlockType::Empty) // label = @1
+            .block(WirmBlockType::Empty) // label = @2
             // 1. Check if sizes are equal, if not return 0
             .local_get(str0_size)
             .local_get(str1_size)
@@ -354,7 +354,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             // 3. iterate over each string and check equivalence of chars, if any not equal, return 0
             .i32_const(0)
             .local_set(i)
-            .loop_stmt(OrcaBlockType::Empty)
+            .loop_stmt(WirmBlockType::Empty)
             // Check if we've reached the end of the string
             .local_get(i)
             .local_get(str0_size)  // (can compare with either str size, equal at this point)
@@ -437,8 +437,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         // TODO -- move this into the MapAdapter
         //make a global bool for whether to run the instr_init fn
         self.map_lib_adapter.init_bool_location = *self.app_wasm.add_global_with_tag(
-            InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(1))]),
-            OrcaType::I32,
+            InitExpr::new(vec![InitInstr::Value(WirmValue::I32(1))]),
+            WirmType::I32,
             true,
             false,
             get_tag_for(&None),

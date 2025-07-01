@@ -4,16 +4,16 @@ use crate::parser::provider_handler::ModeKind;
 use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
 use crate::verifier::types::VarAddr;
 use log::warn;
-use orca_wasm::ir::id::{FunctionID, GlobalID, TypeID};
-use orca_wasm::ir::module::module_functions::{FuncKind, ImportedFunction};
-use orca_wasm::ir::module::module_globals::{GlobalKind, ImportedGlobal, LocalGlobal};
-use orca_wasm::ir::module::module_types::Types;
-use orca_wasm::ir::module::Module;
-use orca_wasm::ir::types::DataType as OrcaType;
-use orca_wasm::Location;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use wasmparser::{BrTable, GlobalType, MemArg, Operator};
+use wirm::ir::id::{FunctionID, GlobalID, TypeID};
+use wirm::ir::module::module_functions::{FuncKind, ImportedFunction};
+use wirm::ir::module::module_globals::{GlobalKind, ImportedGlobal, LocalGlobal};
+use wirm::ir::module::module_types::Types;
+use wirm::ir::module::Module;
+use wirm::ir::types::DataType as WirmType;
+use wirm::Location;
 
 pub fn get_loc_info_for_active_probes(
     app_wasm: &Module,
@@ -1989,7 +1989,7 @@ pub fn get_ty_info_for_instr(
     instr: &Operator,
 ) -> (Vec<Arg>, Option<u32>) {
     // TODO -- how to make this less manual?
-    let (ty_list, ty_id): (Vec<Option<OrcaType>>, Option<u32>) = match instr {
+    let (ty_list, ty_id): (Vec<Option<WirmType>>, Option<u32>) = match instr {
         Operator::Call {
             function_index: fid,
         } => {
@@ -2010,7 +2010,7 @@ pub fn get_ty_info_for_instr(
             }
         }
         Operator::If { .. } | Operator::BrIf { .. } | Operator::BrTable { .. } => {
-            (vec![Some(OrcaType::I32)], None)
+            (vec![Some(WirmType::I32)], None)
         }
         Operator::Block {
             blockty: wasmparser::BlockType::FuncType(ty_id),
@@ -2057,7 +2057,7 @@ pub fn get_ty_info_for_instr(
             //     HOWEVER, we will need to keep a virtual stack to check if this match site is in fact
             //     a match based on the type bounds. (if they don't match up, not a match, don't emit)
             // e.g. [unknown, unknown, i32]
-            (vec![None, None, Some(OrcaType::I32)], None)
+            (vec![None, None, Some(WirmType::I32)], None)
         }
         Operator::LocalSet { local_index } | Operator::LocalTee { local_index } => {
             if let FuncKind::Local(func) = app_wasm.functions.get_kind(*curr_fid) {
@@ -2079,7 +2079,7 @@ pub fn get_ty_info_for_instr(
                 | GlobalKind::Local(LocalGlobal {
                     ty: GlobalType { content_type, .. },
                     ..
-                }) => OrcaType::from(*content_type),
+                }) => WirmType::from(*content_type),
             };
             (vec![Some(ty)], None)
         }
@@ -2096,20 +2096,20 @@ pub fn get_ty_info_for_instr(
         | Operator::I64Load16S { .. }
         | Operator::I64Load16U { .. }
         | Operator::I64Load32S { .. }
-        | Operator::I64Load32U { .. } => (vec![Some(OrcaType::I32)], None),
+        | Operator::I64Load32U { .. } => (vec![Some(WirmType::I32)], None),
 
         Operator::I32Store { .. } | Operator::I32Store8 { .. } | Operator::I32Store16 { .. } => {
-            (vec![Some(OrcaType::I32), Some(OrcaType::I32)], None)
+            (vec![Some(WirmType::I32), Some(WirmType::I32)], None)
         }
         Operator::I64Store { .. }
         | Operator::I64Store8 { .. }
         | Operator::I64Store16 { .. }
-        | Operator::I64Store32 { .. } => (vec![Some(OrcaType::I64), Some(OrcaType::I32)], None),
-        Operator::F32Store { .. } => (vec![Some(OrcaType::F32), Some(OrcaType::I32)], None),
-        Operator::F64Store { .. } => (vec![Some(OrcaType::F64), Some(OrcaType::I32)], None),
-        Operator::MemoryGrow { .. } => (vec![Some(OrcaType::I32)], None),
+        | Operator::I64Store32 { .. } => (vec![Some(WirmType::I64), Some(WirmType::I32)], None),
+        Operator::F32Store { .. } => (vec![Some(WirmType::F32), Some(WirmType::I32)], None),
+        Operator::F64Store { .. } => (vec![Some(WirmType::F64), Some(WirmType::I32)], None),
+        Operator::MemoryGrow { .. } => (vec![Some(WirmType::I32)], None),
 
-        Operator::I32Eqz => (vec![Some(OrcaType::I32)], None),
+        Operator::I32Eqz => (vec![Some(WirmType::I32)], None),
         Operator::I32Ne
         | Operator::I32Eq
         | Operator::I32LtS
@@ -2119,10 +2119,10 @@ pub fn get_ty_info_for_instr(
         | Operator::I32LeS
         | Operator::I32LeU
         | Operator::I32GeS
-        | Operator::I32GeU => (vec![Some(OrcaType::I32), Some(OrcaType::I32)], None),
+        | Operator::I32GeU => (vec![Some(WirmType::I32), Some(WirmType::I32)], None),
 
         Operator::I32Clz | Operator::I32Ctz | Operator::I32Popcnt => {
-            (vec![Some(OrcaType::I32)], None)
+            (vec![Some(WirmType::I32)], None)
         }
 
         Operator::I32Add
@@ -2139,9 +2139,9 @@ pub fn get_ty_info_for_instr(
         | Operator::I32ShrS
         | Operator::I32ShrU
         | Operator::I32Rotl
-        | Operator::I32Rotr => (vec![Some(OrcaType::I32), Some(OrcaType::I32)], None),
+        | Operator::I32Rotr => (vec![Some(WirmType::I32), Some(WirmType::I32)], None),
 
-        Operator::I64Eqz => (vec![Some(OrcaType::I64)], None),
+        Operator::I64Eqz => (vec![Some(WirmType::I64)], None),
         Operator::I64Eq
         | Operator::I64Ne
         | Operator::I64LtS
@@ -2151,10 +2151,10 @@ pub fn get_ty_info_for_instr(
         | Operator::I64LeS
         | Operator::I64LeU
         | Operator::I64GeS
-        | Operator::I64GeU => (vec![Some(OrcaType::I64), Some(OrcaType::I64)], None),
+        | Operator::I64GeU => (vec![Some(WirmType::I64), Some(WirmType::I64)], None),
 
         Operator::I64Clz | Operator::I64Ctz | Operator::I64Popcnt => {
-            (vec![Some(OrcaType::I64)], None)
+            (vec![Some(WirmType::I64)], None)
         }
         Operator::I64Add
         | Operator::I64Sub
@@ -2170,14 +2170,14 @@ pub fn get_ty_info_for_instr(
         | Operator::I64ShrS
         | Operator::I64ShrU
         | Operator::I64Rotl
-        | Operator::I64Rotr => (vec![Some(OrcaType::I64), Some(OrcaType::I64)], None),
+        | Operator::I64Rotr => (vec![Some(WirmType::I64), Some(WirmType::I64)], None),
 
         Operator::F32Eq
         | Operator::F32Ne
         | Operator::F32Lt
         | Operator::F32Gt
         | Operator::F32Le
-        | Operator::F32Ge => (vec![Some(OrcaType::F32), Some(OrcaType::F32)], None),
+        | Operator::F32Ge => (vec![Some(WirmType::F32), Some(WirmType::F32)], None),
 
         Operator::F32Abs
         | Operator::F32Neg
@@ -2185,21 +2185,21 @@ pub fn get_ty_info_for_instr(
         | Operator::F32Floor
         | Operator::F32Trunc
         | Operator::F32Nearest
-        | Operator::F32Sqrt => (vec![Some(OrcaType::F32)], None),
+        | Operator::F32Sqrt => (vec![Some(WirmType::F32)], None),
         Operator::F32Add
         | Operator::F32Sub
         | Operator::F32Mul
         | Operator::F32Div
         | Operator::F32Min
         | Operator::F32Max
-        | Operator::F32Copysign => (vec![Some(OrcaType::F32), Some(OrcaType::F32)], None),
+        | Operator::F32Copysign => (vec![Some(WirmType::F32), Some(WirmType::F32)], None),
 
         Operator::F64Eq
         | Operator::F64Ne
         | Operator::F64Lt
         | Operator::F64Gt
         | Operator::F64Le
-        | Operator::F64Ge => (vec![Some(OrcaType::F64), Some(OrcaType::F64)], None),
+        | Operator::F64Ge => (vec![Some(WirmType::F64), Some(WirmType::F64)], None),
 
         Operator::F64Abs
         | Operator::F64Neg
@@ -2207,14 +2207,14 @@ pub fn get_ty_info_for_instr(
         | Operator::F64Floor
         | Operator::F64Trunc
         | Operator::F64Nearest
-        | Operator::F64Sqrt => (vec![Some(OrcaType::F32)], None),
+        | Operator::F64Sqrt => (vec![Some(WirmType::F32)], None),
         Operator::F64Add
         | Operator::F64Sub
         | Operator::F64Mul
         | Operator::F64Div
         | Operator::F64Min
         | Operator::F64Max
-        | Operator::F64Copysign => (vec![Some(OrcaType::F64), Some(OrcaType::F64)], None),
+        | Operator::F64Copysign => (vec![Some(WirmType::F64), Some(WirmType::F64)], None),
 
         Operator::I32WrapI64
         | Operator::F32ConvertI64S
@@ -2224,8 +2224,8 @@ pub fn get_ty_info_for_instr(
         | Operator::F64ReinterpretI64
         | Operator::I64Extend8S
         | Operator::I64Extend16S
-        | Operator::I64Extend32S => (vec![Some(OrcaType::I64)], None),
-        Operator::I32TruncF32S | Operator::I32TruncF32U => (vec![Some(OrcaType::F32)], None),
+        | Operator::I64Extend32S => (vec![Some(WirmType::I64)], None),
+        Operator::I32TruncF32S | Operator::I32TruncF32U => (vec![Some(WirmType::F32)], None),
         Operator::I32TruncF64S
         | Operator::I32TruncF64U
         | Operator::I64TruncF64S
@@ -2235,7 +2235,7 @@ pub fn get_ty_info_for_instr(
         | Operator::I32TruncSatF64S
         | Operator::I32TruncSatF64U
         | Operator::I64TruncSatF64S
-        | Operator::I64TruncSatF64U => (vec![Some(OrcaType::F64)], None),
+        | Operator::I64TruncSatF64U => (vec![Some(WirmType::F64)], None),
         Operator::I64ExtendI32S
         | Operator::I64ExtendI32U
         | Operator::F32ConvertI32S
@@ -2244,7 +2244,7 @@ pub fn get_ty_info_for_instr(
         | Operator::F64ConvertI32U
         | Operator::F32ReinterpretI32
         | Operator::I32Extend8S
-        | Operator::I32Extend16S => (vec![Some(OrcaType::I32)], None),
+        | Operator::I32Extend16S => (vec![Some(WirmType::I32)], None),
         Operator::I64TruncF32S
         | Operator::I64TruncF32U
         | Operator::F64PromoteF32
@@ -2252,38 +2252,38 @@ pub fn get_ty_info_for_instr(
         | Operator::I32TruncSatF32S
         | Operator::I32TruncSatF32U
         | Operator::I64TruncSatF32S
-        | Operator::I64TruncSatF32U => (vec![Some(OrcaType::F32)], None),
+        | Operator::I64TruncSatF32U => (vec![Some(WirmType::F32)], None),
 
         Operator::MemoryCopy { .. }
         | Operator::MemoryFill { .. }
         | Operator::TableInit { .. }
         | Operator::TableCopy { .. } => (
             vec![
-                Some(OrcaType::I32),
-                Some(OrcaType::I32),
-                Some(OrcaType::I32),
+                Some(WirmType::I32),
+                Some(WirmType::I32),
+                Some(WirmType::I32),
             ],
             None,
         ),
 
-        Operator::TableGet { .. } => (vec![Some(OrcaType::I32)], None),
+        Operator::TableGet { .. } => (vec![Some(WirmType::I32)], None),
 
         Operator::MemoryAtomicNotify { .. } => {
-            (vec![Some(OrcaType::I32), Some(OrcaType::I32)], None)
+            (vec![Some(WirmType::I32), Some(WirmType::I32)], None)
         }
         Operator::MemoryAtomicWait32 { .. } => (
             vec![
-                Some(OrcaType::I32),
-                Some(OrcaType::I32),
-                Some(OrcaType::I64),
+                Some(WirmType::I32),
+                Some(WirmType::I32),
+                Some(WirmType::I64),
             ],
             None,
         ),
         Operator::MemoryAtomicWait64 { .. } => (
             vec![
-                Some(OrcaType::I32),
-                Some(OrcaType::I64),
-                Some(OrcaType::I64),
+                Some(WirmType::I32),
+                Some(WirmType::I64),
+                Some(WirmType::I64),
             ],
             None,
         ),
@@ -2294,16 +2294,16 @@ pub fn get_ty_info_for_instr(
         | Operator::I32AtomicLoad16U { .. }
         | Operator::I64AtomicLoad8U { .. }
         | Operator::I64AtomicLoad16U { .. }
-        | Operator::I64AtomicLoad32U { .. } => (vec![Some(OrcaType::I32)], None),
+        | Operator::I64AtomicLoad32U { .. } => (vec![Some(WirmType::I32)], None),
 
         Operator::I32AtomicStore { .. }
         | Operator::I32AtomicStore8 { .. }
-        | Operator::I32AtomicStore16 { .. } => (vec![Some(OrcaType::I32)], None),
+        | Operator::I32AtomicStore16 { .. } => (vec![Some(WirmType::I32)], None),
 
         Operator::I64AtomicStore { .. }
         | Operator::I64AtomicStore8 { .. }
         | Operator::I64AtomicStore16 { .. }
-        | Operator::I64AtomicStore32 { .. } => (vec![Some(OrcaType::I32)], None),
+        | Operator::I64AtomicStore32 { .. } => (vec![Some(WirmType::I32)], None),
 
         Operator::I32AtomicRmwAdd { .. }
         | Operator::I32AtomicRmw8AddU { .. }
@@ -2326,7 +2326,7 @@ pub fn get_ty_info_for_instr(
         | Operator::I32AtomicRmwCmpxchg { .. }
         | Operator::I32AtomicRmw8CmpxchgU { .. }
         | Operator::I32AtomicRmw16CmpxchgU { .. } => {
-            (vec![Some(OrcaType::I32), Some(OrcaType::I32)], None)
+            (vec![Some(WirmType::I32), Some(WirmType::I32)], None)
         }
 
         Operator::I64AtomicRmwAdd { .. }
@@ -2357,7 +2357,7 @@ pub fn get_ty_info_for_instr(
         | Operator::I64AtomicRmw8CmpxchgU { .. }
         | Operator::I64AtomicRmw16CmpxchgU { .. }
         | Operator::I64AtomicRmw32CmpxchgU { .. } => {
-            (vec![Some(OrcaType::I32), Some(OrcaType::I32)], None)
+            (vec![Some(WirmType::I32), Some(WirmType::I32)], None)
         }
 
         Operator::Unreachable
@@ -2430,10 +2430,10 @@ pub fn is_prog_exit_call(opcode: &Operator, wasm: &Module) -> bool {
 #[derive(Clone, PartialEq, Debug)]
 pub struct Arg {
     pub name: String,
-    pub ty: Option<OrcaType>,
+    pub ty: Option<WirmType>,
 }
 impl Arg {
-    fn new(name: String, ty: Option<OrcaType>) -> Self {
+    fn new(name: String, ty: Option<WirmType>) -> Self {
         Self { name, ty }
     }
 }
@@ -2479,7 +2479,7 @@ pub struct LocInfo {
     pub static_data: HashMap<String, Option<Value>>,
     /// dynamic information to be defined at the probe location
     pub dynamic_data: HashMap<String, Block>,
-    pub(crate) dynamic_alias: HashMap<String, (OrcaType, VarAddr)>,
+    pub(crate) dynamic_alias: HashMap<String, (WirmType, VarAddr)>,
     /// dynamic information corresponding to the operands of this location
     pub(crate) args: Vec<Arg>,
     pub num_alt_probes: usize,

@@ -9,10 +9,10 @@ use crate::lang_features::report_vars::LocationData;
 use crate::parser::types::{Block, DataType, Location, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::Record;
 use log::trace;
-use orca_wasm::ir::id::{FunctionID, LocalID};
-use orca_wasm::ir::types::DataType as OrcaType;
-use orca_wasm::Module;
 use std::collections::{HashMap, HashSet};
+use wirm::ir::id::{FunctionID, LocalID};
+use wirm::ir::types::DataType as WirmType;
+use wirm::Module;
 
 pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l> {
     pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
@@ -114,7 +114,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                     None,
                     &probe.metadata.pred_args,
                     None,
-                    &[OrcaType::I32],
+                    &[WirmType::I32],
                     &mut block,
                     true,
                     &probe.loc,

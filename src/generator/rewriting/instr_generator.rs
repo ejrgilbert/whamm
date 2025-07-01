@@ -10,13 +10,13 @@ use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::provider_handler::ModeKind;
 use crate::parser::types::{Block, Expr, Location};
-use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::FunctionID;
-use orca_wasm::iterator::iterator_trait::{IteratingInstrumenter, Iterator};
-use orca_wasm::opcode::Instrumenter;
-use orca_wasm::{Location as OrcaLocation, Opcode};
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
+use wirm::ir::function::FunctionBuilder;
+use wirm::ir::id::FunctionID;
+use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator};
+use wirm::opcode::Instrumenter;
+use wirm::{Location as WirmLocation, Opcode};
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -146,10 +146,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                         self.emitter.before();
                         self.emitter.app_iter.call(FunctionID(fid));
                         let op_idx = self.emitter.app_iter.curr_instr_len() as u32;
+                        // this is for Whamm reporting, not tied to this probe specifically
                         self.emitter
                             .app_iter
-                            .append_to_tag(get_probe_tag_data(&self.curr_probe_loc, op_idx));
-                        // self.emitter.app_iter.finish_instr();
+                            .append_to_tag(get_probe_tag_data(&None, op_idx));
                     } else {
                         panic!("something went horribly wrong")
                     }
@@ -222,12 +222,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
         let probe_rule_str = probe_rule.to_string();
         let curr_probe_id = format!("{}_{}", probe.probe_number, probe_rule_str);
         let (loc, new_fid) = match self.emitter.app_iter.curr_loc().0 {
-            OrcaLocation::Module {
+            WirmLocation::Module {
                 func_idx,
                 instr_idx,
                 ..
             }
-            | OrcaLocation::Component {
+            | WirmLocation::Component {
                 func_idx,
                 instr_idx,
                 ..

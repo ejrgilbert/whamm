@@ -12,9 +12,9 @@ use crate::generator::ast::ReqArgs;
 use crate::parser::provider_handler::{
     get_matches, BoundVar, Event, Package, Probe, Provider, ProviderDef,
 };
-use orca_wasm::ir::types::DataType as OrcaType;
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
+use wirm::ir::types::DataType as WirmType;
 
 #[derive(Parser)]
 #[grammar = "./parser/whamm.pest"] // Path relative to base `src` dir
@@ -257,12 +257,12 @@ impl DataType {
         }
     }
     fn as_i32_in_wasm(&self) -> bool {
-        self.to_wasm_type() == vec![OrcaType::I32]
+        self.to_wasm_type() == vec![WirmType::I32]
     }
     fn as_i64_in_wasm(&self) -> bool {
-        self.to_wasm_type() == vec![OrcaType::I64]
+        self.to_wasm_type() == vec![WirmType::I64]
     }
-    pub fn to_wasm_type(&self) -> Vec<OrcaType> {
+    pub fn to_wasm_type(&self) -> Vec<WirmType> {
         match self {
             DataType::U8
             | DataType::I8
@@ -270,52 +270,55 @@ impl DataType {
             | DataType::I16
             | DataType::I32
             | DataType::U32
-            | DataType::Boolean => vec![OrcaType::I32],
-            DataType::F32 => vec![OrcaType::F32],
-            DataType::I64 | DataType::U64 => vec![OrcaType::I64],
-            DataType::F64 => vec![OrcaType::F64],
+            | DataType::Boolean => vec![WirmType::I32],
+            DataType::F32 => vec![WirmType::F32],
+            DataType::I64 | DataType::U64 => vec![WirmType::I64],
+            DataType::F64 => vec![WirmType::F64],
             // the ID used to track this var in the lib
-            DataType::Map { .. } => vec![OrcaType::I32],
+            DataType::Map { .. } => vec![WirmType::I32],
             DataType::Null => unimplemented!(),
-            DataType::Str => vec![OrcaType::I32, OrcaType::I32],
+            DataType::Str => vec![WirmType::I32, WirmType::I32],
             DataType::Tuple { .. } => unimplemented!(),
             DataType::Unknown => unimplemented!(),
             DataType::AssumeGood => unimplemented!(),
         }
     }
-    pub fn from_wasm_type(ty: &OrcaType) -> Self {
+    pub fn from_wasm_type(ty: &WirmType) -> Self {
         match ty {
-            OrcaType::I8 => DataType::I8,
-            OrcaType::I16 => DataType::I16,
-            OrcaType::I32 => DataType::I32,
-            OrcaType::I64 => DataType::I64,
-            OrcaType::F32 => DataType::F32,
-            OrcaType::F64 => DataType::F64,
-            OrcaType::FuncRef
-            | OrcaType::FuncRefNull
-            | OrcaType::Cont
-            | OrcaType::NoCont
-            | OrcaType::ExternRef
-            | OrcaType::ExternRefNull
-            | OrcaType::Any
-            | OrcaType::AnyNull
-            | OrcaType::None
-            | OrcaType::NoExtern
-            | OrcaType::NoFunc
-            | OrcaType::Eq
-            | OrcaType::EqNull
-            | OrcaType::Struct
-            | OrcaType::StructNull
-            | OrcaType::Array
-            | OrcaType::ArrayNull
-            | OrcaType::I31
-            | OrcaType::I31Null
-            | OrcaType::Exn
-            | OrcaType::NoExn
-            | OrcaType::Module { .. }
-            | OrcaType::RecGroup(_)
-            | OrcaType::CoreTypeId(_)
-            | OrcaType::V128 => unimplemented!(),
+            WirmType::I8 => DataType::I8,
+            WirmType::I16 => DataType::I16,
+            WirmType::I32 => DataType::I32,
+            WirmType::I64 => DataType::I64,
+            WirmType::F32 => DataType::F32,
+            WirmType::F64 => DataType::F64,
+            WirmType::FuncRef
+            | WirmType::FuncRefNull
+            | WirmType::Cont
+            | WirmType::NoCont
+            | WirmType::ExternRef
+            | WirmType::ExternRefNull
+            | WirmType::Any
+            | WirmType::AnyNull
+            | WirmType::None
+            | WirmType::NoneNull
+            | WirmType::NoExtern
+            | WirmType::NoExternNull
+            | WirmType::NoFunc
+            | WirmType::NoFuncNull
+            | WirmType::Eq
+            | WirmType::EqNull
+            | WirmType::Struct
+            | WirmType::StructNull
+            | WirmType::Array
+            | WirmType::ArrayNull
+            | WirmType::I31
+            | WirmType::I31Null
+            | WirmType::Exn
+            | WirmType::NoExn
+            | WirmType::Module { .. }
+            | WirmType::RecGroup(_)
+            | WirmType::CoreTypeId(_)
+            | WirmType::V128 => unimplemented!(),
         }
     }
     pub fn can_implicitly_cast(&self) -> bool {

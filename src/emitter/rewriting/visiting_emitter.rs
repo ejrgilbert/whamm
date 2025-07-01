@@ -3,8 +3,8 @@ use crate::emitter::rewriting::rules::{
     get_loc_info_for_active_probes, get_ty_info_for_instr, Arg, LocInfo, ProbeRule,
 };
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
-use orca_wasm::ir::types::DataType as OrcaType;
 use std::collections::HashMap;
+use wirm::ir::types::DataType as WirmType;
 
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
@@ -22,15 +22,15 @@ use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, 
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use itertools::Itertools;
 use log::warn;
-use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::{FunctionID, LocalID, TypeID};
-use orca_wasm::ir::module::Module;
-use orca_wasm::ir::types::BlockType as OrcaBlockType;
-use orca_wasm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as OrcaIterator};
-use orca_wasm::iterator::module_iterator::ModuleIterator;
-use orca_wasm::opcode::{Instrumenter, MacroOpcode, Opcode};
-use orca_wasm::Location;
 use std::iter::Iterator;
+use wirm::ir::function::FunctionBuilder;
+use wirm::ir::id::{FunctionID, LocalID, TypeID};
+use wirm::ir::module::Module;
+use wirm::ir::types::BlockType as WirmBlockType;
+use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as WirmIterator};
+use wirm::iterator::module_iterator::ModuleIterator;
+use wirm::opcode::{Instrumenter, MacroOpcode, Opcode};
+use wirm::Location;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -285,7 +285,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub(crate) fn define_alias(
         &mut self,
         var_name: &str,
-        var_ty: &OrcaType,
+        var_ty: &WirmType,
         alias_addr: &VarAddr,
     ) -> bool {
         self.table.override_record_addr(
@@ -389,9 +389,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 };
 
                 // we only care about the result of the original
-                OrcaBlockType::FuncType(self.app_iter.module.types.add_func_type(&[], &ty, None))
+                WirmBlockType::FuncType(self.app_iter.module.types.add_func_type(&[], &ty, None))
             }
-            None => OrcaBlockType::Empty,
+            None => WirmBlockType::Empty,
         };
         self.app_iter.if_stmt(block_ty);
         is_success &= self.emit_body(curr_instr_args, conseq, err);
@@ -632,7 +632,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
         if !self.curr_unshared.is_empty() {
             let id = self
                 .locals_tracker
-                .use_local(OrcaType::I32, &mut self.app_iter);
+                .use_local(WirmType::I32, &mut self.app_iter);
 
             // THIS VAR NEEDS TO BE REDEFINED!
             let offset_value = self.unshared_var_handler.get_curr_offset();

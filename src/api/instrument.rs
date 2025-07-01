@@ -4,16 +4,14 @@ use crate::common::error::WhammError;
 use crate::common::instr;
 use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
 use log::error;
-use orca_wasm::ir::module::module_types::Types;
-use orca_wasm::ir::module::side_effects::{
-    InjectType as OrcaInjectType, Injection as OrcaInjection,
-};
-use orca_wasm::ir::types::{DataType as OrcaType, FuncInstrMode, InstrumentationMode};
-use orca_wasm::Module;
 use std::collections::HashMap;
 use std::env;
 use std::process::exit;
 use wasmparser::{ExternalKind, TypeRef};
+use wirm::ir::module::module_types::Types;
+use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
+use wirm::ir::types::{DataType as WirmType, FuncInstrMode, InstrumentationMode};
+use wirm::Module;
 
 pub const MAX_ERRORS: i32 = 15;
 const CORE_LIB_PATH: &str = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
@@ -22,7 +20,7 @@ const CORE_LIB_PATH: &str = "whamm_core/target/wasm32-wasip1/release/whamm_core.
 ///
 /// * `app_wasm_path`: The path to the target application to instrument.
 /// * `script_path`: The path to the whamm script .mm file.
-/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules.
+/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
 /// * `config`: The configuration to use when performing the instrumentation.
 /// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
@@ -50,7 +48,7 @@ pub fn instrument_with_config(
 ///
 /// * `app_wasm_path`: The path to the target application to instrument.
 /// * `script_path`: The path to the whamm script .mm file.
-/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules.
+/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
 /// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn instrument_with_rewriting(
@@ -74,7 +72,7 @@ pub fn instrument_with_rewriting(
 ///
 /// * `app_wasm_path`: The path to the target application to instrument.
 /// * `script_path`: The path to the whamm script .mm file.
-/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules.
+/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
 /// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn instrument_module_with_rewriting(
@@ -101,7 +99,7 @@ pub fn instrument_module_with_rewriting(
 ///
 /// * `app_wasm_path`: The path to the target application to instrument.
 /// * `script_path`: The path to the whamm script .mm file.
-/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules.
+/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
 /// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn generate_monitor_module(
@@ -125,7 +123,7 @@ pub fn generate_monitor_module(
 ///
 /// * `app_wasm_path`: The path to the target application to instrument.
 /// * `script_path`: The path to the whamm script .mm file.
-/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules.
+/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
 /// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn instrument_as_dry_run(
@@ -134,7 +132,7 @@ pub fn instrument_as_dry_run(
     user_lib_paths: Vec<String>,
     core_lib_path: Option<String>,
     defs_path: Option<String>,
-) -> Result<HashMap<OrcaInjectType, Vec<Injection>>, Vec<WhammError>> {
+) -> Result<HashMap<WirmInjectType, Vec<Injection>>, Vec<WhammError>> {
     let buff = std::fs::read(app_wasm_path).unwrap();
     let mut target_wasm = Module::parse(&buff, false).unwrap();
 
@@ -361,7 +359,7 @@ pub enum Injection {
         /// The global's ID.
         id: u32, // TODO -- may not need (it's ordered in a vec)
         /// The global's type.
-        ty: OrcaType,
+        ty: WirmType,
         /// Whether the global is shared.
         shared: bool,
         /// Whether the global is mutable.
@@ -380,9 +378,9 @@ pub enum Injection {
         /// The function's name.
         fname: Option<String>,
         /// The function's signature (params, results).
-        sig: (Vec<OrcaType>, Vec<OrcaType>),
+        sig: (Vec<WirmType>, Vec<WirmType>),
         /// The function's local variables
-        locals: Vec<OrcaType>,
+        locals: Vec<WirmType>,
         /// The body of the function (in WAT).
         body: Vec<String>,
 
@@ -395,7 +393,7 @@ pub enum Injection {
     Local {
         /// The ID of the function this local is inserted into.
         target_fid: u32,
-        ty: OrcaType,
+        ty: WirmType,
 
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
@@ -432,9 +430,9 @@ pub enum Injection {
     },
 }
 impl Injection {
-    fn from(injection: &mut OrcaInjection) -> Vec<Self> {
+    fn from(injection: &mut WirmInjection) -> Vec<Self> {
         match injection {
-            OrcaInjection::Import {
+            WirmInjection::Import {
                 module,
                 name,
                 type_ref,
@@ -449,7 +447,7 @@ impl Injection {
                     cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
-            OrcaInjection::Export {
+            WirmInjection::Export {
                 name,
                 kind,
                 index,
@@ -463,14 +461,14 @@ impl Injection {
                     cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
-            OrcaInjection::Type { ty, tag, .. } => {
+            WirmInjection::Type { ty, tag, .. } => {
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Type {
                     ty: ty.to_owned(),
                     cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
-            OrcaInjection::Memory {
+            WirmInjection::Memory {
                 id,
                 initial,
                 maximum,
@@ -484,7 +482,7 @@ impl Injection {
                     cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
-            OrcaInjection::ActiveData {
+            WirmInjection::ActiveData {
                 memory_index,
                 offset_expr,
                 data,
@@ -499,14 +497,14 @@ impl Injection {
                     cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
-            OrcaInjection::PassiveData { data, tag } => {
+            WirmInjection::PassiveData { data, tag } => {
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::PassiveData {
                     data: data.to_owned(),
                     cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
-            OrcaInjection::Global {
+            WirmInjection::Global {
                 id,
                 ty,
                 shared,
@@ -525,7 +523,7 @@ impl Injection {
                     cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
-            OrcaInjection::Func {
+            WirmInjection::Func {
                 id,
                 fname,
                 sig,
@@ -547,7 +545,7 @@ impl Injection {
                     cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
-            OrcaInjection::Local {
+            WirmInjection::Local {
                 target_fid,
                 ty,
                 tag,
@@ -559,19 +557,19 @@ impl Injection {
                     cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
-            OrcaInjection::Table { tag } => {
+            WirmInjection::Table { tag } => {
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Table {
                     cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
-            OrcaInjection::Element { tag } => {
+            WirmInjection::Element { tag } => {
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Element {
                     cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
-            OrcaInjection::FuncProbe {
+            WirmInjection::FuncProbe {
                 target_fid,
                 mode,
                 body,
@@ -603,7 +601,7 @@ impl Injection {
 
                 injections
             }
-            OrcaInjection::FuncLocProbe {
+            WirmInjection::FuncLocProbe {
                 target_fid,
                 target_opcode_idx,
                 mode,
@@ -614,7 +612,7 @@ impl Injection {
                 let mut start_idx = 0;
                 // println!("{:?}@{}:{} --> {:#?}", mode, target_fid, target_opcode_idx, body);
                 if tag.is_empty() {
-                    // This is an injection that was created by Orca...to handle function entry/exit
+                    // This is an injection that was created by Wirm...to handle function entry/exit
                     return vec![];
                 }
                 let reasons = get_reasons_from_tag(tag.data_mut());

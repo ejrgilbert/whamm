@@ -10,12 +10,12 @@ use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
 };
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable, VarAddr};
-use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
-use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value as OrcaValue};
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::{MacroOpcode, Opcode};
-use orca_wasm::{InitInstr, Module};
+use wirm::ir::function::FunctionBuilder;
+use wirm::ir::id::{FunctionID, GlobalID, LocalID};
+use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmValue};
+use wirm::module_builder::AddLocal;
+use wirm::opcode::{MacroOpcode, Opcode};
+use wirm::{InitInstr, Module};
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -346,52 +346,52 @@ pub fn whamm_type_to_wasm_global(
     ty: &DataType,
     loc: &Option<Location>,
     init_expr: Option<InitExpr>,
-) -> (GlobalID, OrcaType) {
-    let orca_wasm_ty = ty.to_wasm_type();
+) -> (GlobalID, WirmType) {
+    let wirm_ty = ty.to_wasm_type();
 
-    if orca_wasm_ty.len() == 1 {
-        match orca_wasm_ty.first().unwrap() {
-            OrcaType::I32 => {
+    if wirm_ty.len() == 1 {
+        match wirm_ty.first().unwrap() {
+            WirmType::I32 => {
                 let global_id = app_wasm.add_global_with_tag(
-                    init_expr.unwrap_or(InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(0))])),
-                    OrcaType::I32,
+                    init_expr.unwrap_or(InitExpr::new(vec![InitInstr::Value(WirmValue::I32(0))])),
+                    WirmType::I32,
                     true,
                     false,
                     get_tag_for(loc),
                 );
-                (global_id, OrcaType::I32)
+                (global_id, WirmType::I32)
             }
-            OrcaType::I64 => {
+            WirmType::I64 => {
                 let global_id = app_wasm.add_global_with_tag(
-                    init_expr.unwrap_or(InitExpr::new(vec![InitInstr::Value(OrcaValue::I64(0))])),
-                    OrcaType::I64,
+                    init_expr.unwrap_or(InitExpr::new(vec![InitInstr::Value(WirmValue::I64(0))])),
+                    WirmType::I64,
                     true,
                     false,
                     get_tag_for(loc),
                 );
-                (global_id, OrcaType::I64)
+                (global_id, WirmType::I64)
             }
-            OrcaType::F32 => {
+            WirmType::F32 => {
                 let global_id = app_wasm.add_global_with_tag(
                     init_expr
-                        .unwrap_or(InitExpr::new(vec![InitInstr::Value(OrcaValue::F32(0f32))])),
-                    OrcaType::F32,
+                        .unwrap_or(InitExpr::new(vec![InitInstr::Value(WirmValue::F32(0f32))])),
+                    WirmType::F32,
                     true,
                     false,
                     get_tag_for(loc),
                 );
-                (global_id, OrcaType::F32)
+                (global_id, WirmType::F32)
             }
-            OrcaType::F64 => {
+            WirmType::F64 => {
                 let global_id = app_wasm.add_global_with_tag(
                     init_expr
-                        .unwrap_or(InitExpr::new(vec![InitInstr::Value(OrcaValue::F64(0f64))])),
-                    OrcaType::F64,
+                        .unwrap_or(InitExpr::new(vec![InitInstr::Value(WirmValue::F64(0f64))])),
+                    WirmType::F64,
                     true,
                     false,
                     get_tag_for(loc),
                 );
-                (global_id, OrcaType::F64)
+                (global_id, WirmType::F64)
             }
             _ => unimplemented!(),
         }
@@ -404,7 +404,7 @@ pub fn emit_global_getter(
     app_wasm: &mut Module,
     global_id: &u32,
     name: String,
-    ty: OrcaType,
+    ty: WirmType,
     loc: &Option<Location>,
 ) -> FunctionID {
     // todo -- make this conditional on 'testing' mode
@@ -1177,8 +1177,8 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I64 => injector.i64_rem_signed(),
                 #[rustfmt::skip]
                 DataType::F32 => {
-                    let a = LocalID(ctx.locals_tracker.use_local(OrcaType::F32, injector));
-                    let b = LocalID(ctx.locals_tracker.use_local(OrcaType::F32, injector));
+                    let a = LocalID(ctx.locals_tracker.use_local(WirmType::F32, injector));
+                    let b = LocalID(ctx.locals_tracker.use_local(WirmType::F32, injector));
 
                     // Step 0: Do some stack juggling
                     injector.local_set(b)
@@ -1208,8 +1208,8 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 }
                 #[rustfmt::skip]
                 DataType::F64 => {
-                    let a = LocalID(ctx.locals_tracker.use_local(OrcaType::F64, injector));
-                    let b = LocalID(ctx.locals_tracker.use_local(OrcaType::F64, injector));
+                    let a = LocalID(ctx.locals_tracker.use_local(WirmType::F64, injector));
+                    let b = LocalID(ctx.locals_tracker.use_local(WirmType::F64, injector));
 
                     // Step 0: Do some stack juggling
                     injector.local_set(b)

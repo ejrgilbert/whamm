@@ -8,10 +8,10 @@ use crate::parser::types::{
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
-use orca_wasm::Module;
 use pest::error::LineColLocation;
 use std::collections::{HashMap, HashSet};
 use std::vec;
+use wirm::Module;
 
 const UNEXPECTED_ERR_MSG: &str =
     "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";

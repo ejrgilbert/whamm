@@ -8,10 +8,10 @@ use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::{Metadata, ReportVars, NULL_PTR_IN_MEM};
 use crate::parser::types::{DataType, Location, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
-use orca_wasm::ir::id::MemoryID;
-use orca_wasm::ir::types::{InitExpr, Value as OrcaValue};
-use orca_wasm::{DataSegment, DataSegmentKind, InitInstr, Module};
 use std::collections::HashMap;
+use wirm::ir::id::MemoryID;
+use wirm::ir::types::{InitExpr, Value as WirmValue};
+use wirm::{DataSegment, DataSegmentKind, InitInstr, Module};
 
 pub struct UnsharedVarHandler {
     allocated_vars: Vec<AllocatedVar>,
@@ -67,7 +67,7 @@ impl UnsharedVarHandler {
             data: bytes,
             kind: DataSegmentKind::Active {
                 memory_index: self.mem_id,
-                offset_expr: InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(0))]),
+                offset_expr: InitExpr::new(vec![InitInstr::Value(WirmValue::I32(0))]),
             },
             tag: None,
         };
@@ -86,7 +86,7 @@ impl UnsharedVarHandler {
                         wasm,
                         &DataType::I32,
                         loc,
-                        Some(InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(
+                        Some(InitExpr::new(vec![InitInstr::Value(WirmValue::I32(
                             *mem_offset as i32,
                         ))])),
                     );

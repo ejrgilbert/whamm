@@ -1,6 +1,6 @@
 use crate::parser::types::Location;
-use orca_wasm::ir::types::Tag;
 use pest::error::LineColLocation;
+use wirm::ir::types::Tag;
 
 type TagData = Vec<u8>;
 

@@ -17,8 +17,8 @@ use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::parser::types::{Block, Expr, Statement};
-use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::Module;
+use wirm::ir::function::FunctionBuilder;
+use wirm::Module;
 
 #[derive(Copy, Clone)]
 pub enum InjectStrategy {

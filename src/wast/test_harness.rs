@@ -5,11 +5,11 @@ use crate::api::utils::wasm2wat_on_file;
 use crate::common::instr::{run, try_path};
 use crate::common::metrics::Metrics;
 use log::{debug, error};
-use orca_wasm::Module;
 use std::fs::{remove_dir_all, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use wirm::Module;
 
 const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 const DEFS_PATH: &str = "./";

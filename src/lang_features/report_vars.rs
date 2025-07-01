@@ -8,22 +8,22 @@ use crate::parser::types::DataType;
 use crate::verifier::types::VarAddr;
 use itertools::Itertools;
 use log::info;
-use orca_wasm::ir::function::FunctionBuilder;
-use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
-use orca_wasm::ir::types::{BlockType, DataType as OrcaType, InitExpr, Value};
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::MacroOpcode;
-use orca_wasm::{InitInstr, Module, Opcode};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use wasmparser::MemArg;
+use wirm::ir::function::FunctionBuilder;
+use wirm::ir::id::{FunctionID, GlobalID, LocalID};
+use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value};
+use wirm::module_builder::AddLocal;
+use wirm::opcode::MacroOpcode;
+use wirm::{InitInstr, Module, Opcode};
 
 pub const NULL_PTR_IN_MEM: i32 = -1;
 pub const NULL_PTR_IN_GLOBAL: i32 = -1;
 
 pub struct ReportVars {
-    pub variable_metadata: HashMap<VarAddr, (OrcaType, Metadata)>,
+    pub variable_metadata: HashMap<VarAddr, (WirmType, Metadata)>,
     pub all_metadata: HashSet<Metadata>,
     pub all_used_report_dts: HashSet<DataType>,
     pub curr_location: LocationData,
@@ -427,21 +427,21 @@ impl ReportVars {
         // handles all but 'value(s)' since this is common between all variable types
         let dt = LocalID(0); // use to figure out which 'type' to print
         let orig_addr = LocalID(1);
-        let mut flush_fn = FunctionBuilder::new(&[OrcaType::I64, OrcaType::I32], &[OrcaType::I32]);
+        let mut flush_fn = FunctionBuilder::new(&[WirmType::I64, WirmType::I32], &[WirmType::I32]);
 
-        let fname_ptr = flush_fn.add_local(OrcaType::I32); // u32
-        let fname_len = flush_fn.add_local(OrcaType::I32); // u8
+        let fname_ptr = flush_fn.add_local(WirmType::I32); // u32
+        let fname_len = flush_fn.add_local(WirmType::I32); // u8
 
-        let fid = flush_fn.add_local(OrcaType::I32); // u32
-        let pc = flush_fn.add_local(OrcaType::I32); // u32
+        let fid = flush_fn.add_local(WirmType::I32); // u32
+        let pc = flush_fn.add_local(WirmType::I32); // u32
 
-        let name_ptr = flush_fn.add_local(OrcaType::I32); // u32
-        let name_len = flush_fn.add_local(OrcaType::I32); // u8
+        let name_ptr = flush_fn.add_local(WirmType::I32); // u32
+        let name_len = flush_fn.add_local(WirmType::I32); // u8
 
-        let script_id = flush_fn.add_local(OrcaType::I32); // u8
+        let script_id = flush_fn.add_local(WirmType::I32); // u8
 
-        let probe_id_ptr = flush_fn.add_local(OrcaType::I32); // u32
-        let probe_id_len = flush_fn.add_local(OrcaType::I32); // u8
+        let probe_id_ptr = flush_fn.add_local(WirmType::I32); // u32
+        let probe_id_len = flush_fn.add_local(WirmType::I32); // u8
 
         let mut curr_offset = 0;
         let mut memarg = |num_bytes: i32| -> MemArg {
@@ -643,8 +643,8 @@ impl ReportVars {
         // handles the 'value(s)' output
         let mut flush_fn = FunctionBuilder::new(&[], &[]);
 
-        let curr_addr = flush_fn.add_local(OrcaType::I32);
-        let next_addr = flush_fn.add_local(OrcaType::I32);
+        let curr_addr = flush_fn.add_local(WirmType::I32);
+        let next_addr = flush_fn.add_local(WirmType::I32);
 
         // check that we actually have some of this DT to flush
         // if not: return
@@ -1149,7 +1149,7 @@ impl ReportVars {
             // location is updated to point to the memory address.
             let gid = wasm.add_global_with_tag(
                 InitExpr::new(vec![InitInstr::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
-                OrcaType::I32,
+                WirmType::I32,
                 true,
                 false,
                 get_tag_for(&None),
@@ -1209,7 +1209,7 @@ impl ReportVars {
         } else {
             let gid = wasm.add_global_with_tag(
                 InitExpr::new(vec![InitInstr::Value(Value::I32(NULL_PTR_IN_GLOBAL))]),
-                OrcaType::I32,
+                WirmType::I32,
                 true,
                 false,
                 get_tag_for(&None),
@@ -1265,13 +1265,13 @@ pub enum Metadata {
     Global {
         name: String,
         whamm_ty: DataType,
-        wasm_ty: OrcaType,
+        wasm_ty: WirmType,
         script_id: u8,
     },
     Local {
         name: String,
         whamm_ty: DataType,
-        wasm_ty: OrcaType,
+        wasm_ty: WirmType,
         script_id: u8,
         bytecode_loc: BytecodeLoc,
         probe_id: String,
@@ -1288,7 +1288,7 @@ impl From<&LocationData> for Metadata {
             } => Self::Local {
                 name: "".to_string(),
                 whamm_ty: DataType::I32,
-                wasm_ty: OrcaType::I32,
+                wasm_ty: WirmType::I32,
                 script_id: *script_id,
                 bytecode_loc: bytecode_loc.clone(),
                 probe_id: probe_id.clone(),
@@ -1296,7 +1296,7 @@ impl From<&LocationData> for Metadata {
             LocationData::Global { script_id } => Self::Global {
                 name: "".to_string(),
                 whamm_ty: DataType::I32,
-                wasm_ty: OrcaType::I32,
+                wasm_ty: WirmType::I32,
                 script_id: *script_id,
             },
         }
@@ -1330,12 +1330,12 @@ impl Metadata {
             Self::Local { whamm_ty, .. } | Self::Global { whamm_ty, .. } => whamm_ty.clone(),
         }
     }
-    pub fn set_wasm_ty(&mut self, new_ty: OrcaType) {
+    pub fn set_wasm_ty(&mut self, new_ty: WirmType) {
         match self {
             Self::Local { wasm_ty, .. } | Self::Global { wasm_ty, .. } => *wasm_ty = new_ty,
         }
     }
-    pub fn get_wasm_ty(&self) -> OrcaType {
+    pub fn get_wasm_ty(&self) -> WirmType {
         match self {
             Self::Local { wasm_ty, .. } | Self::Global { wasm_ty, .. } => *wasm_ty,
         }
@@ -1423,39 +1423,42 @@ struct FlushTracker {
     flush_var_metadata_fid: Option<u32>,
 }
 
-fn get_wasm_ty_str(wasm_ty: &OrcaType) -> String {
+fn get_wasm_ty_str(wasm_ty: &WirmType) -> String {
     let s = match wasm_ty {
-        OrcaType::I8 => "i8",
-        OrcaType::I16 => "i16",
-        OrcaType::I32 => "i32",
-        OrcaType::I64 => "i64",
-        OrcaType::F32 => "f32",
-        OrcaType::F64 => "f64",
-        OrcaType::V128 => "v128",
-        OrcaType::FuncRef => "funcref",
-        OrcaType::FuncRefNull => "funcref_null",
-        OrcaType::ExternRef => "externref",
-        OrcaType::ExternRefNull => "externref_null",
-        OrcaType::Any => "any",
-        OrcaType::AnyNull => "any_null",
-        OrcaType::None => "none",
-        OrcaType::NoExtern => "noextern",
-        OrcaType::NoFunc => "nofunc",
-        OrcaType::Eq => "eq",
-        OrcaType::EqNull => "eq_null",
-        OrcaType::Struct => "struct",
-        OrcaType::StructNull => "struct_null",
-        OrcaType::Array => "array",
-        OrcaType::ArrayNull => "array_null",
-        OrcaType::I31 => "i31",
-        OrcaType::I31Null => "i31_null",
-        OrcaType::Exn => "exn",
-        OrcaType::NoExn => "noexn",
-        OrcaType::Module { .. } => "module",
-        OrcaType::RecGroup(_) => "recgroup",
-        OrcaType::CoreTypeId(_) => "core_type_id",
-        OrcaType::Cont => "cont",
-        OrcaType::NoCont => "nocont",
+        WirmType::I8 => "i8",
+        WirmType::I16 => "i16",
+        WirmType::I32 => "i32",
+        WirmType::I64 => "i64",
+        WirmType::F32 => "f32",
+        WirmType::F64 => "f64",
+        WirmType::V128 => "v128",
+        WirmType::FuncRef => "funcref",
+        WirmType::FuncRefNull => "funcref_null",
+        WirmType::ExternRef => "externref",
+        WirmType::ExternRefNull => "externref_null",
+        WirmType::Any => "any",
+        WirmType::AnyNull => "any_null",
+        WirmType::None => "none",
+        WirmType::NoneNull => "none_null",
+        WirmType::NoExtern => "noextern",
+        WirmType::NoExternNull => "noextern_null",
+        WirmType::NoFunc => "nofunc",
+        WirmType::NoFuncNull => "nofunc_null",
+        WirmType::Eq => "eq",
+        WirmType::EqNull => "eq_null",
+        WirmType::Struct => "struct",
+        WirmType::StructNull => "struct_null",
+        WirmType::Array => "array",
+        WirmType::ArrayNull => "array_null",
+        WirmType::I31 => "i31",
+        WirmType::I31Null => "i31_null",
+        WirmType::Exn => "exn",
+        WirmType::NoExn => "noexn",
+        WirmType::Module { .. } => "module",
+        WirmType::RecGroup(_) => "recgroup",
+        WirmType::CoreTypeId(_) => "core_type_id",
+        WirmType::Cont => "cont",
+        WirmType::NoCont => "nocont",
     };
 
     s.to_string()

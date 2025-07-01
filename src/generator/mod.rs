@@ -9,8 +9,8 @@ use crate::parser::types::{
 use crate::verifier::types::Record;
 use itertools::Itertools;
 use log::{debug, trace, warn};
-use orca_wasm::ir::id::FunctionID;
 use std::collections::{HashMap, HashSet};
+use wirm::ir::id::FunctionID;
 
 pub mod folding;
 pub mod rewriting;

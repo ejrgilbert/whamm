@@ -1,13 +1,13 @@
-use crate::util::{print_side_effects, setup_logger, CORE_WASM_PATH};
+use crate::util::{setup_logger, CORE_WASM_PATH};
 use glob::{glob, glob_with};
 use log::{error, warn};
-use orca_wasm::Module;
 use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 use std::process::Command;
 use whamm::api::instrument::instrument_as_dry_run;
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
+use wirm::Module;
 
 const TEST_DRY_RUN: bool = true;
 pub const DEFAULT_CORE_LIB_PATH: &str = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";

@@ -23,17 +23,15 @@ use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info};
-use orca_wasm::ir::id::FunctionID;
-use orca_wasm::ir::types::{DataType as OrcaType, InitExpr, Value as OrcaValue};
-use orca_wasm::{InitInstr, Module};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::process::exit;
 use wasmparser::MemoryType;
+use wirm::ir::id::FunctionID;
+use wirm::ir::types::{DataType as WirmType, InitExpr, Value as WirmValue};
+use wirm::{InitInstr, Module};
 
-use orca_wasm::ir::module::side_effects::{
-    InjectType as OrcaInjectType, Injection as OrcaInjection,
-};
+use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -58,7 +56,7 @@ pub fn run_with_path(
     };
 
     let mut target_wasm = if !config.as_monitor_module {
-        // Read app Wasm into Orca module
+        // Read app Wasm into Wirm module
         Module::parse(&buff, false).unwrap()
     } else {
         // Create a new wasm file to use as `mon.wasm`
@@ -84,7 +82,7 @@ pub fn dry_run_on_bytes<'a>(
     user_lib_paths: Vec<String>,
     max_errors: i32,
     config: Config,
-) -> Result<HashMap<OrcaInjectType, Vec<OrcaInjection<'a>>>, Vec<WhammError>> {
+) -> Result<HashMap<WirmInjectType, Vec<WirmInjection<'a>>>, Vec<WhammError>> {
     let mut metrics = Metrics::default();
     if let Err(err) = run_on_module(
         core_wasm_path,
@@ -275,16 +273,17 @@ pub fn run(
             &mut report_vars,
         );
     } else {
-        let mut unshared_var_handler = UnsharedVarHandler::new(*target_wasm.add_local_memory(
-            MemoryType {
-                memory64: false,
-                shared: false,
-                initial: 1,
-                maximum: None,
-                page_size_log2: None,
-            },
-            get_tag_for(&None),
-        ));
+        let mut unshared_var_handler =
+            UnsharedVarHandler::new(*target_wasm.add_local_memory_with_tag(
+                MemoryType {
+                    memory64: false,
+                    shared: false,
+                    initial: 1,
+                    maximum: None,
+                    page_size_log2: None,
+                },
+                get_tag_for(&None),
+            ));
 
         run_instr_rewrite(
             metrics,
@@ -450,7 +449,7 @@ fn get_memory_allocator(
 ) -> MemoryAllocator {
     // Create the memory tracker + the map and metadata tracker
     let mem_id = if create_new_mem {
-        *target_wasm.add_local_memory(
+        *target_wasm.add_local_memory_with_tag(
             MemoryType {
                 memory64: false,
                 shared: false,
@@ -467,15 +466,15 @@ fn get_memory_allocator(
 
     // todo -- only add if needed!
     let mem_tracker_global = target_wasm.add_global_with_tag(
-        InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(0))]),
-        OrcaType::I32,
+        InitExpr::new(vec![InitInstr::Value(WirmValue::I32(0))]),
+        WirmType::I32,
         true,
         false,
         get_tag_for(&None),
     );
 
     let (alloc_var_mem_id, alloc_var_mem_tracker_global, engine_mem_id) = if as_monitor_module {
-        let alloc_id = *target_wasm.add_local_memory(
+        let alloc_id = *target_wasm.add_local_memory_with_tag(
             MemoryType {
                 memory64: false,
                 shared: false,
@@ -486,13 +485,13 @@ fn get_memory_allocator(
             get_tag_for(&None),
         );
         let alloc_tracker_global = target_wasm.add_global_with_tag(
-            InitExpr::new(vec![InitInstr::Value(OrcaValue::I32(0))]),
-            OrcaType::I32,
+            InitExpr::new(vec![InitInstr::Value(WirmValue::I32(0))]),
+            WirmType::I32,
             true,
             false,
             get_tag_for(&None),
         );
-        let engine_id = *target_wasm.add_local_memory(
+        let engine_id = *target_wasm.add_local_memory_with_tag(
             MemoryType {
                 memory64: false,
                 shared: false,

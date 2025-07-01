@@ -8,9 +8,9 @@ use crate::generator::{emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::report_vars::LocationData;
 use crate::parser::types::{DataType, Location, Statement, Value, Whamm, WhammVisitorMut};
 use crate::verifier::types::Record;
-use orca_wasm::ir::id::FunctionID;
-use orca_wasm::Module;
 use std::collections::{HashMap, HashSet};
+use wirm::ir::id::FunctionID;
+use wirm::Module;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.

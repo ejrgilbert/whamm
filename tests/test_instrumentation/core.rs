@@ -5,10 +5,10 @@ use crate::test_instrumentation::helper::{
 };
 use crate::util::setup_logger;
 use log::error;
-use orca_wasm::Module;
 use std::fs;
 use std::process::Command;
 use whamm::api::utils::wasm2wat_on_file;
+use wirm::Module;
 
 const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic.wasm";
 

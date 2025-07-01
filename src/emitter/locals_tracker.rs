@@ -1,6 +1,6 @@
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::{DataType, Opcode};
 use std::collections::HashMap;
+use wirm::module_builder::AddLocal;
+use wirm::{DataType, Opcode};
 
 #[derive(Default)]
 pub struct LocalsTracker {

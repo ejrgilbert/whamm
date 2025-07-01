@@ -5,13 +5,13 @@ use crate::emitter::tag_handler::get_probe_tag_data;
 use crate::lang_features::libraries::core::LibAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{DataType, Location};
-use orca_wasm::ir::id::{FunctionID, GlobalID, LocalID};
-use orca_wasm::ir::types::BlockType as OrcaBlockType;
-use orca_wasm::ir::types::DataType as OrcaType;
-use orca_wasm::module_builder::AddLocal;
-use orca_wasm::opcode::{Instrumenter, MacroOpcode};
-use orca_wasm::{Location as OrcaLocation, Module, Opcode};
 use std::collections::HashMap;
+use wirm::ir::id::{FunctionID, GlobalID, LocalID};
+use wirm::ir::types::BlockType as WirmBlockType;
+use wirm::ir::types::DataType as WirmType;
+use wirm::module_builder::AddLocal;
+use wirm::opcode::{Instrumenter, MacroOpcode};
+use wirm::{Location as WirmLocation, Module, Opcode};
 
 const UNEXPECTED_ERR_MSG: &str =
     "MapLibAdapter: Looks like you've found a bug...please report this behavior!";
@@ -168,8 +168,8 @@ impl MapLibAdapter {
             panic!("Expected the offset and len to be set for the key String!");
         };
 
-        let src_offset = func.add_local(OrcaType::I32);
-        let src_len = func.add_local(OrcaType::I32);
+        let src_offset = func.add_local(WirmType::I32);
+        let src_len = func.add_local(WirmType::I32);
 
         func.u32_const(curr_str_offset).local_set(src_offset);
         func.u32_const(curr_str_len).local_set(src_len);
@@ -482,7 +482,7 @@ impl MapLibAdapter {
         init_fn.append_tag_at(
             get_probe_tag_data(loc, op_idx),
             // location is unused
-            OrcaLocation::Module {
+            WirmLocation::Module {
                 func_idx: FunctionID(0),
                 instr_idx: 0,
             },
@@ -505,7 +505,7 @@ impl MapLibAdapter {
 
         // 1 means the maps have not been initialized, 0 means they have
         func.global_get(GlobalID(self.init_bool_location));
-        func.if_stmt(OrcaBlockType::Empty);
+        func.if_stmt(WirmBlockType::Empty);
         func.i32_const(0);
         func.global_set(GlobalID(self.init_bool_location));
         func.call(map_init_fid);

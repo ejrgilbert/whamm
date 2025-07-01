@@ -8,11 +8,11 @@ use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier::check_duplicate_id;
 use itertools::Itertools;
 use log::trace;
-use orca_wasm::ir::id::FunctionID;
-use orca_wasm::Module;
 use parser_types::{Block, DataType, Expr, Fn, Script, Statement, Value, Whamm};
 use std::collections::{HashMap, HashSet};
 use wasmparser::ExternalKind;
+use wirm::ir::id::FunctionID;
+use wirm::Module;
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
 
