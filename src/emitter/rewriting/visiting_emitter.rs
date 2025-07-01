@@ -549,7 +549,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                             instr_idx: 0,
                         },
                     );
-                    // on_exit.finish_instr();
                 }
                 fid
             } else {

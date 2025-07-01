@@ -414,7 +414,6 @@ pub fn emit_global_getter(
     let mut getter = FunctionBuilder::new(&getter_params, &getter_res);
     getter.global_get(GlobalID(*global_id));
 
-    // TODO -- pull the global's location
     let getter_id = getter.finish_module_with_tag(app_wasm, get_tag_for(loc));
     let fn_name = format!("get_{name}");
     app_wasm.set_fn_name(getter_id, fn_name.clone());
