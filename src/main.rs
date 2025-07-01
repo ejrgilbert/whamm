@@ -2,7 +2,6 @@ extern crate core;
 mod cli;
 
 use cli::{Cmd, WhammCli};
-use std::env;
 
 use clap::Parser;
 use cli::LibraryLinkStrategyArg;
@@ -31,15 +30,7 @@ pub fn main() {
 fn try_main() -> Result<(), failure::Error> {
     setup_logger();
 
-    // Set up the whamm home directory
-    let whamm_home = format!(
-        "{}/",
-        env::var("WHAMM_HOME")
-            .unwrap_or_else(|_| "./".to_string())
-            .trim_end_matches("/")
-    );
-
-    // Get information from userinsstr command line args
+    // Get information from userinstr command line args
     let cli = WhammCli::parse();
 
     match cli.command {
@@ -49,12 +40,7 @@ fn try_main() -> Result<(), failure::Error> {
             functions,
             defs_path,
         } => {
-            let defs = if let Some(path) = defs_path {
-                path
-            } else {
-                whamm_home
-            };
-            print_info(rule, &defs, vars, functions);
+            print_info(rule, defs_path, vars, functions);
         }
         Cmd::Wast { wast_path } => {
             run_wast_tests_at(&vec![PathBuf::from(wast_path)]);

@@ -20,12 +20,12 @@ const UNEXPECTED_ERR_MSG: &str =
 
 pub fn print_info(
     rule: String,
-    defs_path: &str,
+    def_yamls: &[String],
     print_vars: bool,
     print_functions: bool,
     err: &mut ErrorGen,
 ) {
-    let def = yml_to_providers(defs_path);
+    let def = yml_to_providers(def_yamls);
     assert!(!def.is_empty());
 
     trace!("Entered print_info");
@@ -101,7 +101,7 @@ pub fn print_info(
     }
 }
 
-pub fn parse_script(defs_path: &str, script: &String, err: &mut ErrorGen) -> Option<Whamm> {
+pub fn parse_script(def_yamls: &Vec<String>, script: &String, err: &mut ErrorGen) -> Option<Whamm> {
     trace!("Entered parse_script");
     err.set_script_text(script.to_owned());
 
@@ -109,7 +109,7 @@ pub fn parse_script(defs_path: &str, script: &String, err: &mut ErrorGen) -> Opt
     match res {
         Ok(mut pairs) => {
             let res = to_ast(
-                defs_path,
+                def_yamls,
                 // inner of script
                 pairs.next().unwrap(),
                 err,
@@ -135,7 +135,7 @@ pub fn parse_script(defs_path: &str, script: &String, err: &mut ErrorGen) -> Opt
 // ====================
 
 fn to_ast(
-    defs_path: &str,
+    def_yamls: &Vec<String>,
     pair: Pair<Rule>,
     err: &mut ErrorGen,
 ) -> Result<Whamm, Box<Error<Rule>>> {
@@ -147,7 +147,7 @@ fn to_ast(
 
     match pair.as_rule() {
         Rule::script => {
-            parser_entry_point(defs_path, &mut whamm, script_count, pair, err);
+            parser_entry_point(def_yamls, &mut whamm, script_count, pair, err);
         }
         rule => {
             err.parse_error(
@@ -172,20 +172,20 @@ fn to_ast(
 // =======================
 
 fn parser_entry_point(
-    defs_path: &str,
+    def_yamls: &Vec<String>,
     whamm: &mut Whamm,
     script_count: usize,
     pair: Pair<Rule>,
     err: &mut ErrorGen,
 ) {
-    let def = yml_to_providers(defs_path);
+    let def = yml_to_providers(def_yamls);
     assert!(!def.is_empty());
 
     trace!("Enter process_pair");
     match pair.as_rule() {
         Rule::script => {
             trace!("Begin process script");
-            handle_script(defs_path, whamm, pair, err);
+            handle_script(def_yamls, whamm, pair, err);
             trace!("End process script");
         }
         Rule::lib_import => handle_lib_import(whamm, script_count, pair),
@@ -231,12 +231,17 @@ fn parser_entry_point(
     trace!("Exit process_pair");
 }
 
-pub fn handle_script(defs_path: &str, whamm: &mut Whamm, pair: Pair<Rule>, err: &mut ErrorGen) {
+pub fn handle_script(
+    def_yamls: &Vec<String>,
+    whamm: &mut Whamm,
+    pair: Pair<Rule>,
+    err: &mut ErrorGen,
+) {
     let base_script = Script::new();
     let new_script_count = whamm.add_script(base_script);
 
     pair.into_inner().for_each(|p| {
-        parser_entry_point(defs_path, whamm, new_script_count, p, err);
+        parser_entry_point(def_yamls, whamm, new_script_count, p, err);
     });
 }
 

@@ -4,9 +4,11 @@ use crate::common::error::ErrorGen;
 
 use crate::parser::provider_handler::ModeKind;
 use crate::parser::tests::{get_ast, setup_logger};
+use crate::parser::yml_processor::pull_all_yml_files;
 use glob::{glob, glob_with};
 use log::{error, info, warn};
 
+const DEFS_PATH: &str = "./";
 const VALID_SCRIPTS: &[&str] = &[
     // with libraries
     r#"
@@ -593,15 +595,15 @@ pub fn get_test_scripts(sub_dir: &str) -> Vec<String> {
     scripts
 }
 
-fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
-    parse_script("./", &script.to_string(), err).is_some() && !err.has_errors
+fn is_valid_script(script: &str, def_yamls: &Vec<String>, err: &mut ErrorGen) -> bool {
+    parse_script(def_yamls, &script.to_string(), err).is_some() && !err.has_errors
 }
 
-pub fn run_test_on_valid_list(scripts: Vec<String>, err: &mut ErrorGen) {
+pub fn run_test_on_valid_list(scripts: Vec<String>, def_yamls: &Vec<String>, err: &mut ErrorGen) {
     for script in scripts {
         println!("Parsing: {}", script);
 
-        let res = is_valid_script(&script, err);
+        let res = is_valid_script(&script, def_yamls, err);
         if !res || err.has_errors {
             error!(
                 "script = '{}' is not recognized as valid, but it should be",
@@ -626,6 +628,7 @@ pub fn test_parse_valid_scripts() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     run_test_on_valid_list(
         VALID_SCRIPTS.iter().map(|s| s.to_string()).collect(),
+        &pull_all_yml_files(&DEFS_PATH),
         &mut err,
     );
 }
@@ -637,7 +640,7 @@ pub fn test_parse_fatal_scripts() {
         println!("Parsing: {}", script);
         let result = std::panic::catch_unwind(|| {
             let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-            is_valid_script(script, &mut err)
+            is_valid_script(script, &pull_all_yml_files(&DEFS_PATH), &mut err)
         });
         match result {
             Ok(_) => {
@@ -656,7 +659,7 @@ pub fn test_parse_invalid_scripts() {
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
     for script in INVALID_SCRIPTS {
         info!("Parsing: {}", script);
-        let res = is_valid_script(script, &mut err);
+        let res = is_valid_script(script, &pull_all_yml_files(&DEFS_PATH), &mut err);
         if res || !err.has_errors {
             error!(
                 "string = '{}' is recognized as valid, but it should not",
@@ -745,7 +748,11 @@ wasm::call:alt /
 pub fn test_ast_special_cases() {
     setup_logger();
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    run_test_on_valid_list(SPECIAL.iter().map(|s| s.to_string()).collect(), &mut err);
+    run_test_on_valid_list(
+        SPECIAL.iter().map(|s| s.to_string()).collect(),
+        &pull_all_yml_files(&DEFS_PATH),
+        &mut err,
+    );
 }
 
 #[test]
@@ -763,7 +770,11 @@ pub fn testing_strcmp() {
 
     "#;
 
-    assert!(is_valid_script(script, &mut err));
+    assert!(is_valid_script(
+        script,
+        &pull_all_yml_files(&DEFS_PATH),
+        &mut err
+    ));
 }
 
 #[test]
@@ -780,7 +791,11 @@ fn test_global_stmts() {
             strcmp((arg0, arg1), "bookings");
         }
     "#;
-    assert!(is_valid_script(script, &mut err));
+    assert!(is_valid_script(
+        script,
+        &pull_all_yml_files(&DEFS_PATH),
+        &mut err
+    ));
 }
 
 #[test]
@@ -801,7 +816,7 @@ pub fn testing_block() {
         }
     "#;
 
-    let res = is_valid_script(script, &mut err);
+    let res = is_valid_script(script, &pull_all_yml_files(&DEFS_PATH), &mut err);
     err.report();
     assert!(res);
 }
@@ -823,7 +838,11 @@ pub fn testing_global_def() {
         }
     "#;
 
-    assert!(is_valid_script(script, &mut err));
+    assert!(is_valid_script(
+        script,
+        &pull_all_yml_files(&DEFS_PATH),
+        &mut err
+    ));
 }
 #[test]
 pub fn testing_map() {
@@ -841,7 +860,11 @@ pub fn testing_map() {
         }
     "#;
 
-    assert!(is_valid_script(script, &mut err));
+    assert!(is_valid_script(
+        script,
+        &pull_all_yml_files(&DEFS_PATH),
+        &mut err
+    ));
 }
 #[test]
 pub fn testing_tuple_map() {
@@ -855,7 +878,11 @@ pub fn testing_tuple_map() {
         }
     "#;
 
-    assert!(is_valid_script(script, &mut err));
+    assert!(is_valid_script(
+        script,
+        &pull_all_yml_files(&DEFS_PATH),
+        &mut err
+    ));
 }
 #[test]
 pub fn test_report_decl() {
@@ -869,7 +896,11 @@ pub fn test_report_decl() {
             report var b: bool;
         }
     "#;
-    assert!(is_valid_script(script, &mut err));
+    assert!(is_valid_script(
+        script,
+        &pull_all_yml_files(&DEFS_PATH),
+        &mut err
+    ));
 }
 // ===================
 // = Full File Tests =
@@ -882,7 +913,7 @@ pub fn fault_injection() {
         warn!("No test scripts found for `fault_injection` test.");
     }
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    run_test_on_valid_list(scripts, &mut err);
+    run_test_on_valid_list(scripts, &pull_all_yml_files(&DEFS_PATH), &mut err);
 }
 
 #[test]
@@ -893,7 +924,7 @@ pub fn wizard_monitors() {
         warn!("No test scripts found for `wizard_monitors` test.");
     }
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    run_test_on_valid_list(scripts, &mut err);
+    run_test_on_valid_list(scripts, &pull_all_yml_files(&DEFS_PATH), &mut err);
 }
 
 #[test]
@@ -904,5 +935,5 @@ pub fn replay() {
         warn!("No test scripts found for `replay` test.");
     }
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-    run_test_on_valid_list(scripts, &mut err);
+    run_test_on_valid_list(scripts, &pull_all_yml_files(&DEFS_PATH), &mut err);
 }

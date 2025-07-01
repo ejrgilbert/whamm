@@ -41,8 +41,8 @@ pub(crate) fn try_path(path: &String) {
 }
 
 pub fn run_with_path(
-    core_wasm_path: &str,
-    defs_path: &str,
+    core_lib: &[u8],
+    def_yamls: &Vec<String>,
     app_wasm_path: String,
     script_path: String,
     user_lib_paths: Vec<String>,
@@ -64,8 +64,8 @@ pub fn run_with_path(
     };
 
     run_on_module_and_encode(
-        core_wasm_path,
-        defs_path,
+        core_lib,
+        def_yamls,
         &mut target_wasm,
         script_path,
         user_lib_paths,
@@ -75,8 +75,8 @@ pub fn run_with_path(
 }
 
 pub fn dry_run_on_bytes<'a>(
-    core_wasm_path: &str,
-    defs_path: &str,
+    core_lib: &[u8],
+    def_yamls: &Vec<String>,
     target_wasm: &'a mut Module,
     script_path: String,
     user_lib_paths: Vec<String>,
@@ -85,8 +85,8 @@ pub fn dry_run_on_bytes<'a>(
 ) -> Result<HashMap<WirmInjectType, Vec<WirmInjection<'a>>>, Vec<WhammError>> {
     let mut metrics = Metrics::default();
     if let Err(err) = run_on_module(
-        core_wasm_path,
-        defs_path,
+        core_lib,
+        def_yamls,
         target_wasm,
         script_path,
         user_lib_paths,
@@ -117,8 +117,8 @@ pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, String, Vec<u8>)
 }
 
 pub fn run_on_module_and_encode(
-    core_wasm_path: &str,
-    defs_path: &str,
+    core_lib: &[u8],
+    def_yamls: &Vec<String>,
     target_wasm: &mut Module,
     script_path: String,
     user_lib_paths: Vec<String>,
@@ -127,8 +127,8 @@ pub fn run_on_module_and_encode(
 ) -> Vec<u8> {
     let mut metrics = Metrics::default();
     if let Err(mut err) = run_on_module(
-        core_wasm_path,
-        defs_path,
+        core_lib,
+        def_yamls,
         target_wasm,
         script_path,
         user_lib_paths,
@@ -145,8 +145,8 @@ pub fn run_on_module_and_encode(
 }
 
 pub fn run_on_module(
-    core_wasm_path: &str,
-    defs_path: &str,
+    core_lib: &[u8],
+    def_yamls: &Vec<String>,
     target_wasm: &mut Module,
     script_path: String,
     user_lib_paths: Vec<String>,
@@ -166,8 +166,8 @@ pub fn run_on_module(
     };
 
     run(
-        core_wasm_path,
-        defs_path,
+        core_lib,
+        def_yamls,
         target_wasm,
         &whamm_script,
         &script_path,
@@ -189,8 +189,8 @@ pub fn write_to_file(module: Vec<u8>, output_wasm_path: String) {
 }
 
 pub fn run(
-    core_wasm_path: &str,
-    defs_path: &str,
+    core_lib: &[u8],
+    def_yamls: &Vec<String>,
     target_wasm: &mut Module,
     whamm_script: &String,
     script_path: &str,
@@ -209,7 +209,7 @@ pub fn run(
     }
 
     // Process the script
-    let mut whamm = get_script_ast(defs_path, whamm_script, &mut err);
+    let mut whamm = get_script_ast(def_yamls, whamm_script, &mut err);
     let (mut symbol_table, has_reports) = get_symbol_table(&mut whamm, &user_lib_modules, &mut err);
 
     // If there were any errors encountered, report and exit!
@@ -235,7 +235,7 @@ pub fn run(
         config.library_strategy,
         &metadata_collector.ast,
         target_wasm,
-        core_wasm_path,
+        core_lib,
         &mut mem_allocator,
         &mut core_packages,
         metadata_collector.err,
@@ -540,9 +540,9 @@ fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool
     has_reports
 }
 
-fn get_script_ast(defs_path: &str, script: &String, err: &mut ErrorGen) -> Whamm {
+fn get_script_ast(def_yamls: &Vec<String>, script: &String, err: &mut ErrorGen) -> Whamm {
     // Parse the script and build the AST
-    match parse_script(defs_path, script, err) {
+    match parse_script(def_yamls, script, err) {
         Some(ast) => {
             info!("successfully parsed");
             err.check_too_many();

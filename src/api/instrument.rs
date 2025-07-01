@@ -1,11 +1,11 @@
 #![allow(clippy::too_many_arguments)]
 
+use crate::api::get_defs_and_lib;
 use crate::common::error::WhammError;
 use crate::common::instr;
 use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
 use log::error;
 use std::collections::HashMap;
-use std::env;
 use std::process::exit;
 use wasmparser::{ExternalKind, TypeRef};
 use wirm::ir::module::module_types::Types;
@@ -14,7 +14,6 @@ use wirm::ir::types::{DataType as WirmType, FuncInstrMode, InstrumentationMode};
 use wirm::Module;
 
 pub const MAX_ERRORS: i32 = 15;
-const CORE_LIB_PATH: &str = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 
 /// Using the passed Whamm script and configuration, instrument the target Wasm module via bytecode rewriting.
 ///
@@ -32,10 +31,10 @@ pub fn instrument_with_config(
     core_lib_path: Option<String>,
     defs_path: Option<String>,
 ) -> Vec<u8> {
-    let (core_lib_path, defs_path) = get_paths_for(&core_lib_path, &defs_path);
+    let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
     instr::run_with_path(
-        &core_lib_path,
-        &defs_path,
+        &core_lib,
+        &def_yamls,
         app_wasm_path,
         script_path,
         user_lib_paths,
@@ -82,10 +81,10 @@ pub fn instrument_module_with_rewriting(
     core_lib_path: Option<String>,
     defs_path: Option<String>,
 ) -> Vec<u8> {
-    let (core_lib_path, defs_path) = get_paths_for(&core_lib_path, &defs_path);
+    let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
     instr::run_on_module_and_encode(
-        &core_lib_path,
-        &defs_path,
+        &core_lib,
+        &def_yamls,
         target_wasm,
         script_path,
         user_lib_paths,
@@ -136,10 +135,10 @@ pub fn instrument_as_dry_run(
     let buff = std::fs::read(app_wasm_path).unwrap();
     let mut target_wasm = Module::parse(&buff, false).unwrap();
 
-    let (core_lib_path, defs_path) = get_paths_for(&core_lib_path, &defs_path);
+    let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
     match instr::dry_run_on_bytes(
-        &core_lib_path,
-        &defs_path,
+        &core_lib,
+        &def_yamls,
         &mut target_wasm,
         script_path,
         user_lib_paths,
@@ -158,29 +157,6 @@ pub fn instrument_as_dry_run(
             Ok(injections)
         }
         Err(errs) => Err(errs),
-    }
-}
-
-fn get_paths_for(core_lib_path: &Option<String>, defs_path: &Option<String>) -> (String, String) {
-    // Set up the whamm home directory
-    let whamm_home = format!(
-        "{}/",
-        env::var("WHAMM_HOME")
-            .unwrap_or_else(|_| "./".to_string())
-            .trim_end_matches("/")
-    );
-
-    (
-        get_path_for(core_lib_path, &whamm_home, CORE_LIB_PATH),
-        get_path_for(defs_path, &whamm_home, "."),
-    )
-}
-
-fn get_path_for(path: &Option<String>, whamm_home: &str, rel_to_whamm_home: &str) -> String {
-    if let Some(path) = path {
-        path.to_string()
-    } else {
-        format!("{}/{}", whamm_home, rel_to_whamm_home)
     }
 }
 
