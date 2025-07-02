@@ -11,7 +11,6 @@ use wasmparser::{ExternalKind, TypeRef};
 use wirm::ir::module::module_types::Types;
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
 use wirm::ir::types::{DataType as WirmType, FuncInstrMode, InstrumentationMode};
-use wirm::Module;
 
 pub const MAX_ERRORS: i32 = 15;
 
@@ -74,18 +73,18 @@ pub fn instrument_with_rewriting(
 /// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
 /// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
-pub fn instrument_module_with_rewriting(
-    target_wasm: &mut Module,
+pub fn instrument_bytes_with_rewriting(
+    target_wasm_bytes: Vec<u8>,
     script_path: String,
     user_lib_paths: Vec<String>,
     core_lib_path: Option<String>,
     defs_path: Option<String>,
 ) -> Vec<u8> {
     let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
-    instr::run_on_module_and_encode(
+    instr::run_on_bytes_and_encode(
         &core_lib,
         &def_yamls,
-        target_wasm,
+        &target_wasm_bytes,
         script_path,
         user_lib_paths,
         MAX_ERRORS,
@@ -132,14 +131,18 @@ pub fn instrument_as_dry_run(
     core_lib_path: Option<String>,
     defs_path: Option<String>,
 ) -> Result<HashMap<WirmInjectType, Vec<Injection>>, Vec<WhammError>> {
-    let buff = std::fs::read(app_wasm_path).unwrap();
-    let mut target_wasm = Module::parse(&buff, false).unwrap();
-
     let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
+
+    let bytes = if let Ok(bytes) = std::fs::read(&app_wasm_path) {
+        bytes
+    } else {
+        error!("Could not read from file: {app_wasm_path}");
+        exit(1)
+    };
     match instr::dry_run_on_bytes(
         &core_lib,
         &def_yamls,
-        &mut target_wasm,
+        &bytes,
         script_path,
         user_lib_paths,
         MAX_ERRORS,

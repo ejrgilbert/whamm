@@ -7,7 +7,6 @@ use std::path::PathBuf;
 use std::process::Command;
 use whamm::api::instrument::instrument_as_dry_run;
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
-use wirm::Module;
 
 const TEST_DRY_RUN: bool = true;
 pub const DEFAULT_CORE_LIB_PATH: &str = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
@@ -388,7 +387,7 @@ pub(crate) fn try_path(path: &String) {
 pub(crate) fn run_script(
     script_path: &PathBuf,
     wasm_path: &str,
-    target_wasm: &mut Module,
+    target_wasm_bytes: Vec<u8>,
     user_libs: Vec<String>,
     output_path: Option<String>,
     target_wizard: bool,
@@ -402,8 +401,8 @@ pub(crate) fn run_script(
             Some("./".to_string()),
         )
     } else {
-        whamm::api::instrument::instrument_module_with_rewriting(
-            target_wasm,
+        whamm::api::instrument::instrument_bytes_with_rewriting(
+            target_wasm_bytes,
             script_path_str,
             user_libs.clone(),
             Some(CORE_WASM_PATH.to_string()),
@@ -437,12 +436,10 @@ fn run_testcase_rewriting(
     instr_app_path: &String,
 ) {
     // run the script on configured application
-    let wasm = fs::read(app_path_str).unwrap();
-    let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
     run_script(
         &script,
         app_path_str,
-        &mut module_to_instrument,
+        fs::read(app_path_str).unwrap(),
         user_libs.clone(),
         Some(instr_app_path.clone()),
         false,
@@ -513,11 +510,10 @@ fn run_testcase_wizard(
     }
 
     // run the script on configured application
-    let mut module_to_instrument = Module::default();
     run_script(
         &script,
         app_path_str,
-        &mut module_to_instrument,
+        vec![], // unused
         user_libs,
         Some(instr_app_path.clone()),
         true,
