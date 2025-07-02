@@ -8,7 +8,6 @@ use log::error;
 use std::fs;
 use std::process::Command;
 use whamm::api::utils::wasm2wat_on_file;
-use wirm::Module;
 
 const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic.wasm";
 
@@ -22,14 +21,12 @@ fn instrument_dfinity_with_fault_injection() {
     wat2wasm_on_dir("tests/apps/core_suite/handwritten");
 
     let wasm_path = "tests/apps/dfinity/users.wasm";
-    let wasm = fs::read(wasm_path).unwrap();
 
     for (script_path, ..) in processed_scripts {
-        let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
         run_script(
             &script_path,
             wasm_path,
-            &mut module_to_instrument,
+            fs::read(wasm_path).unwrap(),
             vec![],
             None,
             false,
@@ -135,13 +132,11 @@ fn instrument_with_wizard_monitors() {
 
     build_whamm_core_lib();
     wat2wasm_on_dir("tests/apps/core_suite/handwritten");
-    let wasm = fs::read(APP_WASM_PATH).unwrap();
     for (script_path, ..) in processed_scripts {
-        let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
         run_script(
             &script_path,
             APP_WASM_PATH,
-            &mut module_to_instrument,
+            fs::read(APP_WASM_PATH).unwrap(),
             vec![],
             None,
             false,

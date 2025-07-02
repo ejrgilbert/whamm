@@ -29,7 +29,7 @@ use std::process::exit;
 use wasmparser::MemoryType;
 use wirm::ir::id::FunctionID;
 use wirm::ir::types::{DataType as WirmType, InitExpr, Value as WirmValue};
-use wirm::{InitInstr, Module};
+use wirm::{Component, InitInstr, Module};
 
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
 
@@ -49,24 +49,20 @@ pub fn run_with_path(
     max_errors: i32,
     config: Config,
 ) -> Vec<u8> {
-    let buff = if !config.as_monitor_module {
-        std::fs::read(app_wasm_path).unwrap()
+    let bytes = if !config.as_monitor_module {
+        if let Ok(bytes) = std::fs::read(&app_wasm_path) {
+            bytes
+        } else {
+            error!("Could not read from file: {app_wasm_path}");
+            exit(1)
+        }
     } else {
         vec![]
     };
-
-    let mut target_wasm = if !config.as_monitor_module {
-        // Read app Wasm into Wirm module
-        Module::parse(&buff, false).unwrap()
-    } else {
-        // Create a new wasm file to use as `mon.wasm`
-        Module::default()
-    };
-
-    run_on_module_and_encode(
+    run_on_bytes_and_encode(
         core_lib,
         def_yamls,
-        &mut target_wasm,
+        &bytes,
         script_path,
         user_lib_paths,
         max_errors,
@@ -77,17 +73,19 @@ pub fn run_with_path(
 pub fn dry_run_on_bytes<'a>(
     core_lib: &[u8],
     def_yamls: &Vec<String>,
-    target_wasm: &'a mut Module,
+    target_wasm_bytes: &'a [u8],
     script_path: String,
     user_lib_paths: Vec<String>,
     max_errors: i32,
     config: Config,
 ) -> Result<HashMap<WirmInjectType, Vec<WirmInjection<'a>>>, Vec<WhammError>> {
+    // TODO -- support components here!
     let mut metrics = Metrics::default();
+    let mut target_wasm = Module::parse(target_wasm_bytes, false).unwrap();
     if let Err(err) = run_on_module(
         core_lib,
         def_yamls,
-        target_wasm,
+        &mut target_wasm,
         script_path,
         user_lib_paths,
         max_errors,
@@ -116,32 +114,126 @@ pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, String, Vec<u8>)
     res
 }
 
-pub fn run_on_module_and_encode(
+// pub fn run_on_bytes_and_encode(
+//     core_lib: &[u8],
+//     def_yamls: &Vec<String>,
+//     target_wasm_bytes: Vec<u8>,
+//     script_path: String,
+//     user_lib_paths: Vec<String>,
+//     max_errors: i32,
+//     config: Config
+// ) -> Vec<u8> {
+//     let (metrics, new_wasm) = run_on_bytes(core_lib, def_yamls, target_wasm_bytes, script_path, user_lib_paths, max_errors, config);
+//
+//     let wasm = new_wasm.enco
+//     todo!()
+// }
+
+pub fn run_on_bytes_and_encode(
     core_lib: &[u8],
     def_yamls: &Vec<String>,
-    target_wasm: &mut Module,
+    target_wasm_bytes: &[u8],
     script_path: String,
     user_lib_paths: Vec<String>,
     max_errors: i32,
     config: Config,
 ) -> Vec<u8> {
     let mut metrics = Metrics::default();
-    if let Err(mut err) = run_on_module(
-        core_lib,
-        def_yamls,
-        target_wasm,
-        script_path,
-        user_lib_paths,
-        max_errors,
-        &mut metrics,
-        config,
-    ) {
-        err.check_has_errors();
-    }
-
-    let wasm = target_wasm.encode();
+    let encoded_bytes = if config.as_monitor_module {
+        // handle emitting a monitor module
+        // Create a new wasm file to use as `mon.wasm`
+        let mut module = Module::default();
+        if let Err(mut err) = run_on_module(
+            core_lib,
+            def_yamls,
+            &mut module,
+            script_path,
+            user_lib_paths,
+            max_errors,
+            &mut metrics,
+            config,
+        ) {
+            err.check_has_errors();
+        }
+        module.encode()
+    } else {
+        // handle a wasm component OR module
+        match bytes_to_wasm(target_wasm_bytes) {
+            (Some(mut module), None) => {
+                // handle instrumenting a module
+                if let Err(mut err) = run_on_module(
+                    core_lib,
+                    def_yamls,
+                    &mut module,
+                    script_path,
+                    user_lib_paths,
+                    max_errors,
+                    &mut metrics,
+                    config,
+                ) {
+                    err.check_has_errors();
+                }
+                module.encode()
+            }
+            (None, Some(mut component)) => {
+                // handle instrumenting a component
+                if let Err(mut err) = run_on_component(
+                    core_lib,
+                    def_yamls,
+                    &mut component,
+                    script_path,
+                    user_lib_paths,
+                    max_errors,
+                    &mut metrics,
+                    config,
+                ) {
+                    err.check_has_errors();
+                }
+                component.encode()
+            }
+            (None, None) => {
+                // error, couldn't parse
+                error!("Could not parse wasm bytes into a Module or a Component format.");
+                exit(1)
+            }
+            (Some(_), Some(_)) => {
+                // error, shouldn't parse as both
+                error!("WHAMM BUG, please report: Something went wrong while parsing the Wasm bytes, shouldn't parse as BOTH a module and a component.");
+                exit(1)
+            }
+        }
+    };
     metrics.flush();
-    wasm
+
+    encoded_bytes
+}
+
+fn bytes_to_wasm(target_wasm_bytes: &[u8]) -> (Option<Module>, Option<Component>) {
+    // First try to parse as a wasm module
+    if let Ok(module) = Module::parse(target_wasm_bytes, false) {
+        (Some(module), None)
+    } else if let Ok(component) = Component::parse(target_wasm_bytes, true) {
+        (None, Some(component))
+    } else {
+        (None, None)
+    }
+}
+
+pub fn run_on_component(
+    core_lib: &[u8],
+    def_yamls: &[String],
+    target_wasm: &mut Component,
+    script_path: String,
+    user_lib_paths: Vec<String>,
+    max_errors: i32,
+    metrics: &mut Metrics,
+    config: Config,
+) -> Result<(), Box<ErrorGen>> {
+    // TODO -- figure out if this is a component (no need to make this a CLI option)
+    //  I probably want to have an outer function that iterates over the modules within a
+    //  component and then passes each &mut Module to the `run_on_module` function!
+    //  This will keep from copy/pasting a ton of code.
+    todo!()
 }
 
 pub fn run_on_module(
