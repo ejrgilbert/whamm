@@ -30,6 +30,7 @@ fn instrument_dfinity_with_fault_injection() {
             vec![],
             None,
             false,
+            true,
         );
     }
 }
@@ -140,6 +141,7 @@ fn instrument_with_wizard_monitors() {
             vec![],
             None,
             false,
+            true,
         );
     }
 }
@@ -158,7 +160,7 @@ fn instrument_with_numerics_scripts() {
     let processed_scripts = setup_numerics_monitors();
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("numerics", processed_scripts, true, true)
+    run_core_suite("numerics", processed_scripts, true, true, true)
 }
 
 #[test]
@@ -169,7 +171,7 @@ fn instrument_with_branch_monitor_scripts() {
 
     // TODO -- fix wizard side (THEN merge with below test)
     //   - pull `fname`, `targets`, `num_targets`, `default_target`
-    run_core_suite("branch-monitor", processed_scripts, true, true)
+    run_core_suite("branch-monitor", processed_scripts, true, true, true)
 }
 #[test]
 fn instrument_with_branch_monitor_rewriting_scripts() {
@@ -177,7 +179,13 @@ fn instrument_with_branch_monitor_rewriting_scripts() {
     let processed_scripts = setup_tests("core_suite/branch-monitor_rewriting");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("branch-monitor_rewriting", processed_scripts, true, false)
+    run_core_suite(
+        "branch-monitor_rewriting",
+        processed_scripts,
+        true,
+        false,
+        true,
+    )
 }
 #[test]
 fn instrument_with_local_n_scripts() {
@@ -185,7 +193,7 @@ fn instrument_with_local_n_scripts() {
     let processed_scripts = setup_tests("core_suite/localN");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("localN", processed_scripts, true, true)
+    run_core_suite("localN", processed_scripts, true, true, true)
 }
 
 #[test]
@@ -196,7 +204,7 @@ fn instrument_with_calls_monitor_scripts() {
 
     // TODO -- fix wizard side (THEN merge with below test)
     //   - pull `fname`
-    run_core_suite("calls-monitor", processed_scripts, true, true)
+    run_core_suite("calls-monitor", processed_scripts, true, true, true)
 }
 #[test]
 fn instrument_with_calls_monitor_rewriting_scripts() {
@@ -204,5 +212,20 @@ fn instrument_with_calls_monitor_rewriting_scripts() {
     let processed_scripts = setup_tests("core_suite/calls-monitor_rewriting");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("calls-monitor_rewriting", processed_scripts, true, false)
+    run_core_suite(
+        "calls-monitor_rewriting",
+        processed_scripts,
+        true,
+        false,
+        true,
+    )
+}
+
+#[test]
+fn components() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/components");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("core-components", processed_scripts, true, false, false)
 }

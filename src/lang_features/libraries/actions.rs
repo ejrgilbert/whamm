@@ -3,14 +3,15 @@ use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::generator::ast::Script;
 use crate::lang_features::libraries::core::LibPackage;
+use std::collections::HashMap;
 use wirm::ir::id::FunctionID;
-use wirm::Module;
+use wirm::{Component, Module};
 
 pub fn link_core_lib(
     method: LibraryLinkStrategy,
     ast: &[Script],
     app_wasm: &mut Module,
-    core_lib: &[u8],
+    core_lib: &Module,
     mem_allocator: &mut MemoryAllocator,
     packages: &mut [&mut dyn LibPackage],
     err: &mut ErrorGen,
@@ -30,4 +31,23 @@ pub fn link_core_lib(
             unimplemented!("Have not implemented support for merging core library code.");
         }
     }
+}
+
+pub fn configure_component_libraries(
+    component: &mut Component,
+    core_lib: &Module,
+    user_libs: &HashMap<String, Module>,
+) {
+    // TODO: add libraries as *core module*s in the top-level of the component
+    // TODO: add *core instance*s in the top-level of the component for each of the added library modules
+    //       Should list out what's exported in the library in the instantiation too
+    // TODO: modify the main's *core instance*s with clauses to import the added library's contents
+    // let module_index = component.add_module((*core_lib).to_owned());
+    //
+    // // TODO: Look for the instance that provides "wasi_snapshot_preview1"
+    // component.instances.push(Instance::Instantiate {
+    //     module_index: *module_index,
+    //     args: Box::new([]),
+    // })
+    todo!()
 }

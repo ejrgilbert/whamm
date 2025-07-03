@@ -8,7 +8,6 @@ use std::process::Command;
 use whamm::api::instrument::instrument_as_dry_run;
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
 
-const TEST_DRY_RUN: bool = true;
 pub const DEFAULT_CORE_LIB_PATH: &str = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
 pub const DEFAULT_DEFS_PATH: &str = "./";
 const TEST_RSC_DIR: &str = "tests/scripts/";
@@ -190,6 +189,7 @@ pub(crate) fn run_core_suite(
     processed_scripts: Vec<(PathBuf, String)>,
     with_br: bool,
     with_wizard: bool,
+    dry_run: bool,
 ) {
     build_whamm_core_lib();
     build_user_libs();
@@ -272,6 +272,7 @@ pub(crate) fn run_core_suite(
                 exp_out,
                 &outdir,
                 &instr_app_path,
+                dry_run,
             );
         }
     }
@@ -316,6 +317,7 @@ pub(crate) fn run_core_suite(
                 exp_out,
                 &outdir,
                 &instr_app_path,
+                dry_run,
             );
         }
     }
@@ -391,6 +393,7 @@ pub(crate) fn run_script(
     user_libs: Vec<String>,
     output_path: Option<String>,
     target_wizard: bool,
+    dry_run: bool,
 ) {
     let script_path_str = script_path.to_str().unwrap().replace("\"", "");
     let wasm_result = if target_wizard {
@@ -409,7 +412,7 @@ pub(crate) fn run_script(
             Some("./".to_string()),
         )
     };
-    if TEST_DRY_RUN {
+    if dry_run {
         let _side_effects = instrument_as_dry_run(
             wasm_path.to_string(),
             script_path.to_str().unwrap().to_string(),
@@ -434,6 +437,7 @@ fn run_testcase_rewriting(
     exp_output: ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
+    dry_run: bool,
 ) {
     // run the script on configured application
     run_script(
@@ -443,6 +447,7 @@ fn run_testcase_rewriting(
         user_libs.clone(),
         Some(instr_app_path.clone()),
         false,
+        dry_run,
     );
 
     // run the instrumented application on wasmtime
@@ -501,6 +506,7 @@ fn run_testcase_wizard(
     exp_output: ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
+    dry_run: bool,
 ) {
     let mut libs_to_link = "".to_string();
     for path in user_libs.iter() {
@@ -517,6 +523,7 @@ fn run_testcase_wizard(
         user_libs,
         Some(instr_app_path.clone()),
         true,
+        dry_run,
     );
 
     // run the instrumented application on wizard
