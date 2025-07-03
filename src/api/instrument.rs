@@ -11,7 +11,6 @@ use wasmparser::{ExternalKind, TypeRef};
 use wirm::ir::module::module_types::Types;
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
 use wirm::ir::types::{DataType as WirmType, FuncInstrMode, InstrumentationMode};
-use wirm::Module;
 
 pub const MAX_ERRORS: i32 = 15;
 
@@ -74,18 +73,18 @@ pub fn instrument_with_rewriting(
 /// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
 /// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
-pub fn instrument_module_with_rewriting(
-    target_wasm: &mut Module,
+pub fn instrument_bytes_with_rewriting(
+    target_wasm_bytes: Vec<u8>,
     script_path: String,
     user_lib_paths: Vec<String>,
     core_lib_path: Option<String>,
     defs_path: Option<String>,
 ) -> Vec<u8> {
     let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
-    instr::run_on_module_and_encode(
+    instr::run_on_bytes_and_encode(
         &core_lib,
         &def_yamls,
-        target_wasm,
+        &target_wasm_bytes,
         script_path,
         user_lib_paths,
         MAX_ERRORS,
@@ -132,14 +131,18 @@ pub fn instrument_as_dry_run(
     core_lib_path: Option<String>,
     defs_path: Option<String>,
 ) -> Result<HashMap<WirmInjectType, Vec<Injection>>, Vec<WhammError>> {
-    let buff = std::fs::read(app_wasm_path).unwrap();
-    let mut target_wasm = Module::parse(&buff, false).unwrap();
-
     let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
+
+    let bytes = if let Ok(bytes) = std::fs::read(&app_wasm_path) {
+        bytes
+    } else {
+        error!("Could not read from file: {app_wasm_path}");
+        exit(1)
+    };
     match instr::dry_run_on_bytes(
         &core_lib,
         &def_yamls,
-        &mut target_wasm,
+        &bytes,
         script_path,
         user_lib_paths,
         MAX_ERRORS,
@@ -269,7 +272,7 @@ pub enum Injection {
         /// The name of the imported item.
         name: String,
         /// The type of the import.
-        type_ref: TypeRef,
+        type_ref: TypeRef, // TODO
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
         cause: Cause,
@@ -279,7 +282,7 @@ pub enum Injection {
         /// The name of the exported item.
         name: String,
         /// The kind of the exported item.
-        kind: ExternalKind,
+        kind: ExternalKind, // TODO
         /// The index of the exported item.
         index: u32,
         /// Explains why this was injected (if it can be isolated to a
@@ -287,7 +290,7 @@ pub enum Injection {
         cause: Cause,
     },
     Type {
-        ty: Types,
+        ty: Types, // TODO
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
         cause: Cause,
@@ -335,7 +338,7 @@ pub enum Injection {
         /// The global's ID.
         id: u32, // TODO -- may not need (it's ordered in a vec)
         /// The global's type.
-        ty: WirmType,
+        ty: WirmType, // TODO
         /// Whether the global is shared.
         shared: bool,
         /// Whether the global is mutable.
@@ -354,9 +357,9 @@ pub enum Injection {
         /// The function's name.
         fname: Option<String>,
         /// The function's signature (params, results).
-        sig: (Vec<WirmType>, Vec<WirmType>),
+        sig: (Vec<WirmType>, Vec<WirmType>), // TODO
         /// The function's local variables
-        locals: Vec<WirmType>,
+        locals: Vec<WirmType>, // TODO
         /// The body of the function (in WAT).
         body: Vec<String>,
 
@@ -369,7 +372,7 @@ pub enum Injection {
     Local {
         /// The ID of the function this local is inserted into.
         target_fid: u32,
-        ty: WirmType,
+        ty: WirmType, // TODO
 
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
