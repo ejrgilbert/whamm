@@ -53,6 +53,7 @@ ID = @{ (!DISALLOWED_ID ~ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | 
 }
 PROBE_RULE = {
     PROBE_ID? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ TY_BOUNDS?
+    | PROBE_ID? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ TY_BOUNDS? // to handle package:provider:event, e.g. wasm:func:entry
     | PROBE_ID ~ ":" ~ PROBE_ID // to handle wasm:before, wasm:after
 }
 

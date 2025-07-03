@@ -173,13 +173,23 @@ impl SymbolTable {
         }
     }
 
-    pub fn override_record_val(&mut self, symbol_name: &str, val: Option<Value>) {
+    pub fn override_record_val(
+        &mut self,
+        symbol_name: &str,
+        val: Option<Value>,
+        fail_on_dne: bool,
+    ) {
         let rec_id = match self.lookup(symbol_name) {
             Some(rec_id) => rec_id,
             _ => {
+                if !fail_on_dne {
+                    return;
+                }
+                let curr_scope = self.get_curr_scope();
+                println!("{:#?}", curr_scope);
                 panic!(
                     "{UNEXPECTED_ERR_MSG} \
-                    `{symbol_name}` symbol does not exist in this scope!"
+                `{symbol_name}` symbol does not exist in this scope!"
                 );
             }
         };

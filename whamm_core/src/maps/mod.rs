@@ -16,6 +16,10 @@ thread_local! {
     static METADATA_HEADER: RefCell<(u32, u32)> = RefCell::new((0,0));
 }
 
+fn red(msg: &str) {
+    println!("\x1b[31m{msg}\x1b[0m")
+}
+
 //this should initialize a map of maps -> from string (name) to any type of map
 
 //strings, i32, maps, tuples, bool - all variations
@@ -359,10 +363,8 @@ impl MapOperations for AnyMap {
         None
     }
     fn dump_map(&self) -> String {
-        println!("dump_map");
         match self {
             AnyMap::i32_i32_Map(ref map) => {
-                println!("dump_map::i32_i32_Map");
                 let mut result = String::new();
 
                 // sort to make flush deterministic
@@ -379,7 +381,6 @@ impl MapOperations for AnyMap {
                 result
             }
             AnyMap::tuple_i32_Map(ref map) => {
-                println!("dump_map::tuple_i32_Map");
                 let mut result = String::new();
 
                 // sort to make flush deterministic
@@ -396,7 +397,6 @@ impl MapOperations for AnyMap {
                 result
             }
             AnyMap::i32_string_Map(ref map) => {
-                println!("dump_map::i32_string_Map");
                 debug!("DEBUG: dumping i32_string_Map...");
                 let mut result = String::new();
 
@@ -414,7 +414,6 @@ impl MapOperations for AnyMap {
                 result
             }
             AnyMap::string_i32_Map(ref map) => {
-                println!("dump_map::string_i32_Map");
                 debug!("DEBUG: dumping string_i32_Map...");
                 let mut result = String::new();
 
@@ -468,14 +467,11 @@ pub enum TupleVariant {
 
 impl TupleVariant {
     pub fn dump_tuple(&self) -> String {
-        println!("dump_tuple");
         match self {
             TupleVariant::i32_i32(a, b) => {
-                println!("dump_tuple::i32_i32");
                 format!("({}, {})", a, b)
             }
             TupleVariant::i32_i32_i32(a, b, c) => {
-                println!("dump_tuple::i32_i32_i32");
                 format!("({}, {}, {})", a, b, c)
             }
             _ => format!("Not implemented: dump_tuple"),
@@ -489,7 +485,8 @@ fn insert_i32_i32_inner(id: i32, key: i32, value: i32) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     } else {
-        panic!("Could not find map with ID: {}", id);
+        red(&format!("Could not find map with ID: {}", id));
+        panic!()
     }
 }
 fn insert_i32_string_inner(id: i32, key: i32, value: String) -> bool {
@@ -660,19 +657,28 @@ fn get_i32(id: i32, key: &dyn Any) -> i32 {
 fn get_string(id: i32, key: &dyn Any) -> String {
     match get_string_optional(id, key) {
         Some(value) => value,
-        None => panic!("Key not found in map"),
+        None => {
+            red("Key not found in map");
+            panic!()
+        },
     }
 }
 fn get_tuple(id: i32, key: &dyn Any) -> Box<TupleVariant> {
     match get_tuple_optional(id, key) {
         Some(value) => value,
-        None => panic!("Key not found in map"),
+        None => {
+            red("Key not found in map");
+            panic!()
+        },
     }
 }
 fn get_map(id: i32, key: &dyn Any) -> AnyMap {
     match get_map_optional(id, key) {
         Some(value) => value,
-        None => panic!("Key not found in map"),
+        None => {
+            red("Key not found in map");
+            panic!()
+        },
     }
 }
 fn get_bool(id: i32, key: &dyn Any) -> bool {
@@ -874,7 +880,8 @@ pub fn create_tuple_map() -> i32 {
 pub fn insert_i32_i32(id: i32, key: i32, value: i32) {
     debug!("DEBUG: inserting ({key}, {value}) into map '{id}'");
     if !insert_i32_i32_inner(id, key, value) {
-        panic!("Failed to insert into i32_i32 map");
+        red("Failed to insert into i32_i32 map");
+        panic!()
     }
 }
 #[no_mangle]
@@ -882,14 +889,16 @@ pub fn insert_i32_string(id: i32, key: i32, val_offset: *const u8, val_length: u
     let value = string_from_data(val_offset, val_length);
     debug!("DEBUG: inserting ({key}, \"{value}\") into map '{id}'");
     if !insert_i32_string_inner(id, key, value) {
-        panic!("Failed to insert into i32_string map");
+        red("Failed to insert into i32_string map");
+        panic!()
     }
 }
 #[no_mangle]
 pub fn insert_string_i32(id: i32, key_offset: *const u8, key_length: usize, val: i32) {
     let key = string_from_data(key_offset, key_length);
     if !insert_string_i32_inner(id, key, val) {
-        panic!("Failed to insert into string_i32 map");
+        red("Failed to insert into string_i32 map");
+        panic!()
     }
 }
 #[no_mangle]
@@ -932,13 +941,10 @@ pub fn get_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32) -> i32 {
 pub fn print_map(id: i32) {
     let binding = MY_MAPS.lock().unwrap();
 
-    println!("BEFORE");
     if let Some(map) = binding.get(&id) {
-        println!("SOME");
         print!("{}", map.dump_map())
     } else {
-        println!("NONE");
-        panic!("Could not find map with ID: {}", id)
+        red(&format!("Could not find map with ID, must have been never initialized! `{}`\n", id));
+        panic!()
     }
-    println!("AFTER");
 }

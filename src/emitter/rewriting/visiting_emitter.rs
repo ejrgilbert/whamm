@@ -112,6 +112,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         self.app_iter.block_alt();
     }
 
+    pub fn func_entry(&mut self) {
+        self.app_iter.func_entry();
+    }
+
+    pub fn func_exit(&mut self) {
+        self.app_iter.func_exit();
+    }
+
     pub(crate) fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule) -> bool {
         self.table.enter_scope_via_rule(
             script_id,
@@ -278,7 +286,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     }
 
     pub(crate) fn define_data(&mut self, var_name: &str, var_val: &Option<Value>) -> bool {
-        self.table.override_record_val(var_name, var_val.clone());
+        // if the record doesn't exist, it's from a different probe being active
+        // at this place in the target application. We can just ignore this (it
+        // won't be defined)...it doesn't matter since we do typechecking :)
+        self.table
+            .override_record_val(var_name, var_val.clone(), false);
         true
     }
 
@@ -299,7 +311,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub(crate) fn reset_table_data(&mut self, loc_info: &LocInfo) {
         // reset static_data
         loc_info.static_data.iter().for_each(|(symbol_name, ..)| {
-            self.table.override_record_val(symbol_name, None);
+            self.table.override_record_val(symbol_name, None, false);
         });
 
         // reset dynamic_alias
@@ -313,12 +325,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
         // reset dynamic_data
         loc_info.dynamic_data.iter().for_each(|(symbol_name, ..)| {
-            self.table.override_record_val(symbol_name, None);
+            self.table.override_record_val(symbol_name, None, false);
         });
 
         for i in 0..loc_info.args.len() {
             let arg_name = format!("arg{}", i);
-            self.table.override_record_val(&arg_name, None);
+            self.table.override_record_val(&arg_name, None, false);
         }
         self.instr_created_args.clear();
     }

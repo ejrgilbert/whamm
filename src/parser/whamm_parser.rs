@@ -1399,6 +1399,15 @@ fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
     }
     trace!("Exiting probe_rule_from_rule");
 
+    // if probe_rule.mode.is_none() {
+    //     // Need to add the mode so that the probe contents can actually be added
+    //     probe_rule.add_rule_def(RulePart {
+    //         name: "null".to_string(),
+    //         ty_info: vec![],
+    //         loc: None,
+    //     })
+    // }
+
     probe_rule
 }
 
