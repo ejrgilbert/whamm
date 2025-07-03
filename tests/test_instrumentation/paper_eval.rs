@@ -7,7 +7,7 @@ fn branches() {
     let processed_scripts = setup_tests("paper_eval/branches");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-branches", processed_scripts, true, true)
+    run_core_suite("paper_eval-branches", processed_scripts, true, true, true)
 }
 #[test]
 fn categories() {
@@ -15,7 +15,7 @@ fn categories() {
     let processed_scripts = setup_tests("paper_eval/categories");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-categories", processed_scripts, true, true)
+    run_core_suite("paper_eval-categories", processed_scripts, true, true, true)
 }
 #[test]
 fn hotness() {
@@ -23,7 +23,7 @@ fn hotness() {
     let processed_scripts = setup_tests("paper_eval/hotness");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-hotness", processed_scripts, true, true)
+    run_core_suite("paper_eval-hotness", processed_scripts, true, true, true)
 }
 #[test]
 fn ins_count() {
@@ -31,7 +31,7 @@ fn ins_count() {
     let processed_scripts = setup_tests("paper_eval/ins_count");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-ins_count", processed_scripts, true, true)
+    run_core_suite("paper_eval-ins_count", processed_scripts, true, true, true)
 }
 
 #[test]
@@ -40,7 +40,7 @@ fn cache_sim() {
     let processed_scripts = setup_tests("paper_eval/cache_sim");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-cache_sim", processed_scripts, true, true)
+    run_core_suite("paper_eval-cache_sim", processed_scripts, true, true, true)
 }
 
 #[test]

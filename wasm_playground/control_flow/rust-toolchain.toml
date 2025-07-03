@@ -1,4 +1,4 @@
 [toolchain]
-channel = "nightly"
+channel = "stable"
 components = ["rustc", "cargo", "rustfmt", "clippy"]
 targets = [ "wasm32-wasip1" ]

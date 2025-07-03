@@ -28,7 +28,7 @@ use wirm::{DataType, Module};
 pub fn link_core_lib(
     ast: &[Script],
     app_wasm: &mut Module,
-    core_lib: &[u8],
+    core_lib: &Module,
     mem_allocator: &mut MemoryAllocator,
     packages: &mut [&mut dyn LibPackage],
     err: &mut ErrorGen,
@@ -39,7 +39,6 @@ pub fn link_core_lib(
         package.set_adapter_usage(package.is_used());
         package.set_global_adapter_usage(package.is_used_in_global_scope());
         if package.is_used() {
-            let core_lib = Module::parse(core_lib, false).unwrap();
             if package.import_memory() {
                 let lib_mem_id =
                     import_lib_memory(app_wasm, &None, WHAMM_CORE_LIB_NAME.to_string());
@@ -50,7 +49,7 @@ pub fn link_core_lib(
                 app_wasm,
                 &None,
                 WHAMM_CORE_LIB_NAME.to_string(),
-                &core_lib,
+                core_lib,
                 *package,
                 err,
             ));
