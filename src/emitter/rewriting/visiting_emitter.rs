@@ -31,6 +31,7 @@ use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as WirmIter
 use wirm::iterator::module_iterator::ModuleIterator;
 use wirm::opcode::{Instrumenter, MacroOpcode, Opcode};
 use wirm::Location;
+use crate::parser::provider_handler::ModeKind;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -523,58 +524,133 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             .inject_map_init_check(&mut self.app_iter, fid);
     }
 
-    pub fn configure_flush_routines(&mut self, has_reports: bool, err: &mut ErrorGen) {
+    pub fn configure_flush_routines(&mut self, has_reports: bool, err: &mut ErrorGen, ast: &mut SimpleAST) {
         // create the function to call at the end
         // TODO -- this can be cleaned up to use the wizard logic instead!
 
         // only do this is there are report variables
         if has_reports {
-            let var_flush = configure_flush_routines(
-                self.app_iter.module,
-                self.unshared_var_handler,
-                self.report_vars,
-                self.map_lib_adapter,
-                self.mem_allocator,
-                self.io_adapter,
-                err,
-            );
+            // check if ast overrides report logic
+            let on_exit_id = if let Some(wasm) = ast.provs.get_mut("wasm") {
+                if let Some(report_probe) = wasm.pkgs.get_mut("report") {
+                    let probes = report_probe.evts.get_mut("").unwrap().modes.get_mut(&ModeKind::Null).unwrap();
 
-            let on_exit_id = if let Some(fid) = self
-                .app_iter
-                .module
-                .functions
-                .get_local_fid_by_name("on_exit")
-            {
-                let Some(mut on_exit) = self.app_iter.module.functions.get_fn_modifier(fid) else {
-                    panic!(
-                        "{UNEXPECTED_ERR_MSG} \
+                    if let Some(fid) = self
+                        .app_iter
+                        .module
+                        .functions
+                        .get_local_fid_by_name("on_exit")
+                    {
+                        let Some(mut on_exit) = self.app_iter.module.functions.get_fn_modifier(fid) else {
+                            panic!(
+                                "{UNEXPECTED_ERR_MSG} \
                                 No on_exit found in the module!"
-                    );
-                };
-                if let Some(flush_fid) = var_flush {
-                    on_exit.call(FunctionID(flush_fid));
-                    let op_idx = on_exit.curr_instr_len() as u32;
-                    on_exit.append_tag_at(
-                        get_probe_tag_data(&None, op_idx),
-                        Location::Module {
-                            func_idx: FunctionID(*fid),
-                            instr_idx: 0,
-                        },
-                    );
+                            );
+                        };
+
+                        for probe in probes.iter_mut() {
+                            if let Some(body) = &mut probe.body {
+                                // todo -- point this to the flush function instead...
+                                for stmt in body.stmts.iter_mut() {
+                                    emit_stmt(
+                                        stmt,
+                                        self.strategy,
+                                        &mut on_exit,
+                                        &mut EmitCtx::new(
+                                            self.table,
+                                            self.mem_allocator,
+                                            &mut self.locals_tracker,
+                                            self.map_lib_adapter,
+                                            UNEXPECTED_ERR_MSG,
+                                            err,
+                                        ),
+                                    );
+                                }
+                            }
+                        }
+                        fid
+                    } else {
+                        let mut on_exit = FunctionBuilder::new(&[], &[]);
+                        for probe in probes.iter_mut() {
+                            if let Some(body) = &mut probe.body {
+                                // todo -- point this to the flush function instead...
+                                for stmt in body.stmts.iter_mut() {
+                                    emit_stmt(
+                                        stmt,
+                                        self.strategy,
+                                        &mut on_exit,
+                                        &mut EmitCtx::new(
+                                            self.table,
+                                            self.mem_allocator,
+                                            &mut self.locals_tracker,
+                                            self.map_lib_adapter,
+                                            UNEXPECTED_ERR_MSG,
+                                            err,
+                                        ),
+                                    );
+                                }
+                            }
+                        }
+                        let on_exit_id =
+                            on_exit.finish_module_with_tag(self.app_iter.module, get_tag_for(&None));
+                        self.app_iter
+                            .module
+                            .set_fn_name(on_exit_id, "on_exit".to_string());
+                        on_exit_id
+                    }
+                } else {
+                    panic!()
                 }
-                fid
             } else {
-                let mut on_exit = FunctionBuilder::new(&[], &[]);
-                if let Some(flush_fid) = var_flush {
-                    on_exit.call(FunctionID(flush_fid));
-                }
-                let on_exit_id =
-                    on_exit.finish_module_with_tag(self.app_iter.module, get_tag_for(&None));
-                self.app_iter
-                    .module
-                    .set_fn_name(on_exit_id, "on_exit".to_string());
-                on_exit_id
+                panic!()
             };
+
+            // let var_flush = configure_flush_routines(
+            //     self.app_iter.module,
+            //     self.unshared_var_handler,
+            //     self.report_vars,
+            //     self.map_lib_adapter,
+            //     self.mem_allocator,
+            //     self.io_adapter,
+            //     err,
+            // );
+            //
+            // let on_exit_id = if let Some(fid) = self
+            //     .app_iter
+            //     .module
+            //     .functions
+            //     .get_local_fid_by_name("on_exit")
+            // {
+            //     let Some(mut on_exit) = self.app_iter.module.functions.get_fn_modifier(fid) else {
+            //         panic!(
+            //             "{UNEXPECTED_ERR_MSG} \
+            //                     No on_exit found in the module!"
+            //         );
+            //     };
+            //     if let Some(flush_fid) = var_flush {
+            //         on_exit.call(FunctionID(flush_fid));
+            //         let op_idx = on_exit.curr_instr_len() as u32;
+            //         on_exit.append_tag_at(
+            //             get_probe_tag_data(&None, op_idx),
+            //             Location::Module {
+            //                 func_idx: FunctionID(*fid),
+            //                 instr_idx: 0,
+            //             },
+            //         );
+            //     }
+            //     fid
+            // } else {
+            //     let mut on_exit = FunctionBuilder::new(&[], &[]);
+            //     if let Some(flush_fid) = var_flush {
+            //         on_exit.call(FunctionID(flush_fid));
+            //     }
+            //     let on_exit_id =
+            //         on_exit.finish_module_with_tag(self.app_iter.module, get_tag_for(&None));
+            //     self.app_iter
+            //         .module
+            //         .set_fn_name(on_exit_id, "on_exit".to_string());
+            //     on_exit_id
+            // };
 
             // now find where the "exit" is in the bytecode
             // exit of export "main"

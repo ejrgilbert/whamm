@@ -505,7 +505,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn after_run(&mut self) -> bool {
         if !self.config.no_report {
             self.emitter
-                .configure_flush_routines(self.has_reports, self.err);
+                .configure_flush_routines(self.has_reports, self.err, &mut self.ast);
         }
         true
     }

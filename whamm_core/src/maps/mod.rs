@@ -434,14 +434,14 @@ impl MapOperations for AnyMap {
     }
     fn dump_map_as_csv(&self, my_id: i32) -> String {
         let mut result = String::new();
-        result += &format!("== MAP{my_id} CSV FLUSH ==");
+        result += &format!("== map{my_id} CSV FLUSH ==\n");
 
         match self {
             AnyMap::i32_i32_Map(ref map) => {
                 // sort to make flush deterministic
                 let sorted_map = map.iter().sorted_by_key(|data| data.0);
 
-                result += "key (i32), val (i32)";
+                result += "key (i32), val (i32)\n";
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}, {}\n", key, value));
                 }

@@ -366,19 +366,34 @@ impl MatchOn for PackageDef {
             ) {
                 Ok(evts_res) => {
                     let evts: Vec<EventDef> = evts_res.into_iter().map(|b| *b).collect();
-                    if evts.is_empty() && probe_rule.event.is_some() {
-                        // if there's a further match pattern to consider, this isn't a match!
-                        // (consider wasm:begin and wasm:end)
-                        err_ctxt.on_package = Some(ErrorGen::get_parse_error(
-                            true,
-                            Some(format!(
-                                "Could not find any matches for the specified package pattern: {pkg_patt}"
-                            )),
-                            loc.as_ref().map(|l| l.line_col.clone()),
-                            vec![],
-                            vec![],
-                        ));
-                        Err(())
+                    if evts.is_empty() {
+                        if probe_rule.event.is_some() {
+                            // if there's a further match pattern to consider, this isn't a match!
+                            // (consider wasm:begin and wasm:end)
+                            err_ctxt.on_package = Some(ErrorGen::get_parse_error(
+                                true,
+                                Some(format!(
+                                    "Could not find any matches for the specified package pattern: {pkg_patt}"
+                                )),
+                                loc.as_ref().map(|l| l.line_col.clone()),
+                                vec![],
+                                vec![],
+                            ));
+                            Err(())
+                        } else {
+                            // otherwise, we just have a shortened match rule! (wasm:begin, wasm:report)
+                            Ok(Box::new(Self {
+                                def: self.def.clone(),
+                                events: vec![EventDef {
+                                    def: Def::default(),
+                                    modes: vec![ ModeDef {
+                                        def: Def::default(),
+                                        alias: None,
+                                        kind: ModeKind::Null,
+                                    } ],
+                                }],
+                            }))
+                        }
                     } else {
                         Ok(Box::new(Self {
                             def: self.def.clone(),
@@ -499,7 +514,7 @@ impl MatchOn for EventDef {
                             ));
                             Err(())
                         } else {
-                            // otherwise, we just have a shortened match rule! (wasm:begin, wasm:func:entry)
+                            // otherwise, we just have a shortened match rule! (wasm:func:entry)
                             Ok(Box::new(Self {
                                 def: self.def.clone(),
                                 modes: vec![ModeDef {

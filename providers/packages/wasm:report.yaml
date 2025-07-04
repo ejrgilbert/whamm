@@ -1,0 +1,10 @@
+# ====================
+# ==== wasm:report ====
+# ====================
+
+report: &report
+  name: report
+  docs: To override the whamm reporting logic.
+  bound_vars: []
+  bound_fns: []
+  events: []
