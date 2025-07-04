@@ -1,0 +1,19 @@
+# =======================
+# ==== wasm:func:* ====
+# =======================
+
+entry: &func_entry
+  name: entry
+  bound_vars: []
+  bound_fns: []
+  supported_modes: []
+
+  docs: "Inserts instrumentation at the start of a wasm function"
+
+exit: &func_exit
+  name: exit
+  bound_vars: []
+  bound_fns: []
+  supported_modes: []
+
+  docs: "Inserts instrumentation at (possibly multiple) locations in a wasm function that would exit if reached during execution."

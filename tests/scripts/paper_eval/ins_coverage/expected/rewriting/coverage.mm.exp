@@ -1,0 +1,11 @@
+
+================================= REPORT CSV FLUSH ====================================
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
+4, memaddr, reached, bool, i32, script0, main, 0, 0, 51_wasm:opcode:i32.const:before, true
+36, memaddr, reached, bool, i32, script0, main, 0, 1, 52_wasm:opcode:i64.const:before, true
+68, memaddr, reached, bool, i32, script0, main, 0, 2, 41_wasm:opcode:i64.store:before, true
+100, memaddr, reached, bool, i32, script0, main, 0, 3, 51_wasm:opcode:i32.const:before, true
+132, memaddr, reached, bool, i32, script0, main, 0, 4, 26_wasm:opcode:i32.load:before, true
+164, memaddr, reached, bool, i32, script0, main, 0, 5, 26_wasm:opcode:i32.load:before, true
+196, memaddr, reached, bool, i32, script0, main, 0, 6, 18_wasm:opcode:drop:before, true
+228, memaddr, reached, bool, i32, script0, start, 1, 0, 14_wasm:opcode:call:before, true

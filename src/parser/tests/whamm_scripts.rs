@@ -10,6 +10,9 @@ use log::{error, info, warn};
 
 const DEFS_PATH: &str = "./";
 const VALID_SCRIPTS: &[&str] = &[
+    r#"
+wasm:func:entry {}
+    "#,
     // with libraries
     r#"
 use lib;
