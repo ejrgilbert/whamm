@@ -32,7 +32,7 @@ pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l> {
 impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
-        ast: Vec<Script>,
+        mut ast: Vec<Script>,
         used_bound_funcs: HashSet<(String, String)>,
         used_report_dts: HashSet<DataType>,
         strings_to_emit: Vec<String>,
@@ -47,20 +47,21 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             self.err,
         );
         self.emitter.emit_strings(strings_to_emit, self.err);
-        self.visit_ast(ast);
+        self.visit_ast(&mut ast);
 
-        self.emit_end_func(used_report_dts);
+        self.emit_end_func(&ast, used_report_dts);
     }
 
-    fn emit_end_func(&mut self, used_report_dts: HashSet<DataType>) {
+    fn emit_end_func(&mut self,
+                     ast: &Vec<Script>, used_report_dts: HashSet<DataType>) {
         if !self.config.no_report {
             self.emitter
-                .emit_end_fn(used_report_dts, self.io_adapter, self.err);
+                .emit_end_fn(ast, used_report_dts, self.io_adapter, self.err);
         }
     }
 
     // Visit the AST
-    fn visit_ast(&mut self, mut ast: Vec<Script>) {
+    fn visit_ast(&mut self, ast: &mut Vec<Script>) {
         for script in ast.iter_mut() {
             self.visit_script(script);
         }

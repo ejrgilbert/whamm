@@ -3,11 +3,9 @@ use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::tag_handler::get_tag_for;
-use crate::emitter::utils::{
-    emit_body, emit_expr, emit_global_getter, emit_stmt, whamm_type_to_wasm_global, EmitCtx,
-};
+use crate::emitter::utils::{emit_body, emit_expr, emit_global_getter, emit_stmt, whamm_type_to_wasm_global, EmitCtx, emit_probes};
 use crate::emitter::{Emitter, InjectStrategy};
-use crate::generator::ast::WhammParams;
+use crate::generator::ast::{Script, WhammParams};
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::{Metadata, ReportVars};
@@ -271,40 +269,81 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
     pub(crate) fn emit_end_fn(
         &mut self,
+        ast: &Vec<Script>,
         used_report_dts: HashSet<DataType>,
         io_adapter: &mut IOAdapter,
         err: &mut ErrorGen,
     ) -> Option<FunctionID> {
+        // todo -- overridden report logic
         if !used_report_dts.is_empty() {
             // (ONLY DO THIS IF THERE ARE REPORT VARIABLES)
 
-            self.report_vars.all_used_report_dts = used_report_dts;
-
-            // prepare the CSV header data segment
-            let (header_addr, header_len) =
-                Metadata::setup_csv_header(self.app_wasm, self.mem_allocator);
-            let var_meta = self
-                .report_vars
-                .setup_flush_data_segments(self.app_wasm, self.mem_allocator);
-
             let mut on_exit = FunctionBuilder::new(&[], &[]);
 
-            // call the report_vars to emit calls to all report var flushers
-            self.report_vars.emit_flush_logic(
-                &mut on_exit,
-                &var_meta,
-                self.mem_allocator,
-                io_adapter,
-                self.map_lib_adapter,
-                (header_addr, header_len),
-                if let Some(id) = self.mem_allocator.alloc_var_mem_id {
-                    id
+            let report_probes = {
+                let mut report_probes = vec![];
+                for script in ast.iter() {
+                    for probe in script.probes.iter() {
+                        let rule = &probe.rule;
+                        if rule.provider.name == "wasm" && rule.package.name == "report" {
+                            report_probes.push((script.id, probe.clone()));
+                        }
+                    }
+                }
+                if !report_probes.is_empty() {
+                    Some(report_probes)
                 } else {
-                    self.mem_allocator.mem_id
-                },
-                self.app_wasm,
-                err,
-            );
+                    None
+                }
+            };
+
+            if let Some(probes) = report_probes {
+                for (script_id, probe) in probes {
+                    // handle wasm:report override
+                    self.table.enter_named_scope(&script_id.to_string());
+                    emit_probes(
+                        &mut vec![probe],
+                        self.strategy,
+                        &mut on_exit,
+                        &mut EmitCtx::new(
+                            self.table,
+                            self.mem_allocator,
+                            &mut self.locals_tracker,
+                            self.map_lib_adapter,
+                            UNEXPECTED_ERR_MSG,
+                            err,
+                        ),
+                    );
+                    self.table.exit_scope(err);
+                }
+            } else {
+                self.report_vars.all_used_report_dts = used_report_dts;
+
+                // prepare the CSV header data segment
+                let (header_addr, header_len) =
+                    Metadata::setup_csv_header(self.app_wasm, self.mem_allocator);
+                let var_meta = self
+                    .report_vars
+                    .setup_flush_data_segments(self.app_wasm, self.mem_allocator);
+
+
+                // call the report_vars to emit calls to all report var flushers
+                self.report_vars.emit_flush_logic(
+                    &mut on_exit,
+                    &var_meta,
+                    self.mem_allocator,
+                    io_adapter,
+                    self.map_lib_adapter,
+                    (header_addr, header_len),
+                    if let Some(id) = self.mem_allocator.alloc_var_mem_id {
+                        id
+                    } else {
+                        self.mem_allocator.mem_id
+                    },
+                    self.app_wasm,
+                    err,
+                );
+            }
 
             let on_exit_id = on_exit.finish_module_with_tag(self.app_wasm, get_tag_for(&None));
             self.app_wasm.set_fn_name(on_exit_id, "on_exit".to_string());
