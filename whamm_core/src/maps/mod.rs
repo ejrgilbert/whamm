@@ -376,12 +376,11 @@ impl MapOperations for AnyMap {
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key, value));
                 }
-                result.pop();
-                // if result.is_empty() {
-                //     result = "Empty map".to_string();
-                // } else {
-                //     result.pop();
-                // }
+                if result.is_empty() {
+                    result = "Empty map".to_string();
+                } else {
+                    result.pop();
+                }
             }
             AnyMap::tuple_i32_Map(ref map) => {
                 if map.is_empty() { return "empty map".to_string() }
@@ -391,12 +390,11 @@ impl MapOperations for AnyMap {
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key.dump_tuple(), value));
                 }
-                result.pop();
-                // if result.is_empty() {
-                //     result = "Empty map".to_string();
-                // } else {
-                //     result.pop();
-                // }
+                if result.is_empty() {
+                    result = "Empty map".to_string();
+                } else {
+                    result.pop();
+                }
             }
             AnyMap::i32_string_Map(ref map) => {
                 if map.is_empty() { return "empty map".to_string() }
@@ -406,12 +404,11 @@ impl MapOperations for AnyMap {
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key, value));
                 }
-                result.pop();
-                // if result.is_empty() {
-                //     result = "Empty map".to_string();
-                // } else {
-                //     result.pop();
-                // }
+                if result.is_empty() {
+                    result = "Empty map".to_string();
+                } else {
+                    result.pop();
+                }
             }
             AnyMap::string_i32_Map(ref map) => {
                 if map.is_empty() { return "empty map".to_string() }
@@ -421,12 +418,11 @@ impl MapOperations for AnyMap {
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key, value));
                 }
-                result.pop();
-                // if result.is_empty() {
-                //     result = "Empty map".to_string();
-                // } else {
-                //     result.pop();
-                // }
+                if result.is_empty() {
+                    result = "Empty map".to_string();
+                } else {
+                    result.pop();
+                }
             }
             _ => return "Not implemented: dump_map".to_string(),
         }
@@ -447,8 +443,6 @@ impl MapOperations for AnyMap {
                 }
                 if result.is_empty() {
                     result = "Empty map".to_string();
-                } else {
-                    result.pop();
                 }
             }
             AnyMap::tuple_i32_Map(ref map) => {
@@ -465,8 +459,6 @@ impl MapOperations for AnyMap {
                 }
                 if result.is_empty() {
                     result = "Empty map".to_string();
-                } else {
-                    result.pop();
                 }
             }
             AnyMap::i32_string_Map(ref map) => {
@@ -479,8 +471,6 @@ impl MapOperations for AnyMap {
                 }
                 if result.is_empty() {
                     result = "Empty map".to_string();
-                } else {
-                    result.pop();
                 }
             }
             AnyMap::string_i32_Map(ref map) => {
@@ -493,8 +483,6 @@ impl MapOperations for AnyMap {
                 }
                 if result.is_empty() {
                     result = "Empty map".to_string();
-                } else {
-                    result.pop();
                 }
             }
             _ => return "Not implemented: dump_map_as_csv".to_string(),

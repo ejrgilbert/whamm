@@ -9,7 +9,7 @@ use wirm::ir::types::DataType as WirmType;
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
-use crate::emitter::utils::{block_type_to_wasm, emit_expr, emit_stmt, EmitCtx};
+use crate::emitter::utils::{block_type_to_wasm, emit_expr, emit_probes, emit_stmt, EmitCtx};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::ast::UnsharedVar;
 use crate::generator::folding::ExprFolder;
@@ -31,6 +31,7 @@ use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as WirmIter
 use wirm::iterator::module_iterator::ModuleIterator;
 use wirm::opcode::{Instrumenter, MacroOpcode, Opcode};
 use wirm::Location;
+use crate::parser::provider_handler::ModeKind;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -523,21 +524,32 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             .inject_map_init_check(&mut self.app_iter, fid);
     }
 
-    pub fn configure_flush_routines(&mut self, has_reports: bool, err: &mut ErrorGen) {
+    pub fn configure_flush_routines(&mut self, has_reports: bool, err: &mut ErrorGen, ast: &mut SimpleAST) {
         // create the function to call at the end
         // TODO -- this can be cleaned up to use the wizard logic instead!
 
         // only do this is there are report variables
         if has_reports {
-            let var_flush = configure_flush_routines(
-                self.app_iter.module,
-                self.unshared_var_handler,
-                self.report_vars,
-                self.map_lib_adapter,
-                self.mem_allocator,
-                self.io_adapter,
-                err,
-            );
+            // check if ast overrides report logic
+            let report_probe = if let Some(wasm) = ast.provs.get_mut("wasm") {
+                if let Some(report_probe) = wasm.pkgs.get_mut("report") {
+                    Some(report_probe.evts.get_mut("").unwrap().modes.get_mut(&ModeKind::Null).unwrap())
+                } else {None}
+            } else {None};
+
+            let var_flush_fid = if report_probe.is_none() {
+                configure_flush_routines(
+                    self.app_iter.module,
+                    self.unshared_var_handler,
+                    self.report_vars,
+                    self.map_lib_adapter,
+                    self.mem_allocator,
+                    self.io_adapter,
+                    err,
+                )
+            } else {
+                None
+            };
 
             let on_exit_id = if let Some(fid) = self
                 .app_iter
@@ -551,22 +563,59 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                                 No on_exit found in the module!"
                     );
                 };
-                if let Some(flush_fid) = var_flush {
-                    on_exit.call(FunctionID(flush_fid));
-                    let op_idx = on_exit.curr_instr_len() as u32;
-                    on_exit.append_tag_at(
-                        get_probe_tag_data(&None, op_idx),
-                        Location::Module {
-                            func_idx: FunctionID(*fid),
-                            instr_idx: 0,
-                        },
+                if let Some(probes) = report_probe {
+                    // handle wasm:report override
+                    emit_probes(
+                        probes,
+                        self.strategy,
+                        &mut on_exit,
+                        &mut EmitCtx::new(
+                            self.table,
+                            self.mem_allocator,
+                            &mut self.locals_tracker,
+                            self.map_lib_adapter,
+                            UNEXPECTED_ERR_MSG,
+                            err,
+                        ),
                     );
+                } else {
+                    // there wasn't an override for wasm:report, emit the default reporting logic
+                    if let Some(flush_fid) = var_flush_fid {
+                        on_exit.call(FunctionID(flush_fid));
+                        let op_idx = on_exit.curr_instr_len() as u32;
+                        on_exit.append_tag_at(
+                            get_probe_tag_data(&None, op_idx),
+                            Location::Module {
+                                func_idx: FunctionID(*fid),
+                                instr_idx: 0,
+                            },
+                        );
+                    }
                 }
                 fid
             } else {
                 let mut on_exit = FunctionBuilder::new(&[], &[]);
-                if let Some(flush_fid) = var_flush {
-                    on_exit.call(FunctionID(flush_fid));
+
+                if let Some(probes) = report_probe {
+                    // handle wasm:report override
+                    emit_probes(
+                        probes,
+                        self.strategy,
+                        &mut on_exit,
+                        &mut EmitCtx::new(
+                            self.table,
+                            self.mem_allocator,
+                            &mut self.locals_tracker,
+                            self.map_lib_adapter,
+                            UNEXPECTED_ERR_MSG,
+                            err,
+                        ),
+                    );
+                } else {
+                    // there wasn't an override for wasm:report, emit the default reporting logic
+                    if let Some(flush_fid) = var_flush_fid {
+                        on_exit.call(FunctionID(flush_fid));
+                    }
                 }
                 let on_exit_id =
                     on_exit.finish_module_with_tag(self.app_iter.module, get_tag_for(&None));
