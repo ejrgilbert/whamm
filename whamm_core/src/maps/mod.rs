@@ -465,7 +465,7 @@ impl TupleVariant {
     pub fn dump_tuple(&self) -> String {
         match self {
             TupleVariant::i32_i32_i32(a, b, c) => {
-                format!("({}, {}, {})", a, b, c)
+                format!("({},{},{})", a, b, c)
             }
             _ => "Not implemented".to_string(),
         }
