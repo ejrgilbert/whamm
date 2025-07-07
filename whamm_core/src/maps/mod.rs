@@ -538,7 +538,7 @@ impl TupleVariant {
                 format!("({}, {})", a, b)
             }
             TupleVariant::i32_i32_i32(a, b, c) => {
-                format!("({}, {}, {})", a, b, c)
+                format!("({},{},{})", a, b, c)
             }
             _ => format!("Not implemented: dump_tuple"),
         }
