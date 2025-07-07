@@ -3,7 +3,10 @@ use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::rewriting::rules::Arg;
 use crate::emitter::tag_handler::get_tag_for;
-use crate::emitter::utils::{emit_body, emit_expr, emit_global_getter, emit_stmt, whamm_type_to_wasm_global, EmitCtx, emit_probes};
+use crate::emitter::utils::{
+    emit_body, emit_expr, emit_global_getter, emit_probes, emit_stmt, whamm_type_to_wasm_global,
+    EmitCtx,
+};
 use crate::emitter::{Emitter, InjectStrategy};
 use crate::generator::ast::{Script, WhammParams};
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -269,7 +272,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
     pub(crate) fn emit_end_fn(
         &mut self,
-        ast: &Vec<Script>,
+        ast: &[Script],
         used_report_dts: HashSet<DataType>,
         io_adapter: &mut IOAdapter,
         err: &mut ErrorGen,
@@ -325,7 +328,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 let var_meta = self
                     .report_vars
                     .setup_flush_data_segments(self.app_wasm, self.mem_allocator);
-
 
                 // call the report_vars to emit calls to all report var flushers
                 self.report_vars.emit_flush_logic(

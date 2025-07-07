@@ -208,7 +208,10 @@ pub fn run(
         user_lib_modules.insert(lib_name.clone(), Module::parse(lib_buff, false).unwrap());
     }
     // add the core library just in case the script needs it
-    user_lib_modules.insert(WHAMM_CORE_LIB_NAME.to_string(), Module::parse(core_lib, true).unwrap());
+    user_lib_modules.insert(
+        WHAMM_CORE_LIB_NAME.to_string(),
+        Module::parse(core_lib, true).unwrap(),
+    );
 
     // Process the script
     let mut whamm = get_script_ast(def_yamls, whamm_script, &mut err);

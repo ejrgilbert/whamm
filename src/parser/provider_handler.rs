@@ -386,11 +386,11 @@ impl MatchOn for PackageDef {
                                 def: self.def.clone(),
                                 events: vec![EventDef {
                                     def: Def::default(),
-                                    modes: vec![ ModeDef {
+                                    modes: vec![ModeDef {
                                         def: Def::default(),
                                         alias: None,
                                         kind: ModeKind::Null,
-                                    } ],
+                                    }],
                                 }],
                             }))
                         }

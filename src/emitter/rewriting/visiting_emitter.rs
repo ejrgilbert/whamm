@@ -18,6 +18,7 @@ use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser;
+use crate::parser::provider_handler::ModeKind;
 use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use itertools::Itertools;
@@ -31,7 +32,6 @@ use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as WirmIter
 use wirm::iterator::module_iterator::ModuleIterator;
 use wirm::opcode::{Instrumenter, MacroOpcode, Opcode};
 use wirm::Location;
-use crate::parser::provider_handler::ModeKind;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -524,7 +524,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             .inject_map_init_check(&mut self.app_iter, fid);
     }
 
-    pub fn configure_flush_routines(&mut self, has_reports: bool, err: &mut ErrorGen, ast: &mut SimpleAST) {
+    pub fn configure_flush_routines(
+        &mut self,
+        has_reports: bool,
+        err: &mut ErrorGen,
+        ast: &mut SimpleAST,
+    ) {
         // create the function to call at the end
         // TODO -- this can be cleaned up to use the wizard logic instead!
 
@@ -533,9 +538,21 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             // check if ast overrides report logic
             let report_probe = if let Some(wasm) = ast.provs.get_mut("wasm") {
                 if let Some(report_probe) = wasm.pkgs.get_mut("report") {
-                    Some(report_probe.evts.get_mut("").unwrap().modes.get_mut(&ModeKind::Null).unwrap())
-                } else {None}
-            } else {None};
+                    Some(
+                        report_probe
+                            .evts
+                            .get_mut("")
+                            .unwrap()
+                            .modes
+                            .get_mut(&ModeKind::Null)
+                            .unwrap(),
+                    )
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
 
             let var_flush_fid = if report_probe.is_none() {
                 configure_flush_routines(

@@ -4,6 +4,7 @@ use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::emitter::InjectStrategy;
+use crate::generator::ast::Probe;
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::libraries::core::maps::map_adapter::{MapLibAdapter, MAP_LIB_MEM_OFFSET};
 use crate::parser::types::{
@@ -16,7 +17,6 @@ use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmVa
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{MacroOpcode, Opcode};
 use wirm::{InitInstr, Module};
-use crate::generator::ast::Probe;
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -59,17 +59,17 @@ impl<'a, 'b, 'c, 'd, 'e> EmitCtx<'a, 'b, 'c, 'd, 'e> {
     }
 }
 
-pub fn emit_probes<'h, T: Opcode<'h> + MacroOpcode<'h> + AddLocal>(probes: &mut Vec<Probe>, strategy: InjectStrategy, injector: &mut T, ctx: &mut EmitCtx)     {
+pub fn emit_probes<'h, T: Opcode<'h> + MacroOpcode<'h> + AddLocal>(
+    probes: &mut [Probe],
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) {
     for probe in probes.iter_mut() {
         if let Some(body) = &mut probe.body {
             // todo -- point this to the flush function instead...
             for stmt in body.stmts.iter_mut() {
-                emit_stmt(
-                    stmt,
-                    strategy,
-                    injector,
-                    ctx
-                );
+                emit_stmt(stmt, strategy, injector, ctx);
             }
         }
     }

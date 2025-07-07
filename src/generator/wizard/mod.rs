@@ -52,8 +52,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emit_end_func(&ast, used_report_dts);
     }
 
-    fn emit_end_func(&mut self,
-                     ast: &Vec<Script>, used_report_dts: HashSet<DataType>) {
+    fn emit_end_func(&mut self, ast: &[Script], used_report_dts: HashSet<DataType>) {
         if !self.config.no_report {
             self.emitter
                 .emit_end_fn(ast, used_report_dts, self.io_adapter, self.err);
@@ -61,7 +60,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     // Visit the AST
-    fn visit_ast(&mut self, ast: &mut Vec<Script>) {
+    fn visit_ast(&mut self, ast: &mut [Script]) {
         for script in ast.iter_mut() {
             self.visit_script(script);
         }
