@@ -356,6 +356,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter
             .app_iter
             .append_to_tag(get_probe_tag_data(&self.curr_probe_loc, op_idx));
+        self.emitter.finish_instr();
 
         is_success
     }

@@ -121,6 +121,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         self.app_iter.func_exit();
     }
 
+    pub fn finish_instr(&mut self) {
+        self.app_iter.finish_instr();
+    }
+
     pub(crate) fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule) -> bool {
         self.table.enter_scope_via_rule(
             script_id,

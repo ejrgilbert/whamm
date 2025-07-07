@@ -254,16 +254,14 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     match stmt {
         Statement::Assign { var_id, expr, .. } => {
             // Save off primitives to symbol table
-            // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
-            if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) = (&var_id, &expr) {
-                let Some(Record::Var { value, def, .. }) = ctx.table.lookup_var_mut(name, true)
+            if let Expr::VarId { name, .. } = &var_id {
+                let Some(Record::Var { def, .. }) = ctx.table.lookup_var_mut(name, true)
                 else {
                     ctx.err
                         .unexpected_error(true, Some("unexpected type".to_string()), None);
                     return false;
                 };
 
-                *value = Some(val.clone());
                 if def.is_comp_defined() {
                     return true;
                 }

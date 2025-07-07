@@ -1,1 +1,1 @@
-tests/apps/core_suite/clang/malloc_init.wasm
+tests/apps/core_suite/handwritten/calls.wasm
