@@ -28,4 +28,5 @@ providers:
       - *wasm_end
       - *report
       - *func
+      - *wasm_block
       - *opcode

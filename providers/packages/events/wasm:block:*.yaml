@@ -1,0 +1,19 @@
+# =======================
+# ==== wasm:block:* ====
+# =======================
+
+entry: &block_entry
+  name: entry
+  bound_vars: []
+  bound_fns: []
+  supported_modes: []
+
+  docs: "Inserts instrumentation at the start of a wasm basic block."
+
+exit: &block_exit
+  name: exit
+  bound_vars: []
+  bound_fns: []
+  supported_modes: []
+
+  docs: "Inserts instrumentation at the end of a wasm basic block."

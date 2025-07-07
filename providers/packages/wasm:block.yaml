@@ -1,0 +1,12 @@
+# =====================
+# ==== wasm:block ====
+# =====================
+
+wasm_block: &wasm_block
+  name: block
+  docs: This package within the wasm provider enables the instrumentation of Wasm basic blocks.
+  bound_vars: []
+  bound_fns: []
+  events:
+    - *block_entry
+    - *block_exit

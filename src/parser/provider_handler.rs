@@ -553,6 +553,7 @@ impl PrintInfo for EventDef {
         evt_buffer: &mut Buffer,
         tabs: &mut usize,
     ) {
+        if self.def.name.is_empty() { return }
         magenta_italics(true, self.def.name.clone(), evt_buffer);
         white(true, " event\n".to_string(), evt_buffer);
 
@@ -571,15 +572,17 @@ impl PrintInfo for EventDef {
         if !self.modes.is_empty() {
             probe_rule.print_bold_mode(evt_buffer);
             for mode in self.modes.iter() {
-                mode.print_info(
-                    probe_rule,
-                    print_vars,
-                    print_functions,
-                    prov_buff,
-                    pkg_buff,
-                    evt_buffer,
-                    tabs,
-                );
+                if !matches!(mode.kind, ModeKind::Null) {
+                    mode.print_info(
+                        probe_rule,
+                        print_vars,
+                        print_functions,
+                        prov_buff,
+                        pkg_buff,
+                        evt_buffer,
+                        tabs,
+                    );
+                }
             }
         }
     }
