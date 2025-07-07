@@ -277,7 +277,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         io_adapter: &mut IOAdapter,
         err: &mut ErrorGen,
     ) -> Option<FunctionID> {
-        // todo -- overridden report logic
         if !used_report_dts.is_empty() {
             // (ONLY DO THIS IF THERE ARE REPORT VARIABLES)
 
