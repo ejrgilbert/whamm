@@ -255,8 +255,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         Statement::Assign { var_id, expr, .. } => {
             // Save off primitives to symbol table
             if let Expr::VarId { name, .. } = &var_id {
-                let Some(Record::Var { def, .. }) = ctx.table.lookup_var_mut(name, true)
-                else {
+                let Some(Record::Var { def, .. }) = ctx.table.lookup_var_mut(name, true) else {
                     ctx.err
                         .unexpected_error(true, Some("unexpected type".to_string()), None);
                     return false;
