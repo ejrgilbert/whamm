@@ -1005,7 +1005,7 @@ pub fn print_map(id: i32) {
     if let Some(map) = binding.get(&id) {
         print!("{}", map.dump_map())
     } else {
-        red(&format!("Could not find map with ID, must have been never initialized! `{}`\n", id));
+        red(&format!("Could not find map with ID, must have never been initialized! `{}`\n", id));
         panic!()
     }
 }
@@ -1017,7 +1017,7 @@ pub fn print_map_as_csv(id: i32) {
     if let Some(map) = binding.get(&id) {
         print!("{}", map.dump_map_as_csv(id))
     } else {
-        red(&format!("Could not find map with ID, must have been never initialized! `{}`\n", id));
+        red(&format!("Could not find map with ID, must have never been initialized! `{}`\n", id));
         panic!()
     }
 }
