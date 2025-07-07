@@ -376,11 +376,7 @@ impl MapOperations for AnyMap {
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key, value));
                 }
-                if result.is_empty() {
-                    result = "Empty map".to_string();
-                } else {
-                    result.pop();
-                }
+                result.pop();
             }
             AnyMap::tuple_i32_Map(ref map) => {
                 if map.is_empty() { return "empty map".to_string() }
@@ -390,11 +386,7 @@ impl MapOperations for AnyMap {
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key.dump_tuple(), value));
                 }
-                if result.is_empty() {
-                    result = "Empty map".to_string();
-                } else {
-                    result.pop();
-                }
+                result.pop();
             }
             AnyMap::i32_string_Map(ref map) => {
                 if map.is_empty() { return "empty map".to_string() }
@@ -404,11 +396,7 @@ impl MapOperations for AnyMap {
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key, value));
                 }
-                if result.is_empty() {
-                    result = "Empty map".to_string();
-                } else {
-                    result.pop();
-                }
+                result.pop();
             }
             AnyMap::string_i32_Map(ref map) => {
                 if map.is_empty() { return "empty map".to_string() }
@@ -418,11 +406,7 @@ impl MapOperations for AnyMap {
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key, value));
                 }
-                if result.is_empty() {
-                    result = "Empty map".to_string();
-                } else {
-                    result.pop();
-                }
+                result.pop();
             }
             _ => return "Not implemented: dump_map".to_string(),
         }
@@ -452,7 +436,7 @@ impl MapOperations for AnyMap {
                 let mut first = true;
                 for (key, value) in sorted_map.into_iter() {
                     if first {
-                        result += &format!("key ({}), val (i32)", key.ty_str());
+                        result += &format!("key ({}), val (i32)\n", key.ty_str());
                         first = false
                     }
                     result.push_str(&format!("{}, {}\n", key.dump_tuple(), value));
@@ -465,7 +449,7 @@ impl MapOperations for AnyMap {
                 // sort to make flush deterministic
                 let sorted_map = map.iter().sorted_by_key(|data| data.0);
 
-                result += "key (i32), val (str)";
+                result += "key (i32), val (str)\n";
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}, {}\n", key, value));
                 }
@@ -477,7 +461,7 @@ impl MapOperations for AnyMap {
                 // sort to make flush deterministic
                 let sorted_map = map.iter().sorted_by_key(|data| data.0);
 
-                result += "key (str), val (i32)";
+                result += "key (str), val (i32)\n";
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}, {}\n", key, value));
                 }

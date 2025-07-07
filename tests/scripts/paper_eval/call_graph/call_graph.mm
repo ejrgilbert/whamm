@@ -1,3 +1,5 @@
+use whamm_core;
+
 // (from, to) -> count
 report var call_graph: map<(u32, u32), u32>;
 var tracking_target: bool;
@@ -17,4 +19,10 @@ wasm:func:entry {
         call_graph[(caller, fid)]++;
         tracking_target = false;
     }
+}
+
+wasm:report {
+    // this is the ID of the map above...need to make this less hard-coded.
+    // maybe: `call_graph.id()`
+    whamm_core.print_map_as_csv(0);
 }
