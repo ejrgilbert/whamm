@@ -147,6 +147,7 @@ fn handle_wasm_packages(
     match package {
         "opcode" => handle_opcode(app_wasm, fid, instr, pkg),
         "func" => handle_func(app_wasm, fid, pc, instr, pkg),
+        "report" => None, // not handled here
         "begin" | "end" => unimplemented!("Have not implemented the package yet: {package}"),
         _ => panic!("Package not available: 'wasm:{package}'"),
     }
