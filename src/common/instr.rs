@@ -16,7 +16,7 @@ use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::io::IOPackage;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::libraries::core::maps::MapLibPackage;
-use crate::lang_features::libraries::core::LibPackage;
+use crate::lang_features::libraries::core::{LibPackage, WHAMM_CORE_LIB_NAME};
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{Whamm, WhammVisitor};
 use crate::parser::whamm_parser::parse_script;
@@ -207,6 +207,8 @@ pub fn run(
     for (lib_name, _, lib_buff) in user_libs.iter() {
         user_lib_modules.insert(lib_name.clone(), Module::parse(lib_buff, false).unwrap());
     }
+    // add the core library just in case the script needs it
+    user_lib_modules.insert(WHAMM_CORE_LIB_NAME.to_string(), Module::parse(core_lib, true).unwrap());
 
     // Process the script
     let mut whamm = get_script_ast(def_yamls, whamm_script, &mut err);
