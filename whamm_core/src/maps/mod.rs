@@ -418,18 +418,24 @@ impl MapOperations for AnyMap {
 
         match self {
             AnyMap::i32_i32_Map(ref map) => {
+                result += "key (i32), val (i32)\n";
+                if map.is_empty() {
+                    result += "empty map\n";
+                    return result;
+                }
+
                 // sort to make flush deterministic
                 let sorted_map = map.iter().sorted_by_key(|data| data.0);
-
-                result += "key (i32), val (i32)\n";
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}, {}\n", key, value));
                 }
-                if result.is_empty() {
-                    result = "Empty map".to_string();
-                }
             }
             AnyMap::tuple_i32_Map(ref map) => {
+                if map.is_empty() {
+                    result += "empty map\n";
+                    return result;
+                }
+
                 // sort to make flush deterministic
                 let sorted_map = map.iter().sorted_by_key(|data| data.0);
 
@@ -441,35 +447,34 @@ impl MapOperations for AnyMap {
                     }
                     result.push_str(&format!("{}, {}\n", key.dump_tuple(), value));
                 }
-                if result.is_empty() {
-                    result = "Empty map".to_string();
-                }
             }
             AnyMap::i32_string_Map(ref map) => {
+                result += "key (i32), val (str)\n";
+                if map.is_empty() {
+                    result += "empty map\n";
+                    return result;
+                }
+
                 // sort to make flush deterministic
                 let sorted_map = map.iter().sorted_by_key(|data| data.0);
-
-                result += "key (i32), val (str)\n";
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}, {}\n", key, value));
-                }
-                if result.is_empty() {
-                    result = "Empty map".to_string();
                 }
             }
             AnyMap::string_i32_Map(ref map) => {
+                result += "key (str), val (i32)\n";
+                if map.is_empty() {
+                    result += "empty map\n";
+                    return result;
+                }
+
                 // sort to make flush deterministic
                 let sorted_map = map.iter().sorted_by_key(|data| data.0);
-
-                result += "key (str), val (i32)\n";
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}, {}\n", key, value));
                 }
-                if result.is_empty() {
-                    result = "Empty map".to_string();
-                }
             }
-            _ => return "Not implemented: dump_map_as_csv".to_string(),
+            _ => return "Not implemented: dump_map_as_csv\n".to_string(),
         }
         result
     }

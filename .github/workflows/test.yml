@@ -75,7 +75,7 @@ jobs:
           which v3c
           
           echo "[INFO] Building 'wizeng'..."
-          git clone --branch feature/req-fname https://github.com/ejrgilbert/wizard-engine.git
+          git clone --branch FOR_WHAMM https://github.com/ejrgilbert/wizard-engine.git
           pushd wizard-engine
           make -j
           popd
