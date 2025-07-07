@@ -553,7 +553,9 @@ impl PrintInfo for EventDef {
         evt_buffer: &mut Buffer,
         tabs: &mut usize,
     ) {
-        if self.def.name.is_empty() { return }
+        if self.def.name.is_empty() {
+            return;
+        }
         magenta_italics(true, self.def.name.clone(), evt_buffer);
         white(true, " event\n".to_string(), evt_buffer);
 

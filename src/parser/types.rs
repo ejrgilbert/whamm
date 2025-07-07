@@ -1578,7 +1578,9 @@ impl ProbeRule {
     }
 
     pub fn print_bold_provider(&self, buffer: &mut Buffer) {
-        if self.provider.is_none() { return; }
+        if self.provider.is_none() {
+            return;
+        }
         magenta(
             true,
             self.provider.as_ref().unwrap().name.to_string(),
@@ -1593,7 +1595,9 @@ impl ProbeRule {
     }
 
     pub fn print_bold_package(&self, buffer: &mut Buffer) {
-        if self.provider.is_none() || self.package.is_none() { return; }
+        if self.provider.is_none() || self.package.is_none() {
+            return;
+        }
         white(
             true,
             format!("{}:", self.provider.as_ref().unwrap().name),
@@ -1622,7 +1626,9 @@ impl ProbeRule {
     }
 
     pub fn print_bold_event(&self, buffer: &mut Buffer) {
-        if self.provider.is_none() || self.package.is_none() || self.event.is_none() { return; }
+        if self.provider.is_none() || self.package.is_none() || self.event.is_none() {
+            return;
+        }
         white(
             true,
             format!(
@@ -1645,7 +1651,12 @@ impl ProbeRule {
     }
 
     pub fn print_bold_mode(&self, buffer: &mut Buffer) {
-        if self.provider.is_none() || self.package.is_none() || self.event.is_none() | self.mode.is_none() { return; }
+        if self.provider.is_none()
+            || self.package.is_none()
+            || self.event.is_none() | self.mode.is_none()
+        {
+            return;
+        }
         white(
             true,
             format!(
