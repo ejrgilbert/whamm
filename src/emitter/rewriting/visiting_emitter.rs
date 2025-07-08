@@ -1,7 +1,5 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::rewriting::rules::{
-    get_loc_info_for_active_probes, get_ty_info_for_instr, Arg, LocInfo, ProbeRule,
-};
+use crate::emitter::rewriting::rules::{get_loc_info_for_active_probes, get_ty_info_for_instr, Arg, LocInfo, ProbeRule, MatchState};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
 use wirm::ir::types::DataType as WirmType;
@@ -152,14 +150,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         }
     }
 
-    pub(crate) fn get_loc_info(&self, ast: &SimpleAST) -> Option<LocInfo> {
+    pub(crate) fn get_loc_info(&self, state: &mut MatchState, ast: &SimpleAST) -> Option<LocInfo> {
         let (loc, at_func_end) = self.app_iter.curr_loc();
-        if at_func_end {
-            // We're at the 'end' opcode of the function...don't instrument
-            return None;
-        }
+        // if at_func_end {
+        //     // We're at the 'end' opcode of the function...don't instrument
+        //     return None;
+        // }
         if let Some(curr_instr) = self.app_iter.curr_op() {
-            get_loc_info_for_active_probes(self.app_iter.module, loc, curr_instr, ast)
+            get_loc_info_for_active_probes(self.app_iter.module, state, loc, at_func_end, curr_instr, ast)
         } else {
             None
         }

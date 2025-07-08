@@ -69,3 +69,12 @@ fn call_graph() {
 
     run_core_suite("paper_eval-call_graph", processed_scripts, true, true)
 }
+
+#[test]
+fn basic_block_profiling() {
+    setup_logger();
+    let processed_scripts = setup_tests("paper_eval/basic_block_profiling");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("paper_eval-basic_block_profiling", processed_scripts, true, false)
+}
