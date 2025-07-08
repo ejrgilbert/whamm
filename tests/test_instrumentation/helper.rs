@@ -535,10 +535,12 @@ fn run_testcase_wizard(
         cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
     }
 
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    {
-        cmd.arg("--mode=jit");
-    }
+    // TODO -- uncomment once we figure out the OOM issue:
+    //         https://github.com/ejrgilbert/whamm/actions/runs/16132265689/job/45521736032?pr=237
+    // #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    // {
+    //     cmd.arg("--mode=jit");
+    // }
 
     let res = cmd
         // .arg("-tw")
