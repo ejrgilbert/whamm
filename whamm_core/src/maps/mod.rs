@@ -513,29 +513,29 @@ pub enum TupleVariant {
 impl TupleVariant {
     pub fn ty_str(&self) -> String {
         match self {
-            Self::i32_i32(..) => "(i32, i32)".to_string(),
-            Self::i32_string(..) => "(i32, str)".to_string(),
-            Self::i32_tuple(.., tuple) => format!("(i32, {})", tuple.ty_str()),
-            Self::i32_bool(..) => "(i32, bool)".to_string(),
-            Self::string_i32(..) => "(str, i32)".to_string(),
-            Self::string_string(..) => "(str, str)".to_string(),
-            Self::string_tuple(.., tuple) => format!("(str, {})", tuple.ty_str()),
-            Self::string_bool(..) => "(str, bool)".to_string(),
-            Self::tuple_i32(tuple, ..) => format!("({}, i32)", tuple.ty_str()),
-            Self::tuple_string(tuple, ..) => format!("({}, str)", tuple.ty_str()),
-            Self::tuple_tuple(tuple0, tuple1) => format!("({}, {})", tuple0.ty_str(), tuple1.ty_str()),
-            Self::tuple_bool(tuple, ..) => format!("({}, bool)", tuple.ty_str()),
-            Self::bool_i32(..) => "(bool, i32)".to_string(),
-            Self::bool_string(..) => "(bool, str)".to_string(),
-            Self::bool_tuple(.., tuple) => format!("(bool, {})", tuple.ty_str()),
-            Self::bool_bool(..) => "(bool, bool)".to_string(),
-            Self::i32_i32_i32(..) => "(i32, i32, i32)".to_string(),
+            Self::i32_i32(..) => "(i32,i32)".to_string(),
+            Self::i32_string(..) => "(i32,str)".to_string(),
+            Self::i32_tuple(.., tuple) => format!("(i32,{})", tuple.ty_str()),
+            Self::i32_bool(..) => "(i32,bool)".to_string(),
+            Self::string_i32(..) => "(str,i32)".to_string(),
+            Self::string_string(..) => "(str,str)".to_string(),
+            Self::string_tuple(.., tuple) => format!("(str,{})", tuple.ty_str()),
+            Self::string_bool(..) => "(str,bool)".to_string(),
+            Self::tuple_i32(tuple, ..) => format!("({},i32)", tuple.ty_str()),
+            Self::tuple_string(tuple, ..) => format!("({},str)", tuple.ty_str()),
+            Self::tuple_tuple(tuple0, tuple1) => format!("({},{})", tuple0.ty_str(), tuple1.ty_str()),
+            Self::tuple_bool(tuple, ..) => format!("({},bool)", tuple.ty_str()),
+            Self::bool_i32(..) => "(bool,i32)".to_string(),
+            Self::bool_string(..) => "(bool,str)".to_string(),
+            Self::bool_tuple(.., tuple) => format!("(bool,{})", tuple.ty_str()),
+            Self::bool_bool(..) => "(bool,bool)".to_string(),
+            Self::i32_i32_i32(..) => "(i32,i32,i32)".to_string(),
         }
     }
     pub fn dump_tuple(&self) -> String {
         match self {
             TupleVariant::i32_i32(a, b) => {
-                format!("({}, {})", a, b)
+                format!("({},{})", a, b)
             }
             TupleVariant::i32_i32_i32(a, b, c) => {
                 format!("({},{},{})", a, b, c)
