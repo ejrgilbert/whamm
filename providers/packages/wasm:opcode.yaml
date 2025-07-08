@@ -4,7 +4,7 @@
 
 opcode: &opcode
   name: opcode
-  docs: This package within the wasm provider contains enables the instrumentation of WebAssembly bytecode instructions.
+  docs: This package within the wasm provider enables the instrumentation of WebAssembly bytecode instructions.
   bound_vars: []
   bound_fns:
     - name: drop_args

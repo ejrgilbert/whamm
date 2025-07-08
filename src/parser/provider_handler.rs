@@ -202,7 +202,7 @@ impl Event {
 // ==== TYPES FOR PROBE RULE DEFS ====
 // ===================================
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Def {
     pub name: String,
     pub bound_vars: Vec<BoundVar>,
@@ -366,19 +366,34 @@ impl MatchOn for PackageDef {
             ) {
                 Ok(evts_res) => {
                     let evts: Vec<EventDef> = evts_res.into_iter().map(|b| *b).collect();
-                    if evts.is_empty() && probe_rule.event.is_some() {
-                        // if there's a further match pattern to consider, this isn't a match!
-                        // (consider wasm:begin and wasm:end)
-                        err_ctxt.on_package = Some(ErrorGen::get_parse_error(
-                            true,
-                            Some(format!(
-                                "Could not find any matches for the specified package pattern: {pkg_patt}"
-                            )),
-                            loc.as_ref().map(|l| l.line_col.clone()),
-                            vec![],
-                            vec![],
-                        ));
-                        Err(())
+                    if evts.is_empty() {
+                        if probe_rule.event.is_some() {
+                            // if there's a further match pattern to consider, this isn't a match!
+                            // (consider wasm:begin and wasm:end)
+                            err_ctxt.on_package = Some(ErrorGen::get_parse_error(
+                                true,
+                                Some(format!(
+                                    "Could not find any matches for the specified package pattern: {pkg_patt}"
+                                )),
+                                loc.as_ref().map(|l| l.line_col.clone()),
+                                vec![],
+                                vec![],
+                            ));
+                            Err(())
+                        } else {
+                            // otherwise, we just have a shortened match rule! (wasm:begin, wasm:report)
+                            Ok(Box::new(Self {
+                                def: self.def.clone(),
+                                events: vec![EventDef {
+                                    def: Def::default(),
+                                    modes: vec![ModeDef {
+                                        def: Def::default(),
+                                        alias: None,
+                                        kind: ModeKind::Null,
+                                    }],
+                                }],
+                            }))
+                        }
                     } else {
                         Ok(Box::new(Self {
                             def: self.def.clone(),
@@ -484,20 +499,33 @@ impl MatchOn for EventDef {
             ) {
                 Ok(mds_res) => {
                     let mds: Vec<ModeDef> = mds_res.into_iter().map(|b| *b).collect();
-                    if mds.is_empty() && probe_rule.mode.is_some() {
-                        // if there's a further match pattern to consider, this isn't a match!
-                        // (consider wasm:begin and wasm:end)
-                        err_ctxt.on_event = Some(ErrorGen::get_parse_error(
-                            true,
-                            Some(format!(
-                                "Could not find any matches for the specified event pattern: {evt_patt}"
-                            )),
-                            loc.as_ref().map(|l| l.line_col.clone()),
-                            vec![],
-                            vec![],
-                        ));
-                        Err(())
+                    if mds.is_empty() {
+                        if probe_rule.mode.is_some() {
+                            // if there's a further match pattern to consider, this isn't a match!
+                            // (consider wasm:begin and wasm:end)
+                            err_ctxt.on_event = Some(ErrorGen::get_parse_error(
+                                true,
+                                Some(format!(
+                                    "Could not find any matches for the specified event pattern: {evt_patt}"
+                                )),
+                                loc.as_ref().map(|l| l.line_col.clone()),
+                                vec![],
+                                vec![],
+                            ));
+                            Err(())
+                        } else {
+                            // otherwise, we just have a shortened match rule! (wasm:func:entry)
+                            Ok(Box::new(Self {
+                                def: self.def.clone(),
+                                modes: vec![ModeDef {
+                                    def: Def::default(),
+                                    alias: None,
+                                    kind: ModeKind::Null,
+                                }],
+                            }))
+                        }
                     } else {
+                        // we had mode matches
                         Ok(Box::new(Self {
                             def: self.def.clone(),
                             modes: mds,
@@ -525,6 +553,9 @@ impl PrintInfo for EventDef {
         evt_buffer: &mut Buffer,
         tabs: &mut usize,
     ) {
+        if self.def.name.is_empty() {
+            return;
+        }
         magenta_italics(true, self.def.name.clone(), evt_buffer);
         white(true, " event\n".to_string(), evt_buffer);
 
@@ -543,15 +574,17 @@ impl PrintInfo for EventDef {
         if !self.modes.is_empty() {
             probe_rule.print_bold_mode(evt_buffer);
             for mode in self.modes.iter() {
-                mode.print_info(
-                    probe_rule,
-                    print_vars,
-                    print_functions,
-                    prov_buff,
-                    pkg_buff,
-                    evt_buffer,
-                    tabs,
-                );
+                if !matches!(mode.kind, ModeKind::Null) {
+                    mode.print_info(
+                        probe_rule,
+                        print_vars,
+                        print_functions,
+                        prov_buff,
+                        pkg_buff,
+                        evt_buffer,
+                        tabs,
+                    );
+                }
             }
         }
     }
@@ -566,6 +599,9 @@ pub enum ModeKind {
     BlockAlt,
     Entry,
     Exit,
+
+    // For skipping the mode
+    Null,
 }
 impl From<String> for ModeKind {
     fn from(value: String) -> Self {
@@ -577,6 +613,7 @@ impl From<String> for ModeKind {
             "block_alt" => Self::BlockAlt,
             "entry" => Self::Entry,
             "exit" => Self::Exit,
+            "<no-mode>" => Self::Null,
             _ => panic!("unable to match mode kind: {value}"),
         }
     }
@@ -596,6 +633,7 @@ impl ModeKind {
             Self::BlockAlt => "block_alt".to_string(),
             Self::Entry => "entry".to_string(),
             Self::Exit => "exit".to_string(),
+            Self::Null => "<no-mode>".to_string(),
         }
     }
 }

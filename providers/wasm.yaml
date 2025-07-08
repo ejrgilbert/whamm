@@ -26,4 +26,7 @@ providers:
     packages:
       - *begin
       - *wasm_end
+      - *report
+      - *func
+      - *wasm_block
       - *opcode

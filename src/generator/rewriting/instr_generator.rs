@@ -56,7 +56,8 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub ast: SimpleAST,
     pub err: &'h mut ErrorGen,
     curr_instr_args: Vec<Arg>,
-    curr_probe_mode: ModeKind,
+    curr_probe_rule: ProbeRule,
+    is_prog_exit: bool,
     curr_probe_loc: Option<Location>,
     /// The current probe's body and predicate
     curr_probe: Option<(Option<Block>, Option<Expr>)>,
@@ -79,7 +80,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
             ast,
             err,
             curr_instr_args: vec![],
-            curr_probe_mode: ModeKind::Before,
+            curr_probe_rule: ProbeRule::default(),
+            is_prog_exit: false,
             curr_probe_loc: None,
             curr_probe: None,
             has_reports,
@@ -89,8 +91,33 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
     }
 
     pub fn configure_probe_mode(&mut self) -> bool {
-        // function entry/exit should be handled before this point!
-        match self.curr_probe_mode {
+        self.probe_mode_for_provider()
+    }
+    fn probe_mode_for_provider(&mut self) -> bool {
+        match &self.curr_probe_rule.provider {
+            Some(prov) => match prov.name.as_str() {
+                "wasm" => self.probe_mode_for_package(),
+                _ => unreachable!("Invalid probe provider: {}", prov.name),
+            },
+            _ => unreachable!("Probe does not have a provider."),
+        }
+    }
+    fn probe_mode_for_package(&mut self) -> bool {
+        match &self.curr_probe_rule.package {
+            Some(prov) => match prov.name.as_str() {
+                "opcode" => self.probe_mode_for_opcode_modes(
+                    &self.curr_probe_rule.mode.as_ref().unwrap().clone(),
+                ),
+                "func" => self.probe_mode_for_func_modes(&ModeKind::from(
+                    self.curr_probe_rule.event.as_ref().unwrap().name.clone(),
+                )),
+                _ => unreachable!("Invalid probe provider: {}", prov.name),
+            },
+            _ => unreachable!("Probe does not have a provider."),
+        }
+    }
+    fn probe_mode_for_opcode_modes(&mut self, mode: &ModeKind) -> bool {
+        match mode {
             ModeKind::Before => self.emitter.before(),
             ModeKind::After => self.emitter.after(),
             ModeKind::Alt => self.emitter.alternate(),
@@ -98,6 +125,24 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
             ModeKind::Entry => self.emitter.block_entry(),
             ModeKind::Exit => self.emitter.block_exit(),
             ModeKind::BlockAlt => self.emitter.block_alt(),
+            _ => unreachable!("invalid probe mode: {}", mode),
+        }
+        true
+    }
+    fn probe_mode_for_func_modes(&mut self, mode: &ModeKind) -> bool {
+        match mode {
+            ModeKind::Entry => self.emitter.func_entry(),
+            ModeKind::Exit => {
+                if self.is_prog_exit {
+                    // if we're at the program exit (e.g. a wasi:exiting call),
+                    // we want to do something slightly different. Inject a before
+                    // at this location
+                    self.emitter.before()
+                } else {
+                    self.emitter.func_exit()
+                }
+            }
+            _ => unreachable!("invalid func mode: {}", mode),
         }
         true
     }
@@ -127,6 +172,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
             // Check if any of the configured rules match this instruction in the application.
             if let Some(loc_info) = self.emitter.get_loc_info(&self.ast) {
                 // Inject a call to the on-exit flush function
+                self.is_prog_exit = loc_info.is_prog_exit;
                 if loc_info.is_prog_exit {
                     if self.on_exit_fid.is_none() {
                         let on_exit = FunctionBuilder::new(&[], &[]);
@@ -194,7 +240,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                     }
 
                     self.curr_instr_args = loc_info.args.clone(); // must clone so that this lives long enough
-                    self.curr_probe_mode = probe_rule.mode.as_ref().unwrap().clone();
+                    self.curr_probe_rule = probe_rule.clone();
                     self.curr_probe_loc = loc_clone;
                     self.curr_probe = Some((body_clone, pred_clone));
 
@@ -271,18 +317,20 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 // Only emit the body if we're configured to do so
                 self.emit_body();
             }
-            if !matches!(self.curr_probe_mode, ModeKind::Alt) {
+            if !matches!(self.curr_probe_rule.mode.as_ref().unwrap(), ModeKind::Alt) {
                 self.replace_args();
             }
         } else {
+            let curr_probe_mode = self.curr_probe_rule.mode.as_ref().unwrap();
             // The predicate still has some conditionals (remember we already checked for
             // it being false in run() above)
-            match self.curr_probe_mode {
+            match curr_probe_mode {
                 ModeKind::Before
                 | ModeKind::After
                 | ModeKind::SemanticAfter
                 | ModeKind::Entry
-                | ModeKind::Exit => {
+                | ModeKind::Exit
+                | ModeKind::Null => {
                     is_success &= self.emit_probe_as_if();
                     self.replace_args();
                 }
@@ -294,7 +342,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
                         true,
                         Some(format!(
                             "{UNEXPECTED_ERR_MSG} Unexpected probe mode '{}'",
-                            self.curr_probe_mode.name()
+                            curr_probe_mode.name()
                         )),
                         None,
                     );
@@ -308,6 +356,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter
             .app_iter
             .append_to_tag(get_probe_tag_data(&self.curr_probe_loc, op_idx));
+        self.emitter.finish_instr();
 
         is_success
     }
@@ -349,8 +398,9 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
             if let Some(ref mut body) = body {
                 self.emitter
                     .emit_body(&self.curr_instr_args, body, self.err)
-            } else if body.is_none() {
-                if self.curr_probe_mode == ModeKind::Alt {
+            } else {
+                let curr_probe_mode = self.curr_probe_rule.mode.as_ref().unwrap();
+                if matches!(curr_probe_mode, ModeKind::Alt) {
                     match self.emitter.emit_empty_alternate() {
                         Err(e) => {
                             self.err.add_error(*e);
@@ -358,7 +408,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
                         }
                         Ok(res) => res,
                     }
-                } else if self.curr_probe_mode == ModeKind::BlockAlt {
+                } else if matches!(curr_probe_mode, ModeKind::BlockAlt) {
                     match self.emitter.emit_empty_block_alt() {
                         Err(e) => {
                             self.err.add_error(*e);
@@ -370,8 +420,6 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
                     // no body to emit!
                     false
                 }
-            } else {
-                false
             }
         } else {
             false
@@ -458,7 +506,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn after_run(&mut self) -> bool {
         if !self.config.no_report {
             self.emitter
-                .configure_flush_routines(self.has_reports, self.err);
+                .configure_flush_routines(self.has_reports, self.err, &mut self.ast);
         }
         true
     }

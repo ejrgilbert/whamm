@@ -1,0 +1,12 @@
+# =====================
+# ==== wasm:func ====
+# =====================
+
+func: &func
+  name: func
+  docs: This package within the wasm provider enables the instrumentation at the function abstraction of WebAssembly.
+  bound_vars: []
+  bound_fns: []
+  events:
+    - *func_entry
+    - *func_exit

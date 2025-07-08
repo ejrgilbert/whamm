@@ -16,6 +16,10 @@ thread_local! {
     static METADATA_HEADER: RefCell<(u32, u32)> = RefCell::new((0,0));
 }
 
+fn red(msg: &str) {
+    println!("\x1b[31m{msg}\x1b[0m")
+}
+
 //this should initialize a map of maps -> from string (name) to any type of map
 
 //strings, i32, maps, tuples, bool - all variations
@@ -54,6 +58,7 @@ pub trait MapOperations {
     fn get_map(&self, key: &dyn Any) -> Option<Box<AnyMap>>;
     fn get_bool(&self, key: &dyn Any) -> Option<bool>;
     fn dump_map(&self) -> String;
+    fn dump_map_as_csv(&self, my_id: i32) -> String;
 }
 impl MapOperations for AnyMap {
     fn insert(&mut self, key: Box<dyn Any>, value: Box<dyn Any>) -> bool {
@@ -359,9 +364,11 @@ impl MapOperations for AnyMap {
         None
     }
     fn dump_map(&self) -> String {
+        let mut result = String::new();
+
         match self {
             AnyMap::i32_i32_Map(ref map) => {
-                let mut result = String::new();
+                if map.is_empty() { return "empty map".to_string() }
 
                 // sort to make flush deterministic
                 let sorted_map = map.iter().sorted_by_key(|data| data.0);
@@ -369,65 +376,107 @@ impl MapOperations for AnyMap {
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key, value));
                 }
-                if result.is_empty() {
-                    result = "Empty map".to_string();
-                } else {
-                    result.pop();
-                }
-                result
+                result.pop();
             }
             AnyMap::tuple_i32_Map(ref map) => {
-                let mut result = String::new();
-
+                if map.is_empty() { return "empty map".to_string() }
                 // sort to make flush deterministic
                 let sorted_map = map.iter().sorted_by_key(|data| data.0);
 
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key.dump_tuple(), value));
                 }
-                if result.is_empty() {
-                    result = "Empty map".to_string();
-                } else {
-                    result.pop();
-                }
-                result
+                result.pop();
             }
             AnyMap::i32_string_Map(ref map) => {
-                debug!("DEBUG: dumping i32_string_Map...");
-                let mut result = String::new();
-
+                if map.is_empty() { return "empty map".to_string() }
                 // sort to make flush deterministic
                 let sorted_map = map.iter().sorted_by_key(|data| data.0);
 
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key, value));
                 }
-                if result.is_empty() {
-                    result = "Empty map".to_string();
-                } else {
-                    result.pop();
-                }
-                result
+                result.pop();
             }
             AnyMap::string_i32_Map(ref map) => {
-                debug!("DEBUG: dumping string_i32_Map...");
-                let mut result = String::new();
-
+                if map.is_empty() { return "empty map".to_string() }
                 // sort to make flush deterministic
                 let sorted_map = map.iter().sorted_by_key(|data| data.0);
 
                 for (key, value) in sorted_map.into_iter() {
                     result.push_str(&format!("{}->{};", key, value));
                 }
-                if result.is_empty() {
-                    result = "Empty map".to_string();
-                } else {
-                    result.pop();
-                }
-                result
+                result.pop();
             }
-            _ => "Not implemented".to_string(),
+            _ => return "Not implemented: dump_map".to_string(),
         }
+        result
+    }
+    fn dump_map_as_csv(&self, my_id: i32) -> String {
+        let mut result = String::new();
+        result += &format!("== map{my_id} CSV FLUSH ==\n");
+
+        match self {
+            AnyMap::i32_i32_Map(ref map) => {
+                result += "key (i32), val (i32)\n";
+                if map.is_empty() {
+                    result += "empty map\n";
+                    return result;
+                }
+
+                // sort to make flush deterministic
+                let sorted_map = map.iter().sorted_by_key(|data| data.0);
+                for (key, value) in sorted_map.into_iter() {
+                    result.push_str(&format!("{}, {}\n", key, value));
+                }
+            }
+            AnyMap::tuple_i32_Map(ref map) => {
+                if map.is_empty() {
+                    result += "empty map\n";
+                    return result;
+                }
+
+                // sort to make flush deterministic
+                let sorted_map = map.iter().sorted_by_key(|data| data.0);
+
+                let mut first = true;
+                for (key, value) in sorted_map.into_iter() {
+                    if first {
+                        result += &format!("key ({}), val (i32)\n", key.ty_str());
+                        first = false
+                    }
+                    result.push_str(&format!("{}, {}\n", key.dump_tuple(), value));
+                }
+            }
+            AnyMap::i32_string_Map(ref map) => {
+                result += "key (i32), val (str)\n";
+                if map.is_empty() {
+                    result += "empty map\n";
+                    return result;
+                }
+
+                // sort to make flush deterministic
+                let sorted_map = map.iter().sorted_by_key(|data| data.0);
+                for (key, value) in sorted_map.into_iter() {
+                    result.push_str(&format!("{}, {}\n", key, value));
+                }
+            }
+            AnyMap::string_i32_Map(ref map) => {
+                result += "key (str), val (i32)\n";
+                if map.is_empty() {
+                    result += "empty map\n";
+                    return result;
+                }
+
+                // sort to make flush deterministic
+                let sorted_map = map.iter().sorted_by_key(|data| data.0);
+                for (key, value) in sorted_map.into_iter() {
+                    result.push_str(&format!("{}, {}\n", key, value));
+                }
+            }
+            _ => return "Not implemented: dump_map_as_csv\n".to_string(),
+        }
+        result
     }
 }
 //have to support strings, i32, maps, tuples, and bool - all variations (yet again)
@@ -462,12 +511,36 @@ pub enum TupleVariant {
 }
 
 impl TupleVariant {
+    pub fn ty_str(&self) -> String {
+        match self {
+            Self::i32_i32(..) => "(i32, i32)".to_string(),
+            Self::i32_string(..) => "(i32, str)".to_string(),
+            Self::i32_tuple(.., tuple) => format!("(i32, {})", tuple.ty_str()),
+            Self::i32_bool(..) => "(i32, bool)".to_string(),
+            Self::string_i32(..) => "(str, i32)".to_string(),
+            Self::string_string(..) => "(str, str)".to_string(),
+            Self::string_tuple(.., tuple) => format!("(str, {})", tuple.ty_str()),
+            Self::string_bool(..) => "(str, bool)".to_string(),
+            Self::tuple_i32(tuple, ..) => format!("({}, i32)", tuple.ty_str()),
+            Self::tuple_string(tuple, ..) => format!("({}, str)", tuple.ty_str()),
+            Self::tuple_tuple(tuple0, tuple1) => format!("({}, {})", tuple0.ty_str(), tuple1.ty_str()),
+            Self::tuple_bool(tuple, ..) => format!("({}, bool)", tuple.ty_str()),
+            Self::bool_i32(..) => "(bool, i32)".to_string(),
+            Self::bool_string(..) => "(bool, str)".to_string(),
+            Self::bool_tuple(.., tuple) => format!("(bool, {})", tuple.ty_str()),
+            Self::bool_bool(..) => "(bool, bool)".to_string(),
+            Self::i32_i32_i32(..) => "(i32, i32, i32)".to_string(),
+        }
+    }
     pub fn dump_tuple(&self) -> String {
         match self {
+            TupleVariant::i32_i32(a, b) => {
+                format!("({}, {})", a, b)
+            }
             TupleVariant::i32_i32_i32(a, b, c) => {
                 format!("({},{},{})", a, b, c)
             }
-            _ => "Not implemented".to_string(),
+            _ => format!("Not implemented: dump_tuple"),
         }
     }
 }
@@ -478,7 +551,8 @@ fn insert_i32_i32_inner(id: i32, key: i32, value: i32) -> bool {
     if let Some(any_map) = MY_MAPS.lock().unwrap().get_mut(&id) {
         return any_map.insert(Box::new(key), Box::new(value));
     } else {
-        panic!("Could not find map with ID: {}", id);
+        red(&format!("Could not find map with ID: {}", id));
+        panic!()
     }
 }
 fn insert_i32_string_inner(id: i32, key: i32, value: String) -> bool {
@@ -649,19 +723,28 @@ fn get_i32(id: i32, key: &dyn Any) -> i32 {
 fn get_string(id: i32, key: &dyn Any) -> String {
     match get_string_optional(id, key) {
         Some(value) => value,
-        None => panic!("Key not found in map"),
+        None => {
+            red("Key not found in map");
+            panic!()
+        },
     }
 }
 fn get_tuple(id: i32, key: &dyn Any) -> Box<TupleVariant> {
     match get_tuple_optional(id, key) {
         Some(value) => value,
-        None => panic!("Key not found in map"),
+        None => {
+            red("Key not found in map");
+            panic!()
+        },
     }
 }
 fn get_map(id: i32, key: &dyn Any) -> AnyMap {
     match get_map_optional(id, key) {
         Some(value) => value,
-        None => panic!("Key not found in map"),
+        None => {
+            red("Key not found in map");
+            panic!()
+        },
     }
 }
 fn get_bool(id: i32, key: &dyn Any) -> bool {
@@ -863,7 +946,8 @@ pub fn create_tuple_map() -> i32 {
 pub fn insert_i32_i32(id: i32, key: i32, value: i32) {
     debug!("DEBUG: inserting ({key}, {value}) into map '{id}'");
     if !insert_i32_i32_inner(id, key, value) {
-        panic!("Failed to insert into i32_i32 map");
+        red("Failed to insert into i32_i32 map");
+        panic!()
     }
 }
 #[no_mangle]
@@ -871,15 +955,21 @@ pub fn insert_i32_string(id: i32, key: i32, val_offset: *const u8, val_length: u
     let value = string_from_data(val_offset, val_length);
     debug!("DEBUG: inserting ({key}, \"{value}\") into map '{id}'");
     if !insert_i32_string_inner(id, key, value) {
-        panic!("Failed to insert into i32_string map");
+        red("Failed to insert into i32_string map");
+        panic!()
     }
 }
 #[no_mangle]
 pub fn insert_string_i32(id: i32, key_offset: *const u8, key_length: usize, val: i32) {
     let key = string_from_data(key_offset, key_length);
     if !insert_string_i32_inner(id, key, val) {
-        panic!("Failed to insert into string_i32 map");
+        red("Failed to insert into string_i32 map");
+        panic!()
     }
+}
+#[no_mangle]
+pub fn insert_i32i32tuple_i32(id: i32, key0: i32, key1: i32, value: i32) {
+    insert_tuple_i32_inner(id, TupleVariant::i32_i32(key0, key1), value);
 }
 #[no_mangle]
 pub fn insert_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32, value: i32) {
@@ -903,6 +993,10 @@ pub fn get_string_i32(id: i32, key_offset: *const u8, key_length: usize) -> i32 
     get_i32(id, &key)
 }
 #[no_mangle]
+pub fn get_i32i32tuple_i32(id: i32, key0: i32, key1: i32) -> i32 {
+    get_i32(id, &Box::new(TupleVariant::i32_i32(key0, key1)))
+}
+#[no_mangle]
 pub fn get_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32) -> i32 {
     get_i32(id, &Box::new(TupleVariant::i32_i32_i32(key0, key1, key2)))
 }
@@ -912,9 +1006,23 @@ pub fn get_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32) -> i32 {
 #[no_mangle]
 pub fn print_map(id: i32) {
     let binding = MY_MAPS.lock().unwrap();
+
     if let Some(map) = binding.get(&id) {
         print!("{}", map.dump_map())
     } else {
-        panic!("Could not find map with ID: {}", id)
+        red(&format!("Could not find map with ID, must have never been initialized! `{}`\n", id));
+        panic!()
+    }
+}
+
+#[no_mangle]
+pub fn print_map_as_csv(id: i32) {
+    let binding = MY_MAPS.lock().unwrap();
+
+    if let Some(map) = binding.get(&id) {
+        print!("{}", map.dump_map_as_csv(id))
+    } else {
+        red(&format!("Could not find map with ID, must have never been initialized! `{}`\n", id));
+        panic!()
     }
 }

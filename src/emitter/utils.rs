@@ -4,6 +4,7 @@ use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::emitter::InjectStrategy;
+use crate::generator::ast::Probe;
 use crate::generator::folding::ExprFolder;
 use crate::lang_features::libraries::core::maps::map_adapter::{MapLibAdapter, MAP_LIB_MEM_OFFSET};
 use crate::parser::types::{
@@ -54,6 +55,21 @@ impl<'a, 'b, 'c, 'd, 'e> EmitCtx<'a, 'b, 'c, 'd, 'e> {
             map_lib_adapter,
             err_msg: err_msg.to_string(),
             err,
+        }
+    }
+}
+
+pub fn emit_probes<'h, T: Opcode<'h> + MacroOpcode<'h> + AddLocal>(
+    probes: &mut [Probe],
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) {
+    for probe in probes.iter_mut() {
+        if let Some(body) = &mut probe.body {
+            for stmt in body.stmts.iter_mut() {
+                emit_stmt(stmt, strategy, injector, ctx);
+            }
         }
     }
 }
@@ -237,16 +253,13 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     match stmt {
         Statement::Assign { var_id, expr, .. } => {
             // Save off primitives to symbol table
-            // TODO -- this is only necessary for `new_target_fn_name`, remove after deprecating!
-            if let (Expr::VarId { name, .. }, Expr::Primitive { val, .. }) = (&var_id, &expr) {
-                let Some(Record::Var { value, def, .. }) = ctx.table.lookup_var_mut(name, true)
-                else {
+            if let Expr::VarId { name, .. } = &var_id {
+                let Some(Record::Var { def, .. }) = ctx.table.lookup_var_mut(name, true) else {
                     ctx.err
                         .unexpected_error(true, Some("unexpected type".to_string()), None);
                     return false;
                 };
 
-                *value = Some(val.clone());
                 if def.is_comp_defined() {
                     return true;
                 }

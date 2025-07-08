@@ -1215,7 +1215,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 38884, memaddr, not_taken, i32, i32, script0, #37, 37, 13, 0_wasm:opcode:if, 0
 38916, memaddr, taken, i32, i32, script0, #37, 37, 38, 0_wasm:opcode:if, 0
 38948, memaddr, not_taken, i32, i32, script0, #37, 37, 38, 0_wasm:opcode:if, 0
-16516, memaddr, taken_branches, map<u32,u32>, i32, script0, #13, 13, 1070, 2_wasm:opcode:br_table, Empty map
-16548, memaddr, taken_branches, map<u32,u32>, i32, script0, #13, 13, 1115, 2_wasm:opcode:br_table, Empty map
-16644, memaddr, taken_branches, map<u32,u32>, i32, script0, #13, 13, 1174, 2_wasm:opcode:br_table, Empty map
-20260, memaddr, taken_branches, map<u32,u32>, i32, script0, #16, 16, 35, 2_wasm:opcode:br_table, Empty map
+16516, memaddr, taken_branches, map<u32,u32>, i32, script0, #13, 13, 1070, 2_wasm:opcode:br_table, empty map
+16548, memaddr, taken_branches, map<u32,u32>, i32, script0, #13, 13, 1115, 2_wasm:opcode:br_table, empty map
+16644, memaddr, taken_branches, map<u32,u32>, i32, script0, #13, 13, 1174, 2_wasm:opcode:br_table, empty map
+20260, memaddr, taken_branches, map<u32,u32>, i32, script0, #16, 16, 35, 2_wasm:opcode:br_table, empty map

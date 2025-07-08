@@ -2373,23 +2373,23 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 75108, memaddr, taken, i32, i32, script0, "_ZN4core3fmt3num53_$LT$impl$u20$core..fmt..UpperHex$u20$for$u20$i32$GT$3fmt17h829d52d84975db2cE", 240, 100, 1_wasm:opcode:br_if, 0
 75140, memaddr, not_taken, i32, i32, script0, "_ZN4core3fmt3num53_$LT$impl$u20$core..fmt..UpperHex$u20$for$u20$i32$GT$3fmt17h829d52d84975db2cE", 240, 100, 1_wasm:opcode:br_if, 0
 1476, memaddr, taken_branches, map<u32,u32>, i32, script0, "opt_str", 29, 46, 2_wasm:opcode:br_table, 0->10;1->10;2->10
-8548, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std9panicking12default_hook17hbcf624fef09369c9E", 90, 356, 2_wasm:opcode:br_table, Empty map
+8548, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std9panicking12default_hook17hbcf624fef09369c9E", 90, 356, 2_wasm:opcode:br_table, empty map
 11908, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E", 106, 39, 2_wasm:opcode:br_table, 0->1
-12580, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E", 106, 325, 2_wasm:opcode:br_table, Empty map
-15748, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN60_$LT$std..io..error..Error$u20$as$u20$core..fmt..Display$GT$3fmt17h552dda5c4e55cd37E", 113, 28, 2_wasm:opcode:br_table, Empty map
-20068, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std5panic19get_backtrace_style17h6919dfcced931d91E", 124, 33, 2_wasm:opcode:br_table, Empty map
-20164, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std5panic19get_backtrace_style17h6919dfcced931d91E", 124, 131, 2_wasm:opcode:br_table, Empty map
-20324, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std3sys4sync4once10no_threads4Once4call17hac99cd52e0005ac2E", 126, 41, 2_wasm:opcode:br_table, Empty map
-20612, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std3sys4sync4once10no_threads4Once4call17heac751cad1b76b70E", 128, 39, 2_wasm:opcode:br_table, Empty map
-21284, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std9panicking19begin_panic_handler28_$u7b$$u7b$closure$u7d$$u7d$17h2c354a3372fcca00E", 131, 37, 2_wasm:opcode:br_table, Empty map
-22980, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std9panicking12default_hook28_$u7b$$u7b$closure$u7d$$u7d$17ha008a0d990bbd146E", 137, 233, 2_wasm:opcode:br_table, Empty map
-24932, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std9panicking20rust_panic_with_hook17h8bb4f94cf9e68e20E", 143, 639, 2_wasm:opcode:br_table, Empty map
-48004, memaddr, taken_branches, map<u32,u32>, i32, script0, "memcpy", 172, 545, 2_wasm:opcode:br_table, Empty map
-59620, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core3fmt9Formatter3pad17h749edc5816745392E", 197, 663, 2_wasm:opcode:br_table, Empty map
-60548, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core3fmt5write17hba111deefd72b232E", 201, 392, 2_wasm:opcode:br_table, Empty map
-60644, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core3fmt5write17hba111deefd72b232E", 201, 470, 2_wasm:opcode:br_table, Empty map
-63044, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core3str8converts9from_utf817hdf815c049904ec51E", 206, 194, 2_wasm:opcode:br_table, Empty map
-63332, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core3str8converts9from_utf817hdf815c049904ec51E", 206, 326, 2_wasm:opcode:br_table, Empty map
-63748, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core3str8converts9from_utf817hdf815c049904ec51E", 206, 439, 2_wasm:opcode:br_table, Empty map
-66276, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core9panicking19assert_failed_inner17h57405346ab684d72E", 218, 57, 2_wasm:opcode:br_table, Empty map
-69572, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core3fmt9Formatter12pad_integral17h7b874809b23f60e4E", 224, 575, 2_wasm:opcode:br_table, Empty map
+12580, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E", 106, 325, 2_wasm:opcode:br_table, empty map
+15748, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN60_$LT$std..io..error..Error$u20$as$u20$core..fmt..Display$GT$3fmt17h552dda5c4e55cd37E", 113, 28, 2_wasm:opcode:br_table, empty map
+20068, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std5panic19get_backtrace_style17h6919dfcced931d91E", 124, 33, 2_wasm:opcode:br_table, empty map
+20164, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std5panic19get_backtrace_style17h6919dfcced931d91E", 124, 131, 2_wasm:opcode:br_table, empty map
+20324, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std3sys4sync4once10no_threads4Once4call17hac99cd52e0005ac2E", 126, 41, 2_wasm:opcode:br_table, empty map
+20612, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std3sys4sync4once10no_threads4Once4call17heac751cad1b76b70E", 128, 39, 2_wasm:opcode:br_table, empty map
+21284, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std9panicking19begin_panic_handler28_$u7b$$u7b$closure$u7d$$u7d$17h2c354a3372fcca00E", 131, 37, 2_wasm:opcode:br_table, empty map
+22980, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std9panicking12default_hook28_$u7b$$u7b$closure$u7d$$u7d$17ha008a0d990bbd146E", 137, 233, 2_wasm:opcode:br_table, empty map
+24932, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN3std9panicking20rust_panic_with_hook17h8bb4f94cf9e68e20E", 143, 639, 2_wasm:opcode:br_table, empty map
+48004, memaddr, taken_branches, map<u32,u32>, i32, script0, "memcpy", 172, 545, 2_wasm:opcode:br_table, empty map
+59620, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core3fmt9Formatter3pad17h749edc5816745392E", 197, 663, 2_wasm:opcode:br_table, empty map
+60548, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core3fmt5write17hba111deefd72b232E", 201, 392, 2_wasm:opcode:br_table, empty map
+60644, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core3fmt5write17hba111deefd72b232E", 201, 470, 2_wasm:opcode:br_table, empty map
+63044, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core3str8converts9from_utf817hdf815c049904ec51E", 206, 194, 2_wasm:opcode:br_table, empty map
+63332, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core3str8converts9from_utf817hdf815c049904ec51E", 206, 326, 2_wasm:opcode:br_table, empty map
+63748, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core3str8converts9from_utf817hdf815c049904ec51E", 206, 439, 2_wasm:opcode:br_table, empty map
+66276, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core9panicking19assert_failed_inner17h57405346ab684d72E", 218, 57, 2_wasm:opcode:br_table, empty map
+69572, memaddr, taken_branches, map<u32,u32>, i32, script0, "_ZN4core3fmt9Formatter12pad_integral17h7b874809b23f60e4E", 224, 575, 2_wasm:opcode:br_table, empty map
