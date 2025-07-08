@@ -58,19 +58,15 @@ fn bundle_defs(base_dir: &str, out_file: &mut File, var_name: &str) {
 }
 
 fn bundle_wasm(p: &str, build_wasm: fn(), out_file: &mut File, wasm_var_name: &str) {
-    let path = Path::new(p);
-    if path.exists() {
-        let data = fs::read(p).unwrap_or_else(|_| panic!("Failed to read Wasm binary: {}", p));
-        write!(out_file, "pub static {wasm_var_name}: &[u8] = &[").unwrap();
-        for byte in data {
-            write!(out_file, "{},", byte).unwrap();
-        }
-        writeln!(out_file, "];").unwrap();
-    } else {
-        // build it
-        build_wasm();
-        bundle_wasm(p, build_wasm, out_file, wasm_var_name);
+    // ALWAYS build it -- ensures wasm is up to date
+    build_wasm();
+
+    let data = fs::read(p).unwrap_or_else(|_| panic!("Failed to read Wasm binary: {}", p));
+    write!(out_file, "pub static {wasm_var_name}: &[u8] = &[").unwrap();
+    for byte in data {
+        write!(out_file, "{},", byte).unwrap();
     }
+    writeln!(out_file, "];").unwrap();
 }
 
 fn build_core_library() {
