@@ -25,7 +25,9 @@ pub fn get_loc_info_for_active_probes(
 ) -> Option<LocInfo> {
     let mut res: Option<LocInfo> = None;
     for (provider, packages) in ast.provs.iter() {
-        if let Some(mut tmp) = handle_provider(app_wasm, state, loc, at_func_end, instr, provider, packages) {
+        if let Some(mut tmp) =
+            handle_provider(app_wasm, state, loc, at_func_end, instr, provider, packages)
+        {
             if let Some(r) = &mut res {
                 r.append(&mut tmp);
             } else {
@@ -131,7 +133,9 @@ fn handle_wasm(
 
     let mut res: Option<LocInfo> = Some(loc_info);
     for (package, pkg) in prov.pkgs.iter() {
-        if let Some(mut tmp) = handle_wasm_packages(app_wasm, state, at_func_end, &fid, pc, instr, package, pkg) {
+        if let Some(mut tmp) =
+            handle_wasm_packages(app_wasm, state, at_func_end, &fid, pc, instr, package, pkg)
+        {
             if let Some(r) = &mut res {
                 r.append(&mut tmp);
             } else {
@@ -2417,7 +2421,16 @@ fn handle_block(
     let mut res: Option<LocInfo> = None;
     let mut handle_evt = |name: &str, evt: &SimpleEvt| {
         // See OpcodeEvent.get_loc_info
-        if let Some(mut tmp) = handle_block_events(app_wasm, state, at_func_end, fid, pc, instr, &name.to_string(), evt) {
+        if let Some(mut tmp) = handle_block_events(
+            app_wasm,
+            state,
+            at_func_end,
+            fid,
+            pc,
+            instr,
+            &name.to_string(),
+            evt,
+        ) {
             if let Some(r) = &mut res {
                 r.append(&mut tmp);
             } else {
@@ -2450,7 +2463,6 @@ pub struct MatchState {
 struct BasicBlockState {
     start: usize,
     end: usize,
-
     // The number of instructions in this basic block
     // instr_cnt: usize
 }
@@ -2579,15 +2591,12 @@ fn handle_block_events(
     }
 }
 
-fn define_block_data(
-    evt: &str,
-    block_state: &BasicBlockState,
-    loc_info: &mut LocInfo
-) {
+fn define_block_data(evt: &str, block_state: &BasicBlockState, loc_info: &mut LocInfo) {
     if evt == "exit" {
-        loc_info
-            .static_data
-            .insert("instr_count".to_string(), Some(Value::gen_u32(block_state.get_instr_cnt() as u32)));
+        loc_info.static_data.insert(
+            "instr_count".to_string(),
+            Some(Value::gen_u32(block_state.get_instr_cnt() as u32)),
+        );
     }
 }
 
@@ -2757,7 +2766,12 @@ impl LocInfo {
     fn has_match(&self) -> bool {
         !self.probes.is_empty()
     }
-    fn add_probes(&mut self, base_rule: ProbeRule, probes: &SimpleEvt, mode: Option<InstrumentationMode>) {
+    fn add_probes(
+        &mut self,
+        base_rule: ProbeRule,
+        probes: &SimpleEvt,
+        mode: Option<InstrumentationMode>,
+    ) {
         probes.modes.iter().for_each(|(probe_mode, probes)| {
             let mut rule = base_rule.clone();
             rule.mode = Some(probe_mode.clone());

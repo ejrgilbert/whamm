@@ -1,5 +1,7 @@
 use crate::common::error::{ErrorGen, WhammError};
-use crate::emitter::rewriting::rules::{get_loc_info_for_active_probes, get_ty_info_for_instr, Arg, LocInfo, ProbeRule, MatchState};
+use crate::emitter::rewriting::rules::{
+    get_loc_info_for_active_probes, get_ty_info_for_instr, Arg, LocInfo, MatchState, ProbeRule,
+};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
 use wirm::ir::types::DataType as WirmType;
@@ -157,7 +159,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         //     return None;
         // }
         if let Some(curr_instr) = self.app_iter.curr_op() {
-            get_loc_info_for_active_probes(self.app_iter.module, state, loc, at_func_end, curr_instr, ast)
+            get_loc_info_for_active_probes(
+                self.app_iter.module,
+                state,
+                loc,
+                at_func_end,
+                curr_instr,
+                ast,
+            )
         } else {
             None
         }

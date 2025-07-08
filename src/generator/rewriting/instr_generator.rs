@@ -14,10 +14,10 @@ use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::FunctionID;
+use wirm::ir::types::InstrumentationMode;
 use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator};
 use wirm::opcode::Instrumenter;
 use wirm::{Location as WirmLocation, Opcode};
-use wirm::ir::types::InstrumentationMode;
 
 const UNEXPECTED_ERR_MSG: &str =
     "InstrGenerator: Looks like you've found a bug...please report this behavior!";
@@ -106,9 +106,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
     fn probe_mode_for_package(&mut self, mode_override: &Option<InstrumentationMode>) -> bool {
         match &self.curr_probe_rule.package {
             Some(prov) => match prov.name.as_str() {
-                "opcode" => self.probe_mode_by_whamm_mode(
-                    &self.curr_probe_rule.mode.as_ref().unwrap().clone(),
-                ),
+                "opcode" => self
+                    .probe_mode_by_whamm_mode(&self.curr_probe_rule.mode.as_ref().unwrap().clone()),
                 "func" => self.probe_mode_for_func_modes(&ModeKind::from(
                     self.curr_probe_rule.event.as_ref().unwrap().name.clone(),
                 )),
@@ -322,7 +321,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
     }
 }
 impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
-    fn emit_probe(&mut self, dynamic_data: &HashMap<String, Block>, mode_override: &Option<InstrumentationMode>) -> bool {
+    fn emit_probe(
+        &mut self,
+        dynamic_data: &HashMap<String, Block>,
+        mode_override: &Option<InstrumentationMode>,
+    ) -> bool {
         let mut is_success = true;
 
         is_success &= self.save_args();
