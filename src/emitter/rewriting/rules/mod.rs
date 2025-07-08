@@ -147,8 +147,9 @@ fn handle_wasm_packages(
     match package {
         "opcode" => handle_opcode(app_wasm, fid, instr, pkg),
         "func" => handle_func(app_wasm, fid, pc, instr, pkg),
-        "report" => None, // not handled here
+        "block" => handle_block(app_wasm, fid, instr, pkg),
         "begin" | "end" => unimplemented!("Have not implemented the package yet: {package}"),
+        "report" => None, // not handled here
         _ => panic!("Package not available: 'wasm:{package}'"),
     }
 }
@@ -2394,6 +2395,66 @@ pub fn get_ty_info_for_instr(
     }
 
     (args, ty_id)
+}
+
+fn handle_block(
+    app_wasm: &Module,
+    fid: &FunctionID,
+    instr: &Operator,
+    pkg: &SimplePkg,
+) -> Option<LocInfo> {
+    let mut res: Option<LocInfo> = None;
+    for (package, evt) in pkg.evts.iter() {
+        // See OpcodeEvent.get_loc_info
+        if let Some(mut tmp) = handle_block_events(app_wasm, fid, instr, package, evt) {
+            if let Some(r) = &mut res {
+                r.append(&mut tmp);
+            } else {
+                res = Some(tmp);
+            }
+        }
+    }
+    res
+}
+
+// struct MatchState {
+//     basic_blocks:
+// }
+
+#[rustfmt::skip]
+fn handle_block_events(
+    app_wasm: &Module,
+    _fid: &FunctionID,
+    instr: &Operator,
+    event: &String,
+    evt: &SimpleEvt,
+) -> Option<LocInfo> {
+    let mut loc_info = LocInfo::new();
+
+    let probe_rule = ProbeRule {
+        provider: Some(RulePart::new("wasm".to_string(), None)),
+        package: Some(RulePart::new("block".to_string(), None)),
+        event: Some(RulePart::new(event.clone(), None)),
+        mode: None,
+    };
+
+    // if this is program exit, we want to inject the function exit logic!
+    let is_prog_exit = is_prog_exit_call(instr, app_wasm);
+
+    // See for implementation:
+    // https://github.com/titzer/wizard-engine/blob/master/src/util/BasicBlockIterator.v3
+    match event.as_str() {
+        "entry" => todo!(),
+        "exit" => todo!(),
+        _ => panic!("Event not available: 'wasm:block:{event}'"),
+    }
+
+    // loc_info.is_prog_exit = is_prog_exit;
+    // if loc_info.has_match() || is_prog_exit {
+    //     Some(loc_info)
+    // } else {
+    //     None
+    // }
 }
 
 fn handle_func(
