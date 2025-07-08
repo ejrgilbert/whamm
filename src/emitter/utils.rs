@@ -67,7 +67,6 @@ pub fn emit_probes<'h, T: Opcode<'h> + MacroOpcode<'h> + AddLocal>(
 ) {
     for probe in probes.iter_mut() {
         if let Some(body) = &mut probe.body {
-            // todo -- point this to the flush function instead...
             for stmt in body.stmts.iter_mut() {
                 emit_stmt(stmt, strategy, injector, ctx);
             }
