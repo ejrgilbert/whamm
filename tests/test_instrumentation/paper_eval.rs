@@ -53,6 +53,16 @@ fn ins_coverage() {
 }
 
 #[test]
+fn ins_coverage_dyninstr() {
+    setup_logger();
+    let processed_scripts = setup_tests("paper_eval/ins_coverage_dyninstr");
+    assert!(!processed_scripts.is_empty());
+
+    // dyninstr isn't supported in bytecode rewriting, only the engine!
+    run_core_suite("paper_eval-ins_coverage_dyninstr", processed_scripts, false, true)
+}
+
+#[test]
 fn mem_access_tracing() {
     setup_logger();
     let processed_scripts = setup_tests("paper_eval/mem_access_tracing");
@@ -76,10 +86,5 @@ fn basic_block_profiling() {
     let processed_scripts = setup_tests("paper_eval/basic_block_profiling");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite(
-        "paper_eval-basic_block_profiling",
-        processed_scripts,
-        true,
-        false,
-    )
+    run_core_suite("paper_eval-basic_block_profiling", processed_scripts,true, false)
 }

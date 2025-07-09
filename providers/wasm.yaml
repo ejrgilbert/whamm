@@ -2,6 +2,11 @@ providers:
   - name: wasm
     docs: This provides various events to instrument that are specific to WebAssembly.
     bound_vars:
+      - name: probe_id
+        type: i32
+        derived_from: null
+        lifetime: static
+        docs: (ONLY SUPPORTED IN ENGINE INTERFACE) The ID of the dynamically injected probe.
       - name: fid
         type: u32
         derived_from: null
