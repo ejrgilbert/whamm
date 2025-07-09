@@ -26,62 +26,62 @@ world support-lib {
     // ==============
 
     // INSERT
-    export create-i32-i32-with-id-wrap: func(id: s32);
-    export create-i32-i32-wrap: func() -> s32;
-    export create-i32-bool-with-id-wrap: func(id: s32);
-    export create-i32-bool-wrap: func() -> s32;
-    export create-i32-string-with-id-wrap: func(id: s32);
-    export create-i32-string-wrap: func() -> s32;
-    export create-i32-tuple-with-id-wrap: func(id: s32);
-    export create-i32-tuple-wrap: func() -> s32;
-    export create-i32-map-with-id-wrap: func(id: s32);
-    export create-i32-map-wrap: func() -> s32;
-    export create-string-i32-with-id-wrap: func(id: s32);
-    export create-string-i32-wrap: func() -> s32;
-    export create-string-bool-with-id-wrap: func(id: s32);
-    export create-string-bool-wrap: func() -> s32;
-    export create-string-string-with-id-wrap: func(id: s32);
-    export create-string-string-wrap: func() -> s32;
-    export create-string-tuple-with-id-wrap: func(id: s32);
-    export create-string-tuple-wrap: func() -> s32;
-    export create-string-map-with-id-wrap: func(id: s32);
-    export create-string-map-wrap: func() -> s32;
-    export create-bool-i32-with-id-wrap: func(id: s32);
-    export create-bool-i32-wrap: func() -> s32;
-    export create-bool-bool-with-id-wrap: func(id: s32);
-    export create-bool-bool-wrap: func() -> s32;
-    export create-bool-string-with-id-wrap: func(id: s32);
-    export create-bool-string-wrap: func() -> s32;
-    export create-bool-tuple-with-id-wrap: func(id: s32);
-    export create-bool-tuple-wrap: func() -> s32;
-    export create-bool-map-with-id-wrap: func(id: s32);
-    export create-bool-map-wrap: func() -> s32;
-    export create-tuple-i32-with-id-wrap: func(id: s32);
-    export create-tuple-i32-wrap: func() -> s32;
-    export create-tuple-bool-with-id-wrap: func(id: s32);
-    export create-tuple-bool-wrap: func() -> s32;
-    export create-tuple-string-with-id-wrap: func(id: s32);
-    export create-tuple-string-wrap: func() -> s32;
-    export create-tuple-tuple-with-id-wrap: func(id: s32);
-    export create-tuple-tuple-wrap: func() -> s32;
-    export create-tuple-map-with-id-wrap: func(id: s32);
-    export create-tuple-map-wrap: func() -> s32;
+     // export create-i32-i32-with-id-wrap: func(id: s32);
+     // export create-i32-i32-wrap: func() -> s32;
+     // export create-i32-bool-with-id-wrap: func(id: s32);
+     // export create-i32-bool-wrap: func() -> s32;
+     // export create-i32-string-with-id-wrap: func(id: s32);
+     // export create-i32-string-wrap: func() -> s32;
+     // export create-i32-tuple-with-id-wrap: func(id: s32);
+     // export create-i32-tuple-wrap: func() -> s32;
+     // export create-i32-map-with-id-wrap: func(id: s32);
+     // export create-i32-map-wrap: func() -> s32;
+     // export create-string-i32-with-id-wrap: func(id: s32);
+     // export create-string-i32-wrap: func() -> s32;
+     // export create-string-bool-with-id-wrap: func(id: s32);
+     // export create-string-bool-wrap: func() -> s32;
+     // export create-string-string-with-id-wrap: func(id: s32);
+     // export create-string-string-wrap: func() -> s32;
+     // export create-string-tuple-with-id-wrap: func(id: s32);
+     // export create-string-tuple-wrap: func() -> s32;
+     // export create-string-map-with-id-wrap: func(id: s32);
+     // export create-string-map-wrap: func() -> s32;
+     // export create-bool-i32-with-id-wrap: func(id: s32);
+     // export create-bool-i32-wrap: func() -> s32;
+     // export create-bool-bool-with-id-wrap: func(id: s32);
+     // export create-bool-bool-wrap: func() -> s32;
+     // export create-bool-string-with-id-wrap: func(id: s32);
+     // export create-bool-string-wrap: func() -> s32;
+     // export create-bool-tuple-with-id-wrap: func(id: s32);
+     // export create-bool-tuple-wrap: func() -> s32;
+     // export create-bool-map-with-id-wrap: func(id: s32);
+     // export create-bool-map-wrap: func() -> s32;
+     // export create-tuple-i32-with-id-wrap: func(id: s32);
+     // export create-tuple-i32-wrap: func() -> s32;
+     // export create-tuple-bool-with-id-wrap: func(id: s32);
+     // export create-tuple-bool-wrap: func() -> s32;
+     // export create-tuple-string-with-id-wrap: func(id: s32);
+     // export create-tuple-string-wrap: func() -> s32;
+     // export create-tuple-tuple-with-id-wrap: func(id: s32);
+     // export create-tuple-tuple-wrap: func() -> s32;
+     // export create-tuple-map-with-id-wrap: func(id: s32);
+     // export create-tuple-map-wrap: func() -> s32;
 
     // INSERT
-    export insert-i32-i32-wrap: func(id: s32, key: s32, value: s32);
-    export insert-i32-string-wrap: func(id: s32, key: s32, val-offset: s32, val-length: s32);
-    export insert-string-i32-wrap: func(id: s32, key-offset: s32, key-length: s32, val: s32);
-    export insert-i32i32tuple-i32-wrap: func(id: s32, key0: s32, key1: s32, value: s32);
-    export insert-i32i32i32tuple-i32-wrap: func(id: s32, key0: s32, key1: s32, key2: s32, value: s32);
+     // export insert-i32-i32-wrap: func(id: s32, key: s32, value: s32);
+     // export insert-i32-string-wrap: func(id: s32, key: s32, val-offset: s32, val-length: s32);
+     // export insert-string-i32-wrap: func(id: s32, key-offset: s32, key-length: s32, val: s32);
+     // export insert-i32i32tuple-i32-wrap: func(id: s32, key0: s32, key1: s32, value: s32);
+     // export insert-i32i32i32tuple-i32-wrap: func(id: s32, key0: s32, key1: s32, key2: s32, value: s32);
 
     // GET
-    export get-i32-i32-wrap: func(id: s32, key: s32) -> s32;
-    export get-i32-string-wrap: func(id: s32, key: s32) -> string;
-    export get-string-i32-wrap: func(id: s32, key-offset: s32, key-length: s32) -> s32;
-    export get-i32i32tuple-i32-wrap: func(id: s32, key0: s32, key1: s32) -> s32;
-    export get-i32i32i32tuple-i32-wrap: func(id: s32, key0: s32, key1: s32, key2: s32) -> s32;
+     // export get-i32-i32-wrap: func(id: s32, key: s32) -> s32;
+     // export get-i32-string-wrap: func(id: s32, key: s32) -> string;
+     // export get-string-i32-wrap: func(id: s32, key-offset: s32, key-length: s32) -> s32;
+     // export get-i32i32tuple-i32-wrap: func(id: s32, key0: s32, key1: s32) -> s32;
+     // export get-i32i32i32tuple-i32-wrap: func(id: s32, key0: s32, key1: s32, key2: s32) -> s32;
 
     // PRINT
-    export print-map-wrap: func(id: s32);
-    export print-map-as-csv-wrap: func(id: s32);
+     // export print-map-wrap: func(id: s32);
+     // export print-map-as-csv-wrap: func(id: s32);
 }
