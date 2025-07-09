@@ -716,7 +716,7 @@ wasm::call:alt /
     assert_eq!(1, script.providers.len());
     let provider = script.providers.get("wasm").unwrap();
     assert_eq!("wasm", provider.def.name);
-    assert_eq!(4, provider.def.bound_vars.len());
+    assert_eq!(5, provider.def.bound_vars.len());
     assert_eq!(0, provider.def.bound_fns.len());
 
     assert_eq!(1, provider.packages.len());
