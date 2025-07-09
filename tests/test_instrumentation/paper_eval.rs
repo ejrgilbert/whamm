@@ -49,7 +49,13 @@ fn ins_coverage() {
     let processed_scripts = setup_tests("paper_eval/ins_coverage");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-ins_coverage", processed_scripts, true, true)
+    run_core_suite(
+        "paper_eval-ins_coverage",
+        processed_scripts,
+        true,
+        true,
+        true,
+    )
 }
 
 #[test]
@@ -58,7 +64,7 @@ fn mem_access_tracing() {
     let processed_scripts = setup_tests("paper_eval/mem_access_tracing");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-mem_access", processed_scripts, true, true)
+    run_core_suite("paper_eval-mem_access", processed_scripts, true, true, true)
 }
 
 #[test]
@@ -67,5 +73,5 @@ fn call_graph() {
     let processed_scripts = setup_tests("paper_eval/call_graph");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-call_graph", processed_scripts, true, true)
+    run_core_suite("paper_eval-call_graph", processed_scripts, true, true, true)
 }
