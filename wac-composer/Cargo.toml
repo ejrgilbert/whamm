@@ -1,0 +1,13 @@
+[package]
+name = "wac_composer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+doc = false
+name = "wac_composer"
+path = "src/main.rs"
+#required-features = ["exe"]
+
+[dependencies]
+wac-graph = "0.7.0"
