@@ -19,8 +19,8 @@ const TRUE: &str = "true";
 // =========================
 
 thread_local! {
-    static RAN_INIT: RefCell<bool> = RefCell::new(false);
-    static TO_CONSOLE: RefCell<bool> = RefCell::new(false);
+    static RAN_INIT: RefCell<bool> = const { RefCell::new(false) };
+    static TO_CONSOLE: RefCell<bool> = const { RefCell::new(false) };
     static OUTPATH: RefCell<String> = RefCell::new("".to_string());
     static OUTFILE: RefCell<Option<File>> = RefCell::new(Option::default());
 }
@@ -92,7 +92,7 @@ fn init_outfile() {
                             *outfile = Some(OpenOptions::new()
                                 .append(true)
                                 .open(outpath.clone())
-                                .expect(format!("cannot open file at: {}", outpath).as_str()));
+                                .unwrap_or_else(|_| panic!("cannot open file at: {}", outpath)));
                         }
                     },
                     Err(e) => {
@@ -118,7 +118,7 @@ fn print(str: &str) {
                 };
 
                 // Write to a file
-                out.write(str.as_bytes())
+                out.write_all(str.as_bytes())
                     .expect("write failed");
             });
         }
@@ -127,7 +127,7 @@ fn print(str: &str) {
 
 #[no_mangle]
 pub fn putc(c: u8) {
-    print(&String::from_utf8([c].to_vec()).expect("Our bytes should be valid utf8"));
+    print(core::str::from_utf8(&[c]).expect("Our bytes should be valid utf8"));
 }
 
 #[no_mangle]

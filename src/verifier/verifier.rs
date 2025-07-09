@@ -27,7 +27,7 @@ pub fn type_check(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> 
 
 pub fn build_symbol_table(
     ast: &mut Whamm,
-    user_libs: &HashMap<String, Module>,
+    user_libs: &HashMap<String, (Option<String>, Module)>,
     err: &mut ErrorGen,
 ) -> SymbolTable {
     let mut visitor = SymbolTableBuilder {
