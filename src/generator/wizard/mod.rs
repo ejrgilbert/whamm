@@ -14,7 +14,7 @@ use wirm::ir::id::{FunctionID, LocalID};
 use wirm::ir::types::DataType as WirmType;
 use wirm::Module;
 
-pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l> {
+pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm> {
     pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
     pub io_adapter: &'g mut IOAdapter,
     pub context_name: String,
@@ -22,14 +22,14 @@ pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l> {
     pub injected_funcs: &'i mut Vec<FunctionID>,
     pub config: &'j Config,
     pub used_fns_per_lib: HashMap<String, HashSet<String>>,
-    pub user_lib_modules: HashMap<String, Module<'k>>,
+    pub user_lib_modules: &'k HashMap<String, Module<'l>>,
 
     // tracking
     pub curr_script_id: u8,
-    pub unshared_var_handler: &'l mut UnsharedVarHandler,
+    pub unshared_var_handler: &'m mut UnsharedVarHandler,
 }
 
-impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         mut ast: Vec<Script>,
@@ -225,7 +225,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 }
 
-impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     // TODO -- these are all duplicates, try to factor out
     fn emit_string(&mut self, val: &mut Value) -> bool {
         self.emitter.emit_string(val, self.err)

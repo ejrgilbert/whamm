@@ -1,0 +1,16 @@
+[package]
+name = "whamm_core_component"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+whamm_core = { path = "../whamm_core" }
+wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.component]
+package = "component:whamm-core"
+
+[package.metadata.component.dependencies]
