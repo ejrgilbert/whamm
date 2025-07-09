@@ -512,9 +512,20 @@ fn run_testcase_wizard(
         let lib_name_chunk = parts.first().unwrap().to_string();
         let name_parts = lib_name_chunk.split('(').collect::<Vec<&str>>();
         let lib_name = name_parts.first().unwrap().to_string();
-        if engine_libs.contains(&&*lib_name) {continue;}
+        if engine_libs.contains(&&*lib_name) {
+            continue;
+        }
         if name_parts.len() > 1 {
-            if engine_libs.contains(&&*name_parts.get(1).unwrap().strip_suffix(')').unwrap().to_string()) {continue;}
+            if engine_libs.contains(
+                &&*name_parts
+                    .get(1)
+                    .unwrap()
+                    .strip_suffix(')')
+                    .unwrap()
+                    .to_string(),
+            ) {
+                continue;
+            }
         }
         assert_eq!(2, parts.len(), "A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm");
         libs_to_link += &format!("+{}", parts.get(1).unwrap());

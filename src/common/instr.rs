@@ -110,7 +110,14 @@ pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, Option<String>, 
         let name_parts = lib_name_chunk.split('(').collect::<Vec<&str>>();
         let lib_name = name_parts.first().unwrap().to_string();
         let lib_name_import_override = if name_parts.len() > 1 {
-            Some(name_parts.get(1).unwrap().strip_suffix(')').unwrap().to_string())
+            Some(
+                name_parts
+                    .get(1)
+                    .unwrap()
+                    .strip_suffix(')')
+                    .unwrap()
+                    .to_string(),
+            )
         } else {
             None
         };
@@ -118,7 +125,12 @@ pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, Option<String>, 
         let lib_path = parts.get(1).unwrap();
         let buff = std::fs::read(lib_path).unwrap();
 
-        res.push((lib_name, lib_name_import_override, lib_path.to_string(), buff));
+        res.push((
+            lib_name,
+            lib_name_import_override,
+            lib_path.to_string(),
+            buff,
+        ));
     }
 
     res
@@ -213,12 +225,18 @@ pub fn run(
     // Parse user libraries to Wasm modules
     let mut user_lib_modules: HashMap<String, (Option<String>, Module)> = HashMap::default();
     for (lib_name, lib_name_import_override, _, lib_buff) in user_libs.iter() {
-        user_lib_modules.insert(lib_name.clone(), (lib_name_import_override.clone(), Module::parse(lib_buff, false).unwrap()));
+        user_lib_modules.insert(
+            lib_name.clone(),
+            (
+                lib_name_import_override.clone(),
+                Module::parse(lib_buff, false).unwrap(),
+            ),
+        );
     }
     // add the core library just in case the script needs it
     user_lib_modules.insert(
         WHAMM_CORE_LIB_NAME.to_string(),
-        (None, Module::parse(core_lib, true).unwrap())
+        (None, Module::parse(core_lib, true).unwrap()),
     );
 
     // Process the script

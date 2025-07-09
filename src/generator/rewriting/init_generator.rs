@@ -79,7 +79,8 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn link_user_lib(&mut self, lib_name: &str, loc: &Option<Location>) {
         // Perform import now! (we'll be in the right table scope at this point)
         if let Some(used_fns) = self.used_fns_per_lib.get(lib_name) {
-            let Some((lib_name_import_override, lib_wasm)) = self.user_lib_modules.get(lib_name) else {
+            let Some((lib_name_import_override, lib_wasm)) = self.user_lib_modules.get(lib_name)
+            else {
                 panic!("Could not find wasm module for library '{lib_name}'");
             };
             self.injected_funcs.extend(
