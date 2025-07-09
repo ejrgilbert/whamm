@@ -4,6 +4,7 @@ use crate::api::instrument::{Config, LibraryLinkStrategy};
 use crate::api::utils::wasm2wat_on_file;
 use crate::common::instr::{get_libs, run, try_path};
 use crate::common::metrics::Metrics;
+use crate::lang_features::libraries::core::WHAMM_CORE_LIB_NAME;
 use crate::parser::yml_processor::pull_all_yml_files;
 use log::{debug, error};
 use std::fs::{remove_dir_all, File};
@@ -242,7 +243,12 @@ fn generate_instrumented_bin_wast(
 
         // handle the libraries
         let libs = vec![];
-        let (core_lib, user_libs) = get_libs(&core_lib_buff, &libs);
+        let (core_lib, mut user_libs) = get_libs(&core_lib_buff, &libs);
+        // add the core library just in case the script needs it
+        user_libs.insert(
+            WHAMM_CORE_LIB_NAME.to_string(),
+            Module::parse(&core_lib_buff, false).unwrap(),
+        );
 
         if let Err(mut err) = run(
             &core_lib,
@@ -250,7 +256,7 @@ fn generate_instrumented_bin_wast(
             &mut module_to_instrument,
             &test_case.whamm_script,
             &wast_path_str,
-            &user_libs,
+            &mut user_libs,
             0,
             &mut metrics,
             &Config {

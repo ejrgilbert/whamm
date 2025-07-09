@@ -105,7 +105,12 @@ fn dry_run_module_or_component<'a>(
 ) -> Result<HashMap<WirmInjectType, Vec<WirmInjection<'a>>>, Vec<WhammError>> {
     // handle the libraries
     let user_lib_buffs = parse_user_lib_paths(user_lib_paths);
-    let (core_lib, user_libs) = get_libs(core_lib_buff, &user_lib_buffs);
+    let (core_lib, mut user_libs) = get_libs(core_lib_buff, &user_lib_buffs);
+    // add the core library just in case the script needs it
+    user_libs.insert(
+        WHAMM_CORE_LIB_NAME.to_string(),
+        Module::parse(core_lib_buff, false).unwrap(),
+    );
 
     // handle a wasm component OR module
     match bytes_to_wasm(target_wasm_bytes) {
@@ -115,7 +120,7 @@ fn dry_run_module_or_component<'a>(
                 def_yamls,
                 &mut module,
                 script_path,
-                &user_libs,
+                &mut user_libs,
                 max_errors,
                 metrics,
                 config,
@@ -170,7 +175,12 @@ pub fn run_on_bytes_and_encode(
 
     // handle the libraries
     let user_lib_buffs = parse_user_lib_paths(&user_lib_paths);
-    let (core_lib, user_libs) = get_libs(core_lib_buff, &user_lib_buffs);
+    let (core_lib, mut user_libs) = get_libs(core_lib_buff, &user_lib_buffs);
+    // add the core library just in case the script needs it
+    user_libs.insert(
+        WHAMM_CORE_LIB_NAME.to_string(),
+        Module::parse(core_lib_buff, false).unwrap(),
+    );
 
     let encoded_bytes = if config.as_monitor_module {
         // handle emitting a monitor module
@@ -181,7 +191,7 @@ pub fn run_on_bytes_and_encode(
             def_yamls,
             &mut module,
             &script_path,
-            &user_libs,
+            &mut user_libs,
             max_errors,
             &mut metrics,
             &config,
@@ -195,7 +205,7 @@ pub fn run_on_bytes_and_encode(
             &core_lib,
             def_yamls,
             &script_path,
-            &user_libs,
+            &mut user_libs,
             max_errors,
             &mut metrics,
             &config,
@@ -211,7 +221,7 @@ fn run_and_encode_module_or_component(
     core_lib: &Module,
     def_yamls: &Vec<String>,
     script_path: &String,
-    user_libs: &HashMap<String, Module>,
+    user_libs: &mut HashMap<String, Module>,
     max_errors: i32,
     metrics: &mut Metrics,
     config: &Config,
@@ -302,7 +312,7 @@ fn run_on_component(
     def_yamls: &Vec<String>,
     target_wasm: &mut Component,
     script_path: &String,
-    user_libs: &HashMap<String, Module>,
+    user_libs: &mut HashMap<String, Module>,
     max_errors: i32,
     metrics: &mut Metrics,
     config: &Config,
@@ -364,7 +374,7 @@ pub fn run_on_module(
     def_yamls: &Vec<String>,
     target_wasm: &mut Module,
     script_path: &String,
-    user_libs: &HashMap<String, Module>,
+    user_libs: &mut HashMap<String, Module>,
     max_errors: i32,
     metrics: &mut Metrics,
     config: &Config,
@@ -421,7 +431,7 @@ pub fn run(
     target_wasm: &mut Module,
     whamm_script: &String,
     script_path: &str,
-    user_libs: &HashMap<String, Module>,
+    user_libs: &mut HashMap<String, Module>,
     max_errors: i32,
     metrics: &mut Metrics,
     config: &Config,
@@ -429,16 +439,6 @@ pub fn run(
     // Set up error reporting mechanism
     let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
 
-    // Parse user libraries to Wasm modules
-    let mut user_lib_modules: HashMap<String, Module> = HashMap::default();
-    for (lib_name, _, lib_buff) in user_libs.iter() {
-        user_lib_modules.insert(lib_name.clone(), Module::parse(lib_buff, false).unwrap());
-    }
-    // add the core library just in case the script needs it
-    user_lib_modules.insert(
-        WHAMM_CORE_LIB_NAME.to_string(),
-        Module::parse(core_lib, true).unwrap(),
-    );
     // Process the script
     let mut whamm = get_script_ast(def_yamls, whamm_script, &mut err);
     let (mut symbol_table, has_reports) = get_symbol_table(&mut whamm, user_libs, &mut err);

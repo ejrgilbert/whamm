@@ -830,7 +830,9 @@ pub(crate) fn get_main_or_start_fid(module: &Module) -> Option<FunctionID> {
         Some(main_fid)
     } else if let Some(main_fid) = module.exports.get_func_by_name("_start".to_string()) {
         Some(main_fid)
-    } else { module.start }
+    } else {
+        module.start
+    }
 
     // if let Some(start_fid) = module.start {
     //     Some(start_fid)

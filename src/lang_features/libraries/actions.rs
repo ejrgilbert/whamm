@@ -34,9 +34,9 @@ pub fn link_core_lib(
 }
 
 pub fn configure_component_libraries(
-    component: &mut Component,
-    core_lib: &Module,
-    user_libs: &HashMap<String, Module>,
+    _component: &mut Component,
+    _core_lib: &Module,
+    _user_libs: &HashMap<String, Module>,
 ) {
     // TODO: add libraries as *core module*s in the top-level of the component
     // TODO: add *core instance*s in the top-level of the component for each of the added library modules
