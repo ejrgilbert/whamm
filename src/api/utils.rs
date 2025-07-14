@@ -25,7 +25,7 @@ pub fn print_info(
     let def_yamls = get_defs(defs_path);
     parser::whamm_parser::print_info(rule, &def_yamls, print_vars, print_functions, &mut err)?;
 
-    if err.check_has_errors() {
+    if err.has_errors {
         Err(Box::new(err))
     } else {
         Ok(())

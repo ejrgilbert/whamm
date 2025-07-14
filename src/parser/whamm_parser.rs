@@ -304,7 +304,7 @@ pub fn handle_probe_def(
                 let res = match handle_expr(n.into_inner().next().unwrap()) {
                     Ok(res) => Some(res),
                     Err(errors) => {
-                        err.add_errors(errors);
+                        let _ = err.add_errors(errors);
                         // ignore predicate due to errors
                         None
                     }
@@ -539,7 +539,7 @@ fn handle_assignment(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     let val = match expr_primary(val_rule) {
         Ok(expr) => expr,
         Err(errors) => {
-            err.add_errors(errors);
+            let _ = err.add_errors(errors);
             return vec![];
         }
     };
@@ -571,7 +571,7 @@ fn handle_lib_call_outer(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement>
             }]
         }
         Err(errors) => {
-            err.add_errors(errors);
+            let _ = err.add_errors(errors);
             vec![]
         }
     }
@@ -586,7 +586,7 @@ fn handle_function_call_outer(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<State
             }]
         }
         Err(errors) => {
-            err.add_errors(errors);
+            let _ = err.add_errors(errors);
             vec![]
         }
     }
@@ -616,7 +616,7 @@ fn handle_lhs(pair: Pair<Rule>, err: &mut ErrorGen) -> (Expr, Option<Expr>, bool
             var_id => (var_id, None, false),
         },
         Err(errors) => {
-            err.add_errors(errors);
+            let _ = err.add_errors(errors);
             (
                 Expr::VarId {
                     definition: Definition::User,
@@ -705,7 +705,7 @@ fn handle_ret(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
         }
         Some(val) => match expr_from_pair(val) {
             Err(errors) => {
-                err.add_errors(errors);
+                let _ = err.add_errors(errors);
                 vec![]
             }
             Ok(expr) => {
@@ -769,7 +769,7 @@ fn handle_decl_init(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             }
         }
         Err(errors) => {
-            err.add_errors(errors);
+            let _ = err.add_errors(errors);
             return vec![];
         }
     };
@@ -784,7 +784,7 @@ fn handle_if(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     let cond = match expr_from_pair(pairs.next().unwrap()) {
         Ok(expr) => expr,
         Err(errors) => {
-            err.add_errors(errors);
+            let _ = err.add_errors(errors);
             return vec![];
         }
     };
@@ -862,7 +862,7 @@ fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     let cond = match expr_from_pair(pairs.next().unwrap()) {
         Ok(expr) => expr,
         Err(errors) => {
-            err.add_errors(errors);
+            let _ = err.add_errors(errors);
             return Block::default();
         }
     };
@@ -1422,8 +1422,8 @@ fn probe_rule_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> RulePart {
 fn type_from_rule_handler(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
     match type_from_rule(pair) {
         Ok(ty) => ty,
-        Err(errs) => {
-            err.add_errors(errs);
+        Err(errors) => {
+            let _ = err.add_errors(errors);
             DataType::Unknown
         }
     }

@@ -51,12 +51,16 @@ impl ErrorGen {
         self.inc_errors();
     }
 
-    pub fn add_errors(&mut self, errors: Vec<WhammError>) {
+    pub fn add_errors(&mut self, errors: Vec<WhammError>) -> Result<(), ()> {
         for error in errors {
             self.add_error(error);
         }
 
-        self.check_too_many();
+        if self.too_many {
+            Err(())
+        } else {
+            Ok(())
+        }
     }
 
     pub fn set_script_text(&mut self, script_text: String) {
@@ -72,24 +76,6 @@ impl ErrorGen {
             error.report(&self.script_text, &self.script_path);
         });
         self.errors.clear();
-    }
-
-    pub fn check_has_errors(&mut self) -> bool {
-        // if self.has_errors {
-            // TODO
-        //     self.report();
-        //     panic!("Has errors. Exiting...");
-        // }
-        self.has_errors
-    }
-
-    pub fn check_too_many(&mut self) -> bool {
-        // if self.too_many {
-        //     // TODO
-        //     self.report();
-        //     panic!("Too many errors. Exiting...");
-        // }
-        self.too_many
     }
 
     // ======================

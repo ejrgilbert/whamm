@@ -56,7 +56,7 @@ fn try_main() -> Result<(), failure::Error> {
             } else {
                 "".to_string()
             };
-            let result = instrument_with_config(
+            match instrument_with_config(
                 app_path,
                 args.script,
                 args.user_libs,
@@ -73,8 +73,13 @@ fn try_main() -> Result<(), failure::Error> {
                 ),
                 args.core_lib,
                 args.defs_path,
-            );
-            write_to_file(result, args.output_path);
+            ) {
+                Ok(res) => write_to_file(res, args.output_path),
+                Err(mut e) => {
+                    e.report();
+                    exit(1)
+                }
+            }
         }
     }
 

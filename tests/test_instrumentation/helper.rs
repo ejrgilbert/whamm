@@ -5,7 +5,7 @@ use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 use std::process::Command;
-use whamm::api::instrument::instrument_as_dry_run;
+use whamm::api::instrument::{instrument_as_dry_run, WhammError};
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
 use wirm::Module;
 
@@ -392,7 +392,7 @@ pub(crate) fn run_script(
     user_libs: Vec<String>,
     output_path: Option<String>,
     target_wizard: bool,
-) {
+) -> Result<(), Vec<WhammError>>{
     let script_path_str = script_path.to_str().unwrap().replace("\"", "");
     let wasm_result = if target_wizard {
         whamm::api::instrument::generate_monitor_module(
@@ -409,7 +409,7 @@ pub(crate) fn run_script(
             Some(CORE_WASM_PATH.to_string()),
             Some("./".to_string()),
         )
-    };
+    }?;
     if TEST_DRY_RUN && !target_wizard {
         let _side_effects = instrument_as_dry_run(
             wasm_path.to_string(),
@@ -426,6 +426,7 @@ pub(crate) fn run_script(
     if let Some(path) = output_path {
         write_to_file(wasm_result, path);
     }
+    Ok(())
 }
 
 fn run_testcase_rewriting(
@@ -439,14 +440,19 @@ fn run_testcase_rewriting(
     // run the script on configured application
     let wasm = fs::read(app_path_str).unwrap();
     let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
-    run_script(
+    if let Err(errs) = run_script(
         &script,
         app_path_str,
         &mut module_to_instrument,
         user_libs.clone(),
         Some(instr_app_path.clone()),
         false,
-    );
+    ) {
+        println!("failed to run script due to errors: ");
+        for e in errs.iter() {
+            println!("- {}", e.msg)
+        }
+    }
 
     // run the instrumented application on wasmtime
     // let res = Command::new(format!("{home}/.cargo/bin/cargo"))
@@ -533,14 +539,19 @@ fn run_testcase_wizard(
 
     // run the script on configured application
     let mut module_to_instrument = Module::default();
-    run_script(
+    if let Err(errs) = run_script(
         &script,
         app_path_str,
         &mut module_to_instrument,
         user_libs,
         Some(instr_app_path.clone()),
         true,
-    );
+    ) {
+        println!("failed to run script due to errors: ");
+        for e in errs.iter() {
+            println!("- {}", e.msg)
+        }
+    }
 
     // run the instrumented application on wizard
     let whamm_core_lib_path = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
