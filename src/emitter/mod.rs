@@ -51,7 +51,6 @@ pub fn configure_flush_routines(
     map_lib_adapter: &mut MapLibAdapter,
     mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
-    err: &mut ErrorGen,
 ) -> Option<u32> {
     // at this point, I want to use the collected metadata in UnsharedVars
     // to generate a new data segment AND generate the necessary globals!
@@ -76,7 +75,6 @@ pub fn configure_flush_routines(
         (header_addr, header_len),
         var_handler.get_mem_id(),
         wasm,
-        err,
     );
 
     let on_exit = flush_reports.finish_module_with_tag(wasm, get_tag_for(&None));

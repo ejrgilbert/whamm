@@ -1,4 +1,3 @@
-use crate::common::error::ErrorGen;
 use crate::generator::ast::ReqArgs;
 use crate::parser::types::{DataType, Definition, FnId, Location, ProbeRule, Value};
 use pest::error::LineColLocation;
@@ -104,12 +103,12 @@ impl SymbolTable {
         is_success
     }
 
-    pub fn enter_scope(&mut self, err: &mut ErrorGen) {
+    pub fn enter_scope(&mut self) {
         let new_id = self.scopes.len();
 
         let curr_scope = self.get_curr_scope_mut().unwrap();
         if curr_scope.has_next() {
-            if let Some(n) = curr_scope.next_child(err) {
+            if let Some(n) = curr_scope.next_child() {
                 self.curr_scope = *n;
             }
             return;
@@ -129,17 +128,13 @@ impl SymbolTable {
         self.curr_scope = new_id;
     }
 
-    pub fn exit_scope(&mut self, err: &mut ErrorGen) {
+    pub fn exit_scope(&mut self) {
         match self.get_curr_scope().unwrap().parent {
             Some(parent) => self.curr_scope = parent,
             None => {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "{} Attempted to exit current scope, but there was no parent to exit into.",
-                        UNEXPECTED_ERR_MSG
-                    )),
-                    None,
+                unreachable!(
+                    "{} Attempted to exit current scope, but there was no parent to exit into.",
+                    UNEXPECTED_ERR_MSG
                 );
             }
         }
@@ -302,13 +297,7 @@ impl SymbolTable {
             None
         }
     }
-    pub fn lookup_var(
-        &self,
-        key: &str,
-        loc: &Option<Location>,
-        err: &mut ErrorGen,
-        fail_on_miss: bool,
-    ) -> Option<&Record> {
+    pub fn lookup_var(&self, key: &str, fail_on_miss: bool) -> Option<&Record> {
         if let Some(rec) = self.lookup_rec(key) {
             if matches!(rec, Record::Var { .. }) {
                 Some(rec)
@@ -318,21 +307,13 @@ impl SymbolTable {
             }
         } else {
             if fail_on_miss {
-                err.unexpected_error(
-                    true,
-                    Some(format!("Could not find var for: {}", key)),
-                    line_col_from_loc(loc),
-                );
+                unreachable!("Could not find var for: {}", key);
             }
 
             None
         }
     }
-    pub fn lookup_fn_with_context(
-        &self,
-        key: &str,
-        err: &mut ErrorGen,
-    ) -> (Option<&Record>, String) {
+    pub fn lookup_fn_with_context(&self, key: &str) -> (Option<&Record>, String) {
         if let (Some(rec), context) = self.lookup_rec_with_context(key) {
             if matches!(rec, Record::Fn { .. }) {
                 (Some(rec), context)
@@ -341,11 +322,10 @@ impl SymbolTable {
                 (None, context)
             }
         } else {
-            err.unexpected_error(true, Some(format!("Could not find fn for: {}", key)), None);
-            (None, "".to_string())
+            unreachable!("Could not find fn for: {}", key)
         }
     }
-    pub fn lookup_fn(&self, key: &str, fail_on_miss: bool, err: &mut ErrorGen) -> Option<&Record> {
+    pub fn lookup_fn(&self, key: &str, fail_on_miss: bool) -> Option<&Record> {
         if let Some(rec) = self.lookup_rec(key) {
             if matches!(rec, Record::Fn { .. }) {
                 Some(rec)
@@ -355,12 +335,12 @@ impl SymbolTable {
             }
         } else {
             if fail_on_miss {
-                err.unexpected_error(true, Some(format!("Could not find fn for: {}", key)), None);
+                unreachable!("Could not find fn for: {}", key);
             }
             None
         }
     }
-    pub fn lookup_fn_mut(&mut self, key: &str, err: &mut ErrorGen) -> Option<&mut Record> {
+    pub fn lookup_fn_mut(&mut self, key: &str) -> Option<&mut Record> {
         if let Some(rec) = self.lookup_rec_mut(key) {
             if matches!(rec, Record::Fn { .. }) {
                 Some(rec)
@@ -369,29 +349,18 @@ impl SymbolTable {
                 None
             }
         } else {
-            err.unexpected_error(true, Some(format!("Could not find fn for: {}", key)), None);
-            None
+            unreachable!("Could not find fn for: {}", key);
         }
     }
 
-    pub fn lookup_lib_fn(
-        &self,
-        lib_name: &str,
-        lib_fn_name: &str,
-        err: &mut ErrorGen,
-    ) -> Option<&Record> {
+    pub fn lookup_lib_fn(&self, lib_name: &str, lib_fn_name: &str) -> Option<&Record> {
         if let Some(rec) = self.lookup_lib(lib_name) {
             if let Record::Library { fns, .. } = rec {
                 if let Some(rec) = fns.get(lib_fn_name) {
                     if let Some(rec) = self.get_record(*rec) {
                         Some(rec)
                     } else {
-                        err.unexpected_error(
-                            true,
-                            Some(format!("Could not find library func for: {}", lib_fn_name)),
-                            None,
-                        );
-                        None
+                        unreachable!("Could not find library func for: {}", lib_fn_name);
                     }
                 } else {
                     Self::no_match(rec, "LibraryFunc");
@@ -402,12 +371,7 @@ impl SymbolTable {
                 None
             }
         } else {
-            err.unexpected_error(
-                true,
-                Some(format!("Could not find library for: {}", lib_name)),
-                None,
-            );
-            None
+            unreachable!("Could not find library for: {}", lib_name);
         }
     }
 
@@ -539,14 +503,10 @@ impl Scope {
         self.next < self.children.len()
     }
 
-    pub fn next_child(&mut self, err: &mut ErrorGen) -> Option<&usize> {
+    pub fn next_child(&mut self) -> Option<&usize> {
         if !self.has_next() {
-            err.unexpected_error(
-                true,
-                Some(format!("{} Scope::next_child() should never be called without first checking that there is one.", UNEXPECTED_ERR_MSG)),
-                None
+            unreachable!("{} Scope::next_child() should never be called without first checking that there is one.", UNEXPECTED_ERR_MSG
             );
-            return None;
         }
 
         let next_child = self.children.get(self.next).unwrap();

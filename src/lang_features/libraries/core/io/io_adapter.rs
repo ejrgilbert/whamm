@@ -1,6 +1,5 @@
 // may use some of this code in the future (intrusive_puts)
 #![allow(dead_code)]
-use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::lang_features::libraries::core::LibAdapter;
@@ -50,12 +49,8 @@ impl LibAdapter for IOAdapter {
     fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32> {
         &mut self.funcs
     }
-    fn define_helper_funcs(
-        &mut self,
-        app_wasm: &mut Module,
-        err: &mut ErrorGen,
-    ) -> Vec<FunctionID> {
-        self.emit_helper_funcs(app_wasm, err)
+    fn define_helper_funcs(&mut self, app_wasm: &mut Module) -> Vec<FunctionID> {
+        self.emit_helper_funcs(app_wasm)
     }
 }
 impl IOAdapter {
@@ -85,10 +80,10 @@ impl IOAdapter {
         }
     }
 
-    fn emit_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> Vec<FunctionID> {
-        vec![self.emit_puts_internal(app_wasm, err)]
+    fn emit_helper_funcs(&mut self, app_wasm: &mut Module) -> Vec<FunctionID> {
+        vec![self.emit_puts_internal(app_wasm)]
     }
-    fn emit_puts_internal(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
+    fn emit_puts_internal(&mut self, app_wasm: &mut Module) -> FunctionID {
         let start_addr = LocalID(0);
         let len = LocalID(1);
         let mut puts = FunctionBuilder::new(&[WirmType::I32, WirmType::I32], &[]);
@@ -118,7 +113,7 @@ impl IOAdapter {
                 }
             );
 
-        self.call_putc(&mut puts, err);
+        self.call_putc(&mut puts);
 
         // Increment i and continue loop
         puts.local_get(i)
@@ -138,7 +133,6 @@ impl IOAdapter {
         &mut self,
         mem_allocator: &mut MemoryAllocator,
         app_wasm: &mut Module,
-        err: &mut ErrorGen,
     ) -> FunctionID {
         let str_addr = LocalID(0);
         let len = LocalID(1);
@@ -154,7 +148,7 @@ impl IOAdapter {
         );
 
         puts.local_get(str_addr).local_get(len);
-        self.call_puts(&mut puts, err);
+        self.call_puts(&mut puts);
 
         mem_allocator.copy_back_saved_mem(len, self.lib_mem as u32, 0, &mut puts);
 
@@ -170,9 +164,8 @@ impl IOAdapter {
         start_addr: u32,
         len: u32,
         func: &mut T,
-        err: &mut ErrorGen,
     ) {
-        self.puts_internal(start_addr, len, func, err);
+        self.puts_internal(start_addr, len, func);
     }
 
     pub fn putsln<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -180,18 +173,13 @@ impl IOAdapter {
         start_addr: u32,
         len: u32,
         func: &mut T,
-        err: &mut ErrorGen,
     ) {
-        self.puts(start_addr, len, func, err);
-        self.putln(func, err);
+        self.puts(start_addr, len, func);
+        self.putln(func);
     }
 
-    pub fn putln<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.putc(b'\n', func, err)
+    pub fn putln<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T) {
+        self.putc(b'\n', func)
     }
 
     fn puts_internal<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -199,141 +187,77 @@ impl IOAdapter {
         start_addr: u32,
         len: u32,
         func: &mut T,
-        err: &mut ErrorGen,
     ) {
         func.u32_const(start_addr).u32_const(len);
-        self.call_puts_internal(func, err);
+        self.call_puts_internal(func);
     }
 
     pub(crate) fn call_puts_internal<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         func: &mut T,
-        err: &mut ErrorGen,
     ) {
-        self.call(PUTS_INTERNAL, func, err);
+        self.call(PUTS_INTERNAL, func);
     }
 
-    pub fn call_puts<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.call(PUTS, func, err);
+    pub fn call_puts<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T) {
+        self.call(PUTS, func);
     }
 
-    pub fn call_putu8<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.call(PUTU8, func, err);
+    pub fn call_putu8<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T) {
+        self.call(PUTU8, func);
     }
 
-    pub fn call_puti8<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.call(PUTI8, func, err);
+    pub fn call_puti8<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T) {
+        self.call(PUTI8, func);
     }
 
-    pub fn call_putu16<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.call(PUTU16, func, err);
+    pub fn call_putu16<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T) {
+        self.call(PUTU16, func);
     }
 
-    pub fn call_puti16<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.call(PUTI16, func, err);
+    pub fn call_puti16<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T) {
+        self.call(PUTI16, func);
     }
 
-    pub fn call_putu32<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.call(PUTU32, func, err);
+    pub fn call_putu32<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T) {
+        self.call(PUTU32, func);
     }
 
-    pub fn call_puti32<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.call(PUTI32, func, err);
+    pub fn call_puti32<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T) {
+        self.call(PUTI32, func);
     }
 
-    pub fn call_putu64<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.call(PUTU64, func, err);
+    pub fn call_putu64<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T) {
+        self.call(PUTU64, func);
     }
 
-    pub fn call_puti64<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.call(PUTI64, func, err);
+    pub fn call_puti64<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T) {
+        self.call(PUTI64, func);
     }
 
-    pub fn call_putf32<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.call(PUTF32, func, err);
+    pub fn call_putf32<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T) {
+        self.call(PUTF32, func);
     }
 
-    pub fn call_putf64<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.call(PUTF64, func, err);
+    pub fn call_putf64<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T) {
+        self.call(PUTF64, func);
     }
 
-    pub fn call_putbool<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.call(PUTBOOL, func, err);
+    pub fn call_putbool<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T) {
+        self.call(PUTBOOL, func);
     }
 
-    fn putc<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        c: u8,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
+    fn putc<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, c: u8, func: &mut T) {
         func.i32_const(c as i32);
-        self.call_putc(func, err);
+        self.call_putc(func);
     }
 
-    pub fn call_putc<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        self.call(PUTC, func, err)
+    pub fn call_putc<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, func: &mut T) {
+        self.call(PUTC, func)
     }
 
-    fn call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        fname: &str,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        let fid = self.get_fid(fname, err);
+    fn call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, fname: &str, func: &mut T) {
+        let fid = self.get_fid(fname);
         func.call(FunctionID(fid));
     }
 }

@@ -131,12 +131,7 @@ impl UnsharedVarHandler {
             report_vars.all_used_report_dts.insert(var.ty.clone());
 
             let Some(Metadata::Local { name, probe_id, .. }) = &var.report_metadata else {
-                err.unexpected_error(
-                    true,
-                    Some("Report variable metadata should be set, but it's not".to_string()),
-                    None,
-                );
-                unreachable!()
+                unreachable!("Report variable metadata should be set, but it's not");
             };
 
             // handle variable name
@@ -201,7 +196,7 @@ impl UnsharedVarHandler {
                 _fname
             };
             mem_allocator.emit_string(wasm, &mut fname.to_string());
-            let (fname_addr, fname_len) = mem_allocator.lookup_emitted_string(fname, err);
+            let (fname_addr, fname_len) = mem_allocator.lookup_emitted_string(fname);
             let probe_header = ProbeHeader::new((fname_addr, fname_len as u8), fid, pc);
 
             // 4. Store the header for this variable
@@ -388,7 +383,7 @@ impl VarHeader {
             panic!("Report variable metadata string should be emitted, but it's not been.");
         };
         if *name_len as u32 > u8::MAX as u32 {
-            err.wizard_error(false, format!("Unable to encode report variable metadata for '{name}', string is too long, must be less than {} characters", u8::MAX), &None)
+            err.wizard_error(format!("Unable to encode report variable metadata for '{name}', string is too long, must be less than {} characters", u8::MAX), &None)
         }
         let Some(StringAddr {
             mem_offset: probe_id_ptr,
@@ -399,7 +394,7 @@ impl VarHeader {
             panic!("Report variable metadata string should be emitted, but it's not been.");
         };
         if *probe_id_len as u32 > u8::MAX as u32 {
-            err.wizard_error(false, format!("Unable to encode report variable metadata for '{name}', string is too long, must be less than {} characters", u8::MAX), &None)
+            err.wizard_error(format!("Unable to encode report variable metadata for '{name}', string is too long, must be less than {} characters", u8::MAX), &None)
         }
         Self {
             name_ptr: *name_ptr as u32,

@@ -1,6 +1,5 @@
 pub mod io_adapter;
 
-use crate::common::error::ErrorGen;
 use crate::generator::ast::{AstVisitor, Metadata, Probe, Script, WhammParam};
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::{LibAdapter, LibPackage};
@@ -52,12 +51,8 @@ impl LibPackage for IOPackage {
     fn set_global_adapter_usage(&mut self, _is_used: bool) {
         // nothing to do here
     }
-    fn define_helper_funcs(
-        &mut self,
-        app_wasm: &mut Module,
-        err: &mut ErrorGen,
-    ) -> Vec<FunctionID> {
-        self.adapter.define_helper_funcs(app_wasm, err)
+    fn define_helper_funcs(&mut self, app_wasm: &mut Module) -> Vec<FunctionID> {
+        self.adapter.define_helper_funcs(app_wasm)
     }
 }
 impl AstVisitor<bool> for IOPackage {

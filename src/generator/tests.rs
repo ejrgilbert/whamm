@@ -64,42 +64,30 @@ fn get_pred(whamm: &Whamm) -> &Expr {
         .unwrap()
 }
 
-fn move_through_scopes_til_match(
-    desired_ty: ScopeType,
-    table: &mut SymbolTable,
-    err: &mut ErrorGen,
-) {
+fn move_through_scopes_til_match(desired_ty: ScopeType, table: &mut SymbolTable) {
     while table.get_curr_scope().unwrap().ty != desired_ty {
-        table.exit_scope(err);
-        err.report();
-        table.enter_scope(err);
-        err.report();
+        table.exit_scope();
+        table.enter_scope();
     }
 }
 
-fn hardcode_compiler_constants(table: &mut SymbolTable, err: &mut ErrorGen) {
-    table.enter_scope(err);
-    err.report();
-    move_through_scopes_til_match(ScopeType::Script, table, err);
+fn hardcode_compiler_constants(table: &mut SymbolTable) {
+    table.enter_scope();
+    move_through_scopes_til_match(ScopeType::Script, table);
     debug!("Scope name: {}", table.get_curr_scope().unwrap().name);
     // enter wasm scope
-    table.enter_scope(err);
-    err.report();
-    move_through_scopes_til_match(ScopeType::Provider, table, err);
+    table.enter_scope();
+    move_through_scopes_til_match(ScopeType::Provider, table);
     debug!("Scope name: {}", table.get_curr_scope().unwrap().name);
     // enter opcode scope
-    table.enter_scope(err);
-    err.report();
-    move_through_scopes_til_match(ScopeType::Package, table, err);
+    table.enter_scope();
+    move_through_scopes_til_match(ScopeType::Package, table);
     debug!("Scope name: {}", table.get_curr_scope().unwrap().name);
     // enter call scope
-    table.enter_scope(err);
-    err.report();
+    table.enter_scope();
     while table.get_curr_scope().unwrap().ty != ScopeType::Event {
-        table.exit_scope(err);
-        err.report();
-        table.enter_scope(err);
-        err.report();
+        table.exit_scope();
+        table.enter_scope();
     }
 
     // define target_fn_type
@@ -154,7 +142,7 @@ fn basic_run(script: &str, err: &mut ErrorGen) {
     table.reset();
 
     let pred = get_pred(&whamm);
-    hardcode_compiler_constants(&mut table, err);
+    hardcode_compiler_constants(&mut table);
 
     let folded_expr = ExprFolder::fold_expr(pred, &table, err);
     assert_simplified_predicate(&folded_expr);
@@ -295,7 +283,7 @@ wasm::call:alt /
     table.reset();
 
     let pred = get_pred(&whamm);
-    hardcode_compiler_constants(&mut table, &mut err);
+    hardcode_compiler_constants(&mut table);
 
     let folded_expr = ExprFolder::fold_expr(pred, &table, &mut err);
     debug!("{:#?}", folded_expr);

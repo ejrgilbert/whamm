@@ -71,12 +71,7 @@ impl UnsharedVarHandler {
             }
             let Some(ReportMetadata::Local { name, probe_id, .. }) = &mut var.report_metadata
             else {
-                err.unexpected_error(
-                    true,
-                    Some("Report variable metadata should be set, but it's not".to_string()),
-                    None,
-                );
-                unreachable!()
+                unreachable!("Report variable metadata should be set, but it's not");
             };
 
             // handle variable name
@@ -153,7 +148,7 @@ impl UnsharedVarHandler {
             self.calc_bytes_to_alloc(ReportVars::report_var_header_bytes(), unshared_to_alloc);
         emitter
             .mem_allocator
-            .emit_base_memsize_check(fname_len.id, &mut alloc, err);
+            .emit_base_memsize_check(fname_len.id, &mut alloc);
         emitter
             .mem_allocator
             .emit_alloc_memsize_check(num_bytes, &mut alloc, err);
@@ -448,25 +443,18 @@ impl UnsharedVarHandler {
             ..
         }) = &report_metadata
         else {
-            err.unexpected_error(
-                true,
-                Some("Report variable metadata should be set, but it's not".to_string()),
-                None,
-            );
-            unreachable!()
+            unreachable!("Report variable metadata should be set, but it's not");
         };
 
-        let err_msg = Some(
-            "Report variable metadata string should be emitted, but it's not been.".to_string(),
-        );
+        let err_msg =
+            "Report variable metadata string should be emitted, but it's not been.".to_string();
 
         // store (name_ptr, name_len)
         let Some(StringAddr {
             mem_offset, len, ..
         }) = emitter.mem_allocator.emitted_strings.get(name)
         else {
-            err.unexpected_error(true, err_msg, None);
-            unreachable!()
+            unreachable!("{}", err_msg);
         };
         let name_ptr = *mem_offset as u32;
         func.global_get(mem_tracker_global)
@@ -480,7 +468,7 @@ impl UnsharedVarHandler {
         bytes_used += size_of_val(&name_ptr) as u32;
 
         if *len as u32 > u8::MAX as u32 {
-            err.wizard_error(false, format!("Unable to encode report variable metadata for '{name}', string is too long, must be less than {} characters", u8::MAX), &None)
+            err.wizard_error(format!("Unable to encode report variable metadata for '{name}', string is too long, must be less than {} characters", u8::MAX), &None)
         }
         let name_len = *len as u8;
         func.global_get(mem_tracker_global)
@@ -509,8 +497,7 @@ impl UnsharedVarHandler {
             mem_offset, len, ..
         }) = emitter.mem_allocator.emitted_strings.get(probe_id)
         else {
-            err.unexpected_error(true, err_msg, None);
-            unreachable!()
+            unreachable!("{}", err_msg);
         };
         let probe_id_ptr = *mem_offset as u32;
         func.global_get(mem_tracker_global)
@@ -524,7 +511,7 @@ impl UnsharedVarHandler {
         bytes_used += size_of_val(&probe_id_ptr) as u32;
 
         if *len as u32 > u8::MAX as u32 {
-            err.wizard_error(false, format!("Unable to encode report variable metadata for '{name}', string is too long, must be less than {} characters", u8::MAX), &None)
+            err.wizard_error(format!("Unable to encode report variable metadata for '{name}', string is too long, must be less than {} characters", u8::MAX), &None)
         }
         let probe_id_len = *len as u8;
         func.global_get(mem_tracker_global)

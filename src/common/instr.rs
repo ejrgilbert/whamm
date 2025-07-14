@@ -25,7 +25,6 @@ use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::process::exit;
 use wasmparser::MemoryType;
 use wirm::ir::id::FunctionID;
 use wirm::ir::types::{DataType as WirmType, InitExpr, Value as WirmValue};
@@ -48,7 +47,7 @@ pub fn run_with_path(
     user_lib_paths: Vec<String>,
     max_errors: i32,
     config: Config,
-) -> Vec<u8> {
+) -> Result<Vec<u8>, Box<ErrorGen>> {
     let buff = if !config.as_monitor_module {
         std::fs::read(app_wasm_path).unwrap()
     } else {
@@ -144,9 +143,9 @@ pub fn run_on_module_and_encode(
     user_lib_paths: Vec<String>,
     max_errors: i32,
     config: Config,
-) -> Vec<u8> {
+) -> Result<Vec<u8>, Box<ErrorGen>> {
     let mut metrics = Metrics::default();
-    if let Err(mut err) = run_on_module(
+    run_on_module(
         core_lib,
         def_yamls,
         target_wasm,
@@ -155,13 +154,11 @@ pub fn run_on_module_and_encode(
         max_errors,
         &mut metrics,
         config,
-    ) {
-        err.check_has_errors();
-    }
+    )?;
 
     let wasm = target_wasm.encode();
     metrics.flush();
-    wasm
+    Ok(wasm)
 }
 
 pub fn run_on_module(
@@ -180,8 +177,12 @@ pub fn run_on_module(
     let whamm_script = match std::fs::read_to_string(script_path.clone()) {
         Ok(unparsed_str) => unparsed_str,
         Err(error) => {
-            error!("Cannot read specified file {}: {}", script_path, error);
-            exit(1);
+            let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
+            err.add_error(ErrorGen::get_instrumentation_error(format!(
+                "Cannot read specified file {}: {}",
+                script_path, error
+            )));
+            return Err(Box::new(err));
         }
     };
 
@@ -240,8 +241,15 @@ pub fn run(
     );
 
     // Process the script
-    let mut whamm = get_script_ast(def_yamls, whamm_script, &mut err);
-    let (mut symbol_table, has_reports) = get_symbol_table(&mut whamm, &user_lib_modules, &mut err);
+    let mut whamm = match get_script_ast(def_yamls, whamm_script, &mut err) {
+        Ok(whamm) => whamm,
+        Err(_) => return Err(Box::new(err)),
+    };
+    let (mut symbol_table, has_reports) =
+        match get_symbol_table(&mut whamm, &user_lib_modules, &mut err) {
+            Ok(r) => r,
+            Err(_) => return Err(Box::new(err)),
+        };
 
     // If there were any errors encountered, report and exit!
     if err.has_errors {
@@ -269,7 +277,6 @@ pub fn run(
         core_lib,
         &mut mem_allocator,
         &mut core_packages,
-        metadata_collector.err,
     );
 
     // make the used user library functions the correct form
@@ -286,7 +293,6 @@ pub fn run(
     let mut io_adapter = io_package.adapter;
     let mut report_vars = ReportVars::new();
 
-    // If there were any errors encountered, report and exit!
     if metadata_collector.err.has_errors {
         return Err(Box::new(err));
     }
@@ -316,7 +322,7 @@ pub fn run(
                 get_tag_for(&None),
             ));
 
-        run_instr_rewrite(
+        if run_instr_rewrite(
             metrics,
             &mut whamm,
             metadata_collector,
@@ -330,7 +336,11 @@ pub fn run(
             &mut report_vars,
             &mut unshared_var_handler,
             &mut injected_core_lib_funcs,
-        );
+        )
+        .is_err()
+        {
+            return Err(Box::new(err));
+        }
 
         // Bump the memory pages to account for used memory
         unshared_var_handler.memory_grow(target_wasm);
@@ -345,7 +355,6 @@ pub fn run(
     report_vars.print_metadata();
 
     if err.has_errors {
-        // If there were any errors encountered, report and exit!
         Err(Box::new(err))
     } else {
         Ok(())
@@ -410,7 +419,7 @@ fn run_instr_rewrite(
     report_vars: &mut ReportVars,
     unshared_var_handler: &mut UnsharedVarHandler,
     injected_funcs: &mut Vec<FunctionID>,
-) {
+) -> Result<(), ()> {
     let table = metadata_collector.table;
     let err = metadata_collector.err;
     let ast = metadata_collector.ast;
@@ -435,8 +444,9 @@ fn run_instr_rewrite(
         injected_funcs,
     };
     init.run(whamm, used_funcs, used_strings);
-    // If there were any errors encountered, report and exit!
-    err.check_has_errors();
+    if err.has_errors {
+        return Err(());
+    }
 
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
@@ -469,8 +479,11 @@ fn run_instr_rewrite(
         metrics.end(&match_time);
     }
 
-    // If there were any errors encountered, report and exit!
-    err.check_has_errors();
+    if err.has_errors {
+        Err(())
+    } else {
+        Ok(())
+    }
 }
 
 fn get_memory_allocator(
@@ -554,34 +567,42 @@ fn get_symbol_table(
     ast: &mut Whamm,
     user_libs: &HashMap<String, (Option<String>, Module)>,
     err: &mut ErrorGen,
-) -> (SymbolTable, bool) {
+) -> Result<(SymbolTable, bool), ()> {
     let mut st = build_symbol_table(ast, user_libs, err);
-    err.check_too_many();
-    let has_reports = verify_ast(ast, &mut st, err);
-    (st, has_reports)
+    if err.too_many {
+        return Err(());
+    }
+
+    let has_reports = verify_ast(ast, &mut st, err)?;
+    Ok((st, has_reports))
 }
 
-fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool {
+fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> Result<bool, ()> {
     let (passed, has_reports) = type_check(ast, st, err);
     if !passed {
         error!("AST failed verification!");
     }
-    err.check_too_many();
+    if err.too_many {
+        return Err(());
+    }
 
-    has_reports
+    Ok(has_reports)
 }
 
-fn get_script_ast(def_yamls: &Vec<String>, script: &String, err: &mut ErrorGen) -> Whamm {
+fn get_script_ast(
+    def_yamls: &Vec<String>,
+    script: &String,
+    err: &mut ErrorGen,
+) -> Result<Whamm, ()> {
     // Parse the script and build the AST
     match parse_script(def_yamls, script, err) {
         Some(ast) => {
             info!("successfully parsed");
-            err.check_too_many();
-            ast
+            if err.too_many {
+                return Err(());
+            }
+            Ok(ast)
         }
-        None => {
-            err.report();
-            exit(1);
-        }
+        None => Err(()),
     }
 }

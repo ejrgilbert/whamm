@@ -26,14 +26,19 @@ fn instrument_dfinity_with_fault_injection() {
 
     for (script_path, ..) in processed_scripts {
         let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
-        run_script(
+        if let Err(errs) = run_script(
             &script_path,
             wasm_path,
             &mut module_to_instrument,
             vec![],
             None,
             false,
-        );
+        ) {
+            println!("failed to run script due to errors: ");
+            for e in errs.iter() {
+                println!("- {}", e.msg)
+            }
+        }
     }
 }
 
@@ -138,14 +143,19 @@ fn instrument_with_wizard_monitors() {
     let wasm = fs::read(APP_WASM_PATH).unwrap();
     for (script_path, ..) in processed_scripts {
         let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
-        run_script(
+        if let Err(errs) = run_script(
             &script_path,
             APP_WASM_PATH,
             &mut module_to_instrument,
             vec![],
             None,
             false,
-        );
+        ) {
+            println!("failed to run script due to errors: ");
+            for e in errs.iter() {
+                println!("- {}", e.msg)
+            }
+        }
     }
 }
 

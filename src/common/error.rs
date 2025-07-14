@@ -46,22 +46,21 @@ impl ErrorGen {
     }
 
     pub fn add_error(&mut self, mut error: WhammError) {
-        let fatal = error.fatal;
         error.match_rule = self.curr_match_rule.clone();
         self.errors.push(error);
         self.inc_errors();
-
-        if fatal {
-            self.fatal_report("Fatal");
-        }
     }
 
-    pub fn add_errors(&mut self, errors: Vec<WhammError>) {
+    pub fn add_errors(&mut self, errors: Vec<WhammError>) -> Result<(), ()> {
         for error in errors {
             self.add_error(error);
         }
 
-        self.check_too_many();
+        if self.too_many {
+            Err(())
+        } else {
+            Ok(())
+        }
     }
 
     pub fn set_script_text(&mut self, script_text: String) {
@@ -79,36 +78,13 @@ impl ErrorGen {
         self.errors.clear();
     }
 
-    pub fn fatal_report(&mut self, context: &str) {
-        if !&self.has_errors {
-            return;
-        }
-        self.report();
-        panic!("{context}: Reached a fatal error or warning. Exiting...");
-    }
-
-    pub fn check_has_errors(&mut self) {
-        if self.has_errors {
-            self.report();
-            panic!("Has errors. Exiting...");
-        }
-    }
-
-    pub fn check_too_many(&mut self) {
-        if self.too_many {
-            self.report();
-            panic!("Too many errors. Exiting...");
-        }
-    }
-
     // ======================
     // == Error Generators ==
     // ======================
 
-    pub fn get_instrumentation_error(fatal: bool, message: String) -> WhammError {
+    pub fn get_instrumentation_error(message: String) -> WhammError {
         WhammError {
             match_rule: None,
-            fatal,
             ty: ErrorType::InstrumentationError { message },
             err_loc: None,
             info_loc: None,
@@ -120,11 +96,11 @@ impl ErrorGen {
             "Multiple `alt` probes matched same bytecode location for instr_name: {}",
             instr_name
         );
-        let err = Self::get_instrumentation_error(true, msg);
+        let err = Self::get_instrumentation_error(msg);
         self.add_error(err);
     }
 
-    pub fn get_arithmetic_error(fatal: bool, message: String, loc: Option<Location>) -> WhammError {
+    pub fn get_arithmetic_error(message: String, loc: Option<Location>) -> WhammError {
         let err_loc = loc.as_ref().map(|err_loc| CodeLocation {
             is_err: true,
             message: Some(message.clone()),
@@ -134,7 +110,6 @@ impl ErrorGen {
         });
         WhammError {
             match_rule: None,
-            fatal,
             ty: ErrorType::ArithmeticError { message },
             err_loc,
             info_loc: None,
@@ -142,12 +117,11 @@ impl ErrorGen {
     }
 
     pub fn div_by_zero(&mut self, loc: Option<Location>) {
-        let err = Self::get_arithmetic_error(true, "attempt to divide by zero".to_string(), loc);
+        let err = Self::get_arithmetic_error("attempt to divide by zero".to_string(), loc);
         self.add_error(err);
     }
 
     pub fn get_parse_error(
-        fatal: bool,
         message: Option<String>,
         line_col: Option<LineColLocation>,
         positives: Vec<Rule>,
@@ -156,7 +130,6 @@ impl ErrorGen {
         if let Some(line_col) = line_col {
             WhammError {
                 match_rule: None,
-                fatal,
                 ty: ErrorType::ParsingError {
                     positives,
                     negatives,
@@ -174,7 +147,6 @@ impl ErrorGen {
         } else {
             WhammError {
                 match_rule: None,
-                fatal,
                 ty: ErrorType::ParsingError {
                     positives,
                     negatives,
@@ -185,31 +157,24 @@ impl ErrorGen {
             }
         }
     }
-    pub fn parse_error_at_loc(
-        &mut self,
-        fatal: bool,
-        message: Option<String>,
-        line_col: Option<Location>,
-    ) {
+    pub fn parse_error_at_loc(&mut self, message: Option<String>, line_col: Option<Location>) {
         let err_loc = line_col.as_ref().map(|err_loc| err_loc.line_col.clone());
-        let err = Self::get_parse_error(fatal, message, err_loc, vec![], vec![]);
+        let err = Self::get_parse_error(message, err_loc, vec![], vec![]);
         self.add_error(err);
     }
 
     pub fn parse_error(
         &mut self,
-        fatal: bool,
         message: Option<String>,
         line_col: Option<LineColLocation>,
         positives: Vec<Rule>,
         negatives: Vec<Rule>,
     ) {
-        let err = Self::get_parse_error(fatal, message, line_col, positives, negatives);
+        let err = Self::get_parse_error(message, line_col, positives, negatives);
         self.add_error(err);
     }
 
     pub fn get_duplicate_identifier_error(
-        fatal: bool,
         duplicated_id: String,
         err_line_col: Option<LineColLocation>,
         info_line_col: Option<LineColLocation>,
@@ -231,7 +196,6 @@ impl ErrorGen {
 
         WhammError {
             match_rule: None,
-            fatal,
             ty: ErrorType::DuplicateIdentifierError {
                 duplicated_id: duplicated_id.clone(),
             },
@@ -240,7 +204,6 @@ impl ErrorGen {
         }
     }
     pub fn get_compiler_fn_overload_error(
-        fatal: bool,
         duplicated_id: String,
         loc: Option<LineColLocation>,
     ) -> WhammError {
@@ -257,7 +220,6 @@ impl ErrorGen {
 
         WhammError {
             match_rule: None,
-            fatal,
             ty: ErrorType::DuplicateIdentifierError {
                 duplicated_id: duplicated_id.clone(),
             },
@@ -267,29 +229,22 @@ impl ErrorGen {
     }
     pub fn compiler_fn_overload_error(
         &mut self,
-        fatal: bool,
         duplicated_id: String,
         loc: Option<LineColLocation>,
     ) {
-        let err = Self::get_compiler_fn_overload_error(fatal, duplicated_id, loc);
+        let err = Self::get_compiler_fn_overload_error(duplicated_id, loc);
         self.add_error(err);
     }
     pub fn duplicate_identifier_error(
         &mut self,
-        fatal: bool,
         duplicated_id: String,
         err_line_col: Option<LineColLocation>,
         info_line_col: Option<LineColLocation>,
     ) {
-        let err =
-            Self::get_duplicate_identifier_error(fatal, duplicated_id, err_line_col, info_line_col);
+        let err = Self::get_duplicate_identifier_error(duplicated_id, err_line_col, info_line_col);
         self.add_error(err);
     }
-    pub fn get_type_check_error(
-        fatal: bool,
-        message: String,
-        loc: &Option<LineColLocation>,
-    ) -> WhammError {
+    pub fn get_type_check_error(message: String, loc: &Option<LineColLocation>) -> WhammError {
         let loc = loc.as_ref().map(|loc| CodeLocation {
             is_err: false,
             message: Some(message.clone()),
@@ -300,7 +255,6 @@ impl ErrorGen {
 
         WhammError {
             match_rule: None,
-            fatal,
             ty: ErrorType::TypeCheckError {
                 message: message.clone(),
             },
@@ -309,20 +263,11 @@ impl ErrorGen {
         }
     }
 
-    pub fn type_check_error(
-        &mut self,
-        fatal: bool,
-        message: String,
-        line_col: &Option<LineColLocation>,
-    ) {
-        let err = Self::get_type_check_error(fatal, message, line_col);
+    pub fn type_check_error(&mut self, message: String, line_col: &Option<LineColLocation>) {
+        let err = Self::get_type_check_error(message, line_col);
         self.add_error(err);
     }
-    pub fn get_wizard_error(
-        fatal: bool,
-        message: String,
-        loc: &Option<LineColLocation>,
-    ) -> WhammError {
+    pub fn get_wizard_error(message: String, loc: &Option<LineColLocation>) -> WhammError {
         let loc = loc.as_ref().map(|loc| CodeLocation {
             is_err: false,
             message: Some(message.clone()),
@@ -333,7 +278,6 @@ impl ErrorGen {
 
         WhammError {
             match_rule: None,
-            fatal,
             ty: ErrorType::WizardError {
                 message: message.clone(),
             },
@@ -342,59 +286,13 @@ impl ErrorGen {
         }
     }
 
-    pub fn get_wizard_error_from_loc(
-        fatal: bool,
-        message: String,
-        line_col: &Option<Location>,
-    ) -> WhammError {
+    pub fn get_wizard_error_from_loc(message: String, line_col: &Option<Location>) -> WhammError {
         let loc = line_col.as_ref().map(|loc| loc.line_col.clone());
-        Self::get_wizard_error(fatal, message, &loc)
+        Self::get_wizard_error(message, &loc)
     }
 
-    pub fn wizard_error(&mut self, fatal: bool, message: String, loc: &Option<Location>) {
-        let err = Self::get_wizard_error_from_loc(fatal, message, loc);
-        self.add_error(err);
-    }
-
-    pub fn get_unexpected_error(
-        fatal: bool,
-        message: Option<String>,
-        line_col: Option<LineColLocation>,
-    ) -> WhammError {
-        if let Some(line_col) = line_col {
-            WhammError {
-                match_rule: None,
-                fatal,
-                ty: ErrorType::Error {
-                    message: message.clone(),
-                },
-                err_loc: Some(CodeLocation {
-                    is_err: true,
-                    message,
-                    line_col,
-                    line_str: None,
-                    line2_str: None,
-                }),
-                info_loc: None,
-            }
-        } else {
-            WhammError {
-                match_rule: None,
-                fatal,
-                ty: ErrorType::Error { message },
-                err_loc: None,
-                info_loc: None,
-            }
-        }
-    }
-
-    pub fn unexpected_error(
-        &mut self,
-        fatal: bool,
-        message: Option<String>,
-        line_col: Option<LineColLocation>,
-    ) {
-        let err = Self::get_unexpected_error(fatal, message, line_col);
+    pub fn wizard_error(&mut self, message: String, loc: &Option<Location>) {
+        let err = Self::get_wizard_error_from_loc(message, loc);
         self.add_error(err);
     }
 
@@ -423,7 +321,6 @@ impl ErrorGen {
         {
             WhammError {
                 match_rule: self.curr_match_rule.clone(),
-                fatal: false,
                 ty: ErrorType::ParsingError {
                     positives: positives.clone(),
                     negatives: negatives.clone(),
@@ -441,7 +338,6 @@ impl ErrorGen {
         } else {
             WhammError {
                 match_rule: self.curr_match_rule.clone(),
-                fatal: false,
                 ty: ErrorType::Error { message: None },
                 err_loc: Some(CodeLocation {
                     is_err: true,
@@ -656,7 +552,6 @@ impl CodeLocation {
 #[derive(Clone, Debug)]
 pub struct WhammError {
     pub match_rule: Option<String>,
-    pub fatal: bool,
     /// The location within the input string causing the error
     pub err_loc: Option<CodeLocation>,
     /// A location within the input string that can add context to the error
@@ -668,7 +563,6 @@ impl From<std::io::Error> for Box<WhammError> {
     fn from(e: std::io::Error) -> Self {
         Box::new(WhammError {
             match_rule: None,
-            fatal: true,
             err_loc: None,
             info_loc: None,
             ty: ErrorType::Error {
@@ -781,10 +675,6 @@ impl WhammWarning {
     }
 }
 impl WhammError {
-    pub fn is_fatal(&self) -> bool {
-        self.fatal
-    }
-
     /// report this error to the console, including color highlighting
     pub fn report(&mut self, script: &str, script_path: &String) {
         let spacing = self.spacing();

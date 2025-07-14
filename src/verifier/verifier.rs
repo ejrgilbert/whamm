@@ -58,12 +58,7 @@ pub fn check_duplicate_id(
 ) -> bool {
     if let Some(rec_id) = table.lookup(name) {
         let Some(old_rec) = table.get_record(rec_id) else {
-            err.unexpected_error(
-                true,
-                Some(format!("Could not find record with id: {rec_id}")),
-                None,
-            );
-            return false;
+            unreachable!("Could not find record with id: {rec_id}");
         };
         let old_loc = old_rec.loc();
         if old_loc.is_none() {
@@ -76,7 +71,7 @@ pub fn check_duplicate_id(
                     println!("{:#?}", table.get_curr_scope());
                     panic!("{UNEXPECTED_ERR_MSG} No location found for record: {name}");
                 } else {
-                    err.compiler_fn_overload_error(false, name.to_string(), new_loc);
+                    err.compiler_fn_overload_error(name.to_string(), new_loc);
                 }
             } else {
                 panic!("{UNEXPECTED_ERR_MSG} Expected other record to be defined by compiler.");
@@ -86,23 +81,15 @@ pub fn check_duplicate_id(
             //if new ID is compiler-defined, throw compiler overload error for the old record
             if definition.is_comp_defined() {
                 err.compiler_fn_overload_error(
-                    false,
                     name.to_string(),
                     old_loc.clone().map(|l| l.line_col),
                 );
             } else {
                 //otherwise throw unexpected error as user-def fn has no loc
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Expected record to be compiler defined."
-                    )),
-                    None,
-                );
+                unreachable!("{UNEXPECTED_ERR_MSG} Expected record to be compiler defined.");
             }
         } else {
             err.duplicate_identifier_error(
-                false,
                 name.to_string(),
                 loc.clone().map(|l| l.line_col),
                 old_loc.clone().map(|l| l.line_col),
@@ -202,7 +189,6 @@ impl<'a> TypeChecker<'a> {
                         if let Record::Var { ty, def, loc, .. } = rec {
                             if !matches!(def, CompilerDynamic) {
                                 self.err.type_check_error(
-                                    false,
                                     "Type bounds should only be done for dynamically defined compiler variables (e.g. argN, localN)".to_owned(),
                                     &loc.clone().map(|l| l.line_col),
                                 );
@@ -210,11 +196,7 @@ impl<'a> TypeChecker<'a> {
                             *ty = ty_bound.clone();
                         } else {
                             // unexpected record type
-                            self.err.unexpected_error(
-                                true,
-                                Some(format!("{UNEXPECTED_ERR_MSG} Expected Var type")),
-                                loc.clone().map(|l| l.line_col),
-                            )
+                            unreachable!("{UNEXPECTED_ERR_MSG} Expected Var type")
                         }
                     }
                 } else {
@@ -230,11 +212,8 @@ impl<'a> TypeChecker<'a> {
                     );
                 }
             } else {
-                self.err.type_check_error(
-                    false,
-                    format!("{UNEXPECTED_ERR_MSG} Expected VarId type"),
-                    &None,
-                );
+                self.err
+                    .type_check_error(format!("{UNEXPECTED_ERR_MSG} Expected VarId type"), &None);
             }
         }
     }
@@ -276,7 +255,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             self.visit_provider(provider);
         });
 
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         None
     }
 
@@ -290,7 +269,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             self.visit_package(package);
         });
 
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         self.set_curr_rule(None);
         None
     }
@@ -305,7 +284,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             self.visit_event(event);
         });
 
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         // Remove this package from `curr_rule`
         let curr_rule = self.get_curr_rule();
         self.set_curr_rule(Some(curr_rule[..curr_rule.rfind(':').unwrap()].to_string()));
@@ -324,7 +303,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             });
         });
 
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         let curr_rule = self.get_curr_rule();
         let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
         self.set_curr_rule(Some(new_rule));
@@ -341,7 +320,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             if let Some(ty) = self.visit_expr(predicate) {
                 if ty != DataType::Boolean {
                     self.err.type_check_error(
-                        false,
                         "Predicate must be of type boolean".to_owned(),
                         &Some(predicate_loc.line_col),
                     );
@@ -354,7 +332,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             self.visit_block(body);
         }
 
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         let curr_rule = self.get_curr_rule();
         self.set_curr_rule(Some(curr_rule[..curr_rule.rfind(':').unwrap()].to_string()));
         None
@@ -369,7 +347,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             //figure out how to deal with void functions (return type is ())
             if check_ret_type != function.results {
                 self.err.type_check_error(
-                    false,
                     format!(
                         "The function signature for '{}' returns '{:?}', but the body returns '{:?}'",
                         function.name.name, function.results, check_ret_type
@@ -380,7 +357,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         }
 
         //return the type of the fn
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         Some(function.results.clone())
     }
 
@@ -426,7 +403,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         if self.in_function {
             if let Statement::UnsharedDecl { .. } = stmt {
                 self.err.type_check_error(
-                    false,
                     "Special declarations are not allowed in the functions".to_owned(),
                     &stmt.loc().clone().map(|l| l.line_col),
                 );
@@ -446,7 +422,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
                 _ => {
                     self.err.type_check_error(
-                        false,
                         "Only variable declarations and assignment are allowed in the global scope"
                             .to_owned(),
                         &stmt.loc().clone().map(|l| l.line_col),
@@ -489,15 +464,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     } else if rhs_ty.can_implicitly_cast() && lhs_ty.can_implicitly_cast() {
                         match expr.implicit_cast(&lhs_ty) {
                             Ok(_) => None,
-                            Err((msg, fatal)) => {
-                                self.err.type_check_error(fatal, msg, &rhs_loc);
+                            Err(msg) => {
+                                self.err.type_check_error(msg, &rhs_loc);
                                 None
                             }
                         }
                     } else {
                         // using a struct in parser to merge two locations
                         self.err.type_check_error(
-                            false,
                             format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
                             &full_loc,
                         );
@@ -506,7 +480,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 } else {
                     self.err.type_check_error(
-                        false,
                         "Can't get type of lhs or rhs of this assignment".to_string(),
                         &full_loc,
                     );
@@ -536,7 +509,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     if let DataType::Map { key_ty, .. } = ty {
                         if let DataType::Map { .. } = key_ty.as_ref() {
                             self.err.type_check_error(
-                                false,
                                 "Map keys cannot be maps".to_owned(),
                                 &loc.clone().map(|l| l.line_col),
                             );
@@ -548,7 +520,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         for ty in ty_info {
                             if let DataType::Map { .. } = ty {
                                 self.err.type_check_error(
-                                    false,
                                     "Tuples cannot contain maps".to_owned(),
                                     &loc.clone().map(|l| l.line_col),
                                 );
@@ -560,13 +531,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         self.add_local(ty.to_owned(), name.to_owned(), Definition::User, loc);
                     }
                 } else {
-                    self.err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "{UNEXPECTED_ERR_MSG} \
-                    Variable declaration var_id is not the correct Expr variant!!"
-                        )),
-                        var_id.loc().clone().map(|l| l.line_col),
+                    unreachable!(
+                        "{} \
+                    Variable declaration var_id is not the correct Expr variant!!",
+                        UNEXPECTED_ERR_MSG
                     );
                 }
                 None
@@ -578,7 +546,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 let cond_ty = self.visit_expr(cond);
                 if cond_ty != Some(DataType::Boolean) {
                     self.err.type_check_error(
-                        false,
                         format!(
                             "Condition must be of type boolean, found {:?}",
                             cond_ty.unwrap()
@@ -606,7 +573,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     //check that they are not returning different types if neither is () or None
                     //error here
                     self.err.type_check_error(
-                        false,
                         "Return type of if and else blocks do not match".to_owned(),
                         &Some(
                             Location::from(
@@ -628,7 +594,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 match (map_ty.clone(), key_ty.clone(), val_ty.clone()) {
                     (None, _, _) | (_, None, _) | (_, _, None) => {
                         self.err.type_check_error(
-                            false,
                             "Can't get type of map, key or value".to_owned(),
                             &loc.clone().map(|l| l.line_col),
                         );
@@ -673,7 +638,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             return Some(DataType::AssumeGood);
                         } else {
                             self.err.type_check_error(
-                                true,
                                 "Expected Map type".to_string(),
                                 &loc.clone().map(|l| l.line_col),
                             );
@@ -783,7 +747,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 Some(DataType::Boolean)
                             } else {
                                 self.err.type_check_error(
-                                    false,
                                     "Different types for lhs and rhs".to_owned(),
                                     &full_line_col,
                                 );
@@ -835,7 +798,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         BinOp::LShift => {
                             if matches!(lhs_ty, DataType::F32 | DataType::F64) {
                                 self.err.type_check_error(
-                                    false,
                                     format!("Left shift operation not allowed on type: {}", lhs_ty),
                                     &full_line_col,
                                 );
@@ -864,7 +826,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         BinOp::RShift => {
                             if matches!(lhs_ty, DataType::F32 | DataType::F64) {
                                 self.err.type_check_error(
-                                    false,
                                     format!(
                                         "Right shift operation not allowed on type: {}",
                                         lhs_ty
@@ -896,7 +857,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         BinOp::BitAnd => {
                             if matches!(lhs_ty, DataType::F32 | DataType::F64) {
                                 self.err.type_check_error(
-                                    false,
                                     format!(
                                         "The bitwise AND operation not allowed on type: {}",
                                         lhs_ty
@@ -928,7 +888,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         BinOp::BitOr => {
                             if matches!(lhs_ty, DataType::F32 | DataType::F64) {
                                 self.err.type_check_error(
-                                    false,
                                     format!(
                                         "The bitwise OR operation not allowed on type: {}",
                                         lhs_ty
@@ -960,7 +919,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         BinOp::BitXor => {
                             if matches!(lhs_ty, DataType::F32 | DataType::F64) {
                                 self.err.type_check_error(
-                                    false,
                                     format!(
                                         "The bitwise XOR operation not allowed on type: {}",
                                         lhs_ty
@@ -992,7 +950,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 } else {
                     self.err.type_check_error(
-                        false,
                         "Can't get type of lhs or rhs of this binary operation".to_string(),
                         &full_line_col,
                     );
@@ -1021,16 +978,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             return Some(ty.clone());
                         } else {
                             // unexpected record type
-                            self.err.unexpected_error(
-                                true,
-                                Some(format!("{UNEXPECTED_ERR_MSG} Expected Var type")),
-                                loc.clone().map(|l| l.line_col),
-                            )
+                            unreachable!("{} Expected Var type", UNEXPECTED_ERR_MSG)
                         }
                     }
                 }
                 self.err.type_check_error(
-                    false,
                     format! {"`{}` not found in symbol table", name},
                     &loc.clone().map(|l| l.line_col),
                 );
@@ -1058,7 +1010,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 Some(DataType::Boolean)
                             } else {
                                 self.err.type_check_error(
-                                    false,
                                     "Not operator can only be applied to boolean".to_owned(),
                                     &loc.clone().map(|l| l.line_col),
                                 );
@@ -1068,7 +1019,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         UnOp::BitwiseNot => {
                             if matches!(expr_ty, DataType::F32 | DataType::F64) {
                                 self.err.type_check_error(
-                                    false,
                                     format!(
                                         "The bitwise NOT operation not allowed on type: {}",
                                         expr_ty
@@ -1088,7 +1038,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 } else {
                     self.err.type_check_error(
-                        false,
                         "Can't get type of expr of this unary operation".to_owned(),
                         &loc.clone().map(|l| l.line_col),
                     );
@@ -1116,7 +1065,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         Some(ty) => actual_param_tys.push(Some(ty)),
                         _ => {
                             self.err.type_check_error(
-                                false,
                                 "Can't get type of argument".to_owned(),
                                 &loc.clone().map(|l| l.line_col),
                             );
@@ -1129,7 +1077,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     Expr::VarId { name, .. } => name,
                     _ => {
                         self.err.type_check_error(
-                            false,
                             "Function target must be a valid identifier.".to_owned(),
                             &loc.clone().map(|l| l.line_col),
                         );
@@ -1138,12 +1085,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 };
 
                 let rec = if let Some(lib_name) = &self.lib_name {
-                    if let Some(id) = self.table.lookup_lib_fn(lib_name, fn_name, self.err) {
+                    if let Some(id) = self.table.lookup_lib_fn(lib_name, fn_name) {
                         id
                     } else {
                         return Some(DataType::AssumeGood);
                     }
-                } else if let Some(id) = self.table.lookup_fn(fn_name, true, self.err) {
+                } else if let Some(id) = self.table.lookup_fn(fn_name, true) {
                     id
                 } else {
                     return Some(DataType::AssumeGood);
@@ -1200,7 +1147,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 //check if in global state and if is_comp_defined is false --> not allowed if both are the case
                 if self.in_script_global && !(*def == CompilerDynamic || *def == CompilerStatic) {
                     self.err.type_check_error(
-                        false,
                         "Function calls to user def functions are not allowed in the global state of the script"
                             .to_owned(),
                         &loc.clone().map(|l| l.line_col),
@@ -1219,16 +1165,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 let arg_loc = arg.loc().clone().unwrap();
                                 if expected.can_implicitly_cast() && actual.can_implicitly_cast() {
                                     // try to implicitly do a cast here
-                                    if let Err((msg, fatal)) = arg.implicit_cast(expected) {
-                                        self.err.type_check_error(
-                                            fatal,
-                                            msg,
-                                            &Some(arg_loc.line_col),
-                                        )
+                                    if let Err(msg) = arg.implicit_cast(expected) {
+                                        self.err.type_check_error(msg, &Some(arg_loc.line_col))
                                     }
                                 } else {
                                     self.err.type_check_error(
-                                        false,
                                         format! {"Expected type {:?} param {}, got {:?}", expected, i, actual},
                                         &Some(arg_loc.line_col)
                                     );
@@ -1237,7 +1178,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                         _ => {
                             self.err.type_check_error(
-                                false,
                                 "Can't get type of argument".to_owned(),
                                 &loc.clone().map(|l| l.line_col),
                             );
@@ -1254,7 +1194,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 match (map_ty.clone(), key_ty.clone()) {
                     (None, _) | (_, None) => {
                         self.err.type_check_error(
-                            false,
                             "Can't get type of map or key".to_owned(),
                             &loc.clone().map(|l| l.line_col),
                         );
@@ -1275,20 +1214,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 if key_ty.can_implicitly_cast() && map_key_ty.can_implicitly_cast()
                                 {
                                     // try to implicitly do a cast here
-                                    if let Err((msg, fatal)) =
-                                        key.implicit_cast(map_key_ty.as_ref())
-                                    {
-                                        self.err.type_check_error(
-                                            fatal,
-                                            msg,
-                                            &Some(key_loc.line_col),
-                                        )
+                                    if let Err(msg) = key.implicit_cast(map_key_ty.as_ref()) {
+                                        self.err.type_check_error(msg, &Some(key_loc.line_col))
                                     } else {
                                         return Some(*val_ty);
                                     }
                                 } else {
                                     self.err.type_check_error(
-                                        false,
                                         format! {"Type Mismatch, expected key type: {:?}, actual key type:{:?}", map_key_ty, key_ty},
                                         &Some(key_loc.line_col),
                                     );
@@ -1300,7 +1232,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             return Some(DataType::AssumeGood);
                         } else {
                             self.err.type_check_error(
-                                true,
                                 "Expected Map type".to_string(),
                                 &loc.clone().map(|l| l.line_col),
                             );
@@ -1324,7 +1255,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 if let Some(ty) = cond_ty {
                     if ty != DataType::Boolean {
                         self.err.type_check_error(
-                            false,
                             format!(
                                 "Condition must be of type boolean, found {:?}",
                                 cond_ty_clone.unwrap()
@@ -1346,7 +1276,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             conseq_ty
                         } else {
                             self.err.type_check_error(
-                                false,
                                 "Consequent and alternative must have the same type".to_owned(),
                                 &Some(
                                     Location::from(
@@ -1362,7 +1291,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                     _ => {
                         self.err.type_check_error(
-                            false,
                             "Can't get type of consequent or alternative".to_owned(),
                             &Some(
                                 Location::from(
@@ -1391,7 +1319,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             } else {
                                 let loc = self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
                                 self.err.type_check_error(
-                                    false,
                                     format!(
                                         "TypeError: Tuple value at this location exceeded the expected tuple length of: {}.",
                                         ty_info.len()
@@ -1413,7 +1340,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 Err(msg) => {
                                     let loc =
                                         self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
-                                    self.err.type_check_error(false, format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."),
+                                    self.err.type_check_error(format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."),
                                                               &loc);
                                     return Some(DataType::AssumeGood);
                                 }
@@ -1445,22 +1372,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 // assume these expressions (actually just values) all parse
                 // and have Some type
                 let mut all_tys: Vec<DataType> = Vec::new();
-                for (idx, ty) in tys.iter().enumerate() {
+                for ty in tys.iter() {
                     match ty {
                         Some(ty) => all_tys.push(ty.to_owned()),
                         _ => {
-                            let loc = if let Some(val) = vals.get(idx) {
-                                val.loc().as_ref().map(|loc| loc.line_col.clone())
-                            } else {
-                                None
-                            };
-                            self.err.unexpected_error(
-                                true,
-                                Some(format!(
-                                    "{} ALL types should be set for a tuple value.",
-                                    UNEXPECTED_ERR_MSG
-                                )),
-                                loc,
+                            unreachable!(
+                                "{} ALL types should be set for a tuple value.",
+                                UNEXPECTED_ERR_MSG
                             )
                         }
                     }
@@ -1483,16 +1401,15 @@ fn attempt_implicit_cast(
 ) -> bool {
     if exp_ty.can_implicitly_cast() && actual_ty.can_implicitly_cast() {
         // try to implicitly do a cast here
-        return if let Err((msg, fatal)) = to_cast.implicit_cast(exp_ty) {
-            err.type_check_error(fatal, msg, loc);
+        return if let Err(msg) = to_cast.implicit_cast(exp_ty) {
+            err.type_check_error(msg, loc);
             false
         } else {
             true
         };
     } else {
         err.type_check_error(
-            false,
-            format! {"Type Mismatch, expected {name_in_err} type: {:?}, actual {name_in_err} type: {:?}", exp_ty, actual_ty},
+           format! {"Type Mismatch, expected {name_in_err} type: {:?}, actual {name_in_err} type: {:?}", exp_ty, actual_ty},
             loc
         );
     }

@@ -397,36 +397,6 @@ wasm:opcode:br:before {
     "wasm:opcode:call:alt {}",
 ];
 
-const FATAL_SCRIPTS: &[&str] = &[
-    // invalid probe rule
-    r#"
-core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
-
-    "#,
-    // trigger unavailable modes per event
-    "wasm:opcode:unreachable:after {}",
-    "wasm:opcode:unreachable:at_target {}",
-    "wasm:opcode:unreachable:entry {}",
-    "wasm:opcode:unreachable:exit {}",
-    "wasm:opcode:nop:at_target {}",
-    "wasm:opcode:nop:semantic_after {}",
-    "wasm:opcode:nop:entry {}",
-    "wasm:opcode:nop:exit {}",
-    "wasm:opcode:end:alt {}",
-    "wasm:opcode:end:at_target {}",
-    "wasm:opcode:end:entry {}",
-    "wasm:opcode:end:exit {}",
-    "wasm:opcode:br:entry {}",
-    "wasm:opcode:br:exit {}",
-    "wasm:opcode:call:at_target {}",
-    "wasm:opcode:call:entry {}",
-    "wasm:opcode:call:exit {}",
-    "wasm:opcode:block:at_target {}",
-    "wasm:opcode:loop:at_target {}",
-    "wasm:opcode:if:at_target {}",
-    "wasm:opcode:else:at_target {}",
-];
-
 const INVALID_SCRIPTS: &[&str] = &[
     // globals
     r#"
@@ -556,6 +526,33 @@ var arg0: map<i32, i32>;
             unshared report unshared var b: bool;
         }
     "#,
+    // invalid probe rule
+    r#"
+core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
+
+    "#,
+    // trigger unavailable modes per event
+    "wasm:opcode:unreachable:after {}",
+    "wasm:opcode:unreachable:at_target {}",
+    "wasm:opcode:unreachable:entry {}",
+    "wasm:opcode:unreachable:exit {}",
+    "wasm:opcode:nop:at_target {}",
+    "wasm:opcode:nop:semantic_after {}",
+    "wasm:opcode:nop:entry {}",
+    "wasm:opcode:nop:exit {}",
+    "wasm:opcode:end:alt {}",
+    "wasm:opcode:end:at_target {}",
+    "wasm:opcode:end:entry {}",
+    "wasm:opcode:end:exit {}",
+    "wasm:opcode:br:entry {}",
+    "wasm:opcode:br:exit {}",
+    "wasm:opcode:call:at_target {}",
+    "wasm:opcode:call:entry {}",
+    "wasm:opcode:call:exit {}",
+    "wasm:opcode:block:at_target {}",
+    "wasm:opcode:loop:at_target {}",
+    "wasm:opcode:if:at_target {}",
+    "wasm:opcode:else:at_target {}",
 ];
 const SPECIAL: &[&str] = &["wasm:begin { }", "wasm:end { }", "wasm:::alt { }"];
 
@@ -634,26 +631,6 @@ pub fn test_parse_valid_scripts() {
         &pull_all_yml_files(&DEFS_PATH),
         &mut err,
     );
-}
-
-#[test]
-pub fn test_parse_fatal_scripts() {
-    setup_logger();
-    for script in FATAL_SCRIPTS {
-        println!("Parsing: {}", script);
-        let result = std::panic::catch_unwind(|| {
-            let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-            is_valid_script(script, &pull_all_yml_files(&DEFS_PATH), &mut err)
-        });
-        match result {
-            Ok(_) => {
-                panic!("Expected a fatal error, but got Ok");
-            }
-            Err(_) => {
-                //this means the function properly exited with a fatal error
-            }
-        }
-    }
 }
 
 #[test]

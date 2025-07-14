@@ -36,15 +36,9 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     ) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
-        self.injected_funcs
-            .extend(self.emitter.setup_module(self.err));
-        emit_needed_funcs(
-            used_bound_funcs,
-            &mut self.emitter,
-            self.injected_funcs,
-            self.err,
-        );
-        self.emitter.emit_strings(strings_to_emit, self.err);
+        self.injected_funcs.extend(self.emitter.setup_module());
+        emit_needed_funcs(used_bound_funcs, &mut self.emitter, self.injected_funcs);
+        self.emitter.emit_strings(strings_to_emit);
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         self.visit_whamm(whamm)
     }
@@ -52,11 +46,11 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
 impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn emit_string(&mut self, val: &mut Value) -> bool {
-        self.emitter.emit_string(val, self.err)
+        self.emitter.emit_string(val)
     }
 
     fn emit_func(&mut self, f: &mut crate::parser::types::Fn) -> Option<FunctionID> {
-        self.emitter.emit_fn("TODO", f, self.err)
+        self.emitter.emit_fn("TODO", f)
     }
 
     fn emit_global(
@@ -93,7 +87,6 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
                     lib_name_import_override,
                     used_fns,
                     self.emitter.table,
-                    self.err,
                 ),
             );
         }
@@ -120,11 +113,11 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn enter_scope(&mut self) {
-        self.emitter.enter_scope(self.err);
+        self.emitter.enter_scope();
     }
 
     fn exit_scope(&mut self) {
-        self.emitter.exit_scope(self.err);
+        self.emitter.exit_scope();
     }
     fn lookup_var_mut(&mut self, name: &str) -> Option<&mut Record> {
         self.emitter.table.lookup_var_mut(name, true)

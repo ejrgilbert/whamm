@@ -1,5 +1,4 @@
 use crate::api::instrument::LibraryLinkStrategy;
-use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::generator::ast::Script;
 use crate::lang_features::libraries::core::LibPackage;
@@ -13,7 +12,6 @@ pub fn link_core_lib(
     core_lib: &[u8],
     mem_allocator: &mut MemoryAllocator,
     packages: &mut [&mut dyn LibPackage],
-    err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
     match method {
         LibraryLinkStrategy::Imported => {
@@ -23,7 +21,6 @@ pub fn link_core_lib(
                 core_lib,
                 mem_allocator,
                 packages,
-                err,
             )
         }
         LibraryLinkStrategy::Merged => {

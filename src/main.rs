@@ -40,7 +40,10 @@ fn try_main() -> Result<(), failure::Error> {
             functions,
             defs_path,
         } => {
-            print_info(rule, defs_path, vars, functions);
+            if let Err(mut err) = print_info(rule, defs_path, vars, functions) {
+                err.report();
+                exit(1);
+            }
         }
         Cmd::Wast { wast_path } => {
             run_wast_tests_at(&vec![PathBuf::from(wast_path)]);
@@ -53,7 +56,7 @@ fn try_main() -> Result<(), failure::Error> {
             } else {
                 "".to_string()
             };
-            let result = instrument_with_config(
+            match instrument_with_config(
                 app_path,
                 args.script,
                 args.user_libs,
@@ -70,8 +73,13 @@ fn try_main() -> Result<(), failure::Error> {
                 ),
                 args.core_lib,
                 args.defs_path,
-            );
-            write_to_file(result, args.output_path);
+            ) {
+                Ok(res) => write_to_file(res, args.output_path),
+                Err(mut e) => {
+                    e.report();
+                    exit(1)
+                }
+            }
         }
     }
 

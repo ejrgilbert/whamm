@@ -68,13 +68,12 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 scripts.push(id);
             }
             _ => {
-                self.err
-                    .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                unreachable!("{}", UNEXPECTED_ERR_MSG);
             }
         }
 
         // enter script scope
-        self.table.enter_scope(self.err);
+        self.table.enter_scope();
         self.curr_script = Some(id);
 
         // set scope name and type
@@ -116,13 +115,12 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 providers.push(id);
             }
             _ => {
-                self.err
-                    .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                unreachable!("{}", UNEXPECTED_ERR_MSG);
             }
         }
 
         // enter provider scope
-        self.table.enter_scope(self.err);
+        self.table.enter_scope();
         self.curr_provider = Some(id);
 
         // set scope name and type
@@ -160,13 +158,12 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 packages.push(id);
             }
             _ => {
-                self.err
-                    .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                unreachable!("{}", UNEXPECTED_ERR_MSG);
             }
         }
 
         // enter package scope
-        self.table.enter_scope(self.err);
+        self.table.enter_scope();
         self.curr_package = Some(id);
 
         // set scope name and type
@@ -208,13 +205,12 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 events.push(id);
             }
             _ => {
-                self.err
-                    .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                unreachable!("{}", UNEXPECTED_ERR_MSG);
             }
         }
 
         // enter event scope
-        self.table.enter_scope(self.err);
+        self.table.enter_scope();
         self.curr_event = Some(id);
 
         // set scope name and type
@@ -251,13 +247,12 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 probes.push(id);
             }
             _ => {
-                self.err
-                    .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                unreachable!("{}", UNEXPECTED_ERR_MSG);
             }
         }
 
         // enter probe scope
-        self.table.enter_scope(self.err);
+        self.table.enter_scope();
         self.curr_probe = Some(id);
 
         // set scope name and type
@@ -294,8 +289,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                     user_libs.push(lib_id);
                 }
                 _ => {
-                    self.err
-                        .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                    unreachable!("{}", UNEXPECTED_ERR_MSG);
                 }
             }
 
@@ -342,7 +336,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
             }
         } else {
             self.err.parse_error_at_loc(
-                true,
                 Some("The script uses a library, but it wasn't configured in the CLI".to_string()),
                 loc.clone(),
             );
@@ -361,7 +354,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
                     //case for both having loc -> both user def
                     (Some(curr_loc), Some(other_loc)) => {
                         self.err.duplicate_identifier_error(
-                            false,
                             f_id.name.clone(),
                             Some(curr_loc.line_col.clone()),
                             Some(other_loc.line_col.clone()),
@@ -372,7 +364,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
                         //make sure it is actually comp def
                         if other_rec.is_comp_defined() {
                             self.err.compiler_fn_overload_error(
-                                false,
                                 f_id.name.clone(),
                                 Some(curr_loc.line_col.clone()),
                             );
@@ -383,18 +374,13 @@ impl SymbolTableBuilder<'_, '_, '_> {
                     }
                     //case for curr not having a loc -> shouldn't happen: either user def without a loc or 2 comp def with same name
                     (None, _) => {
-                        self.err.unexpected_error(
-                            true,
-                            Some("No location found for function conflicting with compiler def function. User-def fn has no location, or 2 compiler-def functions with same ID".to_string()),
-                            None,
+                        unreachable!("No location found for function conflicting with compiler def function. User-def fn has no location, or 2 compiler-def functions with same ID"
                         );
                     }
                 }
             } else {
                 // This should never be the case -> ID is in the table but doesn't have a record associated with it
-                self.err
-                    .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-                unreachable!()
+                unreachable!("{}", UNEXPECTED_ERR_MSG);
             };
         }
         //This MUST run if the above wasn't a fatal error -> otherwise there are scoping errors
@@ -416,7 +402,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
         self.add_fn_id_to_curr_rec(id);
 
         // enter fn scope
-        self.table.enter_scope(self.err);
+        self.table.enter_scope();
         self.curr_fn = Some(id);
 
         // set scope name and type
@@ -440,8 +426,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 globals.push(id);
             }
             _ => {
-                self.err
-                    .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                unreachable!("{}", UNEXPECTED_ERR_MSG);
             }
         }
     }
@@ -457,8 +442,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 fns.push(id);
             }
             _ => {
-                self.err
-                    .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                unreachable!("{}", UNEXPECTED_ERR_MSG);
             }
         }
     }
@@ -467,10 +451,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
         let name = match var_id {
             Expr::VarId { name, .. } => name,
             _ => {
-                self.err
-                    .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
-                // should have exited above (since it's a fatal error)
-                unreachable!()
+                unreachable!("{}", UNEXPECTED_ERR_MSG)
             }
         };
 
@@ -492,8 +473,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 params.push(id);
             }
             _ => {
-                self.err
-                    .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                unreachable!("{}", UNEXPECTED_ERR_MSG);
             }
         }
     }
@@ -679,7 +659,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
             .for_each(|(_name, provider)| self.visit_provider(provider));
 
         trace!("Exiting: visit_script");
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         self.curr_script = None;
     }
 
@@ -705,7 +685,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         self.remove_bound_data(to_remove_alias, to_remove_vars);
 
         trace!("Exiting: visit_provider");
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         self.curr_provider = None;
     }
 
@@ -731,7 +711,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         self.remove_bound_data(to_remove_alias, to_remove_vars);
 
         trace!("Exiting: visit_package");
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         self.curr_package = None;
     }
 
@@ -759,7 +739,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         self.remove_bound_data(to_remove_alias, to_remove_vars);
 
         trace!("Exiting: visit_event");
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         self.curr_event = None;
     }
 
@@ -822,7 +802,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         self.used_derived_vars.clear();
 
         trace!("Exiting: visit_probe");
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         self.curr_probe = None;
     }
 
@@ -835,7 +815,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         // Will not visit predicate/body at this stage
 
         trace!("Exiting: visit_fn");
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         self.curr_fn = None;
     }
 

@@ -19,13 +19,17 @@ pub fn print_info(
     defs_path: Option<String>,
     print_vars: bool,
     print_functions: bool,
-) {
+) -> Result<(), Box<ErrorGen>> {
     // Parse the script and generate the information
     let mut err = ErrorGen::new("".to_string(), rule.clone(), MAX_ERRORS);
     let def_yamls = get_defs(defs_path);
-    parser::whamm_parser::print_info(rule, &def_yamls, print_vars, print_functions, &mut err);
+    parser::whamm_parser::print_info(rule, &def_yamls, print_vars, print_functions, &mut err)?;
 
-    err.fatal_report("PrintInfo");
+    if err.has_errors {
+        Err(Box::new(err))
+    } else {
+        Ok(())
+    }
 }
 
 /// Write a Wasm module encoded as a vec of bytes to the specified location.

@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::api::get_defs_and_lib;
-use crate::common::error::WhammError;
+use crate::common::error::{CodeLocation, ErrorGen, WhammError as ErrorInternal};
 use crate::common::instr;
 use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
 use log::error;
@@ -30,7 +30,7 @@ pub fn instrument_with_config(
     config: Config,
     core_lib_path: Option<String>,
     defs_path: Option<String>,
-) -> Vec<u8> {
+) -> Result<Vec<u8>, Box<ErrorGen>> {
     let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
     instr::run_with_path(
         &core_lib,
@@ -56,7 +56,7 @@ pub fn instrument_with_rewriting(
     user_lib_paths: Vec<String>,
     core_lib_path: Option<String>,
     defs_path: Option<String>,
-) -> Vec<u8> {
+) -> Result<Vec<u8>, Box<ErrorGen>> {
     instrument_with_config(
         app_wasm_path,
         script_path,
@@ -80,9 +80,9 @@ pub fn instrument_module_with_rewriting(
     user_lib_paths: Vec<String>,
     core_lib_path: Option<String>,
     defs_path: Option<String>,
-) -> Vec<u8> {
+) -> Result<Vec<u8>, Vec<WhammError>> {
     let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
-    instr::run_on_module_and_encode(
+    match instr::run_on_module_and_encode(
         &core_lib,
         &def_yamls,
         target_wasm,
@@ -90,7 +90,10 @@ pub fn instrument_module_with_rewriting(
         user_lib_paths,
         MAX_ERRORS,
         Config::default_rewriting(),
-    )
+    ) {
+        Ok(res) => Ok(res),
+        Err(e) => Err(WhammError::from_errs(e.pull_errs())),
+    }
 }
 
 /// Using the passed Whamm script, generate a monitor module that encodes instructions for
@@ -106,15 +109,18 @@ pub fn generate_monitor_module(
     user_lib_paths: Vec<String>,
     core_lib_path: Option<String>,
     defs_path: Option<String>,
-) -> Vec<u8> {
-    instrument_with_config(
+) -> Result<Vec<u8>, Vec<WhammError>> {
+    match instrument_with_config(
         "".to_string(),
         script_path,
         user_lib_paths,
         Config::default_monitor_module(),
         core_lib_path,
         defs_path,
-    )
+    ) {
+        Ok(res) => Ok(res),
+        Err(e) => Err(WhammError::from_errs(e.pull_errs())),
+    }
 }
 
 /// Using the passed Whamm script, perform a dry run of instrumentation and return metadata
@@ -156,7 +162,7 @@ pub fn instrument_as_dry_run(
             }
             Ok(injections)
         }
-        Err(errs) => Err(errs),
+        Err(errs) => Err(WhammError::from_errs(errs)),
     }
 }
 
@@ -263,6 +269,7 @@ impl Default for LibraryLinkStrategy {
 pub enum Injection {
     // Module additions
     /// Represents an import that has been added to the module.
+    // TODO: possibly just return wat for this
     Import {
         /// The module being imported from.
         module: String,
@@ -275,6 +282,7 @@ pub enum Injection {
         cause: Cause,
     },
     /// Represents an export that has been added to the module.
+    // TODO: possibly just return wat for this
     Export {
         /// The name of the exported item.
         name: String,
@@ -286,6 +294,8 @@ pub enum Injection {
         /// specific Whamm script location).
         cause: Cause,
     },
+    /// Represents a type that has been added to the module.
+    // TODO: possibly just return wat for this
     Type {
         ty: Types,
         /// Explains why this was injected (if it can be isolated to a
@@ -294,6 +304,7 @@ pub enum Injection {
     },
 
     /// Represents a memory that has been added to the module.
+    // TODO: possibly just return wat for this
     Memory {
         /// The memory's ID.
         id: u32, // TODO -- may not need (it's ordered in a vec)
@@ -307,6 +318,7 @@ pub enum Injection {
     },
 
     /// Represents an active data segment that has been added to the module.
+    // TODO: possibly just return wat for this
     ActiveData {
         /// The memory index for the data segment.
         memory_index: u32,
@@ -322,6 +334,7 @@ pub enum Injection {
     },
 
     /// Represents a passive data segment that has been added to the module.
+    // TODO: possibly just return wat for this
     PassiveData {
         /// The data of the data segment.
         data: Vec<u8>,
@@ -331,6 +344,7 @@ pub enum Injection {
     },
 
     /// Represents a global that has been added to the module.
+    // TODO: possibly just return wat for this
     Global {
         /// The global's ID.
         id: u32, // TODO -- may not need (it's ordered in a vec)
@@ -377,8 +391,10 @@ pub enum Injection {
     },
 
     /// Represents a table that has been added to the module.
+    // TODO: possibly just return wat for this
     Table { cause: Cause },
     /// Represents a table element that has been added to the module.
+    // TODO: possibly just return wat for this
     Element { cause: Cause },
 
     // Probes
@@ -651,5 +667,32 @@ impl From<&Reason> for Cause {
             },
             Reason::Whamm | Reason::WhammProbe { .. } => Self::Whamm,
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct WhammError {
+    /// The location within the input string causing the error
+    pub err_loc: Option<CodeLocation>,
+    /// A location within the input string that can add context to the error
+    pub info_loc: Option<CodeLocation>,
+    pub msg: String,
+}
+impl From<&ErrorInternal> for WhammError {
+    fn from(value: &ErrorInternal) -> Self {
+        Self {
+            err_loc: value.err_loc.clone(),
+            info_loc: value.info_loc.clone(),
+            msg: value.ty.message().to_string(),
+        }
+    }
+}
+impl WhammError {
+    fn from_errs(values: Vec<ErrorInternal>) -> Vec<Self> {
+        let mut errs = vec![];
+        for e in values.iter() {
+            errs.push(Self::from(e));
+        }
+        errs
     }
 }
