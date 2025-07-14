@@ -100,17 +100,37 @@ pub fn dry_run_on_bytes<'a>(
     }
 }
 
-pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, String, Vec<u8>)> {
+pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, Option<String>, String, Vec<u8>)> {
     let mut res = vec![];
     for path in paths.iter() {
         let parts = path.split('=').collect::<Vec<&str>>();
         assert_eq!(2, parts.len(), "A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm");
 
-        let lib_name = parts.first().unwrap().to_string();
+        let lib_name_chunk = parts.first().unwrap().to_string();
+        let name_parts = lib_name_chunk.split('(').collect::<Vec<&str>>();
+        let lib_name = name_parts.first().unwrap().to_string();
+        let lib_name_import_override = if name_parts.len() > 1 {
+            Some(
+                name_parts
+                    .get(1)
+                    .unwrap()
+                    .strip_suffix(')')
+                    .unwrap()
+                    .to_string(),
+            )
+        } else {
+            None
+        };
+
         let lib_path = parts.get(1).unwrap();
         let buff = std::fs::read(lib_path).unwrap();
 
-        res.push((lib_name, lib_path.to_string(), buff));
+        res.push((
+            lib_name,
+            lib_name_import_override,
+            lib_path.to_string(),
+            buff,
+        ));
     }
 
     res
@@ -194,7 +214,7 @@ pub fn run(
     target_wasm: &mut Module,
     whamm_script: &String,
     script_path: &str,
-    user_libs: Vec<(String, String, Vec<u8>)>,
+    user_libs: Vec<(String, Option<String>, String, Vec<u8>)>,
     max_errors: i32,
     metrics: &mut Metrics,
     config: Config,
@@ -203,14 +223,20 @@ pub fn run(
     let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
 
     // Parse user libraries to Wasm modules
-    let mut user_lib_modules: HashMap<String, Module> = HashMap::default();
-    for (lib_name, _, lib_buff) in user_libs.iter() {
-        user_lib_modules.insert(lib_name.clone(), Module::parse(lib_buff, false).unwrap());
+    let mut user_lib_modules: HashMap<String, (Option<String>, Module)> = HashMap::default();
+    for (lib_name, lib_name_import_override, _, lib_buff) in user_libs.iter() {
+        user_lib_modules.insert(
+            lib_name.clone(),
+            (
+                lib_name_import_override.clone(),
+                Module::parse(lib_buff, false).unwrap(),
+            ),
+        );
     }
     // add the core library just in case the script needs it
     user_lib_modules.insert(
         WHAMM_CORE_LIB_NAME.to_string(),
-        Module::parse(core_lib, true).unwrap(),
+        (None, Module::parse(core_lib, true).unwrap()),
     );
 
     // Process the script
@@ -330,7 +356,7 @@ fn run_instr_wizard(
     _metrics: &mut Metrics,
     metadata_collector: MetadataCollector,
     used_fns_per_lib: HashMap<String, HashSet<String>>,
-    user_lib_modules: HashMap<String, Module>,
+    user_lib_modules: HashMap<String, (Option<String>, Module)>,
     target_wasm: &mut Module,
     mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
@@ -375,7 +401,7 @@ fn run_instr_rewrite(
     whamm: &mut Whamm,
     metadata_collector: MetadataCollector,
     used_fns_per_lib: HashMap<String, HashSet<String>>,
-    user_lib_modules: HashMap<String, Module>,
+    user_lib_modules: HashMap<String, (Option<String>, Module)>,
     target_wasm: &mut Module,
     has_reports: bool,
     mem_allocator: &mut MemoryAllocator,
@@ -526,7 +552,7 @@ fn get_memory_allocator(
 
 fn get_symbol_table(
     ast: &mut Whamm,
-    user_libs: &HashMap<String, Module>,
+    user_libs: &HashMap<String, (Option<String>, Module)>,
     err: &mut ErrorGen,
 ) -> (SymbolTable, bool) {
     let mut st = build_symbol_table(ast, user_libs, err);

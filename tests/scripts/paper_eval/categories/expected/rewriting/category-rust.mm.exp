@@ -44,4 +44,4 @@ hello world!
 
 ================================= REPORT CSV FLUSH ====================================
 id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
-0, map_id, dyn_categories, map<u32,i32>, i32, script0, , , , , 0->14160;2->5575;3->17583;4->24356;5->444;8->4582;9->7303;10->85339;12->204;15->10803
+0, map_id, dyn_categories, map<u32,i32>, i32, script0, , , , , 0->14160;2->5575;3->17583;4->25190;5->444;8->4582;9->7303;10->85339;12->204;15->10803

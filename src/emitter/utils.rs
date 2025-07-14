@@ -183,35 +183,28 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 let map_id = ctx
                     .map_lib_adapter
                     .map_create(ty.clone(), injector, ctx.err);
-                *addr = Some(VarAddr::MapId { addr: map_id });
+                *addr = Some(vec![VarAddr::MapId { addr: map_id }]);
                 ctx.in_map_op = false;
 
                 return true;
             }
             match &mut addr {
-                Some(VarAddr::Global { addr: _addr }) | Some(VarAddr::MapId { addr: _addr }) => {
-                    //ignore, initial setup is done in init_gen
-                    true
-                }
-                Some(VarAddr::MemLoc { .. }) => {
-                    //ignore, initial setup is done in $alloc
-                    true
-                }
-                Some(VarAddr::Local { .. }) | None => {
-                    // If the local already exists, it would be because the probe has been
-                    // emitted at another opcode location. Simply overwrite the previously saved
-                    // address.
-                    let wasm_ty = ty.to_wasm_type();
-                    if wasm_ty.len() == 1 {
-                        let id = ctx
-                            .locals_tracker
-                            .use_local(*wasm_ty.first().unwrap(), injector);
-                        *addr = Some(VarAddr::Local { addr: id });
-                        true
-                    } else {
-                        todo!("not supported the type yet: {:?} as {:#?}", var_id, ty)
+                Some(addrs) => {
+                    match addrs.first().unwrap() {
+                        VarAddr::Global { addr: _addr } | VarAddr::MapId { addr: _addr } => {
+                            //ignore, initial setup is done in init_gen
+                            true
+                        }
+                        VarAddr::MemLoc { .. } => {
+                            //ignore, initial setup is done in $alloc
+                            true
+                        }
+                        VarAddr::Local { .. } => {
+                            handle_decl(addr, var_id, ty, ctx.locals_tracker, injector)
+                        }
                     }
                 }
+                None => handle_decl(addr, var_id, ty, ctx.locals_tracker, injector),
             }
         }
         _ => {
@@ -225,6 +218,25 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             );
             false
         }
+    }
+}
+fn handle_decl<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    addr: &mut Option<Vec<VarAddr>>,
+    var_id: &mut Expr,
+    ty: &mut DataType,
+    locals_tracker: &mut LocalsTracker,
+    injector: &mut T,
+) -> bool {
+    // If the local already exists, it would be because the probe has been
+    // emitted at another opcode location. Simply overwrite the previously saved
+    // address.
+    let wasm_ty = ty.to_wasm_type();
+    if wasm_ty.len() == 1 {
+        let id = locals_tracker.use_local(*wasm_ty.first().unwrap(), injector);
+        *addr = Some(vec![VarAddr::Local { addr: id }]);
+        true
+    } else {
+        todo!("not supported the type yet: {:?} as {:#?}", var_id, ty)
     }
 }
 
@@ -462,7 +474,15 @@ fn possibly_emit_memaddr_calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLo
         };
 
         // this will be different based on if this is a global or local var
-        if let Some(VarAddr::MemLoc { .. }) = addr {
+        let mut is_mem_loc = false;
+        if let Some(addrs) = addr {
+            for addr in addrs.iter() {
+                if let VarAddr::MemLoc { .. } = addr {
+                    is_mem_loc = true;
+                };
+            }
+        }
+        if is_mem_loc {
             ctx.mem_allocator.emit_addr(ctx.table, injector, ctx.err);
         }
         true
@@ -486,38 +506,41 @@ fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         };
 
         // this will be different based on if this is a global or local var
-        match addr {
-            Some(VarAddr::Global { addr }) => {
-                injector.global_set(GlobalID(*addr));
+        if let Some(addrs) = addr {
+            for addr in addrs.iter() {
+                match addr {
+                    VarAddr::Global { addr } => {
+                        injector.global_set(GlobalID(*addr));
+                    }
+                    VarAddr::MemLoc {
+                        mem_id,
+                        ty,
+                        var_offset,
+                        ..
+                    } => {
+                        ctx.mem_allocator
+                            .set_in_mem(*var_offset, *mem_id, &ty.clone(), injector);
+                    }
+                    VarAddr::Local { addr } => {
+                        injector.local_set(LocalID(*addr));
+                    }
+                    VarAddr::MapId { .. } => {
+                        ctx.err.type_check_error(
+                            false,
+                            format!("Attempted to assign a var to Map: {}", name),
+                            &line_col_from_loc(loc),
+                        );
+                        return false;
+                    }
+                }
             }
-            Some(VarAddr::MemLoc {
-                mem_id,
-                ty,
-                var_offset,
-                ..
-            }) => {
-                ctx.mem_allocator
-                    .set_in_mem(*var_offset, *mem_id, &ty.clone(), injector);
-            }
-            Some(VarAddr::Local { addr }) => {
-                injector.local_set(LocalID(*addr));
-            }
-            Some(VarAddr::MapId { .. }) => {
-                ctx.err.type_check_error(
-                    false,
-                    format!("Attempted to assign a var to Map: {}", name),
-                    &line_col_from_loc(loc),
-                );
-                return false;
-            }
-            None => {
-                ctx.err.type_check_error(
-                    false,
-                    format!("Variable assigned before declared: {}", name),
-                    &line_col_from_loc(loc),
-                );
-                return false;
-            }
+        } else {
+            ctx.err.type_check_error(
+                false,
+                format!("Variable assigned before declared: {}", name),
+                &line_col_from_loc(loc),
+            );
+            return false;
         }
         true
     } else {
@@ -738,49 +761,51 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         name);
             }
             // this will be different based on if this is a global or local var
-            match addr {
-                Some(VarAddr::Global { addr }) => {
-                    injector.global_get(GlobalID(*addr));
-                    true
-                }
-                Some(VarAddr::Local { addr }) => {
-                    injector.local_get(LocalID(*addr));
-                    true
-                }
-                Some(VarAddr::MemLoc {
-                    mem_id,
-                    ty,
-                    var_offset,
-                }) => {
-                    ctx.mem_allocator.get_from_mem(
-                        *mem_id,
-                        &ty.clone(),
-                        *var_offset,
-                        ctx.table,
-                        injector,
-                        ctx.err,
-                    );
-                    true
-                }
-                Some(VarAddr::MapId { .. }) => {
-                    ctx.err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "{} \
+            if let Some(addrs) = addr {
+                let mut is_success = true;
+                for addr in addrs.clone().iter() {
+                    match addr {
+                        VarAddr::Global { addr } => {
+                            injector.global_get(GlobalID(*addr));
+                        }
+                        VarAddr::Local { addr } => {
+                            injector.local_get(LocalID(*addr));
+                        }
+                        VarAddr::MemLoc {
+                            mem_id,
+                            ty,
+                            var_offset,
+                        } => {
+                            ctx.mem_allocator.get_from_mem(
+                                *mem_id,
+                                &ty.clone(),
+                                *var_offset,
+                                ctx.table,
+                                injector,
+                                ctx.err,
+                            );
+                        }
+                        VarAddr::MapId { .. } => {
+                            ctx.err.unexpected_error(
+                                true,
+                                Some(format!(
+                                    "{} \
                                 Variable you are trying to use in expr is a Map object {}",
-                            ctx.err_msg, name
-                        )),
-                        None,
-                    );
-                    false
+                                    ctx.err_msg, name
+                                )),
+                                None,
+                            );
+                            is_success &= false;
+                        }
+                    }
                 }
-                None => {
-                    panic!(
-                        "{} \
+                is_success
+            } else {
+                panic!(
+                    "{} \
                 Variable does not exist in scope: {}",
-                        ctx.err_msg, name
-                    );
-                }
+                    ctx.err_msg, name
+                );
             }
         }
         Expr::Primitive { val, .. } => emit_value(val, strategy, injector, ctx),
@@ -2022,30 +2047,36 @@ fn get_map_info(name: &mut str, ctx: &mut EmitCtx) -> Option<(VarAddr, DataType,
         return None;
     };
 
-    if !matches!(
-        addr,
-        Some(VarAddr::MapId { .. }) | Some(VarAddr::Local { .. }) | Some(VarAddr::MemLoc { .. })
-    ) {
-        panic!("We don't support map locations being stored in addresses other than Local or constant MapId --> {}:{:?}", name, addr)
-    }
-    if let DataType::Map {
-        key_ty: k,
-        val_ty: v,
-    } = ty
-    {
-        let key_ty = *k.clone();
-        let val_ty = *v.clone();
-        Some((addr.clone().unwrap(), key_ty, val_ty))
+    if let Some(addrs) = addr {
+        let addr = addrs.first().unwrap();
+        if !matches!(
+            addr,
+            VarAddr::MapId { .. } | VarAddr::Local { .. } | VarAddr::MemLoc { .. }
+        ) {
+            assert_eq!(addrs.len(), 1);
+            panic!("We don't support map locations being stored in addresses other than Local or constant MapId --> {}:{:?}", name, addr)
+        }
+        if let DataType::Map {
+            key_ty: k,
+            val_ty: v,
+        } = ty
+        {
+            let key_ty = *k.clone();
+            let val_ty = *v.clone();
+            Some((addr.clone(), key_ty, val_ty))
+        } else {
+            ctx.err.unexpected_error(
+                true,
+                Some(format!(
+                    "Incorrect DataType, expected Map, found: {:?}",
+                    addr.clone()
+                )),
+                loc.as_ref()
+                    .map(|Location { line_col, .. }| line_col.clone()),
+            );
+            None
+        }
     } else {
-        ctx.err.unexpected_error(
-            true,
-            Some(format!(
-                "Incorrect DataType, expected Map, found: {:?}",
-                addr.clone()
-            )),
-            loc.as_ref()
-                .map(|Location { line_col, .. }| line_col.clone()),
-        );
-        None
+        panic!("map ID address not set yet.");
     }
 }

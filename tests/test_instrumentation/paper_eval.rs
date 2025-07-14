@@ -49,7 +49,22 @@ fn ins_coverage() {
     let processed_scripts = setup_tests("paper_eval/ins_coverage");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-ins_coverage", processed_scripts, true, true)
+    run_core_suite("paper_eval-ins_coverage", processed_scripts, false, true)
+}
+
+#[test]
+fn ins_coverage_dyninstr() {
+    setup_logger();
+    let processed_scripts = setup_tests("paper_eval/ins_coverage_dyninstr");
+    assert!(!processed_scripts.is_empty());
+
+    // dyninstr isn't supported in bytecode rewriting, only the engine!
+    run_core_suite(
+        "paper_eval-ins_coverage_dyninstr",
+        processed_scripts,
+        false,
+        true,
+    )
 }
 
 #[test]
@@ -68,4 +83,18 @@ fn call_graph() {
     assert!(!processed_scripts.is_empty());
 
     run_core_suite("paper_eval-call_graph", processed_scripts, true, true)
+}
+
+#[test]
+fn basic_block_profiling() {
+    setup_logger();
+    let processed_scripts = setup_tests("paper_eval/basic_block_profiling");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite(
+        "paper_eval-basic_block_profiling",
+        processed_scripts,
+        true,
+        false,
+    )
 }

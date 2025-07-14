@@ -1,6 +1,6 @@
 use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
-use crate::emitter::rewriting::rules::{Arg, LocInfo, ProbeRule};
+use crate::emitter::rewriting::rules::{Arg, LocInfo, MatchState, ProbeRule};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::Emitter;
@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::FunctionID;
+use wirm::ir::types::InstrumentationMode;
 use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator};
 use wirm::opcode::Instrumenter;
 use wirm::{Location as WirmLocation, Opcode};
@@ -90,33 +91,40 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
         }
     }
 
-    pub fn configure_probe_mode(&mut self) -> bool {
-        self.probe_mode_for_provider()
+    pub fn configure_probe_mode(&mut self, mode_override: &Option<InstrumentationMode>) -> bool {
+        self.probe_mode_for_provider(mode_override)
     }
-    fn probe_mode_for_provider(&mut self) -> bool {
+    fn probe_mode_for_provider(&mut self, mode_override: &Option<InstrumentationMode>) -> bool {
         match &self.curr_probe_rule.provider {
             Some(prov) => match prov.name.as_str() {
-                "wasm" => self.probe_mode_for_package(),
+                "wasm" => self.probe_mode_for_package(mode_override),
                 _ => unreachable!("Invalid probe provider: {}", prov.name),
             },
             _ => unreachable!("Probe does not have a provider."),
         }
     }
-    fn probe_mode_for_package(&mut self) -> bool {
+    fn probe_mode_for_package(&mut self, mode_override: &Option<InstrumentationMode>) -> bool {
         match &self.curr_probe_rule.package {
             Some(prov) => match prov.name.as_str() {
-                "opcode" => self.probe_mode_for_opcode_modes(
-                    &self.curr_probe_rule.mode.as_ref().unwrap().clone(),
-                ),
+                "opcode" => self
+                    .probe_mode_by_whamm_mode(&self.curr_probe_rule.mode.as_ref().unwrap().clone()),
                 "func" => self.probe_mode_for_func_modes(&ModeKind::from(
                     self.curr_probe_rule.event.as_ref().unwrap().name.clone(),
                 )),
+                "block" => {
+                    if let Some(mode) = mode_override {
+                        self.probe_mode_by_wirm_opcode_mode(mode);
+                    } else {
+                        panic!("should have had a wirm instrumentation mode for wasm:block:*");
+                    }
+                    true
+                }
                 _ => unreachable!("Invalid probe provider: {}", prov.name),
             },
             _ => unreachable!("Probe does not have a provider."),
         }
     }
-    fn probe_mode_for_opcode_modes(&mut self, mode: &ModeKind) -> bool {
+    fn probe_mode_by_whamm_mode(&mut self, mode: &ModeKind) -> bool {
         match mode {
             ModeKind::Before => self.emitter.before(),
             ModeKind::After => self.emitter.after(),
@@ -126,6 +134,18 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
             ModeKind::Exit => self.emitter.block_exit(),
             ModeKind::BlockAlt => self.emitter.block_alt(),
             _ => unreachable!("invalid probe mode: {}", mode),
+        }
+        true
+    }
+    fn probe_mode_by_wirm_opcode_mode(&mut self, mode: &InstrumentationMode) -> bool {
+        match mode {
+            InstrumentationMode::Before => self.emitter.before(),
+            InstrumentationMode::After => self.emitter.after(),
+            InstrumentationMode::Alternate => self.emitter.alternate(),
+            InstrumentationMode::SemanticAfter => self.emitter.semantic_after(),
+            InstrumentationMode::BlockEntry => self.emitter.block_entry(),
+            InstrumentationMode::BlockExit => self.emitter.block_exit(),
+            InstrumentationMode::BlockAlt => self.emitter.block_alt(),
         }
         true
     }
@@ -167,10 +187,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
         // Iterate over each instruction in the application Wasm bytecode
         let mut is_success = true;
         let mut first_instr = true;
+        let mut match_state = MatchState::default();
         while first_instr || self.emitter.next_instr() {
             first_instr = false;
             // Check if any of the configured rules match this instruction in the application.
-            if let Some(loc_info) = self.emitter.get_loc_info(&self.ast) {
+            if let Some(loc_info) = self.emitter.get_loc_info(&mut match_state, &self.ast) {
                 // Inject a call to the on-exit flush function
                 self.is_prog_exit = loc_info.is_prog_exit;
                 if loc_info.is_prog_exit {
@@ -206,7 +227,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                         .multiple_alt_matches(self.emitter.curr_instr_name().as_str());
                 }
                 // This location has matched some rules, inject each matched probe!
-                for (probe_rule, probe) in loc_info.probes.iter() {
+                for (probe_rule, probe, mode) in loc_info.probes.iter() {
                     // Enter the scope for this matched probe
                     self.set_curr_loc(probe_rule, probe);
                     assert!(
@@ -249,7 +270,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                         // we can simplify the check to just not emitting the probe altogether
 
                         // emit the probe (since the predicate is not false)
-                        is_success &= self.emit_probe(&loc_info.dynamic_data);
+                        is_success &= self.emit_probe(&loc_info.dynamic_data, mode);
                     }
 
                     // Now that we've emitted this probe, reset the symbol table's static/dynamic
@@ -300,13 +321,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
     }
 }
 impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
-    fn emit_probe(&mut self, dynamic_data: &HashMap<String, Block>) -> bool {
+    fn emit_probe(
+        &mut self,
+        dynamic_data: &HashMap<String, Block>,
+        mode_override: &Option<InstrumentationMode>,
+    ) -> bool {
         let mut is_success = true;
 
         is_success &= self.save_args();
         //after saving args, we run the check if we need to initialize global maps
         self.emitter.inject_map_init();
-        self.configure_probe_mode();
+        self.configure_probe_mode(mode_override);
 
         // Now we know we're going to insert the probe, let's define
         // the dynamic information

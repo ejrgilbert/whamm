@@ -12,18 +12,22 @@ use wirm::ir::module::module_functions::{FuncKind, ImportedFunction};
 use wirm::ir::module::module_globals::{GlobalKind, ImportedGlobal, LocalGlobal};
 use wirm::ir::module::module_types::Types;
 use wirm::ir::module::Module;
-use wirm::ir::types::DataType as WirmType;
+use wirm::ir::types::{DataType as WirmType, InstrumentationMode};
 use wirm::Location;
 
 pub fn get_loc_info_for_active_probes(
     app_wasm: &Module,
+    state: &mut MatchState,
     loc: Location,
+    at_func_end: bool,
     instr: &Operator,
     ast: &SimpleAST,
 ) -> Option<LocInfo> {
     let mut res: Option<LocInfo> = None;
     for (provider, packages) in ast.provs.iter() {
-        if let Some(mut tmp) = handle_provider(app_wasm, loc, instr, provider, packages) {
+        if let Some(mut tmp) =
+            handle_provider(app_wasm, state, loc, at_func_end, instr, provider, packages)
+        {
             if let Some(r) = &mut res {
                 r.append(&mut tmp);
             } else {
@@ -36,20 +40,24 @@ pub fn get_loc_info_for_active_probes(
 
 fn handle_provider(
     app_wasm: &Module,
+    state: &mut MatchState,
     loc: Location,
+    at_func_end: bool,
     instr: &Operator,
     provider: &str,
     prov: &SimpleProv,
 ) -> Option<LocInfo> {
     match provider {
-        "wasm" => handle_wasm(app_wasm, loc, instr, prov),
+        "wasm" => handle_wasm(app_wasm, state, loc, at_func_end, instr, prov),
         _ => panic!("Provider not available: {provider}"),
     }
 }
 
 fn handle_wasm(
     app_wasm: &Module,
+    state: &mut MatchState,
     loc: Location,
+    at_func_end: bool,
     instr: &Operator,
     prov: &SimpleProv,
 ) -> Option<LocInfo> {
@@ -83,6 +91,11 @@ fn handle_wasm(
     loc_info
         .static_data
         .insert("pc".to_string(), Some(Value::gen_u32(pc as u32)));
+
+    loc_info.static_data.insert(
+        "is_func_end".to_string(),
+        Some(Value::Boolean { val: at_func_end }),
+    );
 
     for param in prov.all_params() {
         if let Some(n) = param.n_for("local") {
@@ -125,7 +138,9 @@ fn handle_wasm(
 
     let mut res: Option<LocInfo> = Some(loc_info);
     for (package, pkg) in prov.pkgs.iter() {
-        if let Some(mut tmp) = handle_wasm_packages(app_wasm, &fid, pc, instr, package, pkg) {
+        if let Some(mut tmp) =
+            handle_wasm_packages(app_wasm, state, at_func_end, &fid, pc, instr, package, pkg)
+        {
             if let Some(r) = &mut res {
                 r.append(&mut tmp);
             } else {
@@ -138,6 +153,8 @@ fn handle_wasm(
 
 fn handle_wasm_packages(
     app_wasm: &Module,
+    state: &mut MatchState,
+    at_func_end: bool,
     fid: &FunctionID,
     pc: usize,
     instr: &Operator,
@@ -147,8 +164,9 @@ fn handle_wasm_packages(
     match package {
         "opcode" => handle_opcode(app_wasm, fid, instr, pkg),
         "func" => handle_func(app_wasm, fid, pc, instr, pkg),
-        "report" => None, // not handled here
+        "block" => handle_block(app_wasm, state, at_func_end, fid, pc, instr, pkg),
         "begin" | "end" => unimplemented!("Have not implemented the package yet: {package}"),
+        "report" => None, // not handled here
         _ => panic!("Package not available: 'wasm:{package}'"),
     }
 }
@@ -183,6 +201,10 @@ fn handle_opcode_events(
 ) -> Option<LocInfo> {
     let mut loc_info = LocInfo::new();
 
+    loc_info
+        .static_data
+        .insert("op_name".to_string(), Some(Value::Str{val: event.clone()}));
+
     // create a combination of WhammParams for all probes here
     let mut all_params = HashSet::new();
     for probes in evt.modes.values() {
@@ -206,98 +228,98 @@ fn handle_opcode_events(
 
     match event.as_str() {
         "unreachable" => if let Operator::Unreachable = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "nop" => if let Operator::Nop = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "block" => if let Operator::Block {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "loop" => if let Operator::Loop {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "if" => if let Operator::If {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "else" => if let Operator::Else {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "try_table" => if let Operator::TryTable {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "throw" => if let Operator::Throw { tag_index } = instr {
             define_imm0::<u32>(*tag_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "throw_ref" => if let Operator::ThrowRef {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "end" => if let Operator::End {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "br" => if let Operator::Br { relative_depth } = instr {
             define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "br_if" => if let Operator::BrIf { relative_depth } = instr {
             define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "br_table" => if let Operator::BrTable { targets } = instr {
             bind_vars_br_table(targets, &mut loc_info, &all_params)?;
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "return" => if let Operator::Return {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "call" => if let Operator::Call {function_index} = instr {
             if bind_vars_call(&mut loc_info, &all_params, *function_index, app_wasm).is_ok() {
-                loc_info.add_probes(probe_rule.clone(), evt);
+                loc_info.add_probes(probe_rule.clone(), evt, None);
             }
         },
         "call_indirect" => if let Operator::CallIndirect {type_index,
             table_index,} = instr {
             define_imm0_u32_imm1_u32(*type_index, *table_index, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "return_call" => if let Operator::ReturnCall {function_index} = instr {
             if bind_vars_call(&mut loc_info, &all_params, *function_index, app_wasm).is_ok() {
-                loc_info.add_probes(probe_rule.clone(), evt);
+                loc_info.add_probes(probe_rule.clone(), evt, None);
             }
         },
         "return_call_indirect" => if let Operator::ReturnCallIndirect {type_index, table_index } = instr {
             define_imm0_u32_imm1_u32(*type_index, *table_index, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "drop" => if let Operator::Drop = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "select" => if let Operator::Select = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "typed_select" => if let Operator::TypedSelect {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "local.get" => if let Operator::LocalGet {local_index} = instr {
             define_imm0::<u32>(*local_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "local.set" => if let Operator::LocalSet {local_index} = instr {
             define_imm0::<u32>(*local_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "local.tee" => if let Operator::LocalTee {local_index} = instr {
             define_imm0::<u32>(*local_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "global.get" => if let Operator::GlobalGet {global_index} = instr {
             define_imm0::<u32>(*global_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "global.set" => if let Operator::GlobalSet {global_index} = instr {
             define_imm0::<u32>(*global_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.load" => if let Operator::I32Load {memarg: MemArg {
             align,
@@ -306,7 +328,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.load" => if let Operator::I64Load {memarg: MemArg {
             align,
@@ -315,7 +337,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.load" => if let Operator::F32Load {memarg: MemArg {
             align,
@@ -324,7 +346,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.load" => if let Operator::F64Load {memarg: MemArg {
             align,
@@ -333,7 +355,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.load8_s" => if let Operator::I32Load8S {memarg: MemArg {
             align,
@@ -342,7 +364,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.load8_u" => if let Operator::I32Load8U {memarg: MemArg {
             align,
@@ -351,7 +373,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.load16_s" => if let Operator::I32Load16S {memarg: MemArg {
             align,
@@ -360,7 +382,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.load16_u" => if let Operator::I32Load16U {memarg: MemArg {
             align,
@@ -369,7 +391,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.load8_s" => if let Operator::I64Load8S {memarg: MemArg {
             align,
@@ -378,7 +400,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.load8_u" => if let Operator::I64Load8U {memarg: MemArg {
             align,
@@ -387,7 +409,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.load16_s" => if let Operator::I64Load16S {memarg: MemArg {
             align,
@@ -396,7 +418,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.load16_u" => if let Operator::I64Load16U {memarg: MemArg {
             align,
@@ -405,7 +427,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.load32_s" => if let Operator::I64Load32S {memarg: MemArg {
             align,
@@ -414,7 +436,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.load32_u" => if let Operator::I64Load32U {memarg: MemArg {
             align,
@@ -423,7 +445,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.store" => if let Operator::I32Store {memarg: MemArg {
             align,
@@ -432,7 +454,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.store" => if let Operator::I64Store {memarg: MemArg {
             align,
@@ -441,7 +463,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.store" => if let Operator::F32Store {memarg: MemArg {
             align,
@@ -450,7 +472,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.store" => if let Operator::F64Store {memarg: MemArg {
             align,
@@ -459,7 +481,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.store8" => if let Operator::I32Store8 {memarg: MemArg {
             align,
@@ -468,7 +490,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.store16" => if let Operator::I32Store16 {memarg: MemArg {
             align,
@@ -477,7 +499,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.store8" => if let Operator::I64Store8 {memarg: MemArg {
             align,
@@ -486,7 +508,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.store16" => if let Operator::I64Store16 {memarg: MemArg {
             align,
@@ -495,7 +517,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.store32" => if let Operator::I64Store32 {memarg: MemArg {
             align,
@@ -504,608 +526,608 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.size" => if let Operator::MemorySize {mem} = instr {
             define_imm0::<u32>(*mem, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.grow" => if let Operator::MemoryGrow {mem} = instr {
             define_imm0::<u32>(*mem, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.const" => if let Operator::I32Const {value} = instr {
             define_imm0::<i32>(*value, DataType::I32, &Value::gen_i32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.const" => if let Operator::I64Const {value} = instr {
             define_imm0::<i64>(*value, DataType::I64, &Value::gen_i64, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.const" => if let Operator::F32Const {value} = instr {
             define_imm0::<f32>(f32::from(*value), DataType::F32, &Value::gen_f32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.const" => if let Operator::F64Const {value} = instr {
             define_imm0::<f64>(f64::from(*value), DataType::F64, &Value::gen_f64, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.null" => if let Operator::RefNull {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.is_null" => if let Operator::RefIsNull {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.func" => if let Operator::RefFunc {function_index} = instr {
             define_imm0::<u32>(*function_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.eq" => if let Operator::RefEq {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.eqz" => if let Operator::I32Eqz {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.eq" => if let Operator::I32Eq {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.ne" => if let Operator::I32Ne {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.lt_s" => if let Operator::I32LtS {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.lt_u" => if let Operator::I32LtU {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.gt_s" => if let Operator::I32GtS {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.gt_u" => if let Operator::I32GtU {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.le_s" => if let Operator::I32LeS {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.le_u" => if let Operator::I32LeU {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.ge_s" => if let Operator::I32GeS {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.ge_u" => if let Operator::I32GeU {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.eqz" => if let Operator::I64Eqz {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.eq" => if let Operator::I64Eq {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.ne" => if let Operator::I64Ne {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.lt_s" => if let Operator::I64LtS {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.lt_u" => if let Operator::I64LtU {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.gt_s" => if let Operator::I64GtS {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.gt_u" => if let Operator::I64GtU {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.le_s" => if let Operator::I64LeS {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.le_u" => if let Operator::I64LeU {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.ge_s" => if let Operator::I64GeS {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.ge_u" => if let Operator::I64GeU {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.eq" => if let Operator::F32Eq {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.ne" => if let Operator::F32Ne {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.lt" => if let Operator::F32Lt {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.gt" => if let Operator::F32Gt {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.le" => if let Operator::F32Le {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.ge" => if let Operator::F32Ge {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.eq" => if let Operator::F64Eq {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.ne" => if let Operator::F64Ne {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.lt" => if let Operator::F64Lt {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.gt" => if let Operator::F64Gt {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.le" => if let Operator::F64Le {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.ge" => if let Operator::F64Ge {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.clz" => if let Operator::I32Clz {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.ctz" => if let Operator::I32Ctz {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.popcnt" => if let Operator::I32Popcnt {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.add" => if let Operator::I32Add {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.sub" => if let Operator::I32Sub {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.mul" => if let Operator::I32Mul {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.div_s" => if let Operator::I32DivS {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.div_u" => if let Operator::I32DivU {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.rem_s" => if let Operator::I32RemS {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.rem_u" => if let Operator::I32RemU {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.and" => if let Operator::I32And {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.or" => if let Operator::I32Or {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.xor" => if let Operator::I32Xor {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.shl" => if let Operator::I32Shl {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.shr_s" => if let Operator::I32ShrS {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.shr_u" => if let Operator::I32ShrU {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.rotl" => if let Operator::I32Rotl {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.rotr" => if let Operator::I32Rotr {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.clz" => if let Operator::I64Clz {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.ctz" => if let Operator::I64Ctz {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.popcnt" => if let Operator::I64Popcnt {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.add" => if let Operator::I64Add {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.sub" => if let Operator::I64Sub {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.mul" => if let Operator::I64Mul {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.div_s" => if let Operator::I64DivS {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.div_u" => if let Operator::I64DivU {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.rem_s" => if let Operator::I64RemS {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.rem_u" => if let Operator::I64RemU {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.and" => if let Operator::I64And {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.or" => if let Operator::I64Or {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.xor" => if let Operator::I64Xor {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.shl" => if let Operator::I64Shl {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.shr_s" => if let Operator::I64ShrS {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.shr_u" => if let Operator::I64ShrU {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.rotl" => if let Operator::I64Rotl {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.rotr" => if let Operator::I64Rotr {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.abs" => if let Operator::F32Abs {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.neg" => if let Operator::F32Neg {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.ceil" => if let Operator::F32Ceil {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.floor" => if let Operator::F32Floor {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.trunc" => if let Operator::F32Trunc {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.nearest" => if let Operator::F32Nearest {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.sqrt" => if let Operator::F32Sqrt {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.add" => if let Operator::F32Add {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.sub" => if let Operator::F32Sub {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.mul" => if let Operator::F32Mul {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.div" => if let Operator::F32Div {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.min" => if let Operator::F32Min {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.max" => if let Operator::F32Max {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.copysign" => if let Operator::F32Copysign {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.abs" => if let Operator::F64Abs {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.neg" => if let Operator::F64Neg {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.ceil" => if let Operator::F64Ceil {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.floor" => if let Operator::F64Floor {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.trunc" => if let Operator::F64Trunc {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.nearest" => if let Operator::F64Nearest {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.sqrt" => if let Operator::F64Sqrt {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.add" => if let Operator::F64Add {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.sub" => if let Operator::F64Sub {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.mul" => if let Operator::F64Mul {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.div" => if let Operator::F64Div {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.min" => if let Operator::F64Min {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.max" => if let Operator::F64Max {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.copysign" => if let Operator::F64Copysign {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.wrap_i64" => if let Operator::I32WrapI64 {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.trunc_f32_s" => if let Operator::I32TruncF32S {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.trunc_f32_u" => if let Operator::I32TruncF32U {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.trunc_f64_s" => if let Operator::I32TruncF64S {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.trunc_f64_u" => if let Operator::I32TruncF64U {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.extend_i32_s" => if let Operator::I64ExtendI32S {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.extend_i32_u" => if let Operator::I64ExtendI32U {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.trunc_f32_s" => if let Operator::I64TruncF32S {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.trunc_f32_u" => if let Operator::I64TruncF32U {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.convert_i32_s" => if let Operator::F32ConvertI32S {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.convert_i32_u" => if let Operator::F32ConvertI32U {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.convert_i64_s" => if let Operator::F32ConvertI64S {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.convert_i64_u" => if let Operator::F32ConvertI64U {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.demote_f64" => if let Operator::F32DemoteF64 {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.convert_i32_s" => if let Operator::F64ConvertI32S {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.convert_i32_u" => if let Operator::F64ConvertI32U {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.convert_i64_s" => if let Operator::F64ConvertI64S {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.convert_i64_u" => if let Operator::F64ConvertI64U {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.promote_f32" => if let Operator::F64PromoteF32 {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.reinterpret_f32" => if let Operator::I32ReinterpretF32 {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.reinterpret_f64" => if let Operator::I64ReinterpretF64 {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.reinterpret_i32" => if let Operator::F32ReinterpretI32 {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.reinterpret_i64" => if let Operator::F64ReinterpretI64 {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.extend8_s" => if let Operator::I32Extend8S {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.extend16_s" => if let Operator::I32Extend16S {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.extend8_s" => if let Operator::I64Extend8S {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.extend16_s" => if let Operator::I64Extend16S {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.extend32_s" => if let Operator::I64Extend32S {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "struct.new" => if let Operator::StructNew {struct_type_index} = instr {
             define_imm0::<u32>(*struct_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "struct.new_default" => if let Operator::StructNewDefault {struct_type_index} = instr {
             define_imm0::<u32>(*struct_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "struct.get" => if let Operator::StructGet {struct_type_index, field_index} = instr {
             define_imm0_u32_imm1_u32(*struct_type_index, *field_index, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "struct.get_s" => if let Operator::StructGetS {struct_type_index, field_index} = instr {
             define_imm0_u32_imm1_u32(*struct_type_index, *field_index, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "struct.get_u" => if let Operator::StructGetU {struct_type_index, field_index} = instr {
             define_imm0_u32_imm1_u32(*struct_type_index, *field_index, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "struct.set" => if let Operator::StructSet {struct_type_index, field_index} = instr {
             define_imm0_u32_imm1_u32(*struct_type_index, *field_index, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.new" => if let Operator::ArrayNew {array_type_index} = instr {
             define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.new_default" => if let Operator::ArrayNewDefault {array_type_index} = instr {
             define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.new_fixed" => if let Operator::ArrayNewFixed {array_type_index, array_size} = instr {
             define_imm0_u32_imm1_u32(*array_type_index, *array_size, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.new_data" => if let Operator::ArrayNewData {array_type_index, array_data_index} = instr {
             define_imm0_u32_imm1_u32(*array_type_index, *array_data_index, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.new_elem" => if let Operator::ArrayNewElem {array_type_index, array_elem_index} = instr {
             define_imm0_u32_imm1_u32(*array_type_index, *array_elem_index, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.get" => if let Operator::ArrayGet {array_type_index} = instr {
             define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.get_s" => if let Operator::ArrayGetS {array_type_index} = instr {
             define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.get_u" => if let Operator::ArrayGetU {array_type_index} = instr {
             define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.set" => if let Operator::ArraySet {array_type_index} = instr {
             define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.len" => if let Operator::ArrayLen = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.fill" => if let Operator::ArrayFill {array_type_index} = instr {
             define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.copy" => if let Operator::ArrayCopy {array_type_index_dst, array_type_index_src} = instr {
             define_imm0_u32_imm1_u32(*array_type_index_dst, *array_type_index_src, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.init_data" => if let Operator::ArrayInitData {array_type_index, array_data_index} = instr {
             define_imm0_u32_imm1_u32(*array_type_index, *array_data_index, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.init_elem" => if let Operator::ArrayInitElem {array_type_index, array_elem_index} = instr {
             define_imm0_u32_imm1_u32(*array_type_index, *array_elem_index, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.test" => if let Operator::RefTestNonNull {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.test_null" => if let Operator::RefTestNullable {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.cast" => if let Operator::RefCastNonNull {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.cast_null" => if let Operator::RefCastNullable {..} = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "br_on_cast" => if let Operator::BrOnCast {relative_depth, ..} = instr {
             define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "br_on_cast_fail" => if let Operator::BrOnCastFail {relative_depth, ..} = instr {
             define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "any.convert_extern" => if let Operator::AnyConvertExtern = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "extern.convert_any" => if let Operator::ExternConvertAny = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.i31" => if let Operator::RefI31 = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i31.get_s" => if let Operator::I31GetS = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i31.get_u" => if let Operator::I31GetU = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.trunc_sat_f32_s" => if let Operator::I32TruncSatF32S = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.trunc_sat_f32_u" => if let Operator::I32TruncSatF32U = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.trunc_sat_f64_s" => if let Operator::I32TruncSatF64S = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.trunc_sat_f64_u" => if let Operator::I32TruncSatF64U = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.trunc_sat_f32_s" => if let Operator::I64TruncSatF32S = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.trunc_sat_f32_u" => if let Operator::I64TruncSatF32U = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.trunc_sat_f64_s" => if let Operator::I64TruncSatF64S = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.trunc_sat_f64_u" => if let Operator::I64TruncSatF64U = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.init" => if let Operator::MemoryInit {data_index, mem} = instr {
             define_imm0_u32_imm1_u32(*data_index, *mem, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.copy" => if let Operator::MemoryCopy {dst_mem, src_mem} = instr {
             define_imm0_u32_imm1_u32(*dst_mem, *src_mem, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.fill" => if let Operator::MemoryFill {mem} = instr {
             define_imm0::<u32>(*mem, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "data.drop" => if let Operator::DataDrop {data_index} = instr {
             define_imm0::<u32>(*data_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "elem.drop" => if let Operator::ElemDrop {elem_index} = instr {
             define_imm0::<u32>(*elem_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.copy" => if let Operator::TableCopy {dst_table, src_table} = instr {
             define_imm0_u32_imm1_u32(*dst_table, *src_table, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.init" => if let Operator::TableInit {elem_index, table} = instr {
             define_imm0_u32_imm1_u32(*elem_index, *table, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.fill" => if let Operator::TableFill {table} = instr {
             define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.get" => if let Operator::TableGet {table} = instr {
             define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.set" => if let Operator::TableSet {table} = instr {
             define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.grow" => if let Operator::TableGrow {table} = instr {
             define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.size" => if let Operator::TableSize {table} = instr {
             define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.atomic_notify" => if let Operator::MemoryAtomicNotify {memarg: MemArg {
             align,
@@ -1114,7 +1136,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.atomic_wait32" => if let Operator::MemoryAtomicWait32 {memarg: MemArg {
             align,
@@ -1123,7 +1145,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.atomic_wait64" => if let Operator::MemoryAtomicWait64 {memarg: MemArg {
             align,
@@ -1132,10 +1154,10 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "atomic.fence" => if let Operator::AtomicFence = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_load" => if let Operator::I32AtomicLoad {memarg: MemArg {
             align,
@@ -1144,7 +1166,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_load" => if let Operator::I64AtomicLoad {memarg: MemArg {
             align,
@@ -1153,7 +1175,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_load8_u" => if let Operator::I32AtomicLoad8U {memarg: MemArg {
             align,
@@ -1162,7 +1184,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_load16_u" => if let Operator::I32AtomicLoad16U {memarg: MemArg {
             align,
@@ -1171,7 +1193,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_load8_u" => if let Operator::I64AtomicLoad8U {memarg: MemArg {
             align,
@@ -1180,7 +1202,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_load16_u" => if let Operator::I64AtomicLoad16U {memarg: MemArg {
             align,
@@ -1189,7 +1211,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_load32_u" => if let Operator::I64AtomicLoad32U {memarg: MemArg {
             align,
@@ -1198,7 +1220,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_store" => if let Operator::I32AtomicStore {memarg: MemArg {
             align,
@@ -1207,7 +1229,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_store8" => if let Operator::I32AtomicStore8 {memarg: MemArg {
             align,
@@ -1216,7 +1238,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_store16" => if let Operator::I32AtomicStore16 {memarg: MemArg {
             align,
@@ -1225,7 +1247,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_store" => if let Operator::I64AtomicStore {memarg: MemArg {
             align,
@@ -1234,7 +1256,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_store8" => if let Operator::I64AtomicStore8 {memarg: MemArg {
             align,
@@ -1243,7 +1265,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_store16" => if let Operator::I64AtomicStore16 {memarg: MemArg {
             align,
@@ -1252,7 +1274,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_store32" => if let Operator::I64AtomicStore32 {memarg: MemArg {
             align,
@@ -1261,7 +1283,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw_add" => if let Operator::I32AtomicRmwAdd {memarg: MemArg {
             align,
@@ -1270,7 +1292,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw8_add_u" => if let Operator::I32AtomicRmw8AddU {memarg: MemArg {
             align,
@@ -1279,7 +1301,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw16_add_u" => if let Operator::I32AtomicRmw16AddU {memarg: MemArg {
             align,
@@ -1288,7 +1310,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw_add" => if let Operator::I64AtomicRmwAdd {memarg: MemArg {
             align,
@@ -1297,7 +1319,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw8_add_u" => if let Operator::I64AtomicRmw8AddU {memarg: MemArg {
             align,
@@ -1306,7 +1328,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw16_add_u" => if let Operator::I64AtomicRmw16AddU {memarg: MemArg {
             align,
@@ -1315,7 +1337,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw32_add_u" => if let Operator::I64AtomicRmw32AddU {memarg: MemArg {
             align,
@@ -1324,7 +1346,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw_sub" => if let Operator::I32AtomicRmwSub {memarg: MemArg {
             align,
@@ -1333,7 +1355,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw8_sub_u" => if let Operator::I32AtomicRmw8SubU {memarg: MemArg {
             align,
@@ -1342,7 +1364,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw16_sub_u" => if let Operator::I32AtomicRmw16SubU {memarg: MemArg {
             align,
@@ -1351,7 +1373,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw_sub" => if let Operator::I64AtomicRmwSub {memarg: MemArg {
             align,
@@ -1360,7 +1382,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw8_sub_u" => if let Operator::I64AtomicRmw8SubU {memarg: MemArg {
             align,
@@ -1369,7 +1391,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw16_sub_u" => if let Operator::I64AtomicRmw16SubU {memarg: MemArg {
             align,
@@ -1378,7 +1400,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw32_sub_u" => if let Operator::I64AtomicRmw32SubU {memarg: MemArg {
             align,
@@ -1387,7 +1409,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw_and" => if let Operator::I32AtomicRmwAnd {memarg: MemArg {
             align,
@@ -1396,7 +1418,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw8_and_u" => if let Operator::I32AtomicRmw8AndU {memarg: MemArg {
             align,
@@ -1405,7 +1427,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw16_and_u" => if let Operator::I32AtomicRmw16AndU {memarg: MemArg {
             align,
@@ -1414,7 +1436,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw_and" => if let Operator::I64AtomicRmwAnd {memarg: MemArg {
             align,
@@ -1423,7 +1445,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw8_and_u" => if let Operator::I64AtomicRmw8AndU {memarg: MemArg {
             align,
@@ -1432,7 +1454,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw16_and_u" => if let Operator::I64AtomicRmw16AndU {memarg: MemArg {
             align,
@@ -1441,7 +1463,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw32_and_u" => if let Operator::I64AtomicRmw32AndU {memarg: MemArg {
             align,
@@ -1450,7 +1472,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw_or" => if let Operator::I32AtomicRmwOr {memarg: MemArg {
             align,
@@ -1459,7 +1481,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw8_or_u" => if let Operator::I32AtomicRmw8OrU {memarg: MemArg {
             align,
@@ -1468,7 +1490,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw16_or_u" => if let Operator::I32AtomicRmw16OrU {memarg: MemArg {
             align,
@@ -1477,7 +1499,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw_or" => if let Operator::I64AtomicRmwOr {memarg: MemArg {
             align,
@@ -1486,7 +1508,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw8_or_u" => if let Operator::I64AtomicRmw8OrU {memarg: MemArg {
             align,
@@ -1495,7 +1517,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw16_or_u" => if let Operator::I64AtomicRmw16OrU {memarg: MemArg {
             align,
@@ -1504,7 +1526,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw32_or_u" => if let Operator::I64AtomicRmw32OrU {memarg: MemArg {
             align,
@@ -1513,7 +1535,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw_xor" => if let Operator::I32AtomicRmwXor {memarg: MemArg {
             align,
@@ -1522,7 +1544,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw8_xor_u" => if let Operator::I32AtomicRmw8XorU {memarg: MemArg {
             align,
@@ -1531,7 +1553,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw16_xor_u" => if let Operator::I32AtomicRmw16XorU {memarg: MemArg {
             align,
@@ -1540,7 +1562,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw_xor" => if let Operator::I64AtomicRmwXor {memarg: MemArg {
             align,
@@ -1549,7 +1571,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw8_xor_u" => if let Operator::I64AtomicRmw8XorU {memarg: MemArg {
             align,
@@ -1558,7 +1580,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw16_xor_u" => if let Operator::I64AtomicRmw16XorU {memarg: MemArg {
             align,
@@ -1567,7 +1589,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw32_xor_u" => if let Operator::I64AtomicRmw32XorU {memarg: MemArg {
             align,
@@ -1576,7 +1598,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw_xchg" => if let Operator::I32AtomicRmwXchg {memarg: MemArg {
             align,
@@ -1585,7 +1607,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw8_xchg_u" => if let Operator::I32AtomicRmw8XchgU {memarg: MemArg {
             align,
@@ -1594,7 +1616,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw16_xchg_u" => if let Operator::I32AtomicRmw16XchgU {memarg: MemArg {
             align,
@@ -1603,7 +1625,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw_xchg" => if let Operator::I64AtomicRmwXchg {memarg: MemArg {
             align,
@@ -1612,7 +1634,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw8_xchg_u" => if let Operator::I64AtomicRmw8XchgU {memarg: MemArg {
             align,
@@ -1621,7 +1643,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw16_xchg_u" => if let Operator::I64AtomicRmw16XchgU {memarg: MemArg {
             align,
@@ -1630,7 +1652,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw32_xchg_u" => if let Operator::I64AtomicRmw32XchgU {memarg: MemArg {
             align,
@@ -1639,7 +1661,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw_cmpxchg" => if let Operator::I32AtomicRmwCmpxchg {memarg: MemArg {
             align,
@@ -1648,7 +1670,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw8_cmpxchg_u" => if let Operator::I32AtomicRmw8CmpxchgU {memarg: MemArg {
             align,
@@ -1657,7 +1679,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw16_cmpxchg_u" => if let Operator::I32AtomicRmw16CmpxchgU {memarg: MemArg {
             align,
@@ -1666,7 +1688,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw_cmpxchg" => if let Operator::I64AtomicRmwCmpxchg {memarg: MemArg {
             align,
@@ -1675,7 +1697,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw8_cmpxchg_u" => if let Operator::I64AtomicRmw8CmpxchgU {memarg: MemArg {
             align,
@@ -1684,7 +1706,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw16_cmpxchg_u" => if let Operator::I64AtomicRmw16CmpxchgU {memarg: MemArg {
             align,
@@ -1693,7 +1715,7 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw32_cmpxchg_u" => if let Operator::I64AtomicRmw32CmpxchgU {memarg: MemArg {
             align,
@@ -1702,26 +1724,26 @@ fn handle_opcode_events(
             ..
         }} = instr {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "call_ref" => if let Operator::CallRef {type_index} = instr {
             define_imm0::<u32>(*type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "return_call_ref" => if let Operator::ReturnCallRef {type_index} = instr {
             define_imm0::<u32>(*type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.as_non_null" => if let Operator::RefAsNonNull = instr {
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "br_on_null" => if let Operator::BrOnNull {relative_depth} = instr {
             define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "br_on_non_null" => if let Operator::BrOnNonNull {relative_depth} = instr {
             define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         _ => panic!("Event not available: 'wasm:opcode:{event}'"),
     }
@@ -1730,7 +1752,7 @@ fn handle_opcode_events(
 
     // figure out which args are requested based on matched probes
     let mut probes_to_remove = vec![];
-    for (i, (_, probe)) in loc_info.probes.iter_mut().enumerate() {
+    for (i, (_, probe, _)) in loc_info.probes.iter_mut().enumerate() {
         if probe.metadata.body_args.req_args.matches(all_args.len()) {
             req_args.combine(&probe.metadata.body_args.req_args);
         } else {
@@ -2396,6 +2418,195 @@ pub fn get_ty_info_for_instr(
     (args, ty_id)
 }
 
+fn handle_block(
+    app_wasm: &Module,
+    state: &mut MatchState,
+    at_func_end: bool,
+    fid: &FunctionID,
+    pc: usize,
+    instr: &Operator,
+    pkg: &SimplePkg,
+) -> Option<LocInfo> {
+    let mut res: Option<LocInfo> = None;
+    let mut handle_evt = |name: &str, evt: &SimpleEvt| {
+        // See OpcodeEvent.get_loc_info
+        if let Some(mut tmp) = handle_block_events(
+            app_wasm,
+            state,
+            at_func_end,
+            fid,
+            pc,
+            instr,
+            &name.to_string(),
+            evt,
+        ) {
+            if let Some(r) = &mut res {
+                r.append(&mut tmp);
+            } else {
+                res = Some(tmp);
+            }
+        }
+    };
+
+    // Retain the following order for semantics
+    // FIRST, exit
+    // SECOND, entry
+    if let Some(evt) = pkg.evts.get("exit") {
+        handle_evt("exit", evt);
+    }
+    if let Some(evt) = pkg.evts.get("entry") {
+        handle_evt("entry", evt);
+    }
+    res
+}
+
+#[derive(Default)]
+pub struct MatchState {
+    basic_blocks: BasicBlockState,
+}
+
+// State to encode the start and end opcode index of a basic block.
+// TODO: track whether ends are branched to using a control stack.
+//       If this end has a branch to it, end the previous block, if there was one.
+#[derive(Default)]
+struct BasicBlockState {
+    start: usize,
+    end: usize,
+}
+impl BasicBlockState {
+    fn reset(&mut self) {
+        self.start = 0;
+        self.end = 0;
+    }
+    fn continue_block(&mut self) {
+        self.end += 1;
+    }
+    fn end_block_here(&mut self) {
+        self.start = self.end;
+    }
+    fn get_instr_cnt(&self) -> usize {
+        self.end - self.start
+    }
+}
+
+#[rustfmt::skip]
+fn handle_block_events(
+    app_wasm: &Module,
+    state: &mut MatchState,
+    at_func_end: bool,
+    _fid: &FunctionID,
+    pc: usize,
+    instr: &Operator,
+    event: &String,
+    evt: &SimpleEvt,
+) -> Option<LocInfo> {
+    let mut loc_info = LocInfo::new();
+
+    let probe_rule = ProbeRule {
+        provider: Some(RulePart::new("wasm".to_string(), None)),
+        package: Some(RulePart::new("block".to_string(), None)),
+        event: Some(RulePart::new(event.clone(), None)),
+        mode: None,
+    };
+
+    let block_state = &mut state.basic_blocks;
+    // reset the state if we've entered a new function!
+    if pc == 0 { block_state.reset() }
+
+    let is_prog_exit = is_prog_exit_call(instr, app_wasm);
+
+    // See for implementation:
+    // https://github.com/titzer/wizard-engine/blob/master/src/util/BasicBlockIterator.v3
+    let mode = match instr {
+        Operator::Loop {..} |
+        // TODO (for End): track whether ends are branched to using a control stack.
+        //       If this end has a branch to it, end the previous block, if there was one.
+        Operator::End => {
+            if block_state.start != pc {
+                define_block_data(event.as_str(), block_state, &mut loc_info);
+                block_state.end_block_here();
+                match event.as_str() {
+                    "entry" |
+                    "exit" => if matches!(instr, Operator::End) && !at_func_end {
+                        // semantics of End requires that this be injected AFTER to it executes!
+                        Some(InstrumentationMode::After)
+                    } else {
+                        Some(InstrumentationMode::Before)
+                    },
+                    _ => panic!("Event not available: 'wasm:block:{event}'"),
+                }
+            } else if pc == 0 && event == "entry" {
+                // if we're at the start of the function, we want to insert basic block entry probes
+                define_block_data(event.as_str(), block_state, &mut loc_info);
+                block_state.continue_block();
+                Some(InstrumentationMode::Before)
+            } else {
+                None
+            }
+        },
+
+        // Bytecodes that end the current block after this instruction.
+        Operator::If {..} |
+        Operator::Else |
+        Operator::Catch {..} |
+        Operator::CatchAll |
+        Operator::Throw {..} |
+        Operator::Rethrow {..} |
+        Operator::Return |
+        Operator::Unreachable |
+        Operator::Br {..} |
+        Operator::BrTable {..} |
+        Operator::BrIf {..} |
+        Operator::BrOnCast {..} |
+        Operator::BrOnCastFail {..} |
+        Operator::BrOnNull {..} |
+        Operator::BrOnNonNull {..} => {
+            // End the current block after this instruction.
+            block_state.continue_block();
+            define_block_data(event.as_str(), block_state, &mut loc_info);
+            block_state.end_block_here();
+
+            match event.as_str() {
+                // exit | : before this instruction (to ensure it executes)
+                "entry" |
+                "exit" => Some(InstrumentationMode::Before),
+                _ => panic!("Event not available: 'wasm:block:{event}'"),
+            }
+        },
+        _ => {
+            block_state.continue_block();
+            // handle block:entry at the top of a function!
+            if (pc == 0 && event == "entry")
+                // handle block:exit if this is program exit call
+                || (is_prog_exit && event == "exit") {
+                Some(InstrumentationMode::Before)
+            } else {
+                None
+            }
+        }
+    };
+
+    if mode.is_some() {
+        loc_info.add_probes(probe_rule.clone(), evt, mode);
+    }
+
+    loc_info.is_prog_exit = is_prog_exit;
+    if loc_info.has_match() || is_prog_exit {
+        Some(loc_info)
+    } else {
+        None
+    }
+}
+
+fn define_block_data(evt: &str, block_state: &BasicBlockState, loc_info: &mut LocInfo) {
+    if evt == "exit" {
+        loc_info.static_data.insert(
+            "instr_count".to_string(),
+            Some(Value::gen_u32(block_state.get_instr_cnt() as u32)),
+        );
+    }
+}
+
 fn handle_func(
     app_wasm: &Module,
     fid: &FunctionID,
@@ -2443,12 +2654,12 @@ fn handle_func_events(
             // if this is program exit, we want to inject the function exit logic (as opcode:before)!
             // we're at the start of the function, inject both of these types of special events!
             // we only want to inject entry/exit events once.
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         }
         "entry" => if pc == 0 {
             // we're at the start of the function, inject both of these types of special events!
             // we only want to inject entry/exit events once.
-            loc_info.add_probes(probe_rule.clone(), evt);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         _ => panic!("Event not available: 'wasm:func:{event}'"),
     }
@@ -2553,7 +2764,7 @@ pub struct LocInfo {
     pub num_alt_probes: usize,
     /// the probes that were matched for this instruction
     /// note the Script ID is contained in Probe
-    pub probes: Vec<(ProbeRule, Probe)>,
+    pub probes: Vec<(ProbeRule, Probe, Option<InstrumentationMode>)>,
 }
 impl LocInfo {
     fn new() -> Self {
@@ -2562,7 +2773,12 @@ impl LocInfo {
     fn has_match(&self) -> bool {
         !self.probes.is_empty()
     }
-    fn add_probes(&mut self, base_rule: ProbeRule, probes: &SimpleEvt) {
+    fn add_probes(
+        &mut self,
+        base_rule: ProbeRule,
+        probes: &SimpleEvt,
+        mode: Option<InstrumentationMode>,
+    ) {
         probes.modes.iter().for_each(|(probe_mode, probes)| {
             let mut rule = base_rule.clone();
             rule.mode = Some(probe_mode.clone());
@@ -2573,7 +2789,7 @@ impl LocInfo {
             }
             probes.iter().for_each(|probe| {
                 // TODO -- remove this probe.clone()...works for now though...
-                self.probes.push((rule.clone(), probe.clone()));
+                self.probes.push((rule.clone(), probe.clone(), mode));
             });
         })
     }

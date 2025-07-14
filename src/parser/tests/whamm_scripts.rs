@@ -716,7 +716,7 @@ wasm::call:alt /
     assert_eq!(1, script.providers.len());
     let provider = script.providers.get("wasm").unwrap();
     assert_eq!("wasm", provider.def.name);
-    assert_eq!(4, provider.def.bound_vars.len());
+    assert_eq!(6, provider.def.bound_vars.len());
     assert_eq!(0, provider.def.bound_fns.len());
 
     assert_eq!(1, provider.packages.len());
@@ -728,7 +728,7 @@ wasm::call:alt /
     assert_eq!(1, package.events.len());
     let (_, event) = package.events.iter().next().unwrap();
     assert_eq!("call", event.def.name);
-    assert_eq!(7, event.def.bound_vars.len());
+    assert_eq!(8, event.def.bound_vars.len());
     assert_eq!(2, event.def.bound_fns.len());
 
     assert_eq!(1, event.probes.len());

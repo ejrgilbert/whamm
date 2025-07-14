@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_tag_for;
@@ -50,6 +52,7 @@ pub fn link_core_lib(
                 app_wasm,
                 &None,
                 WHAMM_CORE_LIB_NAME.to_string(),
+                &None,
                 &core_lib,
                 *package,
                 err,
@@ -64,6 +67,7 @@ pub fn link_user_lib(
     loc: &Option<Location>,
     lib_wasm: &Module,
     lib_name: String,
+    lib_name_import_override: &Option<String>,
     used_lib_fns: &HashSet<String>,
     table: &mut SymbolTable,
     err: &mut ErrorGen,
@@ -72,6 +76,7 @@ pub fn link_user_lib(
         app_wasm,
         loc,
         lib_name,
+        lib_name_import_override,
         lib_wasm,
         used_lib_fns,
         Some(table),
@@ -104,6 +109,7 @@ fn import_lib_package(
     app_wasm: &mut Module,
     loc: &Option<Location>,
     lib_name: String,
+    lib_name_import_override: &Option<String>,
     lib_wasm: &Module,
     package: &mut dyn LibPackage,
     err: &mut ErrorGen,
@@ -115,6 +121,7 @@ fn import_lib_package(
         app_wasm,
         loc,
         lib_name,
+        lib_name_import_override,
         lib_wasm,
         &HashSet::from_iter(package.get_fn_names().iter().cloned()),
         None,
@@ -137,6 +144,7 @@ fn import_lib_fn_names(
     app_wasm: &mut Module,
     loc: &Option<Location>,
     lib_name: String,
+    lib_name_import_override: &Option<String>,
     lib_wasm: &Module,
     lib_fns: &HashSet<String>,
     mut table: Option<&mut SymbolTable>,
@@ -149,9 +157,15 @@ fn import_lib_fn_names(
             if lib_fns.contains(&export.name) {
                 let func = lib_wasm.functions.get(FunctionID(export.index));
                 if let Some(ty) = lib_wasm.types.get(func.get_type_id()) {
+                    let import_name = if let Some(name_override) = lib_name_import_override {
+                        name_override.as_str()
+                    } else {
+                        lib_name.as_str()
+                    };
                     let fn_name = export.name.as_str();
+
                     let fid = import_func(
-                        lib_name.as_str(),
+                        import_name,
                         fn_name,
                         &ty.params().clone(),
                         &ty.results().clone(),

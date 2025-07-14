@@ -48,7 +48,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 4, global_id, atomic, u32, i32, script0, , , , , 0
 5, global_id, compare, u32, i32, script0, , , , , 5575
 6, global_id, const, u32, i32, script0, , , , , 17583
-7, global_id, control, u32, i32, script0, , , , , 24356
+7, global_id, control, u32, i32, script0, , , , , 25190
 8, global_id, convert, u32, i32, script0, , , , , 444
 9, global_id, exn, u32, i32, script0, , , , , 0
 10, global_id, gc, u32, i32, script0, , , , , 0

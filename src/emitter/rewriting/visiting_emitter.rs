@@ -1,6 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::rules::{
-    get_loc_info_for_active_probes, get_ty_info_for_instr, Arg, LocInfo, ProbeRule,
+    get_loc_info_for_active_probes, get_ty_info_for_instr, Arg, LocInfo, MatchState, ProbeRule,
 };
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
@@ -152,14 +152,18 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         }
     }
 
-    pub(crate) fn get_loc_info(&self, ast: &SimpleAST) -> Option<LocInfo> {
+    pub(crate) fn get_loc_info(&self, state: &mut MatchState, ast: &SimpleAST) -> Option<LocInfo> {
         let (loc, at_func_end) = self.app_iter.curr_loc();
-        if at_func_end {
-            // We're at the 'end' opcode of the function...don't instrument
-            return None;
-        }
+
         if let Some(curr_instr) = self.app_iter.curr_op() {
-            get_loc_info_for_active_probes(self.app_iter.module, loc, curr_instr, ast)
+            get_loc_info_for_active_probes(
+                self.app_iter.module,
+                state,
+                loc,
+                at_func_end,
+                curr_instr,
+                ast,
+            )
         } else {
             None
         }
@@ -242,9 +246,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     ty: DataType::I32, // we only support integers right now.
                     value: None,
                     def: Definition::User,
-                    addr: Some(VarAddr::Local {
+                    addr: Some(vec![VarAddr::Local {
                         addr: *arg_local_id,
-                    }),
+                    }]),
                     loc: None,
                 },
             );
@@ -258,10 +262,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         for (_param_name, param_rec_id) in self.instr_created_args.iter() {
             let param_rec = self.table.get_record_mut(*param_rec_id);
             if let Some(Record::Var {
-                addr: Some(VarAddr::Local { addr }),
-                ..
+                addr: Some(addrs), ..
             }) = param_rec
             {
+                let VarAddr::Local { addr } = addrs.first().unwrap() else {
+                    assert_eq!(addrs.len(), 1);
+                    panic!("arg address should be represented with a single address")
+                };
                 // Inject at tracker.orig_instr_idx to make sure that this actually emits the args
                 // for the instrumented instruction right before that instruction is called!
                 self.app_iter.local_get(LocalID(*addr));
@@ -308,7 +315,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         self.table.override_record_addr(
             var_name,
             DataType::from_wasm_type(var_ty),
-            Some(alias_addr.clone()),
+            Some(vec![alias_addr.clone()]),
         );
         true
     }
@@ -721,7 +728,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.table.lookup_var_mut(VAR_BLOCK_BASE_VAR, false)
             {
                 *value = Some(Value::gen_u32(offset_value));
-                *addr = Some(VarAddr::Local { addr: id });
+                *addr = Some(vec![VarAddr::Local { addr: id }]);
             } else {
                 self.table.put(
                     VAR_BLOCK_BASE_VAR.to_string(),
@@ -729,7 +736,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                         ty: DataType::I32,
                         value: Some(Value::gen_u32(offset_value)),
                         def: Definition::CompilerStatic,
-                        addr: Some(VarAddr::Local { addr: id }),
+                        addr: Some(vec![VarAddr::Local { addr: id }]),
                         loc: None,
                     },
                 );

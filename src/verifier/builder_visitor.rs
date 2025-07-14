@@ -18,7 +18,7 @@ const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a 
 
 pub struct SymbolTableBuilder<'a, 'b, 'c> {
     pub table: SymbolTable,
-    pub user_libs: &'b HashMap<String, Module<'c>>,
+    pub user_libs: &'b HashMap<String, (Option<String>, Module<'c>)>,
     pub err: &'a mut ErrorGen,
     pub curr_whamm: Option<usize>,  // indexes into this::table::records
     pub curr_script: Option<usize>, // indexes into this::table::records
@@ -270,7 +270,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
         // functions should be globally accessible within the scope of the
         // script. Not having a scope for the Library supports this!
 
-        if let Some(lib_module) = self.user_libs.get(lib_name) {
+        if let Some((_, lib_module)) = self.user_libs.get(lib_name) {
             // add user library to the current scope (should be Script)
             // enters a new scope (named 'lib_name')
             // for each exported function in 'lib_module':

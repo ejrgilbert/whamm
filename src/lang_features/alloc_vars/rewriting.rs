@@ -238,11 +238,11 @@ impl UnsharedVarHandler {
             };
 
             // var_addr points to the memory location of the value, skips the header!
-            *addr = Some(VarAddr::MemLoc {
+            *addr = Some(vec![VarAddr::MemLoc {
                 mem_id: self.mem_id,
                 ty: ty.clone(),
                 var_offset: curr_offset + allocated_var.num_bytes_header() as u32,
-            });
+            }]);
 
             curr_offset += allocated_var.num_bytes() as u32;
 
