@@ -178,7 +178,10 @@ pub fn run_on_module(
         Ok(unparsed_str) => unparsed_str,
         Err(error) => {
             let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
-            err.add_error(ErrorGen::get_instrumentation_error(format!("Cannot read specified file {}: {}", script_path, error)));
+            err.add_error(ErrorGen::get_instrumentation_error(format!(
+                "Cannot read specified file {}: {}",
+                script_path, error
+            )));
             return Err(Box::new(err));
         }
     };
@@ -240,12 +243,13 @@ pub fn run(
     // Process the script
     let mut whamm = match get_script_ast(def_yamls, whamm_script, &mut err) {
         Ok(whamm) => whamm,
-        Err(_) => return Err(Box::new(err))
+        Err(_) => return Err(Box::new(err)),
     };
-    let (mut symbol_table, has_reports) = match get_symbol_table(&mut whamm, &user_lib_modules, &mut err) {
-        Ok(r) => r,
-        Err(_) => return Err(Box::new(err))
-    };
+    let (mut symbol_table, has_reports) =
+        match get_symbol_table(&mut whamm, &user_lib_modules, &mut err) {
+            Ok(r) => r,
+            Err(_) => return Err(Box::new(err)),
+        };
 
     // If there were any errors encountered, report and exit!
     if err.has_errors {
@@ -272,7 +276,7 @@ pub fn run(
         target_wasm,
         core_lib,
         &mut mem_allocator,
-        &mut core_packages
+        &mut core_packages,
     );
 
     // make the used user library functions the correct form
@@ -318,7 +322,7 @@ pub fn run(
                 get_tag_for(&None),
             ));
 
-        if let Err(_) = run_instr_rewrite(
+        if run_instr_rewrite(
             metrics,
             &mut whamm,
             metadata_collector,
@@ -332,7 +336,9 @@ pub fn run(
             &mut report_vars,
             &mut unshared_var_handler,
             &mut injected_core_lib_funcs,
-        ) {
+        )
+        .is_err()
+        {
             return Err(Box::new(err));
         }
 
@@ -583,7 +589,11 @@ fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> Resu
     Ok(has_reports)
 }
 
-fn get_script_ast(def_yamls: &Vec<String>, script: &String, err: &mut ErrorGen) -> Result<Whamm, ()> {
+fn get_script_ast(
+    def_yamls: &Vec<String>,
+    script: &String,
+    err: &mut ErrorGen,
+) -> Result<Whamm, ()> {
     // Parse the script and build the AST
     match parse_script(def_yamls, script, err) {
         Some(ast) => {
@@ -593,8 +603,6 @@ fn get_script_ast(def_yamls: &Vec<String>, script: &String, err: &mut ErrorGen) 
             }
             Ok(ast)
         }
-        None => {
-            Err(())
-        }
+        None => Err(()),
     }
 }

@@ -364,8 +364,9 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 }
                 _ => {
                     unreachable!(
-                            "{} Unexpected probe mode '{}'",UNEXPECTED_ERR_MSG,
-                            curr_probe_mode.name()
+                        "{} Unexpected probe mode '{}'",
+                        UNEXPECTED_ERR_MSG,
+                        curr_probe_mode.name()
                     );
                 }
             }

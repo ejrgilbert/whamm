@@ -92,9 +92,7 @@ pub fn instrument_module_with_rewriting(
         Config::default_rewriting(),
     ) {
         Ok(res) => Ok(res),
-        Err(e) => {
-            Err(WhammError::from_errs(e.pull_errs()))
-        }
+        Err(e) => Err(WhammError::from_errs(e.pull_errs())),
     }
 }
 
@@ -121,9 +119,7 @@ pub fn generate_monitor_module(
         defs_path,
     ) {
         Ok(res) => Ok(res),
-        Err(e) => {
-            Err(WhammError::from_errs(e.pull_errs()))
-        }
+        Err(e) => Err(WhammError::from_errs(e.pull_errs())),
     }
 }
 
@@ -680,14 +676,14 @@ pub struct WhammError {
     pub err_loc: Option<CodeLocation>,
     /// A location within the input string that can add context to the error
     pub info_loc: Option<CodeLocation>,
-    pub msg: String
+    pub msg: String,
 }
 impl From<&ErrorInternal> for WhammError {
     fn from(value: &ErrorInternal) -> Self {
         Self {
             err_loc: value.err_loc.clone(),
             info_loc: value.info_loc.clone(),
-            msg: value.ty.message().to_string()
+            msg: value.ty.message().to_string(),
         }
     }
 }

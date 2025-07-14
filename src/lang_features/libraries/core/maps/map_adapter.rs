@@ -46,10 +46,7 @@ impl LibAdapter for MapLibAdapter {
     fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32> {
         &mut self.funcs
     }
-    fn define_helper_funcs(
-        &mut self,
-        app_wasm: &mut Module
-    ) -> Vec<FunctionID> {
+    fn define_helper_funcs(&mut self, app_wasm: &mut Module) -> Vec<FunctionID> {
         self.emit_helper_funcs(app_wasm)
     }
 }
@@ -125,10 +122,7 @@ impl MapLibAdapter {
         }
     }
 
-    pub fn emit_helper_funcs(
-        &mut self,
-        _app_wasm: &mut Module
-    ) -> Vec<FunctionID> {
+    pub fn emit_helper_funcs(&mut self, _app_wasm: &mut Module) -> Vec<FunctionID> {
         // (nothing to do)
         vec![]
     }
@@ -262,7 +256,7 @@ impl MapLibAdapter {
     pub fn print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         map_id: u32,
-        func: &mut T
+        func: &mut T,
     ) {
         func.u32_const(map_id);
         self.call_print_map(func)
@@ -280,7 +274,7 @@ impl MapLibAdapter {
 
     pub(crate) fn call_print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
-        func: &mut T
+        func: &mut T,
     ) {
         self.call(PRINT_MAP, func)
     }
@@ -412,11 +406,7 @@ impl MapLibAdapter {
         }
     }
 
-    fn call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        fname: &str,
-        func: &mut T
-    ) {
+    fn call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, fname: &str, func: &mut T) {
         let fid = self.get_fid(fname);
         func.call(FunctionID(fid));
     }
@@ -436,7 +426,8 @@ impl MapLibAdapter {
             None => {
                 unreachable!(
                     "{} \
-                    No {} function found in the module!", UNEXPECTED_ERR_MSG,
+                    No {} function found in the module!",
+                    UNEXPECTED_ERR_MSG,
                     Self::MAP_INIT_FNAME
                 );
             }

@@ -758,7 +758,10 @@ impl BoundVar {
     }
 }
 
-trait CheckedFrom<F> where Self: Sized {
+trait CheckedFrom<F>
+where
+    Self: Sized,
+{
     fn from(value: F) -> Result<Self, Box<ErrorGen>>;
 }
 

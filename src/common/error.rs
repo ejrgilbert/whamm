@@ -157,11 +157,7 @@ impl ErrorGen {
             }
         }
     }
-    pub fn parse_error_at_loc(
-        &mut self,
-        message: Option<String>,
-        line_col: Option<Location>,
-    ) {
+    pub fn parse_error_at_loc(&mut self, message: Option<String>, line_col: Option<Location>) {
         let err_loc = line_col.as_ref().map(|err_loc| err_loc.line_col.clone());
         let err = Self::get_parse_error(message, err_loc, vec![], vec![]);
         self.add_error(err);
@@ -245,14 +241,10 @@ impl ErrorGen {
         err_line_col: Option<LineColLocation>,
         info_line_col: Option<LineColLocation>,
     ) {
-        let err =
-            Self::get_duplicate_identifier_error(duplicated_id, err_line_col, info_line_col);
+        let err = Self::get_duplicate_identifier_error(duplicated_id, err_line_col, info_line_col);
         self.add_error(err);
     }
-    pub fn get_type_check_error(
-        message: String,
-        loc: &Option<LineColLocation>,
-    ) -> WhammError {
+    pub fn get_type_check_error(message: String, loc: &Option<LineColLocation>) -> WhammError {
         let loc = loc.as_ref().map(|loc| CodeLocation {
             is_err: false,
             message: Some(message.clone()),
@@ -271,18 +263,11 @@ impl ErrorGen {
         }
     }
 
-    pub fn type_check_error(
-        &mut self,
-        message: String,
-        line_col: &Option<LineColLocation>,
-    ) {
+    pub fn type_check_error(&mut self, message: String, line_col: &Option<LineColLocation>) {
         let err = Self::get_type_check_error(message, line_col);
         self.add_error(err);
     }
-    pub fn get_wizard_error(
-        message: String,
-        loc: &Option<LineColLocation>,
-    ) -> WhammError {
+    pub fn get_wizard_error(message: String, loc: &Option<LineColLocation>) -> WhammError {
         let loc = loc.as_ref().map(|loc| CodeLocation {
             is_err: false,
             message: Some(message.clone()),
@@ -301,15 +286,12 @@ impl ErrorGen {
         }
     }
 
-    pub fn get_wizard_error_from_loc(
-        message: String,
-        line_col: &Option<Location>,
-    ) -> WhammError {
+    pub fn get_wizard_error_from_loc(message: String, line_col: &Option<Location>) -> WhammError {
         let loc = line_col.as_ref().map(|loc| loc.line_col.clone());
         Self::get_wizard_error(message, &loc)
     }
 
-    pub fn wizard_error(&mut self,  message: String, loc: &Option<Location>) {
+    pub fn wizard_error(&mut self, message: String, loc: &Option<Location>) {
         let err = Self::get_wizard_error_from_loc(message, loc);
         self.add_error(err);
     }

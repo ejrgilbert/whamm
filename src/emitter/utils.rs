@@ -149,8 +149,9 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     Some(Record::Var { addr, .. }) => addr,
                     Some(ty) => {
                         unreachable!(
-                                "{} Incorrect variable record, expected Record::Var, found: {:?}",
-                                ctx.err_msg, ty);
+                            "{} Incorrect variable record, expected Record::Var, found: {:?}",
+                            ctx.err_msg, ty
+                        );
                     }
                     None => {
                         unreachable!("{} Variable symbol does not exist!", ctx.err_msg);
@@ -192,9 +193,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
         }
         _ => {
-            unreachable!(
-                    "{} Wrong statement type, should be `assign`",
-                    ctx.err_msg);
+            unreachable!("{} Wrong statement type, should be `assign`", ctx.err_msg);
         }
     }
 }
@@ -224,8 +223,9 @@ fn emit_unshared_decl_stmt(stmt: &mut Statement, ctx: &mut EmitCtx) -> bool {
         return true;
     }
     unreachable!(
-            "{} Wrong statement type, should be `report_decl`",
-            ctx.err_msg);
+        "{} Wrong statement type, should be `report_decl`",
+        ctx.err_msg
+    );
 }
 
 fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -259,9 +259,10 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         _ => {
             unreachable!(
-                    "{} \
+                "{} \
                     Wrong statement type, should be `assign`",
-                    ctx.err_msg);
+                ctx.err_msg
+            );
         }
     }
 }
@@ -303,7 +304,7 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     &DataType::I32,
                     var_offset,
                     ctx.table,
-                    injector
+                    injector,
                 );
             }
             other => unreachable!("Did not expect this address type: {:?}", other),
@@ -314,10 +315,10 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             .map_insert(key_ty, val_ty, injector, ctx.mem_allocator, ctx.err);
     } else {
         unreachable!(
-                "{} \
+            "{} \
             Wrong statement type, should be `set_map`",
-                ctx.err_msg
-            );
+            ctx.err_msg
+        );
     }
     ctx.in_map_op = false;
     true
@@ -662,15 +663,13 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
 
             let addr = if let Some(lib_name) = &ctx.in_lib_call_to {
-                let Some(Record::LibFn { addr, .. }) =
-                    ctx.table.lookup_lib_fn(lib_name, &fn_name)
+                let Some(Record::LibFn { addr, .. }) = ctx.table.lookup_lib_fn(lib_name, &fn_name)
                 else {
                     unreachable!("unexpected type");
                 };
                 *addr
             } else {
-                let Some(Record::Fn { addr, .. }) = ctx.table.lookup_fn(&fn_name, true)
-                else {
+                let Some(Record::Fn { addr, .. }) = ctx.table.lookup_fn(&fn_name, true) else {
                     unreachable!("unexpected type");
                 };
                 *addr
@@ -718,15 +717,15 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                                 &ty.clone(),
                                 *var_offset,
                                 ctx.table,
-                                injector
+                                injector,
                             );
                         }
                         VarAddr::MapId { .. } => {
                             unreachable!(
-                                    "{} \
+                                "{} \
                                 Variable you are trying to use in expr is a Map object {}",
-                                    ctx.err_msg, name
-                                );
+                                ctx.err_msg, name
+                            );
                         }
                     }
                 }
@@ -1866,9 +1865,9 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 is_success &= true;
             } else {
                 unreachable!(
-                        "{} String has not been emitted yet for value: '{val}'!",
-                        ctx.err_msg
-                    );
+                    "{} String has not been emitted yet for value: '{val}'!",
+                    ctx.err_msg
+                );
             }
         }
         Value::Tuple { vals, .. } => {
@@ -1890,9 +1889,9 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             is_success &= true;
         }
         Value::U32U32Map { .. } => unreachable!(
-                "{} \
+            "{} \
             `emit_value` shouldn't be called with a U32U32Map type...should already be handled!",
-                ctx.err_msg
+            ctx.err_msg
         ),
     }
     is_success
@@ -1929,7 +1928,7 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                                 &DataType::I32,
                                 var_offset,
                                 ctx.table,
-                                injector
+                                injector,
                             );
                         }
                         other => unreachable!("Did not expect this address type: {:?}", other),
@@ -1949,14 +1948,13 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
     }
     unreachable!(
-            "{} \
+        "{} \
             Wrong statement type, should be `map_get`",
-            ctx.err_msg
-        );
+        ctx.err_msg
+    );
 }
 fn get_map_info(name: &mut str, ctx: &mut EmitCtx) -> Option<(VarAddr, DataType, DataType)> {
-    let Some(Record::Var { ty, addr, .. }) = ctx.table.lookup_var(name, true)
-    else {
+    let Some(Record::Var { ty, addr, .. }) = ctx.table.lookup_var(name, true) else {
         unreachable!("unexpected type");
     };
 
@@ -1979,9 +1977,9 @@ fn get_map_info(name: &mut str, ctx: &mut EmitCtx) -> Option<(VarAddr, DataType,
             Some((addr.clone(), key_ty, val_ty))
         } else {
             unreachable!(
-                    "Incorrect DataType, expected Map, found: {:?}",
-                    addr.clone()
-                );
+                "Incorrect DataType, expected Map, found: {:?}",
+                addr.clone()
+            );
         }
     } else {
         unreachable!("map ID address not set yet.");

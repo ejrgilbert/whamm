@@ -58,10 +58,7 @@ impl LibPackage for MapLibPackage {
         self.adapter.used_in_global_scope = is_used;
     }
 
-    fn define_helper_funcs(
-        &mut self,
-        app_wasm: &mut Module
-    ) -> Vec<FunctionID> {
+    fn define_helper_funcs(&mut self, app_wasm: &mut Module) -> Vec<FunctionID> {
         self.adapter.define_helper_funcs(app_wasm)
     }
 }

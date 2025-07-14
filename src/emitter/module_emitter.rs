@@ -95,11 +95,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // ==== EMIT `func` LOGIC ====
     // ===========================
 
-    pub(crate) fn emit_fn(
-        &mut self,
-        context: &str,
-        f: &Fn,
-    ) -> Option<FunctionID> {
+    pub(crate) fn emit_fn(&mut self, context: &str, f: &Fn) -> Option<FunctionID> {
         match f.def {
             Definition::CompilerDynamic => {
                 if self.fn_providing_contexts.contains(&context.to_string()) {
@@ -262,11 +258,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         }
     }
 
-    pub(crate) fn emit_bound_fn(
-        &mut self,
-        context: &str,
-        f: &Fn,
-    ) -> Option<FunctionID> {
+    pub(crate) fn emit_bound_fn(&mut self, context: &str, f: &Fn) -> Option<FunctionID> {
         if context == "whamm" && f.name.name == "strcmp" {
             self.emit_whamm_strcmp_fn(f)
         } else {
@@ -345,7 +337,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     } else {
                         self.mem_allocator.mem_id
                     },
-                    self.app_wasm
+                    self.app_wasm,
                 );
             }
 
@@ -508,11 +500,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
     pub fn emit_strings(&mut self, strings_to_emit: Vec<String>) {
         for string in strings_to_emit.iter() {
-            self.emit_string(
-                &mut Value::Str {
-                    val: string.clone(),
-                }
-            );
+            self.emit_string(&mut Value::Str {
+                val: string.clone(),
+            });
         }
     }
 
@@ -524,11 +514,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             }
             _ => {
                 unreachable!(
-                        "{} \
+                    "{} \
                 Called 'emit_string', but this is not a string type: {:?}",
-                    UNEXPECTED_ERR_MSG,
-                        value
-                    )
+                    UNEXPECTED_ERR_MSG, value
+                )
             }
         }
     }

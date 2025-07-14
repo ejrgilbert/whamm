@@ -40,11 +40,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
         self.emitter.setup_module();
-        emit_needed_funcs(
-            used_bound_funcs,
-            &mut self.emitter,
-            self.injected_funcs
-        );
+        emit_needed_funcs(used_bound_funcs, &mut self.emitter, self.injected_funcs);
         self.emitter.emit_strings(strings_to_emit);
         self.visit_ast(&mut ast);
 
@@ -267,7 +263,7 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '
                     lib_name.to_string(),
                     lib_name_import_override,
                     used_fns,
-                    self.emitter.table
+                    self.emitter.table,
                 ),
             );
         }

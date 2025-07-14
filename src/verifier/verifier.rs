@@ -58,8 +58,7 @@ pub fn check_duplicate_id(
 ) -> bool {
     if let Some(rec_id) = table.lookup(name) {
         let Some(old_rec) = table.get_record(rec_id) else {
-            unreachable!("Could not find record with id: {rec_id}"
-            );
+            unreachable!("Could not find record with id: {rec_id}");
         };
         let old_loc = old_rec.loc();
         if old_loc.is_none() {
@@ -87,10 +86,7 @@ pub fn check_duplicate_id(
                 );
             } else {
                 //otherwise throw unexpected error as user-def fn has no loc
-                unreachable!(
-                        "{UNEXPECTED_ERR_MSG} Expected record to be compiler defined."
-
-                );
+                unreachable!("{UNEXPECTED_ERR_MSG} Expected record to be compiler defined.");
             }
         } else {
             err.duplicate_identifier_error(
@@ -200,8 +196,7 @@ impl<'a> TypeChecker<'a> {
                             *ty = ty_bound.clone();
                         } else {
                             // unexpected record type
-                            unreachable!("{UNEXPECTED_ERR_MSG} Expected Var type"
-                            )
+                            unreachable!("{UNEXPECTED_ERR_MSG} Expected Var type")
                         }
                     }
                 } else {
@@ -217,10 +212,8 @@ impl<'a> TypeChecker<'a> {
                     );
                 }
             } else {
-                self.err.type_check_error(
-                    format!("{UNEXPECTED_ERR_MSG} Expected VarId type"),
-                    &None,
-                );
+                self.err
+                    .type_check_error(format!("{UNEXPECTED_ERR_MSG} Expected VarId type"), &None);
             }
         }
     }
@@ -539,7 +532,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 } else {
                     unreachable!(
-                            "{} \
+                        "{} \
                     Variable declaration var_id is not the correct Expr variant!!",
                         UNEXPECTED_ERR_MSG
                     );
@@ -985,8 +978,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             return Some(ty.clone());
                         } else {
                             // unexpected record type
-                            unreachable!("{} Expected Var type", UNEXPECTED_ERR_MSG
-                            )
+                            unreachable!("{} Expected Var type", UNEXPECTED_ERR_MSG)
                         }
                     }
                 }
@@ -1174,10 +1166,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 if expected.can_implicitly_cast() && actual.can_implicitly_cast() {
                                     // try to implicitly do a cast here
                                     if let Err(msg) = arg.implicit_cast(expected) {
-                                        self.err.type_check_error(
-                                            msg,
-                                            &Some(arg_loc.line_col),
-                                        )
+                                        self.err.type_check_error(msg, &Some(arg_loc.line_col))
                                     }
                                 } else {
                                     self.err.type_check_error(
@@ -1225,13 +1214,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 if key_ty.can_implicitly_cast() && map_key_ty.can_implicitly_cast()
                                 {
                                     // try to implicitly do a cast here
-                                    if let Err(msg) =
-                                        key.implicit_cast(map_key_ty.as_ref())
-                                    {
-                                        self.err.type_check_error(
-                                            msg,
-                                            &Some(key_loc.line_col),
-                                        )
+                                    if let Err(msg) = key.implicit_cast(map_key_ty.as_ref()) {
+                                        self.err.type_check_error(msg, &Some(key_loc.line_col))
                                     } else {
                                         return Some(*val_ty);
                                     }
@@ -1388,14 +1372,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 // assume these expressions (actually just values) all parse
                 // and have Some type
                 let mut all_tys: Vec<DataType> = Vec::new();
-                for (_, ty) in tys.iter().enumerate() {
+                for ty in tys.iter() {
                     match ty {
                         Some(ty) => all_tys.push(ty.to_owned()),
                         _ => {
                             unreachable!(
-                                    "{} ALL types should be set for a tuple value.",
-                                    UNEXPECTED_ERR_MSG
-
+                                "{} ALL types should be set for a tuple value.",
+                                UNEXPECTED_ERR_MSG
                             )
                         }
                     }

@@ -52,16 +52,11 @@ impl ReportVars {
             },
         }
     }
-    pub fn put_global_metadata(
-        &mut self,
-        gid: u32,
-        name: String,
-        whamm_ty: &DataType
-    ) -> bool {
+    pub fn put_global_metadata(&mut self, gid: u32, name: String, whamm_ty: &DataType) -> bool {
         if !matches!(self.curr_location, LocationData::Global { .. }) {
             unreachable!(
-                    "Expected global location data, but got: {:?}",
-                    self.curr_location
+                "Expected global location data, but got: {:?}",
+                self.curr_location
             );
         }
         self.all_used_report_dts.insert(whamm_ty.clone());
@@ -75,12 +70,7 @@ impl ReportVars {
         }
         true
     }
-    pub fn put_map_metadata(
-        &mut self,
-        map_id: u32,
-        name: String,
-        ty: DataType
-    ) {
+    pub fn put_map_metadata(&mut self, map_id: u32, name: String, ty: DataType) {
         self.all_used_report_dts.insert(ty.clone());
         let metadata = Metadata::new(name.clone(), ty, &self.curr_location);
         self.variable_metadata.insert(
@@ -186,7 +176,7 @@ impl ReportVars {
         map_lib_adapter: &mut MapLibAdapter,
         header_info: (u32, u32),
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) {
         // There will be one function per report variable type used in the script.
         // So, if the script only uses i32 report variables, there will be one function
@@ -215,7 +205,7 @@ impl ReportVars {
             map_lib_adapter,
             header_info,
             mem_id,
-            wasm
+            wasm,
         );
 
         // print the global variables
@@ -244,7 +234,7 @@ impl ReportVars {
         map_lib_adapter: &mut MapLibAdapter,
         header_info: (u32, u32),
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) {
         io_adapter.putsln(header_info.0, header_info.1, func);
         self.call_dt_flushers(
@@ -253,7 +243,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm
+            wasm,
         );
     }
 
@@ -262,7 +252,7 @@ impl ReportVars {
         func: &mut FunctionBuilder,
         var_meta_str: &HashMap<VarAddr, (DataType, (u32, u32))>,
         io_adapter: &mut IOAdapter,
-        map_lib_adapter: &mut MapLibAdapter
+        map_lib_adapter: &mut MapLibAdapter,
     ) {
         // for each of the report globals, emit the printing logic
         let sorted_metadata = var_meta_str.iter().sorted_by_key(|data| data.0);
@@ -312,7 +302,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) {
         // Make sure the metadata flusher func exists
         self.emit_flush_var_metadata_fn(mem_allocator, io_adapter, mem_id, wasm);
@@ -331,53 +321,43 @@ impl ReportVars {
                     func.call(FunctionID(fid));
                 }
                 DataType::U16 => {
-                    let fid =
-                        self.emit_flush_u16_fn(io_adapter, map_lib_adapter, mem_id, wasm);
+                    let fid = self.emit_flush_u16_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::I16 => {
-                    let fid =
-                        self.emit_flush_i16_fn(io_adapter, map_lib_adapter, mem_id, wasm);
+                    let fid = self.emit_flush_i16_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::U32 => {
-                    let fid =
-                        self.emit_flush_u32_fn(io_adapter, map_lib_adapter, mem_id, wasm);
+                    let fid = self.emit_flush_u32_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::I32 => {
-                    let fid =
-                        self.emit_flush_i32_fn(io_adapter, map_lib_adapter, mem_id, wasm);
+                    let fid = self.emit_flush_i32_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::U64 => {
-                    let fid =
-                        self.emit_flush_u64_fn(io_adapter, map_lib_adapter, mem_id, wasm);
+                    let fid = self.emit_flush_u64_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::I64 => {
-                    let fid =
-                        self.emit_flush_i64_fn(io_adapter, map_lib_adapter, mem_id, wasm);
+                    let fid = self.emit_flush_i64_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::F32 => {
-                    let fid =
-                        self.emit_flush_f32_fn(io_adapter, map_lib_adapter, mem_id, wasm);
+                    let fid = self.emit_flush_f32_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::F64 => {
-                    let fid =
-                        self.emit_flush_f64_fn(io_adapter, map_lib_adapter, mem_id, wasm);
+                    let fid = self.emit_flush_f64_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::Boolean => {
-                    let fid =
-                        self.emit_flush_bool_fn(io_adapter, map_lib_adapter, mem_id, wasm);
+                    let fid = self.emit_flush_bool_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::Map { .. } => {
-                    let fid =
-                        self.emit_flush_map_fn(dt, io_adapter, map_lib_adapter, mem_id, wasm);
+                    let fid = self.emit_flush_map_fn(dt, io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 dt => {
@@ -391,7 +371,7 @@ impl ReportVars {
         mem_allocator: &MemoryAllocator,
         io_adapter: &mut IOAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) {
         // ======================== REPORT CSV FLUSH ============================
         // type, id_type, id, name, script_id, fname, fid, pc, probe_id, value(s)
@@ -560,7 +540,7 @@ impl ReportVars {
         dt: &DataType,
         dt_local: &LocalID,
         mem_allocator: &MemoryAllocator,
-        io_adapter: &mut IOAdapter
+        io_adapter: &mut IOAdapter,
     ) {
         let mut s = DefaultHasher::new();
         dt.hash(&mut s);
@@ -587,17 +567,12 @@ impl ReportVars {
     // ==== Flush functions per datatype ====
     fn emit_flush_fn(
         &self,
-        flush_dt: &dyn Fn(
-            &mut FunctionBuilder,
-            &MemArg,
-            &mut IOAdapter,
-            &mut MapLibAdapter
-        ),
+        flush_dt: &dyn Fn(&mut FunctionBuilder, &MemArg, &mut IOAdapter, &mut MapLibAdapter),
         dt: DataType,
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) -> u32 {
         let Some(flush_metadata_fid) = self.flush_tracker.flush_var_metadata_fid else {
             unreachable!("Should have the flush variable metadata function ID, but it's not been generated yet.");
@@ -710,7 +685,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_u8,
@@ -718,7 +693,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm
+            wasm,
         )
     }
 
@@ -726,7 +701,7 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter
+        _map_lib_adapter: &mut MapLibAdapter,
     ) {
         flush_fn.i32_load8_u(*mem_arg);
         io_adapter.call_putu8(flush_fn);
@@ -738,7 +713,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_i8,
@@ -746,7 +721,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm
+            wasm,
         )
     }
 
@@ -754,7 +729,7 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter
+        _map_lib_adapter: &mut MapLibAdapter,
     ) {
         flush_fn.i32_load8_s(*mem_arg);
         io_adapter.call_puti8(flush_fn);
@@ -766,7 +741,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_u16,
@@ -774,7 +749,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm
+            wasm,
         )
     }
 
@@ -782,7 +757,7 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter
+        _map_lib_adapter: &mut MapLibAdapter,
     ) {
         flush_fn.i32_load16_u(*mem_arg);
         io_adapter.call_putu16(flush_fn);
@@ -794,7 +769,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_i16,
@@ -802,7 +777,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm
+            wasm,
         )
     }
 
@@ -810,7 +785,7 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter
+        _map_lib_adapter: &mut MapLibAdapter,
     ) {
         flush_fn.i32_load16_s(*mem_arg);
         io_adapter.call_puti16(flush_fn);
@@ -822,7 +797,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_u32,
@@ -830,7 +805,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm
+            wasm,
         )
     }
 
@@ -838,7 +813,7 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter
+        _map_lib_adapter: &mut MapLibAdapter,
     ) {
         flush_fn.i32_load(*mem_arg);
         io_adapter.call_putu32(flush_fn);
@@ -850,7 +825,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_i32,
@@ -858,7 +833,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm
+            wasm,
         )
     }
 
@@ -866,7 +841,7 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter
+        _map_lib_adapter: &mut MapLibAdapter,
     ) {
         flush_fn.i32_load(*mem_arg);
         io_adapter.call_puti32(flush_fn);
@@ -878,7 +853,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_u64,
@@ -886,7 +861,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm
+            wasm,
         )
     }
 
@@ -894,7 +869,7 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter
+        _map_lib_adapter: &mut MapLibAdapter,
     ) {
         flush_fn.i64_load(*mem_arg);
         io_adapter.call_putu64(flush_fn);
@@ -906,7 +881,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_i64,
@@ -914,7 +889,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm
+            wasm,
         )
     }
 
@@ -922,7 +897,7 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter
+        _map_lib_adapter: &mut MapLibAdapter,
     ) {
         flush_fn.i64_load(*mem_arg);
         io_adapter.call_puti64(flush_fn);
@@ -934,7 +909,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_f32,
@@ -942,7 +917,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm
+            wasm,
         )
     }
 
@@ -950,7 +925,7 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter
+        _map_lib_adapter: &mut MapLibAdapter,
     ) {
         flush_fn.f32_load(*mem_arg);
         io_adapter.call_putf32(flush_fn);
@@ -962,7 +937,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_f64,
@@ -970,7 +945,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm
+            wasm,
         )
     }
 
@@ -978,7 +953,7 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter
+        _map_lib_adapter: &mut MapLibAdapter,
     ) {
         flush_fn.f64_load(*mem_arg);
         io_adapter.call_putf64(flush_fn);
@@ -990,7 +965,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_bool,
@@ -998,7 +973,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm
+            wasm,
         )
     }
 
@@ -1006,7 +981,7 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter
+        _map_lib_adapter: &mut MapLibAdapter,
     ) {
         flush_fn.i32_load(*mem_arg);
         io_adapter.call_putbool(flush_fn);
@@ -1019,7 +994,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module
+        wasm: &mut Module,
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_map,
@@ -1027,7 +1002,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm
+            wasm,
         )
     }
 
@@ -1035,7 +1010,7 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        map_lib_adapter: &mut MapLibAdapter
+        map_lib_adapter: &mut MapLibAdapter,
     ) {
         flush_fn.i32_load(*mem_arg);
         map_lib_adapter.call_print_map(flush_fn);

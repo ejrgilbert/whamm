@@ -392,7 +392,7 @@ pub(crate) fn run_script(
     user_libs: Vec<String>,
     output_path: Option<String>,
     target_wizard: bool,
-) -> Result<(), Vec<WhammError>>{
+) -> Result<(), Vec<WhammError>> {
     let script_path_str = script_path.to_str().unwrap().replace("\"", "");
     let wasm_result = if target_wizard {
         whamm::api::instrument::generate_monitor_module(

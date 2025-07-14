@@ -65,7 +65,7 @@ impl MemoryAllocator {
     pub(crate) fn emit_addr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &self,
         table: &SymbolTable,
-        injector: &mut T
+        injector: &mut T,
     ) {
         // get the var block base offset variable
         let Some(Record::Var {
@@ -91,7 +91,7 @@ impl MemoryAllocator {
         ty: &DataType,
         var_offset: u32,
         table: &SymbolTable,
-        injector: &mut T
+        injector: &mut T,
     ) {
         self.emit_addr(table, injector);
 
@@ -497,11 +497,7 @@ impl MemoryAllocator {
         func.u32_const(needed_bytes);
         func.call(FunctionID(check_memsize_fid));
     }
-    pub fn emit_base_memsize_check(
-        &self,
-        needed_bytes: LocalID,
-        func: &mut FunctionBuilder
-    ) {
+    pub fn emit_base_memsize_check(&self, needed_bytes: LocalID, func: &mut FunctionBuilder) {
         let check_memsize_fid = match self.base_mem_checker_fid {
             Some(fid) => fid,
             None => {
@@ -603,7 +599,10 @@ impl MemoryAllocator {
         if let Some(str_addr) = self.emitted_strings.get(s) {
             (str_addr.mem_offset as u32, str_addr.len as u32)
         } else {
-            unreachable!("{} Data segment not available for string: \"{}\"", UNEXPECTED_ERR_MSG, s)
+            unreachable!(
+                "{} Data segment not available for string: \"{}\"",
+                UNEXPECTED_ERR_MSG, s
+            )
         }
     }
 

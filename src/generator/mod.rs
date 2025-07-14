@@ -33,7 +33,7 @@ fn create_curr_loc(curr_script_id: u8, probe: &ast::Probe) -> LocationData {
 fn emit_needed_funcs(
     funcs: HashSet<(String, String)>,
     emitter: &mut ModuleEmitter,
-    injected_funcs: &mut Vec<FunctionID>
+    injected_funcs: &mut Vec<FunctionID>,
 ) {
     for (context, fname) in funcs.iter() {
         if let Some(fid) = emitter.emit_bound_fn(
@@ -47,7 +47,7 @@ fn emit_needed_funcs(
                 params: vec![],
                 results: DataType::Boolean,
                 body: Default::default(),
-            }
+            },
         ) {
             injected_funcs.push(fid);
         };

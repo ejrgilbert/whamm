@@ -11,7 +11,7 @@ pub fn link_core_lib(
     app_wasm: &mut Module,
     core_lib: &[u8],
     mem_allocator: &mut MemoryAllocator,
-    packages: &mut [&mut dyn LibPackage]
+    packages: &mut [&mut dyn LibPackage],
 ) -> Vec<FunctionID> {
     match method {
         LibraryLinkStrategy::Imported => {

@@ -36,13 +36,8 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     ) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
-        self.injected_funcs
-            .extend(self.emitter.setup_module());
-        emit_needed_funcs(
-            used_bound_funcs,
-            &mut self.emitter,
-            self.injected_funcs
-        );
+        self.injected_funcs.extend(self.emitter.setup_module());
+        emit_needed_funcs(used_bound_funcs, &mut self.emitter, self.injected_funcs);
         self.emitter.emit_strings(strings_to_emit);
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         self.visit_whamm(whamm)
@@ -91,7 +86,7 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
                     lib_name.to_string(),
                     lib_name_import_override,
                     used_fns,
-                    self.emitter.table
+                    self.emitter.table,
                 ),
             );
         }

@@ -1,4 +1,3 @@
-use std::process::exit;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{long_line, magenta, white};
 use crate::parser::provider_handler::{get_matches, yml_to_providers, PrintInfo, ProviderDef};
@@ -13,6 +12,7 @@ use log::trace;
 use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
+use std::process::exit;
 use std::str::FromStr;
 use termcolor::{BufferWriter, ColorChoice, WriteColor};
 
@@ -236,11 +236,11 @@ pub fn handle_script(
     whamm: &mut Whamm,
     pair: Pair<Rule>,
     err: &mut ErrorGen,
-) -> Result<(), Box<ErrorGen>>{
+) -> Result<(), Box<ErrorGen>> {
     let base_script = Script::new();
     let new_script_count = whamm.add_script(base_script);
 
-    for p in pair.into_inner().into_iter() {
+    for p in pair.into_inner() {
         parser_entry_point(def_yamls, whamm, new_script_count, p, err)?;
     }
     Ok(())

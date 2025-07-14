@@ -31,7 +31,7 @@ pub fn link_core_lib(
     app_wasm: &mut Module,
     core_lib: &[u8],
     mem_allocator: &mut MemoryAllocator,
-    packages: &mut [&mut dyn LibPackage]
+    packages: &mut [&mut dyn LibPackage],
 ) -> Vec<FunctionID> {
     let mut injected_funcs = vec![];
     for package in packages.iter_mut() {
@@ -52,7 +52,7 @@ pub fn link_core_lib(
                 WHAMM_CORE_LIB_NAME.to_string(),
                 &None,
                 &core_lib,
-                *package
+                *package,
             ));
         }
     }
@@ -66,7 +66,7 @@ pub fn link_user_lib(
     lib_name: String,
     lib_name_import_override: &Option<String>,
     used_lib_fns: &HashSet<String>,
-    table: &mut SymbolTable
+    table: &mut SymbolTable,
 ) -> Vec<FunctionID> {
     let added = import_lib_fn_names(
         app_wasm,
@@ -75,7 +75,7 @@ pub fn link_user_lib(
         lib_name_import_override,
         lib_wasm,
         used_lib_fns,
-        Some(table)
+        Some(table),
     );
 
     let mut injected_funcs = vec![];
@@ -106,7 +106,7 @@ fn import_lib_package(
     lib_name: String,
     lib_name_import_override: &Option<String>,
     lib_wasm: &Module,
-    package: &mut dyn LibPackage
+    package: &mut dyn LibPackage,
 ) -> Vec<FunctionID> {
     trace!("Enter import_lib");
 
@@ -118,7 +118,7 @@ fn import_lib_package(
         lib_name_import_override,
         lib_wasm,
         &HashSet::from_iter(package.get_fn_names().iter().cloned()),
-        None
+        None,
     );
 
     for (name, fid) in added.iter() {
@@ -140,7 +140,7 @@ fn import_lib_fn_names(
     lib_name_import_override: &Option<String>,
     lib_wasm: &Module,
     lib_fns: &HashSet<String>,
-    mut table: Option<&mut SymbolTable>
+    mut table: Option<&mut SymbolTable>,
 ) -> Vec<(String, u32)> {
     let mut injected_fns = vec![];
     for export in lib_wasm.exports.iter() {
@@ -179,8 +179,8 @@ fn import_lib_fn_names(
                     injected_fns.push((export.name.clone(), fid));
                 } else {
                     unreachable!(
-                            "ImportLib: Could not add function \"{}\" as application import",
-                            export.name
+                        "ImportLib: Could not add function \"{}\" as application import",
+                        export.name
                     );
                 }
             }

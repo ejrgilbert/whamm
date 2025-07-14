@@ -30,15 +30,15 @@ fn dry_run() {
 fn dry_run_errs() {
     setup_logger();
     let wasm_path = "tests/apps/core_suite/rust/cf.wasm";
-    let script_path =
-        "tests/scripts/error/bad.mm";
+    let script_path = "tests/scripts/error/bad.mm";
     let errs = instrument_as_dry_run(
         wasm_path.to_string(),
         script_path.to_string(),
         vec![],
         Some(CORE_WASM_PATH.to_string()),
         Some("./".to_string()),
-    ).expect_err("Should have failed to execute dry-run");
+    )
+    .expect_err("Should have failed to execute dry-run");
 
     print_side_effect_errs(&errs);
 }

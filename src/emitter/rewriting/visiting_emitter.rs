@@ -273,9 +273,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 self.app_iter.local_get(LocalID(*addr));
             } else {
                 unreachable!(
-                        "{} \
-                Could not emit parameters, something went wrong...", UNEXPECTED_ERR_MSG
-                    );
+                    "{} \
+                Could not emit parameters, something went wrong...",
+                    UNEXPECTED_ERR_MSG
+                );
             }
         }
         true
@@ -447,7 +448,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             is_success
         } else {
             unreachable!(
-                    "{} Could not find alt function call by name: {}", UNEXPECTED_ERR_MSG, fn_name);
+                "{} Could not find alt function call by name: {}",
+                UNEXPECTED_ERR_MSG, fn_name
+            );
         }
     }
 
@@ -501,7 +504,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             "drop_args" => self.handle_drop_args(),
             _ => {
                 unreachable!(
-                        "{} Could not find handler for static function with name: {}",UNEXPECTED_ERR_MSG,target_fn_name);
+                    "{} Could not find handler for static function with name: {}",
+                    UNEXPECTED_ERR_MSG, target_fn_name
+                );
             }
         }
     }
@@ -553,7 +558,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     self.report_vars,
                     self.map_lib_adapter,
                     self.mem_allocator,
-                    self.io_adapter
+                    self.io_adapter,
                 )
             } else {
                 None
@@ -781,8 +786,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 Expr::VarId { name, .. } => name.clone(),
                 _ => return false,
             };
-            let Some(Record::Fn { def, .. }) = self.table.lookup_fn(fn_name.as_str(), true)
-            else {
+            let Some(Record::Fn { def, .. }) = self.table.lookup_fn(fn_name.as_str(), true) else {
                 unreachable!("unexpected type");
             };
             if matches!(def, Definition::CompilerStatic) {

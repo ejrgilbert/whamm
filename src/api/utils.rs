@@ -19,7 +19,7 @@ pub fn print_info(
     defs_path: Option<String>,
     print_vars: bool,
     print_functions: bool,
-) -> Result<(), Box<ErrorGen>>{
+) -> Result<(), Box<ErrorGen>> {
     // Parse the script and generate the information
     let mut err = ErrorGen::new("".to_string(), rule.clone(), MAX_ERRORS);
     let def_yamls = get_defs(defs_path);

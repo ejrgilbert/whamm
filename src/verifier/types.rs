@@ -133,9 +133,8 @@ impl SymbolTable {
             Some(parent) => self.curr_scope = parent,
             None => {
                 unreachable!(
-                        "{} Attempted to exit current scope, but there was no parent to exit into.",
-                        UNEXPECTED_ERR_MSG
-
+                    "{} Attempted to exit current scope, but there was no parent to exit into.",
+                    UNEXPECTED_ERR_MSG
                 );
             }
         }
@@ -298,11 +297,7 @@ impl SymbolTable {
             None
         }
     }
-    pub fn lookup_var(
-        &self,
-        key: &str,
-        fail_on_miss: bool
-    ) -> Option<&Record> {
+    pub fn lookup_var(&self, key: &str, fail_on_miss: bool) -> Option<&Record> {
         if let Some(rec) = self.lookup_rec(key) {
             if matches!(rec, Record::Var { .. }) {
                 Some(rec)
@@ -312,17 +307,13 @@ impl SymbolTable {
             }
         } else {
             if fail_on_miss {
-                unreachable!("Could not find var for: {}", key
-                );
+                unreachable!("Could not find var for: {}", key);
             }
 
             None
         }
     }
-    pub fn lookup_fn_with_context(
-        &self,
-        key: &str
-    ) -> (Option<&Record>, String) {
+    pub fn lookup_fn_with_context(&self, key: &str) -> (Option<&Record>, String) {
         if let (Some(rec), context) = self.lookup_rec_with_context(key) {
             if matches!(rec, Record::Fn { .. }) {
                 (Some(rec), context)
@@ -362,19 +353,14 @@ impl SymbolTable {
         }
     }
 
-    pub fn lookup_lib_fn(
-        &self,
-        lib_name: &str,
-        lib_fn_name: &str
-    ) -> Option<&Record> {
+    pub fn lookup_lib_fn(&self, lib_name: &str, lib_fn_name: &str) -> Option<&Record> {
         if let Some(rec) = self.lookup_lib(lib_name) {
             if let Record::Library { fns, .. } = rec {
                 if let Some(rec) = fns.get(lib_fn_name) {
                     if let Some(rec) = self.get_record(*rec) {
                         Some(rec)
                     } else {
-                        unreachable!("Could not find library func for: {}", lib_fn_name
-                        );
+                        unreachable!("Could not find library func for: {}", lib_fn_name);
                     }
                 } else {
                     Self::no_match(rec, "LibraryFunc");
@@ -385,8 +371,7 @@ impl SymbolTable {
                 None
             }
         } else {
-            unreachable!("Could not find library for: {}", lib_name
-            );
+            unreachable!("Could not find library for: {}", lib_name);
         }
     }
 

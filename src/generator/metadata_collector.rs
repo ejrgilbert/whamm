@@ -112,8 +112,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             }
             Visiting::None => {
                 // error
-                unreachable!("Expected a set variant of 'Visiting', but found 'None'"
-                );
+                unreachable!("Expected a set variant of 'Visiting', but found 'None'");
             }
         }
     }
@@ -131,8 +130,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             }
             Visiting::None => {
                 // error
-                unreachable!("Expected a set variant of 'Visiting', but found 'None'"
-                );
+                unreachable!("Expected a set variant of 'Visiting', but found 'None'");
             }
         }
     }
@@ -288,9 +286,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 // ignore
             }
             Statement::UnsharedDecl {
-                is_report,
-                decl,
-                ..
+                is_report, decl, ..
             } => {
                 if let Statement::Decl {
                     ty,
@@ -328,7 +324,8 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                     );
                 } else {
                     unreachable!(
-                            "{} Incorrect type for a UnsharedDecl's contents!", UNEXPECTED_ERR_MSG
+                        "{} Incorrect type for a UnsharedDecl's contents!",
+                        UNEXPECTED_ERR_MSG
                     )
                 }
             }
@@ -499,10 +496,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
     }
 }
 
-fn get_def(
-    name: &str,
-    table: &SymbolTable
-) -> (Definition, DataType, Option<Location>) {
+fn get_def(name: &str, table: &SymbolTable) -> (Definition, DataType, Option<Location>) {
     if let Some(Record::Var { def, ty, loc, .. }) = table.lookup_var(name, false) {
         (def.clone(), ty.clone(), loc.clone())
     } else {

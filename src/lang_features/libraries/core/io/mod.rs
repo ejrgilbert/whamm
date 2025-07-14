@@ -51,10 +51,7 @@ impl LibPackage for IOPackage {
     fn set_global_adapter_usage(&mut self, _is_used: bool) {
         // nothing to do here
     }
-    fn define_helper_funcs(
-        &mut self,
-        app_wasm: &mut Module
-    ) -> Vec<FunctionID> {
+    fn define_helper_funcs(&mut self, app_wasm: &mut Module) -> Vec<FunctionID> {
         self.adapter.define_helper_funcs(app_wasm)
     }
 }

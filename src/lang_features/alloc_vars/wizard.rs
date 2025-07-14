@@ -446,7 +446,8 @@ impl UnsharedVarHandler {
             unreachable!("Report variable metadata should be set, but it's not");
         };
 
-        let err_msg = "Report variable metadata string should be emitted, but it's not been.".to_string();
+        let err_msg =
+            "Report variable metadata string should be emitted, but it's not been.".to_string();
 
         // store (name_ptr, name_len)
         let Some(StringAddr {

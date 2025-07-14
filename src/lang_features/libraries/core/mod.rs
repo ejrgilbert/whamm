@@ -22,14 +22,12 @@ pub trait LibPackage: AstVisitor<bool> {
     fn add_fid_to_adapter(&mut self, fname: &str, fid: u32);
     fn set_adapter_usage(&mut self, is_used: bool);
     fn set_global_adapter_usage(&mut self, is_used: bool);
-    fn define_helper_funcs(&mut self, app_wasm: &mut Module)
-        -> Vec<FunctionID>;
+    fn define_helper_funcs(&mut self, app_wasm: &mut Module) -> Vec<FunctionID>;
 }
 pub trait LibAdapter {
     fn get_funcs(&self) -> &HashMap<String, u32>;
     fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32>;
-    fn define_helper_funcs(&mut self, app_wasm: &mut Module)
-        -> Vec<FunctionID>;
+    fn define_helper_funcs(&mut self, app_wasm: &mut Module) -> Vec<FunctionID>;
     fn get_fn_names(&self) -> Vec<String> {
         self.get_funcs().keys().cloned().collect()
     }
@@ -38,7 +36,9 @@ pub trait LibAdapter {
             *fid
         } else {
             unreachable!(
-                    "{} Could not find expected configured library function: {}", UNEXPECTED_ERR_MSG,fname);
+                "{} Could not find expected configured library function: {}",
+                UNEXPECTED_ERR_MSG, fname
+            );
         }
     }
 
