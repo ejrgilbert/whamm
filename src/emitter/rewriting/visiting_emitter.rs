@@ -249,9 +249,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     ty: DataType::I32, // we only support integers right now.
                     value: None,
                     def: Definition::User,
-                    addr: Some(VarAddr::Local {
+                    addr: Some(vec![VarAddr::Local {
                         addr: *arg_local_id,
-                    }),
+                    }]),
                     loc: None,
                 },
             );
@@ -265,10 +265,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         for (_param_name, param_rec_id) in self.instr_created_args.iter() {
             let param_rec = self.table.get_record_mut(*param_rec_id);
             if let Some(Record::Var {
-                addr: Some(VarAddr::Local { addr }),
+                addr: Some(addrs),
                 ..
             }) = param_rec
             {
+                let VarAddr::Local {
+                    addr,
+                } = addrs.first().unwrap() else {
+                    assert_eq!(addrs.len(), 1);
+                    panic!("arg address should be represented with a single address")
+                };
                 // Inject at tracker.orig_instr_idx to make sure that this actually emits the args
                 // for the instrumented instruction right before that instruction is called!
                 self.app_iter.local_get(LocalID(*addr));
@@ -315,7 +321,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         self.table.override_record_addr(
             var_name,
             DataType::from_wasm_type(var_ty),
-            Some(alias_addr.clone()),
+            Some(vec![alias_addr.clone()]),
         );
         true
     }
@@ -728,7 +734,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 self.table.lookup_var_mut(VAR_BLOCK_BASE_VAR, false)
             {
                 *value = Some(Value::gen_u32(offset_value));
-                *addr = Some(VarAddr::Local { addr: id });
+                *addr = Some(vec![VarAddr::Local { addr: id }]);
             } else {
                 self.table.put(
                     VAR_BLOCK_BASE_VAR.to_string(),
@@ -736,7 +742,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                         ty: DataType::I32,
                         value: Some(Value::gen_u32(offset_value)),
                         def: Definition::CompilerStatic,
-                        addr: Some(VarAddr::Local { addr: id }),
+                        addr: Some(vec![VarAddr::Local { addr: id }]),
                         loc: None,
                     },
                 );

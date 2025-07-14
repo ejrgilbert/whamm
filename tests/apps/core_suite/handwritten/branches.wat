@@ -11,11 +11,11 @@
                 (i64.eq (local.get 0) (i64.const 1))
                 br_if $eq
                 br $neq
-            end
+            end                                 ;; 7:1
             ;; they are not equal, return '0'
             i32.const 0
             return
-        end
+        end                                     ;; 10:0
         ;; they are equal, return '1'
         i32.const 1
         return
@@ -31,15 +31,15 @@
                     br_if $gt
 
                     br $neq
-                end
+                end                                 ;; 12:1
                 ;; they are equal, return '1'
                 i32.const 1
                 return
-            end
+            end                                     ;; 15:1
             ;; they are not equal, return '0'
             i32.const 0
             return
-        end
+        end                                         ;; 18:1
         ;; param is greater than 2, return 2
         i32.const 2
         return

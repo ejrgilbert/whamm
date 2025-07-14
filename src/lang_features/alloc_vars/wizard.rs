@@ -225,7 +225,7 @@ impl UnsharedVarHandler {
                     ty: ty.clone(),
                     value: None,
                     def: Definition::User,
-                    addr: Some(var_addr),
+                    addr: Some(vec![var_addr]),
                     loc: None,
                 },
             );

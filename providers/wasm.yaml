@@ -17,6 +17,11 @@ providers:
         derived_from: null
         lifetime: static
         docs: The instruction offset of the probe within the function (zero-based indexing).
+      - name: is_func_end
+        type: bool
+        derived_from: null
+        lifetime: static
+        docs: Whether the current instrumentation point is the END opcode at the end of the target function.
       - name: fname
         type: str
         derived_from: null

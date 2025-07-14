@@ -155,7 +155,7 @@ impl SymbolTable {
         &mut self,
         symbol_name: &str,
         var_ty: DataType,
-        var_addr: Option<VarAddr>,
+        var_addr: Option<Vec<VarAddr>>,
     ) {
         let rec_id = match self.lookup(symbol_name) {
             Some(rec_id) => rec_id,
@@ -679,7 +679,7 @@ pub enum Record {
         value: Option<Value>,
         def: Definition,
         /// The address of this var post-injection
-        addr: Option<VarAddr>,
+        addr: Option<Vec<VarAddr>>,
         loc: Option<Location>,
     },
 }

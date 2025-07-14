@@ -82,11 +82,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // ==== BASE MODULE SETUP LOGIC ====
     // =================================
 
-    pub fn setup_module(&mut self, err: &mut ErrorGen) {
+    pub fn setup_module(&mut self, err: &mut ErrorGen) -> Vec<FunctionID> {
+        let mut injected_funcs = vec![];
         // setup maps
         if self.map_lib_adapter.used_in_global_scope {
-            self.create_instr_init(err);
+            injected_funcs.push(self.create_instr_init(err));
         }
+        injected_funcs
     }
 
     // ===========================
@@ -153,7 +155,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     ty: DataType::I32,
                     value: None,
                     def: Definition::CompilerStatic,
-                    addr: Some(VarAddr::Local { addr: *alloc }),
+                    addr: Some(vec![VarAddr::Local { addr: *alloc }]),
                     loc: None,
                 },
             );
@@ -161,16 +163,19 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         // handle the parameters
         for param in whamm_params.params.iter() {
-            let local_id = params.len() as u32;
-            // handle param list
-            params.extend(param.ty.clone().to_wasm_type());
+            let wasm_tys = param.ty.to_wasm_type();
 
-            // handle the param string
-            if !param_str.is_empty() {
-                param_str += ", "
+            // Iterate over the list to create the addresses for referencing
+            // (will support types that are represented with multiple wasm
+            // types this way, e.g. strings)
+            let mut addrs = vec![];
+            for ty in wasm_tys.iter() {
+                let local_id = params.len() as u32;
+                // handle param list
+                params.push(ty.clone());
+
+                addrs.push(VarAddr::Local { addr: local_id });
             }
-            param_str += &param.name;
-
             // add param definition to the symbol table
             self.table.put(
                 param.name.clone(),
@@ -178,10 +183,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     ty: param.ty.clone(),
                     value: None,
                     def: Definition::CompilerStatic,
-                    addr: Some(VarAddr::Local { addr: local_id }),
+                    addr: Some(addrs),
                     loc: None,
                 },
             );
+
+            // handle the param string
+            if !param_str.is_empty() {
+                param_str += ", "
+            }
+            param_str += &param.name;
         }
 
         let fid = self.emit_special_fn_inner(
@@ -586,13 +597,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     self.app_wasm,
                     err,
                 );
-                *addr = Some(VarAddr::MapId { addr: map_id });
+                *addr = Some(vec![VarAddr::MapId { addr: map_id }]);
                 None
             }
             _ => {
                 let (global_id, global_ty) =
                     whamm_type_to_wasm_global(self.app_wasm, ty, loc, None);
-                *addr = Some(VarAddr::Global { addr: *global_id });
+                *addr = Some(vec![VarAddr::Global { addr: *global_id }]);
                 //now save off the global variable metadata
                 if report_mode {
                     self.report_vars

@@ -42,8 +42,8 @@
 ;; ==== unpredicated ====
 ;; WHAMM --> var count: i32; wasm:opcode:end:before { count++; }
 ;; @passes_uninstr
+(assert_return (invoke "get_count") (i32.const 5))
 (assert_return (invoke "get_global_var") (i32.const 3))
-(assert_return (invoke "get_count") (i32.const 2))
 ;; WHAMM --> var count: i32; wasm:opcode:end:after { count = count + 2; }
 (assert_return (invoke "get_count") (i32.const 6))
 

@@ -1045,12 +1045,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             } => {
                 let expr_ty_op = self.visit_expr(inner_expr);
                 if let Some(expr_ty) = expr_ty_op {
+                    *done_on = expr_ty.clone();
                     match op {
                         UnOp::Cast { target } => {
                             // If the inner expression's type is the same as the cast,
                             // we can remove the cast from the AST!
                             let t = target.clone();
-                            *done_on = expr_ty.clone();
                             Some(t)
                         }
                         UnOp::Not => {
@@ -1066,7 +1066,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                         }
                         UnOp::BitwiseNot => {
-                            *done_on = expr_ty.clone();
                             if matches!(expr_ty, DataType::F32 | DataType::F64) {
                                 self.err.type_check_error(
                                     false,

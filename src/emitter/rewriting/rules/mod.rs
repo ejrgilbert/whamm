@@ -92,6 +92,10 @@ fn handle_wasm(
         .static_data
         .insert("pc".to_string(), Some(Value::gen_u32(pc as u32)));
 
+    loc_info
+        .static_data
+        .insert("is_func_end".to_string(), Some(Value::Boolean{val: at_func_end}));
+
     for param in prov.all_params() {
         if let Some(n) = param.n_for("local") {
             let func = app_wasm.functions.get(fid).unwrap_local();
@@ -195,6 +199,10 @@ fn handle_opcode_events(
     evt: &SimpleEvt,
 ) -> Option<LocInfo> {
     let mut loc_info = LocInfo::new();
+
+    loc_info
+        .static_data
+        .insert("op_name".to_string(), Some(Value::Str{val: event.clone()}));
 
     // create a combination of WhammParams for all probes here
     let mut all_params = HashSet::new();

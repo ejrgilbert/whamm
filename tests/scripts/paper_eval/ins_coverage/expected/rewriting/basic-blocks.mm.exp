@@ -20,12 +20,12 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 548, memaddr, reached, bool, i32, script0, br_table, 2, 8, 0_wasm:block:exit:<no-mode>, true
 580, memaddr, reached, bool, i32, script0, br_table, 2, 10, 0_wasm:block:exit:<no-mode>, true
 612, memaddr, reached, bool, i32, script0, br_table, 2, 11, 0_wasm:block:exit:<no-mode>, true
-644, memaddr, reached, bool, i32, script0, br_table, 2, 13, 0_wasm:block:exit:<no-mode>, false
+644, memaddr, reached, bool, i32, script0, br_table, 2, 13, 0_wasm:block:exit:<no-mode>, true
 676, memaddr, reached, bool, i32, script0, if_stmt, 3, 3, 0_wasm:block:exit:<no-mode>, true
 708, memaddr, reached, bool, i32, script0, if_stmt, 3, 5, 0_wasm:block:exit:<no-mode>, false
 740, memaddr, reached, bool, i32, script0, if_stmt, 3, 6, 0_wasm:block:exit:<no-mode>, false
 772, memaddr, reached, bool, i32, script0, if_stmt, 3, 8, 0_wasm:block:exit:<no-mode>, true
 804, memaddr, reached, bool, i32, script0, if_stmt, 3, 11, 0_wasm:block:exit:<no-mode>, false
-836, memaddr, reached, bool, i32, script0, select_stmt, 4, 5, 0_wasm:block:exit:<no-mode>, false
-868, memaddr, reached, bool, i32, script0, main, 5, 38, 0_wasm:block:exit:<no-mode>, false
+836, memaddr, reached, bool, i32, script0, select_stmt, 4, 5, 0_wasm:block:exit:<no-mode>, true
+868, memaddr, reached, bool, i32, script0, main, 5, 38, 0_wasm:block:exit:<no-mode>, true
 900, memaddr, reached, bool, i32, script0, start, 6, 1, 0_wasm:block:exit:<no-mode>, false
