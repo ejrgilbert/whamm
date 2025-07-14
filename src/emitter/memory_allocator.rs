@@ -70,8 +70,7 @@ impl MemoryAllocator {
     ) {
         // get the var block base offset variable
         let Some(Record::Var {
-            addr: Some(addrs),
-            ..
+            addr: Some(addrs), ..
         }) = table.lookup_var(VAR_BLOCK_BASE_VAR, &None, err, true)
         else {
             err.unexpected_error(true, Some("unexpected type".to_string()), None);
@@ -80,7 +79,8 @@ impl MemoryAllocator {
 
         let VarAddr::Local {
             addr: var_block_start,
-        } = addrs.first().unwrap() else {
+        } = addrs.first().unwrap()
+        else {
             assert_eq!(addrs.len(), 1);
             panic!("memory address should be represented with a single address")
         };

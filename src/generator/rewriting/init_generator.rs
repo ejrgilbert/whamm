@@ -36,7 +36,8 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     ) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
-        self.injected_funcs.extend(self.emitter.setup_module(self.err));
+        self.injected_funcs
+            .extend(self.emitter.setup_module(self.err));
         emit_needed_funcs(
             used_bound_funcs,
             &mut self.emitter,

@@ -154,10 +154,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
     pub(crate) fn get_loc_info(&self, state: &mut MatchState, ast: &SimpleAST) -> Option<LocInfo> {
         let (loc, at_func_end) = self.app_iter.curr_loc();
-        // if at_func_end {
-        //     // We're at the 'end' opcode of the function...don't instrument
-        //     return None;
-        // }
+
         if let Some(curr_instr) = self.app_iter.curr_op() {
             get_loc_info_for_active_probes(
                 self.app_iter.module,
@@ -265,13 +262,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         for (_param_name, param_rec_id) in self.instr_created_args.iter() {
             let param_rec = self.table.get_record_mut(*param_rec_id);
             if let Some(Record::Var {
-                addr: Some(addrs),
-                ..
+                addr: Some(addrs), ..
             }) = param_rec
             {
-                let VarAddr::Local {
-                    addr,
-                } = addrs.first().unwrap() else {
+                let VarAddr::Local { addr } = addrs.first().unwrap() else {
                     assert_eq!(addrs.len(), 1);
                     panic!("arg address should be represented with a single address")
                 };

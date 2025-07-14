@@ -199,12 +199,13 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                             //ignore, initial setup is done in $alloc
                             true
                         }
-                        VarAddr::Local { .. } => handle_decl(addr, var_id, ty, ctx.locals_tracker, injector),
+                        VarAddr::Local { .. } => {
+                            handle_decl(addr, var_id, ty, ctx.locals_tracker, injector)
+                        }
                     }
-                },
+                }
                 None => handle_decl(addr, var_id, ty, ctx.locals_tracker, injector),
             }
-
         }
         _ => {
             ctx.err.unexpected_error(
@@ -219,14 +220,19 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
     }
 }
-fn handle_decl<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(addr: &mut Option<Vec<VarAddr>>, var_id: &mut Expr, ty: &mut DataType, locals_tracker: &mut LocalsTracker, injector: &mut T) -> bool {
+fn handle_decl<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    addr: &mut Option<Vec<VarAddr>>,
+    var_id: &mut Expr,
+    ty: &mut DataType,
+    locals_tracker: &mut LocalsTracker,
+    injector: &mut T,
+) -> bool {
     // If the local already exists, it would be because the probe has been
     // emitted at another opcode location. Simply overwrite the previously saved
     // address.
     let wasm_ty = ty.to_wasm_type();
     if wasm_ty.len() == 1 {
-        let id = locals_tracker
-            .use_local(*wasm_ty.first().unwrap(), injector);
+        let id = locals_tracker.use_local(*wasm_ty.first().unwrap(), injector);
         *addr = Some(vec![VarAddr::Local { addr: id }]);
         true
     } else {
@@ -471,7 +477,7 @@ fn possibly_emit_memaddr_calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLo
         let mut is_mem_loc = false;
         if let Some(addrs) = addr {
             for addr in addrs.iter() {
-                if let VarAddr::MemLoc {..} = addr {
+                if let VarAddr::MemLoc { .. } = addr {
                     is_mem_loc = true;
                 };
             }
@@ -507,11 +513,11 @@ fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         injector.global_set(GlobalID(*addr));
                     }
                     VarAddr::MemLoc {
-                             mem_id,
-                             ty,
-                             var_offset,
-                             ..
-                     } => {
+                        mem_id,
+                        ty,
+                        var_offset,
+                        ..
+                    } => {
                         ctx.mem_allocator
                             .set_in_mem(*var_offset, *mem_id, &ty.clone(), injector);
                     }
@@ -766,10 +772,10 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                             injector.local_get(LocalID(*addr));
                         }
                         VarAddr::MemLoc {
-                                 mem_id,
-                                 ty,
-                                 var_offset,
-                         } => {
+                            mem_id,
+                            ty,
+                            var_offset,
+                        } => {
                             ctx.mem_allocator.get_from_mem(
                                 *mem_id,
                                 &ty.clone(),

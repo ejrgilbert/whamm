@@ -92,9 +92,10 @@ fn handle_wasm(
         .static_data
         .insert("pc".to_string(), Some(Value::gen_u32(pc as u32)));
 
-    loc_info
-        .static_data
-        .insert("is_func_end".to_string(), Some(Value::Boolean{val: at_func_end}));
+    loc_info.static_data.insert(
+        "is_func_end".to_string(),
+        Some(Value::Boolean { val: at_func_end }),
+    );
 
     for param in prov.all_params() {
         if let Some(n) = param.n_for("local") {
@@ -2471,8 +2472,6 @@ pub struct MatchState {
 struct BasicBlockState {
     start: usize,
     end: usize,
-    // The number of instructions in this basic block
-    // instr_cnt: usize
 }
 impl BasicBlockState {
     fn reset(&mut self) {

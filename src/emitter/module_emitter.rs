@@ -172,7 +172,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             for ty in wasm_tys.iter() {
                 let local_id = params.len() as u32;
                 // handle param list
-                params.push(ty.clone());
+                params.push(*ty);
 
                 addrs.push(VarAddr::Local { addr: local_id });
             }
