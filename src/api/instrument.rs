@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::api::get_defs_and_lib;
-use crate::common::error::WhammError;
+use crate::common::error::{CodeLocation, WhammError as ErrorInternal};
 use crate::common::instr;
 use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
 use log::error;
@@ -156,7 +156,7 @@ pub fn instrument_as_dry_run(
             }
             Ok(injections)
         }
-        Err(errs) => Err(errs),
+        Err(errs) => Err(WhammError::from_errs(errs)),
     }
 }
 
@@ -222,6 +222,7 @@ impl Config {
         library_strategy: Option<LibraryLinkStrategy>,
     ) -> Self {
         if testing {
+            // TODO
             error!("Generating helper methods for testing mode is not yet supported!");
             exit(1);
         }
@@ -651,5 +652,32 @@ impl From<&Reason> for Cause {
             },
             Reason::Whamm | Reason::WhammProbe { .. } => Self::Whamm,
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct WhammError {
+    /// The location within the input string causing the error
+    pub err_loc: Option<CodeLocation>,
+    /// A location within the input string that can add context to the error
+    pub info_loc: Option<CodeLocation>,
+    pub msg: String
+}
+impl From<&ErrorInternal> for WhammError {
+    fn from(value: &ErrorInternal) -> Self {
+        Self {
+            err_loc: value.err_loc.clone(),
+            info_loc: value.info_loc.clone(),
+            msg: value.ty.message().to_string()
+        }
+    }
+}
+impl WhammError {
+    fn from_errs(values: Vec<ErrorInternal>) -> Vec<Self> {
+        let mut errs = vec![];
+        for e in values.iter() {
+            errs.push(Self::from(e));
+        }
+        errs
     }
 }

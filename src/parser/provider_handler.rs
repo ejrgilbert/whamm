@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use termcolor::Buffer;
 
-pub fn yml_to_providers(def_yamls: &[String]) -> Vec<ProviderDef> {
+pub fn yml_to_providers(def_yamls: &[String]) -> Result<Vec<ProviderDef>, Box<ErrorGen>> {
     let def = read_yml(def_yamls);
     from_helper::<ProviderDef, ProviderYml>(def.providers)
 }
@@ -215,12 +215,12 @@ pub struct ProviderDef {
     pub def: Def,
     pub packages: Vec<PackageDef>,
 }
-impl From<ProviderYml> for ProviderDef {
-    fn from(value: ProviderYml) -> Self {
-        let bound_vars = from_helper::<BoundVar, BoundVarYml>(value.bound_vars);
-        let bound_fns = from_helper::<BoundFunc, BoundFuncYml>(value.bound_fns);
-        let packages = from_helper::<PackageDef, PackageYml>(value.packages);
-        Self {
+impl CheckedFrom<ProviderYml> for ProviderDef {
+    fn from(value: ProviderYml) -> Result<Self, Box<ErrorGen>> {
+        let bound_vars = from_helper::<BoundVar, BoundVarYml>(value.bound_vars)?;
+        let bound_fns = from_helper::<BoundFunc, BoundFuncYml>(value.bound_fns)?;
+        let packages = from_helper::<PackageDef, PackageYml>(value.packages)?;
+        Ok(Self {
             def: Def {
                 name: value.name.clone(),
                 bound_vars,
@@ -228,7 +228,7 @@ impl From<ProviderYml> for ProviderDef {
                 docs: value.docs.clone(),
             },
             packages,
-        }
+        })
     }
 }
 impl MatchOn for ProviderDef {
@@ -254,7 +254,6 @@ impl MatchOn for ProviderDef {
                         // if there's a further match pattern to consider, this isn't a match!
                         // (consider wasm:begin and wasm:end)
                         err_ctxt.on_provider = Some(ErrorGen::get_parse_error(
-                            true,
                             Some(format!(
                                 "Could not find any matches for the specified provider pattern: {provider_patt}"
                             )),
@@ -331,12 +330,12 @@ pub struct PackageDef {
     def: Def,
     events: Vec<EventDef>,
 }
-impl From<PackageYml> for PackageDef {
-    fn from(value: PackageYml) -> Self {
-        let bound_vars = from_helper::<BoundVar, BoundVarYml>(value.bound_vars);
-        let bound_fns = from_helper::<BoundFunc, BoundFuncYml>(value.bound_fns);
-        let events = from_helper::<EventDef, EventYml>(value.events);
-        Self {
+impl CheckedFrom<PackageYml> for PackageDef {
+    fn from(value: PackageYml) -> Result<Self, Box<ErrorGen>> {
+        let bound_vars = from_helper::<BoundVar, BoundVarYml>(value.bound_vars)?;
+        let bound_fns = from_helper::<BoundFunc, BoundFuncYml>(value.bound_fns)?;
+        let events = from_helper::<EventDef, EventYml>(value.events)?;
+        Ok(Self {
             def: Def {
                 name: value.name.clone(),
                 bound_vars,
@@ -344,7 +343,7 @@ impl From<PackageYml> for PackageDef {
                 docs: value.docs.clone(),
             },
             events,
-        }
+        })
     }
 }
 impl MatchOn for PackageDef {
@@ -371,7 +370,6 @@ impl MatchOn for PackageDef {
                             // if there's a further match pattern to consider, this isn't a match!
                             // (consider wasm:begin and wasm:end)
                             err_ctxt.on_package = Some(ErrorGen::get_parse_error(
-                                true,
                                 Some(format!(
                                     "Could not find any matches for the specified package pattern: {pkg_patt}"
                                 )),
@@ -464,12 +462,12 @@ pub struct EventDef {
     def: Def,
     modes: Vec<ModeDef>,
 }
-impl From<EventYml> for EventDef {
-    fn from(value: EventYml) -> Self {
-        let bound_vars = from_helper::<BoundVar, BoundVarYml>(value.bound_vars);
-        let bound_fns = from_helper::<BoundFunc, BoundFuncYml>(value.bound_fns);
-        let modes = from_helper::<ModeDef, ModeYml>(value.supported_modes);
-        Self {
+impl CheckedFrom<EventYml> for EventDef {
+    fn from(value: EventYml) -> Result<Self, Box<ErrorGen>> {
+        let bound_vars = from_helper::<BoundVar, BoundVarYml>(value.bound_vars)?;
+        let bound_fns = from_helper::<BoundFunc, BoundFuncYml>(value.bound_fns)?;
+        let modes = from_helper::<ModeDef, ModeYml>(value.supported_modes)?;
+        Ok(Self {
             def: Def {
                 name: value.name.clone(),
                 docs: value.docs.clone(),
@@ -477,7 +475,7 @@ impl From<EventYml> for EventDef {
                 bound_fns,
             },
             modes,
-        }
+        })
     }
 }
 impl MatchOn for EventDef {
@@ -504,7 +502,6 @@ impl MatchOn for EventDef {
                             // if there's a further match pattern to consider, this isn't a match!
                             // (consider wasm:begin and wasm:end)
                             err_ctxt.on_event = Some(ErrorGen::get_parse_error(
-                                true,
                                 Some(format!(
                                     "Could not find any matches for the specified event pattern: {evt_patt}"
                                 )),
@@ -644,9 +641,9 @@ pub struct ModeDef {
     alias: Option<String>,
     kind: ModeKind,
 }
-impl From<ModeYml> for ModeDef {
-    fn from(value: ModeYml) -> Self {
-        Self {
+impl CheckedFrom<ModeYml> for ModeDef {
+    fn from(value: ModeYml) -> Result<Self, Box<ErrorGen>> {
+        Ok(Self {
             def: Def {
                 name: value.name.clone(),
                 bound_vars: vec![],
@@ -655,7 +652,7 @@ impl From<ModeYml> for ModeDef {
             },
             alias: value.alias_to.clone(),
             kind: ModeKind::from(value.name),
-        }
+        })
     }
 }
 impl MatchOn for ModeDef {
@@ -673,7 +670,6 @@ impl MatchOn for ModeDef {
                 Ok(Box::new(self.clone()))
             } else {
                 err_ctxt.on_mode = Some(ErrorGen::get_parse_error(
-                    true,
                     Some(format!(
                         "Could not find any matches for the specified mode pattern: {md_patt}"
                     )),
@@ -724,21 +720,21 @@ pub struct BoundVar {
     pub lifetime: Definition,
     pub derived_from: Option<Expr>,
 }
-impl From<BoundVarYml> for BoundVar {
-    fn from(value: BoundVarYml) -> Self {
+impl CheckedFrom<BoundVarYml> for BoundVar {
+    fn from(value: BoundVarYml) -> Result<Self, Box<ErrorGen>> {
         let ty = parse_helper::<DataType>("DataType", Rule::TYPE_YML, &value.ty, &type_from_rule);
 
         let derived_from = value.derived_from.map(|derived_from| {
             parse_helper::<Expr>("Expr", Rule::expr, &derived_from, &handle_expr)
         });
 
-        Self {
+        Ok(Self {
             name: value.name.to_owned(),
             docs: value.docs.to_owned(),
             ty,
             derived_from,
             lifetime: Definition::from(value.lifetime.as_str()),
-        }
+        })
     }
 }
 impl BoundVar {
@@ -762,14 +758,18 @@ impl BoundVar {
     }
 }
 
+trait CheckedFrom<F> where Self: Sized {
+    fn from(value: F) -> Result<Self, Box<ErrorGen>>;
+}
+
 #[derive(Clone, Debug)]
 pub struct BoundFunc {
     pub func: WhammFn,
     pub req_args: ReqArgs, // TODO: Remove this...it's wasm opcode specific...
     docs: String,
 }
-impl From<BoundFuncYml> for BoundFunc {
-    fn from(value: BoundFuncYml) -> Self {
+impl CheckedFrom<BoundFuncYml> for BoundFunc {
+    fn from(value: BoundFuncYml) -> Result<Self, Box<ErrorGen>> {
         let params = match WhammParser::parse(Rule::fn_params, &value.params) {
             Ok(mut pairs) => {
                 let mut err = ErrorGen::new("".to_string(), "".to_string(), 15);
@@ -785,8 +785,11 @@ impl From<BoundFuncYml> for BoundFunc {
                         break;
                     }
                 }
-                err.fatal_report("YmlToProvider");
-                params
+                if err.has_errors {
+                    return Err(Box::new(err));
+                } else {
+                    params
+                }
             }
             Err(e) => {
                 error!(
@@ -799,7 +802,7 @@ impl From<BoundFuncYml> for BoundFunc {
         let results =
             parse_helper::<DataType>("DataType", Rule::TYPE_YML, &value.results, &type_from_rule);
 
-        Self {
+        Ok(Self {
             func: WhammFn {
                 def: Definition::from(value.lifetime.as_str()),
                 name: FnId {
@@ -812,7 +815,7 @@ impl From<BoundFuncYml> for BoundFunc {
             },
             req_args: ReqArgs::new(value.req_args),
             docs: value.docs.to_owned(),
-        }
+        })
     }
 }
 impl BoundFunc {
@@ -923,7 +926,6 @@ fn match_helper<T: MatchOn>(
     } else {
         // create an error here
         return Err(Box::new(ErrorGen::get_parse_error(
-            true,
             Some(format!(
                 "Could not find any matches for the specified {ctxt} pattern: {pattern}"
             )),
@@ -978,12 +980,12 @@ fn parse_helper<T>(target: &str, parse_rule: Rule, token: &str, handler: &RuleHa
     }
 }
 
-fn from_helper<T: From<F>, F: Clone>(list: Vec<F>) -> Vec<T> {
+fn from_helper<T: CheckedFrom<F>, F: Clone>(list: Vec<F>) -> Result<Vec<T>, Box<ErrorGen>> {
     let mut new_list = vec![];
     for item in list.iter() {
-        new_list.push(T::from(item.clone()));
+        new_list.push(T::from(item.clone())?);
     }
-    new_list
+    Ok(new_list)
 }
 
 #[derive(Default)]

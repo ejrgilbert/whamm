@@ -112,10 +112,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             }
             Visiting::None => {
                 // error
-                self.err.unexpected_error(
-                    true,
-                    Some("Expected a set variant of 'Visiting', but found 'None'".to_string()),
-                    None,
+                unreachable!("Expected a set variant of 'Visiting', but found 'None'"
                 );
             }
         }
@@ -134,10 +131,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             }
             Visiting::None => {
                 // error
-                self.err.unexpected_error(
-                    true,
-                    Some("Expected a set variant of 'Visiting', but found 'None'".to_string()),
-                    None,
+                unreachable!("Expected a set variant of 'Visiting', but found 'None'"
                 );
             }
         }
@@ -177,7 +171,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_script");
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
     }
 
     fn visit_provider(&mut self, provider: &Provider) {
@@ -191,7 +185,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_provider");
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
     }
 
     fn visit_package(&mut self, package: &Package) {
@@ -205,7 +199,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_package");
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         // Remove this package from `curr_rule`
         let curr_rule = self.get_curr_rule();
         self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
@@ -246,7 +240,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         });
 
         trace!("Exiting: CodeGenerator::visit_event");
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         let curr_rule = self.get_curr_rule();
         let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
         self.set_curr_rule(new_rule);
@@ -276,7 +270,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         self.visiting = Visiting::None;
 
         trace!("Exiting: CodeGenerator::visit_probe");
-        self.table.exit_scope(self.err);
+        self.table.exit_scope();
         let curr_rule = self.get_curr_rule();
         self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
     }
@@ -296,7 +290,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
             Statement::UnsharedDecl {
                 is_report,
                 decl,
-                loc,
+                ..
             } => {
                 if let Statement::Decl {
                     ty,
@@ -333,24 +327,19 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                         loc,
                     );
                 } else {
-                    self.err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "{UNEXPECTED_ERR_MSG} Incorrect type for a UnsharedDecl's contents!"
-                        )),
-                        loc.clone().map(|l| l.line_col),
+                    unreachable!(
+                            "{} Incorrect type for a UnsharedDecl's contents!", UNEXPECTED_ERR_MSG
                     )
                 }
             }
             Statement::Assign { var_id, expr, .. } => {
                 if let Expr::VarId { name, .. } = var_id {
-                    let (def, _ty, loc) = get_def(name, self.table, self.err);
+                    let (def, _ty, loc) = get_def(name, self.table);
                     if def.is_comp_defined()
                         && self.config.as_monitor_module
                         && !self.config.enable_wizard_alt
                     {
                         self.err.wizard_error(
-                            true,
                             "Assigning to compiler-defined variables is not supported on Wizard target"
                                 .to_string(),
                             &loc,
@@ -410,19 +399,14 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 let fn_name = match &**fn_target {
                     Expr::VarId { name, .. } => name.clone(),
                     _ => {
-                        self.err.unexpected_error(
-                            true,
-                            Some(format!("{UNEXPECTED_ERR_MSG} Can only call functions.")),
-                            None,
-                        );
-                        "".to_string()
+                        unreachable!("{} Can only call functions.", UNEXPECTED_ERR_MSG);
                     }
                 };
 
                 let (def, ret_ty, req_args, context) = if let Some(lib_name) = &self.curr_user_lib {
                     let Some(Record::LibFn {
                         name, results, def, ..
-                    }) = self.table.lookup_lib_fn(lib_name, &fn_name, self.err)
+                    }) = self.table.lookup_lib_fn(lib_name, &fn_name)
                     else {
                         panic!(
                             "Could not find library function for {}.{}",
@@ -458,11 +442,9 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                             ..
                         }),
                         context,
-                    ) = self.table.lookup_fn_with_context(&fn_name, self.err)
+                    ) = self.table.lookup_fn_with_context(&fn_name)
                     else {
-                        self.err
-                            .unexpected_error(true, Some("unexpected type".to_string()), None);
-                        return;
+                        unreachable!("unexpected type");
                     };
                     (def, ret_ty.clone(), req_args.clone(), Some(context))
                 };
@@ -495,7 +477,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 self.check_strcmp = false;
             }
             Expr::VarId { name, .. } => {
-                let (def, ty, ..) = get_def(name, self.table, self.err);
+                let (def, ty, ..) = get_def(name, self.table);
                 if matches!(def, Definition::CompilerDynamic | Definition::User) {
                     self.mark_expr_as_dynamic();
                 }
@@ -519,13 +501,11 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
 
 fn get_def(
     name: &str,
-    table: &SymbolTable,
-    err: &mut ErrorGen,
+    table: &SymbolTable
 ) -> (Definition, DataType, Option<Location>) {
-    if let Some(Record::Var { def, ty, loc, .. }) = table.lookup_var(name, &None, err, false) {
+    if let Some(Record::Var { def, ty, loc, .. }) = table.lookup_var(name, false) {
         (def.clone(), ty.clone(), loc.clone())
     } else {
-        err.unexpected_error(true, Some("unexpected type".to_string()), None);
-        (Definition::User, DataType::Null, None)
+        unreachable!("unexpected type");
     }
 }

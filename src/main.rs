@@ -40,7 +40,10 @@ fn try_main() -> Result<(), failure::Error> {
             functions,
             defs_path,
         } => {
-            print_info(rule, defs_path, vars, functions);
+            if let Err(mut err) = print_info(rule, defs_path, vars, functions) {
+                err.report();
+                exit(1);
+            }
         }
         Cmd::Wast { wast_path } => {
             run_wast_tests_at(&vec![PathBuf::from(wast_path)]);

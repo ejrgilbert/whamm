@@ -1,6 +1,5 @@
 pub mod map_adapter;
 
-use crate::common::error::ErrorGen;
 use crate::emitter::InjectStrategy;
 use crate::generator::ast::{AstVisitor, Metadata, Probe, Script, WhammParam};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
@@ -61,10 +60,9 @@ impl LibPackage for MapLibPackage {
 
     fn define_helper_funcs(
         &mut self,
-        app_wasm: &mut Module,
-        err: &mut ErrorGen,
+        app_wasm: &mut Module
     ) -> Vec<FunctionID> {
-        self.adapter.define_helper_funcs(app_wasm, err)
+        self.adapter.define_helper_funcs(app_wasm)
     }
 }
 impl AstVisitor<bool> for MapLibPackage {

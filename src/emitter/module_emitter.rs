@@ -68,11 +68,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // ==== SYMBOL TABLE LOGIC ====
     // ============================
 
-    pub(crate) fn enter_scope(&mut self, err: &mut ErrorGen) {
-        self.table.enter_scope(err)
+    pub(crate) fn enter_scope(&mut self) {
+        self.table.enter_scope()
     }
-    pub(crate) fn exit_scope(&mut self, err: &mut ErrorGen) {
-        self.table.exit_scope(err)
+    pub(crate) fn exit_scope(&mut self) {
+        self.table.exit_scope()
     }
     pub(crate) fn reset_table(&mut self) {
         self.table.reset();
@@ -82,11 +82,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // ==== BASE MODULE SETUP LOGIC ====
     // =================================
 
-    pub fn setup_module(&mut self, err: &mut ErrorGen) -> Vec<FunctionID> {
+    pub fn setup_module(&mut self) -> Vec<FunctionID> {
         let mut injected_funcs = vec![];
         // setup maps
         if self.map_lib_adapter.used_in_global_scope {
-            injected_funcs.push(self.create_instr_init(err));
+            injected_funcs.push(self.create_instr_init());
         }
         injected_funcs
     }
@@ -99,23 +99,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         &mut self,
         context: &str,
         f: &Fn,
-        err: &mut ErrorGen,
     ) -> Option<FunctionID> {
         match f.def {
             Definition::CompilerDynamic => {
                 if self.fn_providing_contexts.contains(&context.to_string()) {
-                    self.emit_bound_fn(context, f, err)
+                    self.emit_bound_fn(context, f)
                 } else {
-                    err.add_error(ErrorGen::get_unexpected_error(
-                        true,
-                        Some(format!(
-                            "{UNEXPECTED_ERR_MSG} \
+                    unreachable!(
+                            "{} \
                         Provided fn, but could not find a context to provide the definition, context: {}",
-                            context
-                        )),
-                        None,
-                    ));
-                    None
+                            UNEXPECTED_ERR_MSG, context
+                        );
                 }
             }
             Definition::CompilerStatic => None, // already handled
@@ -272,10 +266,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         &mut self,
         context: &str,
         f: &Fn,
-        err: &mut ErrorGen,
     ) -> Option<FunctionID> {
         if context == "whamm" && f.name.name == "strcmp" {
-            self.emit_whamm_strcmp_fn(f, err)
+            self.emit_whamm_strcmp_fn(f)
         } else {
             panic!("Provided function, but could not find a context to provide the definition, context: {context}");
         }
@@ -327,7 +320,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                             err,
                         ),
                     );
-                    self.table.exit_scope(err);
+                    self.table.exit_scope();
                 }
             } else {
                 self.report_vars.all_used_report_dts = used_report_dts;
@@ -352,8 +345,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     } else {
                         self.mem_allocator.mem_id
                     },
-                    self.app_wasm,
-                    err,
+                    self.app_wasm
                 );
             }
 
@@ -369,7 +361,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         }
     }
 
-    fn emit_whamm_strcmp_fn(&mut self, f: &Fn, err: &mut ErrorGen) -> Option<FunctionID> {
+    fn emit_whamm_strcmp_fn(&mut self, f: &Fn) -> Option<FunctionID> {
         let strcmp_params = vec![WirmType::I32, WirmType::I32, WirmType::I32, WirmType::I32];
         let strcmp_result = vec![WirmType::I32];
 
@@ -472,9 +464,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         let strcmp_id = strcmp.finish_module_with_tag(self.app_wasm, get_tag_for(&None));
         self.app_wasm.set_fn_name(strcmp_id, "strcmp".to_string());
 
-        let Record::Fn { addr, .. } = self.table.lookup_fn_mut(&f.name.name, err)? else {
-            err.unexpected_error(true, Some("unexpected type".to_string()), None);
-            return None;
+        let Record::Fn { addr, .. } = self.table.lookup_fn_mut(&f.name.name)? else {
+            unreachable!("unexpected type")
         };
         *addr = Some(*strcmp_id);
         Some(strcmp_id)
@@ -484,7 +475,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // ==== EMIT `map` LOGIC ====
     // ===========================
 
-    fn create_instr_init(&mut self, err: &mut ErrorGen) -> FunctionID {
+    fn create_instr_init(&mut self) -> FunctionID {
         // TODO -- move this into the MapAdapter
         //make a global bool for whether to run the instr_init fn
         self.map_lib_adapter.init_bool_location = *self.app_wasm.add_global_with_tag(
@@ -496,16 +487,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         );
         match self.app_wasm.functions.get_local_fid_by_name("instr_init") {
             Some(_) => {
-                debug!("instr_init function already exists");
-                err.unexpected_error(
-                    true,
-                    Some(
-                        "instr_init function already exists - needs to be created by Whamm"
-                            .to_string(),
-                    ),
-                    None,
-                );
-                unreachable!()
+                unreachable!("instr_init function already exists - needs to be created by Whamm");
             }
             None => {
                 //time to make a instr_init fn
@@ -524,34 +506,29 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // ==== EMIT MEMORY DATA LOGIC ====
     // ================================
 
-    pub fn emit_strings(&mut self, strings_to_emit: Vec<String>, err: &mut ErrorGen) {
+    pub fn emit_strings(&mut self, strings_to_emit: Vec<String>) {
         for string in strings_to_emit.iter() {
             self.emit_string(
                 &mut Value::Str {
                     val: string.clone(),
-                },
-                err,
+                }
             );
         }
     }
 
-    pub fn emit_string(&mut self, value: &mut Value, err: &mut ErrorGen) -> bool {
+    pub fn emit_string(&mut self, value: &mut Value) -> bool {
         match value {
             Value::Str { val, .. } => {
                 self.mem_allocator.emit_string(self.app_wasm, val);
                 true
             }
             _ => {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
+                unreachable!(
+                        "{} \
                 Called 'emit_string', but this is not a string type: {:?}",
+                    UNEXPECTED_ERR_MSG,
                         value
-                    )),
-                    None,
-                );
-                false
+                    )
             }
         }
     }
@@ -579,8 +556,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         err: &mut ErrorGen,
     ) -> Option<FunctionID> {
         let Record::Var { addr, ty, loc, .. } = self.table.lookup_var_mut(&name, true)? else {
-            err.unexpected_error(true, Some("unexpected type".to_string()), None);
-            return None;
+            unreachable!("unexpected type")
         };
 
         // emit global variable and set addr in symbol table
@@ -607,7 +583,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 //now save off the global variable metadata
                 if report_mode {
                     self.report_vars
-                        .put_global_metadata(*global_id, name.clone(), ty, err);
+                        .put_global_metadata(*global_id, name.clone(), ty);
                 }
                 Some(emit_global_getter(
                     self.app_wasm,

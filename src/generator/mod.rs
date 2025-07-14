@@ -1,4 +1,3 @@
-use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::provider_handler::{BoundFunc, Event, ModeKind, Package, Probe, Provider};
@@ -34,8 +33,7 @@ fn create_curr_loc(curr_script_id: u8, probe: &ast::Probe) -> LocationData {
 fn emit_needed_funcs(
     funcs: HashSet<(String, String)>,
     emitter: &mut ModuleEmitter,
-    injected_funcs: &mut Vec<FunctionID>,
-    err: &mut ErrorGen,
+    injected_funcs: &mut Vec<FunctionID>
 ) {
     for (context, fname) in funcs.iter() {
         if let Some(fid) = emitter.emit_bound_fn(
@@ -49,8 +47,7 @@ fn emit_needed_funcs(
                 params: vec![],
                 results: DataType::Boolean,
                 body: Default::default(),
-            },
-            err,
+            }
         ) {
             injected_funcs.push(fid);
         };

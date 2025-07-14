@@ -40,7 +40,7 @@ impl ExprFolder {
             Expr::BinOp { .. } => self.fold_binop(expr, table, err),
             Expr::Ternary { .. } => self.fold_ternary(expr, table, err),
             Expr::Call { .. } => self.fold_call(expr, table),
-            Expr::VarId { .. } => self.fold_var_id(expr, table, err),
+            Expr::VarId { .. } => self.fold_var_id(expr, table),
             Expr::Primitive { .. } => self.fold_primitive(expr, table, err),
             Expr::MapGet { .. } => self.fold_map_get(expr, table, err),
             Expr::LibCall { .. } => unreachable!("Should be handled in Self::fold_expr"),
@@ -173,7 +173,7 @@ impl ExprFolder {
                         return res;
                     }
 
-                    if self.is_str(&lhs, table, err) && self.is_str(&rhs, table, err) {
+                    if self.is_str(&lhs, table) && self.is_str(&rhs, table) {
                         // Otherwise, replace with a call to strcmp!
                         return Expr::Call {
                             fn_target: Box::new(Expr::VarId {
@@ -199,7 +199,7 @@ impl ExprFolder {
                         return res;
                     }
 
-                    if self.is_str(&lhs, table, err) && self.is_str(&rhs, table, err) {
+                    if self.is_str(&lhs, table) && self.is_str(&rhs, table) {
                         // Otherwise, replace with a call to strcmp!
                         return Expr::UnOp {
                             op: UnOp::Not,
@@ -242,11 +242,11 @@ impl ExprFolder {
         binop.clone()
     }
 
-    fn is_str(&mut self, expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> bool {
+    fn is_str(&mut self, expr: &Expr, table: &SymbolTable) -> bool {
         self.curr_loc = expr.loc().clone();
         match expr {
             Expr::VarId { name, .. } => {
-                if let Some(Var { ty, .. }) = table.lookup_var(name, &None, err, false) {
+                if let Some(Var { ty, .. }) = table.lookup_var(name, false) {
                     matches!(ty, DataType::Str)
                 } else {
                     false
@@ -258,7 +258,7 @@ impl ExprFolder {
             } => true,
             Expr::Call { fn_target, .. } => {
                 if let Expr::VarId { name, .. } = fn_target.as_ref() {
-                    if let Some(Record::Fn { ret_ty, .. }) = table.lookup_fn(name, false, err) {
+                    if let Some(Record::Fn { ret_ty, .. }) = table.lookup_fn(name, false) {
                         matches!(ret_ty, DataType::Str)
                     } else {
                         false
@@ -1314,10 +1314,10 @@ impl ExprFolder {
         self.curr_loc = call.loc().clone();
         call.clone()
     }
-    fn fold_var_id(&mut self, var_id: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+    fn fold_var_id(&mut self, var_id: &Expr, table: &SymbolTable) -> Expr {
         self.curr_loc = var_id.loc().clone();
         if let Expr::VarId { name, .. } = &var_id {
-            let Some(Var { value, .. }) = table.lookup_var(name, &None, err, false) else {
+            let Some(Var { value, .. }) = table.lookup_var(name, false) else {
                 return var_id.clone(); // ignore
             };
             if value.is_some() {

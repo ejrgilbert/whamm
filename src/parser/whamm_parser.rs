@@ -1,3 +1,4 @@
+use std::process::exit;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{long_line, magenta, white};
 use crate::parser::provider_handler::{get_matches, yml_to_providers, PrintInfo, ProviderDef};
@@ -24,8 +25,8 @@ pub fn print_info(
     print_vars: bool,
     print_functions: bool,
     err: &mut ErrorGen,
-) {
-    let def = yml_to_providers(def_yamls);
+) -> Result<(), Box<ErrorGen>> {
+    let def = yml_to_providers(def_yamls)?;
     assert!(!def.is_empty());
 
     trace!("Entered print_info");
@@ -99,6 +100,7 @@ pub fn print_info(
         buff.reset()
             .expect("Uh oh, something went wrong while printing to terminal");
     }
+    Ok(())
 }
 
 pub fn parse_script(def_yamls: &Vec<String>, script: &String, err: &mut ErrorGen) -> Option<Whamm> {
@@ -147,18 +149,18 @@ fn to_ast(
 
     match pair.as_rule() {
         Rule::script => {
-            parser_entry_point(def_yamls, &mut whamm, script_count, pair, err);
+            if let Err(mut e) = parser_entry_point(def_yamls, &mut whamm, script_count, pair, err) {
+                e.report();
+                exit(1);
+            }
         }
         rule => {
             err.parse_error(
-                true,
                 Some(UNEXPECTED_ERR_MSG.to_string()),
                 Some(LineColLocation::from(pair.as_span())),
                 vec![Rule::script],
                 vec![rule],
             );
-            // should have exited above (since it's a fatal error)
-            unreachable!()
         }
     }
     // let mut visitor = AsStrVisitor { indent: 0 };
@@ -177,15 +179,15 @@ fn parser_entry_point(
     script_count: usize,
     pair: Pair<Rule>,
     err: &mut ErrorGen,
-) {
-    let def = yml_to_providers(def_yamls);
+) -> Result<(), Box<ErrorGen>> {
+    let def = yml_to_providers(def_yamls)?;
     assert!(!def.is_empty());
 
     trace!("Enter process_pair");
     match pair.as_rule() {
         Rule::script => {
             trace!("Begin process script");
-            handle_script(def_yamls, whamm, pair, err);
+            handle_script(def_yamls, whamm, pair, err)?;
             trace!("End process script");
         }
         Rule::lib_import => handle_lib_import(whamm, script_count, pair),
@@ -212,7 +214,6 @@ fn parser_entry_point(
         }
         rule => {
             err.parse_error(
-                true,
                 None,
                 Some(LineColLocation::from(pair.as_span())),
                 vec![
@@ -224,11 +225,10 @@ fn parser_entry_point(
                 ],
                 vec![rule],
             );
-            // should have exited above (since it's a fatal error)
-            unreachable!()
         }
     }
     trace!("Exit process_pair");
+    Ok(())
 }
 
 pub fn handle_script(
@@ -236,13 +236,14 @@ pub fn handle_script(
     whamm: &mut Whamm,
     pair: Pair<Rule>,
     err: &mut ErrorGen,
-) {
+) -> Result<(), Box<ErrorGen>>{
     let base_script = Script::new();
     let new_script_count = whamm.add_script(base_script);
 
-    pair.into_inner().for_each(|p| {
-        parser_entry_point(def_yamls, whamm, new_script_count, p, err);
-    });
+    for p in pair.into_inner().into_iter() {
+        parser_entry_point(def_yamls, whamm, new_script_count, p, err)?;
+    }
+    Ok(())
 }
 
 pub fn handle_lib_import(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>) {
@@ -407,14 +408,12 @@ fn handle_probe_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
         Rule::PROBE_RULE => probe_rule_from_rule(pair, err),
         rule => {
             err.parse_error(
-                true,
                 Some(UNEXPECTED_ERR_MSG.to_string()),
                 Some(LineColLocation::from(pair.as_span())),
                 vec![Rule::PROBE_RULE],
                 vec![rule],
             );
-            // should have exited above (since it's a fatal error)
-            unreachable!();
+            ProbeRule::default()
         }
     }
 }
@@ -425,7 +424,6 @@ fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         Rule::arg => handle_arg(pair),
         Rule::expr => handle_expr(pair),
         rule => Err(vec![ErrorGen::get_parse_error(
-            true,
             None,
             Some(LineColLocation::from(pair.as_span())),
             vec![Rule::expr, Rule::arg, Rule::ternary],
@@ -490,7 +488,6 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
         Rule::special_decl => handle_special_decl(pair, err),
         rule => {
             err.parse_error(
-                true,
                 None,
                 Some(LineColLocation::from(pair.as_span())),
                 vec![
@@ -507,8 +504,7 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 ],
                 vec![rule],
             );
-            // should have exited above (since it's a fatal error)
-            unreachable!();
+            vec![]
         }
     }
 }
@@ -742,14 +738,12 @@ fn handle_decl_init(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
         Rule::decl => handle_decl(&mut decl_pair.into_inner(), err),
         rule => {
             err.parse_error(
-                true,
                 Some(UNEXPECTED_ERR_MSG.to_string()),
                 Some(LineColLocation::from(pair_loc)),
                 vec![Rule::special_decl, Rule::decl],
                 vec![rule],
             );
-            // should have exited above (since it's a fatal error)
-            unreachable!();
+            vec![]
         }
     };
     let decl = decls.first().unwrap();
@@ -842,7 +836,6 @@ fn handle_alt(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
         Rule::elif => handle_elif(pair, err),
         _ => {
             err.parse_error(
-                true,
                 Some("Error parsing if/else".to_string()),
                 Some(alt_loc.clone()),
                 vec![Rule::else_stmt, Rule::elif],
@@ -941,7 +934,6 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 if is_report {
                     // cannot mark as report 2x, error
                     err.parse_error(
-                        false,
                         Some(
                             "Marked variable with 'report' multiple times, should only mark once."
                                 .to_string(),
@@ -957,7 +949,6 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 if is_unshared {
                     // cannot mark as unshared 2x, error
                     err.parse_error(
-                        false,
                         Some(
                             "Marked variable with 'unshared' multiple times, should only mark once."
                                 .to_string(),
@@ -971,14 +962,11 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             }
             rule => {
                 err.parse_error(
-                    true,
                     Some(UNEXPECTED_ERR_MSG.to_string()),
                     Some(LineColLocation::from(pair.as_span())),
                     vec![Rule::REPORT, Rule::UNSHARED],
                     vec![rule],
                 );
-                // should have exited above (since it's a fatal error)
-                unreachable!();
             }
         }
     }
@@ -1167,7 +1155,6 @@ pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                         Rule::binary_not => UnOp::BitwiseNot,
                         rule => {
                             return Err(vec![ErrorGen::get_parse_error(
-                                true,
                                 Some(UNEXPECTED_ERR_MSG.to_string()),
                                 Some(LineColLocation::from(op.as_span())),
                                 vec![Rule::neg],
@@ -1221,7 +1208,6 @@ pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
                         rule => {
                             return Err(vec![ErrorGen::get_parse_error(
-                                true,
                                 None,
                                 Some(LineColLocation::from(op.as_span())),
                                 vec![
@@ -1289,7 +1275,6 @@ pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                         Rule::cast => UnOp::Cast { target },
                         rule => {
                             return Err(vec![ErrorGen::get_parse_error(
-                                true,
                                 Some(UNEXPECTED_ERR_MSG.to_string()),
                                 Some(LineColLocation::from(op_span)),
                                 vec![Rule::cast],
@@ -1423,14 +1408,12 @@ fn probe_rule_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> RulePart {
         }
         rule => {
             err.parse_error(
-                true,
                 Some(UNEXPECTED_ERR_MSG.to_string()),
                 Some(LineColLocation::from(pair.as_span())),
                 vec![Rule::PROBE_ID],
                 vec![rule],
             );
-            // should have exited above (since it's a fatal error)
-            unreachable!();
+            RulePart::default()
         }
     }
 }
@@ -1492,7 +1475,6 @@ pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
             })
         }
         rule => Err(vec![ErrorGen::get_parse_error(
-            true,
             Some(UNEXPECTED_ERR_MSG.to_string()),
             Some(LineColLocation::from(pair.as_span())),
             vec![
@@ -1598,7 +1580,6 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         }
         rule => {
             return Err(vec![ErrorGen::get_parse_error(
-                true,
                 Some(UNEXPECTED_ERR_MSG.to_string()),
                 Some(LineColLocation::from(pair.as_span())),
                 vec![Rule::int_hex, Rule::int_bin, Rule::int],
@@ -1682,7 +1663,6 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             }),
         }),
         Err(ty) => Err(vec![ErrorGen::get_parse_error(
-            true,
             Some(format!("Failed to parse value into {ty}: {token}")),
             Some(LineColLocation::from(pair.as_span())),
             vec![],
@@ -1712,7 +1692,6 @@ pub fn handle_float(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         (NumLit::f64(val), DataType::F64)
     } else {
         return Err(vec![ErrorGen::get_parse_error(
-            true,
             Some(format!("Failed to parse value into f32 OR f64: {token}")),
             Some(LineColLocation::from(pair.as_span())),
             vec![],

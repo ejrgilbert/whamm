@@ -195,7 +195,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         is_success
     }
 
-    pub(crate) fn save_args(&mut self, args: &[Arg], err: &mut ErrorGen) -> bool {
+    pub(crate) fn save_args(&mut self, args: &[Arg]) -> bool {
         // No opcodes should have been emitted in the module yet!
         // So, we can just save off the first * items in the stack as the args
         // to the call.
@@ -216,10 +216,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     let Some(Record::Var {
                                  ty,
                                  ..
-                             }) = self.table.lookup_var(arg_name, &None, err, true)
+                             }) = self.table.lookup_var(arg_name, true)
                     else {
-                        err.unexpected_error(true, Some("unexpected type".to_string()), None);
-                        return;
+                        unreachable!("unexpected type");
                     };
                     let wasm_ty = if ty.to_wasm_type().len() > 1 {
                         unimplemented!()
@@ -258,7 +257,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         true
     }
 
-    pub(crate) fn emit_args(&mut self, err: &mut ErrorGen) -> bool {
+    pub(crate) fn emit_args(&mut self) -> bool {
         for (_param_name, param_rec_id) in self.instr_created_args.iter() {
             let param_rec = self.table.get_record_mut(*param_rec_id);
             if let Some(Record::Var {
@@ -273,15 +272,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 // for the instrumented instruction right before that instruction is called!
                 self.app_iter.local_get(LocalID(*addr));
             } else {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} \
-                Could not emit parameters, something went wrong..."
-                    )),
-                    None,
-                );
-                return false;
+                unreachable!(
+                        "{} \
+                Could not emit parameters, something went wrong...", UNEXPECTED_ERR_MSG
+                    );
             }
         }
         true
@@ -423,7 +417,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // emit the beginning of the else
         self.app_iter.else_stmt();
 
-        is_success &= self.emit_args(err);
+        is_success &= self.emit_args();
         is_success &= self.emit_orig();
 
         // emit the end of the if block
@@ -431,7 +425,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         Ok(is_success)
     }
 
-    fn handle_alt_call_by_name(&mut self, args: &mut [Expr], err: &mut ErrorGen) -> bool {
+    fn handle_alt_call_by_name(&mut self, args: &mut [Expr]) -> bool {
         // args: vec![func_name: String]
         // Assume the correct args since we've gone through typechecking at this point!
         let fn_name = match args.iter().next().unwrap() {
@@ -448,22 +442,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             .functions
             .get_local_fid_by_name(fn_name.as_str())
         {
-            let is_success = self.emit_args(err);
+            let is_success = self.emit_args();
             self.app_iter.call(func_id);
             is_success
         } else {
-            err.unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} Could not find alt function call by name: {fn_name}"
-                )),
-                None,
-            );
-            false
+            unreachable!(
+                    "{} Could not find alt function call by name: {}", UNEXPECTED_ERR_MSG, fn_name);
         }
     }
 
-    fn handle_alt_call_by_id(&mut self, args: &mut [Expr], err: &mut ErrorGen) -> bool {
+    fn handle_alt_call_by_id(&mut self, args: &mut [Expr]) -> bool {
         // args: vec![func_id: i32]
         // Assume the correct args since we've gone through typechecking at this point!
         let func_id = match args.iter().next().unwrap() {
@@ -478,7 +466,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             _ => return false,
         };
 
-        let is_success = self.emit_args(err);
+        let is_success = self.emit_args();
         self.app_iter.call(FunctionID(func_id as u32));
         is_success
     }
@@ -506,21 +494,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         _curr_instr_args: &[Arg],
         target_fn_name: String,
         args: &mut [Expr],
-        err: &mut ErrorGen,
     ) -> bool {
         match target_fn_name.as_str() {
-            "alt_call_by_name" => self.handle_alt_call_by_name(args, err),
-            "alt_call_by_id" => self.handle_alt_call_by_id(args, err),
+            "alt_call_by_name" => self.handle_alt_call_by_name(args),
+            "alt_call_by_id" => self.handle_alt_call_by_id(args),
             "drop_args" => self.handle_drop_args(),
             _ => {
-                err.unexpected_error(
-                    true,
-                    Some(format!(
-                        "{UNEXPECTED_ERR_MSG} Could not find handler for static function with name: {target_fn_name}"
-                    )),
-                    None,
-                );
-                false
+                unreachable!(
+                        "{} Could not find handler for static function with name: {}",UNEXPECTED_ERR_MSG,target_fn_name);
             }
         }
     }
@@ -572,8 +553,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     self.report_vars,
                     self.map_lib_adapter,
                     self.mem_allocator,
-                    self.io_adapter,
-                    err,
+                    self.io_adapter
                 )
             } else {
                 None
@@ -801,14 +781,13 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
                 Expr::VarId { name, .. } => name.clone(),
                 _ => return false,
             };
-            let Some(Record::Fn { def, .. }) = self.table.lookup_fn(fn_name.as_str(), true, err)
+            let Some(Record::Fn { def, .. }) = self.table.lookup_fn(fn_name.as_str(), true)
             else {
-                err.unexpected_error(true, Some("unexpected type".to_string()), None);
-                return false;
+                unreachable!("unexpected type");
             };
             if matches!(def, Definition::CompilerStatic) {
                 // We want to handle this as unique logic rather than a simple function call to be emitted
-                return self.handle_special_fn_call(curr_instr_args, fn_name, args, err);
+                return self.handle_special_fn_call(curr_instr_args, fn_name, args);
             }
         }
 

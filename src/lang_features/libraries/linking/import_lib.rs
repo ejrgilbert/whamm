@@ -1,6 +1,5 @@
 #![allow(clippy::too_many_arguments)]
 
-use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::generator::ast::Script;
@@ -32,8 +31,7 @@ pub fn link_core_lib(
     app_wasm: &mut Module,
     core_lib: &[u8],
     mem_allocator: &mut MemoryAllocator,
-    packages: &mut [&mut dyn LibPackage],
-    err: &mut ErrorGen,
+    packages: &mut [&mut dyn LibPackage]
 ) -> Vec<FunctionID> {
     let mut injected_funcs = vec![];
     for package in packages.iter_mut() {
@@ -54,8 +52,7 @@ pub fn link_core_lib(
                 WHAMM_CORE_LIB_NAME.to_string(),
                 &None,
                 &core_lib,
-                *package,
-                err,
+                *package
             ));
         }
     }
@@ -69,8 +66,7 @@ pub fn link_user_lib(
     lib_name: String,
     lib_name_import_override: &Option<String>,
     used_lib_fns: &HashSet<String>,
-    table: &mut SymbolTable,
-    err: &mut ErrorGen,
+    table: &mut SymbolTable
 ) -> Vec<FunctionID> {
     let added = import_lib_fn_names(
         app_wasm,
@@ -79,8 +75,7 @@ pub fn link_user_lib(
         lib_name_import_override,
         lib_wasm,
         used_lib_fns,
-        Some(table),
-        err,
+        Some(table)
     );
 
     let mut injected_funcs = vec![];
@@ -111,8 +106,7 @@ fn import_lib_package(
     lib_name: String,
     lib_name_import_override: &Option<String>,
     lib_wasm: &Module,
-    package: &mut dyn LibPackage,
-    err: &mut ErrorGen,
+    package: &mut dyn LibPackage
 ) -> Vec<FunctionID> {
     trace!("Enter import_lib");
 
@@ -124,8 +118,7 @@ fn import_lib_package(
         lib_name_import_override,
         lib_wasm,
         &HashSet::from_iter(package.get_fn_names().iter().cloned()),
-        None,
-        err,
+        None
     );
 
     for (name, fid) in added.iter() {
@@ -134,7 +127,7 @@ fn import_lib_package(
     }
 
     // enable the library to define in-module helper functions
-    let injected_funcs = package.define_helper_funcs(app_wasm, err);
+    let injected_funcs = package.define_helper_funcs(app_wasm);
 
     trace!("Exit import_lib");
     injected_funcs
@@ -147,8 +140,7 @@ fn import_lib_fn_names(
     lib_name_import_override: &Option<String>,
     lib_wasm: &Module,
     lib_fns: &HashSet<String>,
-    mut table: Option<&mut SymbolTable>,
-    err: &mut ErrorGen,
+    mut table: Option<&mut SymbolTable>
 ) -> Vec<(String, u32)> {
     let mut injected_fns = vec![];
     for export in lib_wasm.exports.iter() {
@@ -186,13 +178,9 @@ fn import_lib_fn_names(
                     // save the FID as an injected function
                     injected_fns.push((export.name.clone(), fid));
                 } else {
-                    err.unexpected_error(
-                        true,
-                        Some(format!(
+                    unreachable!(
                             "ImportLib: Could not add function \"{}\" as application import",
                             export.name
-                        )),
-                        None,
                     );
                 }
             }

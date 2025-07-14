@@ -1,5 +1,4 @@
 #![allow(clippy::too_many_arguments)]
-use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -57,19 +56,13 @@ impl ReportVars {
         &mut self,
         gid: u32,
         name: String,
-        whamm_ty: &DataType,
-        err: &mut ErrorGen,
+        whamm_ty: &DataType
     ) -> bool {
         if !matches!(self.curr_location, LocationData::Global { .. }) {
-            err.unexpected_error(
-                true,
-                Some(format!(
+            unreachable!(
                     "Expected global location data, but got: {:?}",
                     self.curr_location
-                )),
-                None,
             );
-            return false;
         }
         self.all_used_report_dts.insert(whamm_ty.clone());
         let metadata = Metadata::new(name.clone(), whamm_ty.clone(), &self.curr_location);
@@ -78,12 +71,7 @@ impl ReportVars {
             (metadata.get_wasm_ty(), metadata.clone()),
         );
         if !self.all_metadata.insert(metadata) {
-            err.unexpected_error(
-                true,
-                Some(format!("Duplicate metadata for map with name: {}", name)),
-                None,
-            );
-            return false;
+            unreachable!("Duplicate metadata for map with name: {}", name);
         }
         true
     }
@@ -91,8 +79,7 @@ impl ReportVars {
         &mut self,
         map_id: u32,
         name: String,
-        ty: DataType,
-        err: &mut ErrorGen,
+        ty: DataType
     ) {
         self.all_used_report_dts.insert(ty.clone());
         let metadata = Metadata::new(name.clone(), ty, &self.curr_location);
@@ -101,11 +88,7 @@ impl ReportVars {
             (metadata.get_wasm_ty(), metadata.clone()),
         );
         if !self.all_metadata.insert(metadata) {
-            err.unexpected_error(
-                true,
-                Some(format!("Duplicate metadata for map with name: {}", name)),
-                None,
-            );
+            unreachable!("Duplicate metadata for map with name: {}", name);
         };
     }
     pub fn print_metadata(&self) {
@@ -203,8 +186,7 @@ impl ReportVars {
         map_lib_adapter: &mut MapLibAdapter,
         header_info: (u32, u32),
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) {
         // There will be one function per report variable type used in the script.
         // So, if the script only uses i32 report variables, there will be one function
@@ -233,12 +215,11 @@ impl ReportVars {
             map_lib_adapter,
             header_info,
             mem_id,
-            wasm,
-            err,
+            wasm
         );
 
         // print the global variables
-        self.emit_globals_flush(func, var_meta, io_adapter, map_lib_adapter, err);
+        self.emit_globals_flush(func, var_meta, io_adapter, map_lib_adapter);
     }
 
     pub fn configure_trackers(&mut self, trackers: HashMap<DataType, u32>) {
@@ -263,18 +244,16 @@ impl ReportVars {
         map_lib_adapter: &mut MapLibAdapter,
         header_info: (u32, u32),
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) {
-        io_adapter.putsln(header_info.0, header_info.1, func, err);
+        io_adapter.putsln(header_info.0, header_info.1, func);
         self.call_dt_flushers(
             func,
             mem_allocator,
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm,
-            err,
+            wasm
         );
     }
 
@@ -283,13 +262,12 @@ impl ReportVars {
         func: &mut FunctionBuilder,
         var_meta_str: &HashMap<VarAddr, (DataType, (u32, u32))>,
         io_adapter: &mut IOAdapter,
-        map_lib_adapter: &mut MapLibAdapter,
-        err: &mut ErrorGen,
+        map_lib_adapter: &mut MapLibAdapter
     ) {
         // for each of the report globals, emit the printing logic
         let sorted_metadata = var_meta_str.iter().sorted_by_key(|data| data.0);
         for (addr, (whamm_ty, (str_addr, str_len))) in sorted_metadata.into_iter() {
-            io_adapter.puts(*str_addr, *str_len, func, err);
+            io_adapter.puts(*str_addr, *str_len, func);
 
             match addr {
                 VarAddr::Local { .. } => panic!("Shouldn't be trying to flush a local variable..."),
@@ -300,18 +278,18 @@ impl ReportVars {
                     // get the value of this report global
                     func.global_get(GlobalID(*addr));
                     match whamm_ty {
-                        DataType::U8 => io_adapter.call_putu8(func, err),
-                        DataType::I8 => io_adapter.call_puti8(func, err),
-                        DataType::U16 => io_adapter.call_putu16(func, err),
-                        DataType::I16 => io_adapter.call_puti16(func, err),
-                        DataType::I32 => io_adapter.call_puti32(func, err),
+                        DataType::U8 => io_adapter.call_putu8(func),
+                        DataType::I8 => io_adapter.call_puti8(func),
+                        DataType::U16 => io_adapter.call_putu16(func),
+                        DataType::I16 => io_adapter.call_puti16(func),
+                        DataType::I32 => io_adapter.call_puti32(func),
                         // special case for unsigned integers (so the print is correctly signed)
-                        DataType::U32 => io_adapter.call_putu32(func, err),
-                        DataType::I64 => io_adapter.call_puti64(func, err),
-                        DataType::U64 => io_adapter.call_putu64(func, err),
-                        DataType::F32 => io_adapter.call_putf32(func, err),
-                        DataType::F64 => io_adapter.call_putf64(func, err),
-                        DataType::Boolean => io_adapter.call_putbool(func, err),
+                        DataType::U32 => io_adapter.call_putu32(func),
+                        DataType::I64 => io_adapter.call_puti64(func),
+                        DataType::U64 => io_adapter.call_putu64(func),
+                        DataType::F32 => io_adapter.call_putf32(func),
+                        DataType::F64 => io_adapter.call_putf64(func),
+                        DataType::Boolean => io_adapter.call_putbool(func),
                         other => unimplemented!(
                             "printing for this type has not been implemented: {}",
                             other
@@ -320,10 +298,10 @@ impl ReportVars {
                 }
                 VarAddr::MapId { addr } => {
                     // print the value(s) of this map
-                    map_lib_adapter.print_map(*addr, func, err);
+                    map_lib_adapter.print_map(*addr, func);
                 }
             }
-            io_adapter.putln(func, err);
+            io_adapter.putln(func);
         }
     }
 
@@ -334,11 +312,10 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) {
         // Make sure the metadata flusher func exists
-        self.emit_flush_var_metadata_fn(mem_allocator, io_adapter, mem_id, wasm, err);
+        self.emit_flush_var_metadata_fn(mem_allocator, io_adapter, mem_id, wasm);
 
         // iterate through all the data type flush functions and emit calls
         // sort these by the datatype to make the flush deterministic!
@@ -346,61 +323,61 @@ impl ReportVars {
         for dt in sorted_keys.into_iter() {
             match dt {
                 DataType::U8 => {
-                    let fid = self.emit_flush_u8_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                    let fid = self.emit_flush_u8_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::I8 => {
-                    let fid = self.emit_flush_i8_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                    let fid = self.emit_flush_i8_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::U16 => {
                     let fid =
-                        self.emit_flush_u16_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                        self.emit_flush_u16_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::I16 => {
                     let fid =
-                        self.emit_flush_i16_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                        self.emit_flush_i16_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::U32 => {
                     let fid =
-                        self.emit_flush_u32_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                        self.emit_flush_u32_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::I32 => {
                     let fid =
-                        self.emit_flush_i32_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                        self.emit_flush_i32_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::U64 => {
                     let fid =
-                        self.emit_flush_u64_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                        self.emit_flush_u64_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::I64 => {
                     let fid =
-                        self.emit_flush_i64_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                        self.emit_flush_i64_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::F32 => {
                     let fid =
-                        self.emit_flush_f32_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                        self.emit_flush_f32_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::F64 => {
                     let fid =
-                        self.emit_flush_f64_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                        self.emit_flush_f64_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::Boolean => {
                     let fid =
-                        self.emit_flush_bool_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                        self.emit_flush_bool_fn(io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 DataType::Map { .. } => {
                     let fid =
-                        self.emit_flush_map_fn(dt, io_adapter, map_lib_adapter, mem_id, wasm, err);
+                        self.emit_flush_map_fn(dt, io_adapter, map_lib_adapter, mem_id, wasm);
                     func.call(FunctionID(fid));
                 }
                 dt => {
@@ -414,8 +391,7 @@ impl ReportVars {
         mem_allocator: &MemoryAllocator,
         io_adapter: &mut IOAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) {
         // ======================== REPORT CSV FLUSH ============================
         // type, id_type, id, name, script_id, fname, fid, pc, probe_id, value(s)
@@ -515,17 +491,17 @@ impl ReportVars {
 
         // print 'id'
         flush_fn.local_get(orig_addr);
-        io_adapter.call_puti32(&mut flush_fn, err);
+        io_adapter.call_puti32(&mut flush_fn);
 
         // print 'id_type'
-        let (addr, len) = mem_allocator.lookup_emitted_string(&format!(", {id_type}, "), err);
-        io_adapter.puts(addr, len, &mut flush_fn, err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(&format!(", {id_type}, "));
+        io_adapter.puts(addr, len, &mut flush_fn);
 
         // print 'name'
         flush_fn.local_get(name_ptr).local_get(name_len);
-        io_adapter.call_puts_internal(&mut flush_fn, err);
-        let (comma_addr, comma_len) = mem_allocator.lookup_emitted_string(", ", err);
-        io_adapter.puts(comma_addr, comma_len, &mut flush_fn, err);
+        io_adapter.call_puts_internal(&mut flush_fn);
+        let (comma_addr, comma_len) = mem_allocator.lookup_emitted_string(", ");
+        io_adapter.puts(comma_addr, comma_len, &mut flush_fn);
 
         // print 'whamm_type' per supported report variable datatype
         assert!(!self.all_used_report_dts.is_empty());
@@ -534,7 +510,7 @@ impl ReportVars {
             if !first {
                 flush_fn.else_stmt();
             }
-            Self::flush_ty_metadata(&mut flush_fn, ty, &dt, mem_allocator, io_adapter, err);
+            Self::flush_ty_metadata(&mut flush_fn, ty, &dt, mem_allocator, io_adapter);
             first = false;
         }
         // All other datatypes should dynamically trap
@@ -545,29 +521,29 @@ impl ReportVars {
         }
 
         // print 'script_id'
-        let (addr, len) = mem_allocator.lookup_emitted_string("script", err);
-        io_adapter.puts(addr, len, &mut flush_fn, err);
+        let (addr, len) = mem_allocator.lookup_emitted_string("script");
+        io_adapter.puts(addr, len, &mut flush_fn);
         flush_fn.local_get(script_id);
-        io_adapter.call_puti32(&mut flush_fn, err);
-        io_adapter.puts(comma_addr, comma_len, &mut flush_fn, err);
+        io_adapter.call_puti32(&mut flush_fn);
+        io_adapter.puts(comma_addr, comma_len, &mut flush_fn);
 
         // print '"fname"'
         flush_fn.local_get(fname_ptr).local_get(fname_len);
-        io_adapter.call_puts_internal(&mut flush_fn, err);
-        io_adapter.puts(comma_addr, comma_len, &mut flush_fn, err);
+        io_adapter.call_puts_internal(&mut flush_fn);
+        io_adapter.puts(comma_addr, comma_len, &mut flush_fn);
 
         // print 'fid, pc'
         flush_fn.local_get(fid);
-        io_adapter.call_puti32(&mut flush_fn, err);
-        io_adapter.puts(comma_addr, comma_len, &mut flush_fn, err);
+        io_adapter.call_puti32(&mut flush_fn);
+        io_adapter.puts(comma_addr, comma_len, &mut flush_fn);
         flush_fn.local_get(pc);
-        io_adapter.call_puti32(&mut flush_fn, err);
-        io_adapter.puts(comma_addr, comma_len, &mut flush_fn, err);
+        io_adapter.call_puti32(&mut flush_fn);
+        io_adapter.puts(comma_addr, comma_len, &mut flush_fn);
 
         // print 'probe_id'
         flush_fn.local_get(probe_id_ptr).local_get(probe_id_len);
-        io_adapter.call_puts_internal(&mut flush_fn, err);
-        io_adapter.puts(comma_addr, comma_len, &mut flush_fn, err);
+        io_adapter.call_puts_internal(&mut flush_fn);
+        io_adapter.puts(comma_addr, comma_len, &mut flush_fn);
 
         // return the pointer to the next place in memory (should point to value(s))
         flush_fn
@@ -584,8 +560,7 @@ impl ReportVars {
         dt: &DataType,
         dt_local: &LocalID,
         mem_allocator: &MemoryAllocator,
-        io_adapter: &mut IOAdapter,
-        err: &mut ErrorGen,
+        io_adapter: &mut IOAdapter
     ) {
         let mut s = DefaultHasher::new();
         dt.hash(&mut s);
@@ -596,8 +571,8 @@ impl ReportVars {
             .i64_const(hash as i64)
             .i64_eq()
             .if_stmt(BlockType::Empty);
-        let (addr, len) = mem_allocator.lookup_emitted_string(&format!("{dt}, "), err);
-        io_adapter.puts(addr, len, flush_fn, err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(&format!("{dt}, "));
+        io_adapter.puts(addr, len, flush_fn);
         let wasm_tys = dt.to_wasm_type();
         let wasm_ty = if wasm_tys.len() > 1 {
             // todo support tuples, strings, etc.
@@ -605,8 +580,8 @@ impl ReportVars {
         } else {
             get_wasm_ty_str(wasm_tys.first().unwrap())
         };
-        let (addr, len) = mem_allocator.lookup_emitted_string(&format!("{wasm_ty}, "), err);
-        io_adapter.puts(addr, len, flush_fn, err);
+        let (addr, len) = mem_allocator.lookup_emitted_string(&format!("{wasm_ty}, "));
+        io_adapter.puts(addr, len, flush_fn);
     }
 
     // ==== Flush functions per datatype ====
@@ -616,19 +591,16 @@ impl ReportVars {
             &mut FunctionBuilder,
             &MemArg,
             &mut IOAdapter,
-            &mut MapLibAdapter,
-            &mut ErrorGen,
+            &mut MapLibAdapter
         ),
         dt: DataType,
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) -> u32 {
         let Some(flush_metadata_fid) = self.flush_tracker.flush_var_metadata_fid else {
-            err.unexpected_error(true, Some("Should have the flush variable metadata function ID, but it's not been generated yet.".to_string()), None);
-            unreachable!()
+            unreachable!("Should have the flush variable metadata function ID, but it's not been generated yet.");
         };
         let mem_arg = MemArg {
             align: 0,
@@ -709,7 +681,7 @@ impl ReportVars {
 
         // print the value(s), uses returned curr_addr that is now pointing to
         // the true location of the value in memory
-        flush_dt(&mut flush_fn, &mem_arg, io_adapter, map_lib_adapter, err);
+        flush_dt(&mut flush_fn, &mem_arg, io_adapter, map_lib_adapter);
 
         // check if we should loop
         // while next_addr != NULL_PTR: curr_addr = next_addr; continue;
@@ -738,8 +710,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_u8,
@@ -747,8 +718,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm,
-            err,
+            wasm
         )
     }
 
@@ -756,12 +726,11 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter,
-        err: &mut ErrorGen,
+        _map_lib_adapter: &mut MapLibAdapter
     ) {
         flush_fn.i32_load8_u(*mem_arg);
-        io_adapter.call_putu8(flush_fn, err);
-        io_adapter.putln(flush_fn, err);
+        io_adapter.call_putu8(flush_fn);
+        io_adapter.putln(flush_fn);
     }
 
     fn emit_flush_i8_fn(
@@ -769,8 +738,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_i8,
@@ -778,8 +746,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm,
-            err,
+            wasm
         )
     }
 
@@ -787,12 +754,11 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter,
-        err: &mut ErrorGen,
+        _map_lib_adapter: &mut MapLibAdapter
     ) {
         flush_fn.i32_load8_s(*mem_arg);
-        io_adapter.call_puti8(flush_fn, err);
-        io_adapter.putln(flush_fn, err);
+        io_adapter.call_puti8(flush_fn);
+        io_adapter.putln(flush_fn);
     }
 
     fn emit_flush_u16_fn(
@@ -800,8 +766,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_u16,
@@ -809,8 +774,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm,
-            err,
+            wasm
         )
     }
 
@@ -818,12 +782,11 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter,
-        err: &mut ErrorGen,
+        _map_lib_adapter: &mut MapLibAdapter
     ) {
         flush_fn.i32_load16_u(*mem_arg);
-        io_adapter.call_putu16(flush_fn, err);
-        io_adapter.putln(flush_fn, err);
+        io_adapter.call_putu16(flush_fn);
+        io_adapter.putln(flush_fn);
     }
 
     fn emit_flush_i16_fn(
@@ -831,8 +794,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_i16,
@@ -840,8 +802,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm,
-            err,
+            wasm
         )
     }
 
@@ -849,12 +810,11 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter,
-        err: &mut ErrorGen,
+        _map_lib_adapter: &mut MapLibAdapter
     ) {
         flush_fn.i32_load16_s(*mem_arg);
-        io_adapter.call_puti16(flush_fn, err);
-        io_adapter.putln(flush_fn, err);
+        io_adapter.call_puti16(flush_fn);
+        io_adapter.putln(flush_fn);
     }
 
     fn emit_flush_u32_fn(
@@ -862,8 +822,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_u32,
@@ -871,8 +830,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm,
-            err,
+            wasm
         )
     }
 
@@ -880,12 +838,11 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter,
-        err: &mut ErrorGen,
+        _map_lib_adapter: &mut MapLibAdapter
     ) {
         flush_fn.i32_load(*mem_arg);
-        io_adapter.call_putu32(flush_fn, err);
-        io_adapter.putln(flush_fn, err);
+        io_adapter.call_putu32(flush_fn);
+        io_adapter.putln(flush_fn);
     }
 
     fn emit_flush_i32_fn(
@@ -893,8 +850,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_i32,
@@ -902,8 +858,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm,
-            err,
+            wasm
         )
     }
 
@@ -911,12 +866,11 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter,
-        err: &mut ErrorGen,
+        _map_lib_adapter: &mut MapLibAdapter
     ) {
         flush_fn.i32_load(*mem_arg);
-        io_adapter.call_puti32(flush_fn, err);
-        io_adapter.putln(flush_fn, err);
+        io_adapter.call_puti32(flush_fn);
+        io_adapter.putln(flush_fn);
     }
 
     fn emit_flush_u64_fn(
@@ -924,8 +878,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_u64,
@@ -933,8 +886,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm,
-            err,
+            wasm
         )
     }
 
@@ -942,12 +894,11 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter,
-        err: &mut ErrorGen,
+        _map_lib_adapter: &mut MapLibAdapter
     ) {
         flush_fn.i64_load(*mem_arg);
-        io_adapter.call_putu64(flush_fn, err);
-        io_adapter.putln(flush_fn, err);
+        io_adapter.call_putu64(flush_fn);
+        io_adapter.putln(flush_fn);
     }
 
     fn emit_flush_i64_fn(
@@ -955,8 +906,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_i64,
@@ -964,8 +914,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm,
-            err,
+            wasm
         )
     }
 
@@ -973,12 +922,11 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter,
-        err: &mut ErrorGen,
+        _map_lib_adapter: &mut MapLibAdapter
     ) {
         flush_fn.i64_load(*mem_arg);
-        io_adapter.call_puti64(flush_fn, err);
-        io_adapter.putln(flush_fn, err);
+        io_adapter.call_puti64(flush_fn);
+        io_adapter.putln(flush_fn);
     }
 
     fn emit_flush_f32_fn(
@@ -986,8 +934,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_f32,
@@ -995,8 +942,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm,
-            err,
+            wasm
         )
     }
 
@@ -1004,12 +950,11 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter,
-        err: &mut ErrorGen,
+        _map_lib_adapter: &mut MapLibAdapter
     ) {
         flush_fn.f32_load(*mem_arg);
-        io_adapter.call_putf32(flush_fn, err);
-        io_adapter.putln(flush_fn, err);
+        io_adapter.call_putf32(flush_fn);
+        io_adapter.putln(flush_fn);
     }
 
     fn emit_flush_f64_fn(
@@ -1017,8 +962,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_f64,
@@ -1026,8 +970,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm,
-            err,
+            wasm
         )
     }
 
@@ -1035,12 +978,11 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter,
-        err: &mut ErrorGen,
+        _map_lib_adapter: &mut MapLibAdapter
     ) {
         flush_fn.f64_load(*mem_arg);
-        io_adapter.call_putf64(flush_fn, err);
-        io_adapter.putln(flush_fn, err);
+        io_adapter.call_putf64(flush_fn);
+        io_adapter.putln(flush_fn);
     }
 
     fn emit_flush_bool_fn(
@@ -1048,8 +990,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_bool,
@@ -1057,8 +998,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm,
-            err,
+            wasm
         )
     }
 
@@ -1066,12 +1006,11 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        _map_lib_adapter: &mut MapLibAdapter,
-        err: &mut ErrorGen,
+        _map_lib_adapter: &mut MapLibAdapter
     ) {
         flush_fn.i32_load(*mem_arg);
-        io_adapter.call_putbool(flush_fn, err);
-        io_adapter.putln(flush_fn, err);
+        io_adapter.call_putbool(flush_fn);
+        io_adapter.putln(flush_fn);
     }
 
     fn emit_flush_map_fn(
@@ -1080,8 +1019,7 @@ impl ReportVars {
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         mem_id: u32,
-        wasm: &mut Module,
-        err: &mut ErrorGen,
+        wasm: &mut Module
     ) -> u32 {
         self.emit_flush_fn(
             &Self::flush_map,
@@ -1089,8 +1027,7 @@ impl ReportVars {
             io_adapter,
             map_lib_adapter,
             mem_id,
-            wasm,
-            err,
+            wasm
         )
     }
 
@@ -1098,12 +1035,11 @@ impl ReportVars {
         flush_fn: &mut FunctionBuilder,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
-        map_lib_adapter: &mut MapLibAdapter,
-        err: &mut ErrorGen,
+        map_lib_adapter: &mut MapLibAdapter
     ) {
         flush_fn.i32_load(*mem_arg);
-        map_lib_adapter.call_print_map(flush_fn, err);
-        io_adapter.putln(flush_fn, err);
+        map_lib_adapter.call_print_map(flush_fn);
+        io_adapter.putln(flush_fn);
     }
 
     pub fn report_var_header_bytes() -> u32 {

@@ -363,15 +363,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
                     is_success &= self.emit_probe_as_if_else();
                 }
                 _ => {
-                    self.err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "{UNEXPECTED_ERR_MSG} Unexpected probe mode '{}'",
+                    unreachable!(
+                            "{} Unexpected probe mode '{}'",UNEXPECTED_ERR_MSG,
                             curr_probe_mode.name()
-                        )),
-                        None,
                     );
-                    is_success &= false;
                 }
             }
         }
@@ -390,7 +385,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         if !self.curr_instr_args.is_empty() {
             // The current instruction has args, save them (before)
             self.emitter.before();
-            self.emitter.save_args(&self.curr_instr_args, self.err)
+            self.emitter.save_args(&self.curr_instr_args)
         } else {
             // If no args, just return true
             true
@@ -399,7 +394,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn replace_args(&mut self) -> bool {
         // Place the original arguments back on the stack.
         self.emitter.before();
-        self.emitter.emit_args(self.err)
+        self.emitter.emit_args()
     }
 
     fn pred_is_true(&mut self) -> bool {

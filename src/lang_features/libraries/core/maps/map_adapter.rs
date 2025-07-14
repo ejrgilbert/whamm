@@ -48,10 +48,9 @@ impl LibAdapter for MapLibAdapter {
     }
     fn define_helper_funcs(
         &mut self,
-        app_wasm: &mut Module,
-        err: &mut ErrorGen,
+        app_wasm: &mut Module
     ) -> Vec<FunctionID> {
-        self.emit_helper_funcs(app_wasm, err)
+        self.emit_helper_funcs(app_wasm)
     }
 }
 impl MapLibAdapter {
@@ -128,8 +127,7 @@ impl MapLibAdapter {
 
     pub fn emit_helper_funcs(
         &mut self,
-        _app_wasm: &mut Module,
-        _err: &mut ErrorGen,
+        _app_wasm: &mut Module
     ) -> Vec<FunctionID> {
         // (nothing to do)
         vec![]
@@ -150,7 +148,7 @@ impl MapLibAdapter {
             None
         };
 
-        self.call(&fname, func, err);
+        self.call(&fname, func);
 
         if matches!(key, DataType::Str) {
             let Some(src_len) = src_len else {
@@ -211,7 +209,7 @@ impl MapLibAdapter {
             None
         };
 
-        self.call(&fname, func, err);
+        self.call(&fname, func);
 
         if matches!(&key, DataType::Str) {
             let Some(src_len) = src_len else {
@@ -233,7 +231,7 @@ impl MapLibAdapter {
         let map_id = self.map_create(ty.clone(), func, err);
         //create the metadata for the map
         if is_global {
-            report_vars.put_map_metadata(map_id, name.clone(), ty, err);
+            report_vars.put_map_metadata(map_id, name.clone(), ty);
         }
         map_id
     }
@@ -246,7 +244,7 @@ impl MapLibAdapter {
     ) -> u32 {
         let (map_id, func_name) = self.create_map_internal(ty, err);
         func.u32_const(map_id);
-        self.call(func_name.as_str(), func, err);
+        self.call(func_name.as_str(), func);
         map_id
     }
 
@@ -258,17 +256,16 @@ impl MapLibAdapter {
     ) {
         // This variation of map_create doesn't know the ID statically
         let func_name = self.create_map_fname_by_map_type(ty, true, err);
-        self.call(func_name.as_str(), func, err);
+        self.call(func_name.as_str(), func);
     }
 
     pub fn print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         map_id: u32,
-        func: &mut T,
-        err: &mut ErrorGen,
+        func: &mut T
     ) {
         func.u32_const(map_id);
-        self.call_print_map(func, err)
+        self.call_print_map(func)
     }
 
     // -------------------
@@ -283,10 +280,9 @@ impl MapLibAdapter {
 
     pub(crate) fn call_print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
-        func: &mut T,
-        err: &mut ErrorGen,
+        func: &mut T
     ) {
-        self.call(PRINT_MAP, func, err)
+        self.call(PRINT_MAP, func)
     }
 
     fn next_map_id(&mut self) -> u32 {
@@ -327,7 +323,6 @@ impl MapLibAdapter {
             DataType::F64 => "f64",
             ty => {
                 err.type_check_error(
-                    true,
                     format!("Unsupported value type for map library: {:?}", ty),
                     &None,
                 );
@@ -350,8 +345,7 @@ impl MapLibAdapter {
             val_ty: val,
         } = map
         else {
-            err.unexpected_error(true, Some("Non-map at no_meta".to_string()), None);
-            return "invalid".to_string();
+            unreachable!("Non-map at no_meta");
         };
 
         self.map_create_fname(*key, *val, is_dynamic, err)
@@ -372,7 +366,6 @@ impl MapLibAdapter {
             fname
         } else {
             err.type_check_error(
-                true,
                 format!(
                     "MapLibAdapter.map_create_fname: Unsupported map type: {:?} -> {:?}, need function with name '{fname}'",
                     key, val
@@ -391,7 +384,6 @@ impl MapLibAdapter {
             fname
         } else {
             err.type_check_error(
-                true,
                 format!(
                     "MapLibAdapter.map_insert_fname: Unsupported map type: {:?} -> {:?}, need function with name '{fname}'",
                     key, val
@@ -410,7 +402,6 @@ impl MapLibAdapter {
             fname
         } else {
             err.type_check_error(
-                true,
                 format!(
                     "MapLibAdapter.map_get_fname: Unsupported map type: {:?} -> {:?}, need function with name '{fname}'",
                     key, val
@@ -424,10 +415,9 @@ impl MapLibAdapter {
     fn call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         fname: &str,
-        func: &mut T,
-        err: &mut ErrorGen,
+        func: &mut T
     ) {
-        let fid = self.get_fid(fname, err);
+        let fid = self.get_fid(fname);
         func.call(FunctionID(fid));
     }
 
@@ -444,9 +434,9 @@ impl MapLibAdapter {
         {
             Some(to_call) => to_call,
             None => {
-                panic!(
-                    "{UNEXPECTED_ERR_MSG} \
-                    No {} function found in the module!",
+                unreachable!(
+                    "{} \
+                    No {} function found in the module!", UNEXPECTED_ERR_MSG,
                     Self::MAP_INIT_FNAME
                 );
             }

@@ -180,6 +180,7 @@ pub fn run_on_module(
     let whamm_script = match std::fs::read_to_string(script_path.clone()) {
         Ok(unparsed_str) => unparsed_str,
         Err(error) => {
+            // TODO
             error!("Cannot read specified file {}: {}", script_path, error);
             exit(1);
         }
@@ -240,7 +241,10 @@ pub fn run(
     );
 
     // Process the script
-    let mut whamm = get_script_ast(def_yamls, whamm_script, &mut err);
+    let mut whamm = match get_script_ast(def_yamls, whamm_script, &mut err) {
+        Ok(whamm) => whamm,
+        Err(_) => return Err(Box::new(err))
+    };
     let (mut symbol_table, has_reports) = get_symbol_table(&mut whamm, &user_lib_modules, &mut err);
 
     // If there were any errors encountered, report and exit!
@@ -268,8 +272,7 @@ pub fn run(
         target_wasm,
         core_lib,
         &mut mem_allocator,
-        &mut core_packages,
-        metadata_collector.err,
+        &mut core_packages
     );
 
     // make the used user library functions the correct form
@@ -571,17 +574,16 @@ fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> bool
     has_reports
 }
 
-fn get_script_ast(def_yamls: &Vec<String>, script: &String, err: &mut ErrorGen) -> Whamm {
+fn get_script_ast(def_yamls: &Vec<String>, script: &String, err: &mut ErrorGen) -> Result<Whamm, ()> {
     // Parse the script and build the AST
     match parse_script(def_yamls, script, err) {
         Some(ast) => {
             info!("successfully parsed");
             err.check_too_many();
-            ast
+            Ok(ast)
         }
         None => {
-            err.report();
-            exit(1);
+            Err(())
         }
     }
 }

@@ -39,14 +39,13 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     ) {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
-        self.emitter.setup_module(self.err);
+        self.emitter.setup_module();
         emit_needed_funcs(
             used_bound_funcs,
             &mut self.emitter,
-            self.injected_funcs,
-            self.err,
+            self.injected_funcs
         );
-        self.emitter.emit_strings(strings_to_emit, self.err);
+        self.emitter.emit_strings(strings_to_emit);
         self.visit_ast(&mut ast);
 
         self.emit_end_func(&ast, used_report_dts);
@@ -228,11 +227,11 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
 impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     // TODO -- these are all duplicates, try to factor out
     fn emit_string(&mut self, val: &mut Value) -> bool {
-        self.emitter.emit_string(val, self.err)
+        self.emitter.emit_string(val)
     }
 
     fn emit_func(&mut self, f: &mut crate::parser::types::Fn) -> Option<FunctionID> {
-        self.emitter.emit_fn("TODO", f, self.err)
+        self.emitter.emit_fn("TODO", f)
     }
 
     fn emit_global(
@@ -268,8 +267,7 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '
                     lib_name.to_string(),
                     lib_name_import_override,
                     used_fns,
-                    self.emitter.table,
-                    self.err,
+                    self.emitter.table
                 ),
             );
         }
@@ -296,11 +294,11 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '
     }
 
     fn enter_scope(&mut self) {
-        self.emitter.enter_scope(self.err);
+        self.emitter.enter_scope();
     }
 
     fn exit_scope(&mut self) {
-        self.emitter.exit_scope(self.err);
+        self.emitter.exit_scope();
     }
     fn lookup_var_mut(&mut self, name: &str) -> Option<&mut Record> {
         self.emitter.table.lookup_var_mut(name, true)

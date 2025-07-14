@@ -65,16 +65,14 @@ impl MemoryAllocator {
     pub(crate) fn emit_addr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &self,
         table: &SymbolTable,
-        injector: &mut T,
-        err: &mut ErrorGen,
+        injector: &mut T
     ) {
         // get the var block base offset variable
         let Some(Record::Var {
             addr: Some(addrs), ..
-        }) = table.lookup_var(VAR_BLOCK_BASE_VAR, &None, err, true)
+        }) = table.lookup_var(VAR_BLOCK_BASE_VAR, true)
         else {
-            err.unexpected_error(true, Some("unexpected type".to_string()), None);
-            return;
+            unreachable!("unexpected type");
         };
 
         let VarAddr::Local {
@@ -93,10 +91,9 @@ impl MemoryAllocator {
         ty: &DataType,
         var_offset: u32,
         table: &SymbolTable,
-        injector: &mut T,
-        err: &mut ErrorGen,
+        injector: &mut T
     ) {
-        self.emit_addr(table, injector, err);
+        self.emit_addr(table, injector);
 
         // perform the correct load based on the type of data at this memory location
         match ty {
@@ -489,7 +486,6 @@ impl MemoryAllocator {
             Some(fid) => fid,
             None => {
                 err.wizard_error(
-                    true,
                     "Unexpected state while generating the memory allocation function. \
                     The memory size checker function has not been generated yet."
                         .to_string(),
@@ -504,20 +500,15 @@ impl MemoryAllocator {
     pub fn emit_base_memsize_check(
         &self,
         needed_bytes: LocalID,
-        func: &mut FunctionBuilder,
-        err: &mut ErrorGen,
+        func: &mut FunctionBuilder
     ) {
         let check_memsize_fid = match self.base_mem_checker_fid {
             Some(fid) => fid,
             None => {
-                err.wizard_error(
-                    true,
+                unreachable!(
                     "Unexpected state while generating the memory allocation function. \
                     The memory size checker function has not been generated yet."
-                        .to_string(),
-                    &None,
                 );
-                unreachable!()
             }
         };
         func.local_get(needed_bytes);
@@ -608,18 +599,11 @@ impl MemoryAllocator {
         self.curr_mem_offset += val.len();
         true
     }
-    pub fn lookup_emitted_string(&self, s: &str, err: &mut ErrorGen) -> (u32, u32) {
+    pub fn lookup_emitted_string(&self, s: &str) -> (u32, u32) {
         if let Some(str_addr) = self.emitted_strings.get(s) {
             (str_addr.mem_offset as u32, str_addr.len as u32)
         } else {
-            err.unexpected_error(
-                true,
-                Some(format!(
-                    "{UNEXPECTED_ERR_MSG} Data segment not available for string: \"{s}\"",
-                )),
-                None,
-            );
-            unreachable!()
+            unreachable!("{} Data segment not available for string: \"{}\"", UNEXPECTED_ERR_MSG, s)
         }
     }
 
