@@ -224,8 +224,8 @@ fn emit_unshared_decl_stmt(stmt: &mut Statement, ctx: &mut EmitCtx) -> bool {
         return true;
     }
     unreachable!(
-        "{} Wrong statement type, should be `report_decl`",
-        ctx.err_msg
+        "{} Wrong statement type, should be `unshared` decl, got: {:?}",
+        ctx.err_msg, stmt
     );
 }
 

@@ -35,6 +35,7 @@ pub struct MetadataCollector<'a, 'b, 'c> {
     pub used_report_var_dts: HashSet<DataType>,
     pub check_strcmp: bool,
     pub strings_to_emit: Vec<String>,
+    pub has_probe_state_init: bool,
 
     visiting: Visiting,
     curr_rule: String,
@@ -60,6 +61,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             used_report_var_dts: HashSet::default(),
             check_strcmp: false,
             strings_to_emit: Vec::default(),
+            has_probe_state_init: false,
             visiting: Visiting::None,
             curr_rule: "".to_string(),
             curr_script: Script::default(),
@@ -288,6 +290,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
             Statement::UnsharedDeclInit { decl, init, .. } => {
                 self.visit_stmt(decl);
                 self.visit_stmt(init);
+                self.has_probe_state_init = true;
                 self.curr_probe.add_init_logic(*init.clone());
             }
             Statement::UnsharedDecl {

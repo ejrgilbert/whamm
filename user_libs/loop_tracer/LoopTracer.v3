@@ -16,3 +16,6 @@ export "on_br_table" def on_br_table(target: u31) {
 export "flush" def flush() {
     trace.report();
 }
+export "flush_csv" def flush_csv() {
+    trace.report_as_csv();
+}

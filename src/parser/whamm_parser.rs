@@ -765,15 +765,15 @@ fn handle_decl_init(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                         },
                     ]
                 }
-                Statement::UnsharedDecl { decl, .. } => {
-                    if let Statement::Decl { var_id, .. } = &**decl {
+                Statement::UnsharedDecl { decl: inner, .. } => {
+                    if let Statement::Decl { var_id, .. } = &**inner {
                         let assign = Statement::Assign {
                             var_id: var_id.clone(),
                             expr,
                             loc: loc.clone(),
                         };
                         vec![Statement::UnsharedDeclInit {
-                            decl: decl.to_owned(),
+                            decl: Box::new(decl.to_owned()),
                             init: Box::new(assign),
                             loc,
                         }]

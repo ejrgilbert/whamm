@@ -15,7 +15,7 @@ wasm:opcode:*if:before {
 }
 
 wasm:report {
-    tracer.flush();
+    tracer.flush_csv();
 }
 
 // TODO: How to pull `target`?

@@ -9,7 +9,7 @@ use crate::generator::folding::ExprFolder;
 use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData};
 use crate::parser::provider_handler::ModeKind;
-use crate::parser::types::{Block, Expr, Location};
+use crate::parser::types::{Block, Expr, Location, Statement};
 use std::collections::HashMap;
 use std::iter::Iterator as StdIter;
 use wirm::ir::function::FunctionBuilder;
@@ -52,28 +52,30 @@ fn add_to_table(info: &LocInfo, emitter: &mut VisitingEmitter) {
 /// passed emitter to emit instrumentation code.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the passed Emitter type.
-pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
-    pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
+pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k> {
+    pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i>,
     pub ast: SimpleAST,
-    pub err: &'h mut ErrorGen,
+    pub err: &'j mut ErrorGen,
     curr_instr_args: Vec<Arg>,
     curr_probe_rule: ProbeRule,
     is_prog_exit: bool,
     curr_probe_loc: Option<Location>,
     /// The current probe's body and predicate
-    curr_probe: Option<(Option<Block>, Option<Expr>)>,
+    curr_probe: Option<(Vec<Statement>, Option<Block>, Option<Expr>)>,
 
     /// Whether there are reports to flush at the end of execution
     has_reports: bool,
     on_exit_fid: Option<u32>,
-    config: &'i Config,
+    config: &'k Config,
 }
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
+    InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
+{
     pub fn new(
-        emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
+        emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i>,
         ast: SimpleAST,
-        err: &'h mut ErrorGen,
-        config: &'i Config,
+        err: &'j mut ErrorGen,
+        config: &'k Config,
         has_reports: bool,
     ) -> Self {
         Self {
@@ -242,7 +244,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
 
                     // Create a new clone of the probe, fold the predicate.
                     // NOTE: We make a clone so that the probe is reset for each instruction!
-                    let (body_clone, mut pred_clone, loc_clone) = (
+                    let (state_init_clone, body_clone, mut pred_clone, loc_clone) = (
+                        probe.init_logic.clone(),
                         probe.body.clone(),
                         probe.predicate.clone(),
                         probe.loc.clone(),
@@ -263,7 +266,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
                     self.curr_instr_args = loc_info.args.clone(); // must clone so that this lives long enough
                     self.curr_probe_rule = probe_rule.clone();
                     self.curr_probe_loc = loc_clone;
-                    self.curr_probe = Some((body_clone, pred_clone));
+                    self.curr_probe = Some((state_init_clone, body_clone, pred_clone));
 
                     if !self.config.no_bundle {
                         // since we're only supporting 'no_bundle' when 'no_body' and 'no_pred' are also true
@@ -286,7 +289,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
         let curr_script_id = probe.script_id;
         // todo -- this clone is bad
         self.emitter.curr_unshared = probe.unshared_to_alloc.clone();
-        self.emitter.curr_init_logic = probe.init_logic.clone();
         let probe_rule_str = probe_rule.to_string();
         let curr_probe_id = format!("{}_{}", probe.probe_number, probe_rule_str);
         let (loc, new_fid) = match self.emitter.app_iter.curr_loc().0 {
@@ -321,7 +323,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
         };
     }
 }
-impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn emit_probe(
         &mut self,
         dynamic_data: &HashMap<String, Block>,
@@ -396,7 +398,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn replace_args(&mut self) -> bool {
         // Place the original arguments back on the stack.
         self.emitter.before();
-        self.emitter.emit_args()
+        self.emitter.emit_args(self.err)
     }
 
     fn pred_is_true(&mut self) -> bool {
@@ -416,8 +418,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_body(&mut self) -> bool {
-        if let Some((body, ..)) = &mut self.curr_probe {
+        if let Some((state_init, body, ..)) = &mut self.curr_probe {
             if let Some(ref mut body) = body {
+                self.emitter
+                    .init_probe_state(&self.curr_instr_args, state_init, self.err);
                 self.emitter
                     .emit_body(&self.curr_instr_args, body, self.err)
             } else {
@@ -449,7 +453,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_probe_as_if(&mut self) -> bool {
-        if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
+        if let Some((_, Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
             match (self.config.no_body, self.config.no_pred) {
                 // emit as normal
                 (false, false) => {
@@ -488,7 +492,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_probe_as_if_else(&mut self) -> bool {
-        if let Some((Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
+        if let Some((_, Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
             match (self.config.no_body, self.config.no_pred) {
                 // normal
                 (false, false) => match self.emitter.emit_if_with_orig_as_else(

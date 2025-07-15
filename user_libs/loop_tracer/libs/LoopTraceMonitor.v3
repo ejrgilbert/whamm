@@ -87,6 +87,22 @@ class TraceBuffer {
 		events.put(TraceEntry.Anchor(anchor_id));
 		starts.put(anchor_id);
 	}
+	def report_as_csv() {
+		var paths = Vector<(Array<TraceEntry>, u32)>.new();
+		for (i < trees.length) {
+			var tree = trees[i];
+			if (tree != null) tree.apply(putCopy(paths, _));
+		}
+		var all = paths.extract();
+
+		def out = Trace.OUT;
+		out.puts("count, seq").ln();
+		for (e in all) {
+			out.put1("%d, ", e.1);
+			putSeq(e.0, out);
+			out.ln();
+		}
+	}
 	def report() {
 		var paths = Vector<(Array<TraceEntry>, u32)>.new();
 		for (i < trees.length) {
