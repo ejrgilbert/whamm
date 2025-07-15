@@ -1,0 +1,18 @@
+def trace = TraceBuffer.new();
+
+export "init_anchor" def init_anchor(fid: int, pc: int) -> u30 {
+    return trace.allocAnchorId(fid, pc);
+}
+export "on_anchor" def on_anchor(anchor_id: u30) {
+    trace.pushAnchor(anchor_id);
+}
+export "on_if" def on_if(arg0: u32) {
+    if (arg0 == 0) trace.pushNotTaken();
+    else trace.pushTaken();
+}
+export "on_br_table" def on_br_table(target: u31) {
+    trace.pushBranchTable(u30.view(target));
+}
+export "flush" def flush() {
+    trace.report();
+}

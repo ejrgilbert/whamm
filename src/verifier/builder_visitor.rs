@@ -844,6 +844,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
 
             let stmt = match &stmt {
                 Statement::UnsharedDecl { decl, .. } => &**decl,
+                Statement::UnsharedDeclInit { decl, .. } => &**decl,
                 _ => stmt,
             };
             match stmt {
@@ -900,7 +901,8 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                     self.visit_block(conseq);
                     self.visit_block(alt);
                 }
-                Statement::UnsharedDecl { .. }
+                Statement::UnsharedDeclInit { .. }
+                | Statement::UnsharedDecl { .. }
                 | Statement::LibImport { .. }
                 | Statement::Decl { .. } => {}
             }

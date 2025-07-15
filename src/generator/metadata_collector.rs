@@ -285,6 +285,11 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
             Statement::Decl { .. } => {
                 // ignore
             }
+            Statement::UnsharedDeclInit { decl, init, .. } => {
+                self.visit_stmt(decl);
+                self.visit_stmt(init);
+                self.curr_probe.add_init_logic(*init.clone());
+            }
             Statement::UnsharedDecl {
                 is_report, decl, ..
             } => {

@@ -111,6 +111,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
         }
         Statement::UnsharedDecl { .. } => emit_unshared_decl_stmt(stmt, ctx),
+        Statement::UnsharedDeclInit { decl, .. } => emit_unshared_decl_stmt(decl, ctx),
         Statement::SetMap { .. } => {
             ctx.in_map_op = true;
             let res = emit_set_map_stmt(stmt, strategy, injector, ctx);

@@ -1,0 +1,145 @@
+// Adapted from Wizard's src/engine/Trace.v3
+// See: https://github.com/titzer/wizard-engine/blob/master/src/engine/Trace.v3
+
+// Copyright 2020 Ben L. Titzer. All rights reserved.
+// See LICENSE for details of Apache 2.0 license.
+
+// Centralizes all the trace flags, even some components that are optional.
+// Note that since these fields are all set to false by default, unless the {TraceOptions.v3}
+// file or other write to them is reachable, they will be constant-folded by the compiler
+// and trace code will be dead-code eliminated.
+component Trace {
+	var binparse = false;
+	var canon = false;
+	var compiler = false;
+	var asm = false;
+	var exception = false;
+	var fatal = false;
+	var gc = false;
+	var interpreter = false;
+	var memory = false;
+	var operands = false;
+	var spectest = false;
+	var stack = false;
+	var test = false;
+	var uid = false;
+	var validation = false;
+	var linking = false;
+	var whamm = false;
+
+	def OUT = TraceBuilder.new();
+	def STDOUT = System.write(1, _);
+	def STDOUT_void(r: Range<byte>) {
+		System.write(1, r);
+	}
+
+	def renderCspRange<T>(buf: StringBuilder, r: Range<T>, render: (T, StringBuilder) -> StringBuilder) -> StringBuilder {
+		for (i < r.length) {
+			if (i > 0) buf.csp();
+			render(r[i], buf);
+		}
+		return buf;
+	}
+	def renderCspList<T>(buf: StringBuilder, list: List<T>, render: (T, StringBuilder) -> StringBuilder) -> StringBuilder {
+		for (l = list; l != null; l = l.tail) {
+			if (l != list) buf.csp();
+			render(l.head, buf);
+		}
+		return buf;
+	}
+}
+// A TraceBuilder is a {StringBuilder} which can also dump itself to stdout
+// and has additional utility methods.
+class TraceBuilder extends StringBuilder {
+	var markpos: int;
+	var palette: Palette;
+
+	// Appends a newline and flushes to standard out, leaving this builder empty.
+	// (Overrides super method which only appends a newline).
+	def ln() -> this {
+		markpos = 0;
+		putc('\n');
+		send(Trace.STDOUT);
+		reset();
+	}
+	// Flushes any accumulated characters to standard out and resets.
+	def flush() -> this {
+		send(Trace.STDOUT);
+		reset();
+	}
+	// Puts a string {str} into the trace, followed by a newline, and then flushes.
+	def putsln(str: string) -> this {
+		puts(str).ln();
+	}
+	// Puts a decimal number, right-justified up to {width}.
+	def putd_rjustified<T>(width: int, val: T) -> this {
+		var before = length;
+		putd(val);
+		rjustify(' ', length - before, width);
+	}
+	// Put an array of elements as "[elem0, elem1, ...]". XXX: promote to lib/util?
+	def putArray<T>(r: Range<T>, render: (T, StringBuilder) -> StringBuilder) -> this {
+		putc('[');
+		Trace.renderCspRange(this, r, render);
+		putc(']');
+	}
+	// Put an array of elements as "(elem0, elem1, ...)". XXX: promote to lib/util?
+	def putTuple<T>(r: Range<T>, render: (T, StringBuilder) -> StringBuilder) -> this {
+		putc('(');
+		Trace.renderCspRange(this, r, render);
+		putc(')');
+	}
+	// Put a list of elements as "elem0, elem1, ...". XXX: promote to lib/util?
+	def putList<T>(list: List<T>, render: (T, StringBuilder) -> StringBuilder) -> this {
+		Trace.renderCspList(this, list, render);
+	}
+	// Puts a {Value}.
+	// def putv(v: Value) -> this {
+	// 	Values.render(v, this);
+	// }
+	// Records a mark that can be used later for rjustify_mark().
+	def mark() -> this {
+		markpos = length;
+	}
+	// Pads the characters output since the last {mark()} with spaces, up to {width}.
+	def rjustify_mark(width: int) -> this {
+		rjustify(' ', length - markpos, width);
+		markpos = length;
+	}
+	// Pads the characters output since the last {mark()} with spaces, up to {width}.
+	def ljustify_mark(width: int) -> this {
+		var count = width - (length - markpos);
+		for (i < count) putc(' ');
+		markpos = length;
+	}
+	// Gets the number of spaces that would be needed to left-justify the output.
+	def get_ljustify(width: int) -> int {
+		return width - (length - markpos);
+	}
+	def putr_void(r: Range<byte>) {
+		putr(r);
+	}
+	def indent(depth: int) -> this {
+		for (i < depth) puts("  ");
+	}
+	def beginColor(color: Color) -> this {
+		var p = if(palette == null, Palettes.get());
+		var str = p[color];
+		if (str != null && str.length > 0) puts(str);
+	}
+	def endColor(color: Color) -> this {
+		var p = if(palette == null, Palettes.get());
+		var str = p[color];
+		if (str != null && str.length > 0) puts(p[Color.DEFAULT]);
+	}
+	def endColors() -> this {
+		var p = if(palette == null, Palettes.get());
+		var str = p[Color.DEFAULT];
+		if (str != null && str.length > 0) puts(str);
+	}
+	def hasColor(color: Color) -> bool {
+		var p = if(palette == null, Palettes.get());
+		var str = p[color];
+		return str != null && str.length > 0;
+	}
+}

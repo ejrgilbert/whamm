@@ -286,6 +286,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 
         let curr_script_id = probe.script_id;
         // todo -- this clone is bad
         self.emitter.curr_unshared = probe.unshared_to_alloc.clone();
+        self.emitter.curr_init_logic = probe.init_logic.clone();
         let probe_rule_str = probe_rule.to_string();
         let curr_probe_id = format!("{}_{}", probe.probe_number, probe_rule_str);
         let (loc, new_fid) = match self.emitter.app_iter.curr_loc().0 {

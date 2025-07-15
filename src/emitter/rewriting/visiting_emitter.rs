@@ -48,6 +48,7 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub(crate) unshared_var_handler: &'g mut UnsharedVarHandler,
     instr_created_args: Vec<(String, usize)>,
     pub curr_unshared: Vec<UnsharedVar>,
+    pub curr_init_logic: Vec<Statement>,
 }
 
 impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
@@ -75,6 +76,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             unshared_var_handler,
             instr_created_args: vec![],
             curr_unshared: vec![],
+            curr_init_logic: vec![],
         };
 
         a
@@ -761,6 +763,12 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             self.app_iter.module,
             err,
         );
+
+        // now that the unshared variables have been allocated, I need to emit
+        // initialization logic into the instr_init function
+        for _stmt in self.curr_init_logic.iter() {
+            todo!()
+        }
 
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(curr_instr_args, stmt, err);

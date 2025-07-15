@@ -1171,6 +1171,12 @@ pub enum Statement {
         decl: Box<Statement>,
         loc: Option<Location>,
     },
+    // an unshared variable that has a special initialization
+    UnsharedDeclInit {
+        decl: Box<Statement>,
+        init: Box<Statement>,
+        loc: Option<Location>,
+    },
 }
 impl Statement {
     pub fn loc(&self) -> &Option<Location> {
@@ -1182,6 +1188,7 @@ impl Statement {
             | Statement::Assign { loc, .. }
             | Statement::SetMap { loc, .. }
             | Statement::UnsharedDecl { loc, .. }
+            | Statement::UnsharedDeclInit { loc, .. }
             | Statement::Expr { loc, .. } => loc,
         }
     }
