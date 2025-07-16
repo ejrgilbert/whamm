@@ -539,15 +539,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
         }
     }
 
-    pub fn inject_map_init(&mut self) {
-        if !self.map_lib_adapter.used_in_global_scope {
-            return;
-        }
-        self.before();
-        let fid = self.map_lib_adapter.get_map_init_fid(self.app_iter.module);
-        self.map_lib_adapter
-            .inject_map_init_check(&mut self.app_iter, fid);
-    }
+    // pub fn inject_map_init(&mut self) {
+    //     if !self.map_lib_adapter.used_in_global_scope {
+    //         return;
+    //     }
+    //     self.before();
+    //     let fid = self.map_lib_adapter.get_map_init_fid(self.app_iter.module);
+    //     self.map_lib_adapter
+    //         .inject_map_init_check(&mut self.app_iter, fid);
+    // }
 
     pub fn configure_flush_routines(
         &mut self,
