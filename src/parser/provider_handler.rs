@@ -7,7 +7,7 @@ use crate::parser::types::{
     Block, DataType, Definition, Expr, Fn as WhammFn, FnId, Location, ProbeRule, Rule, RulePart,
     WhammParser,
 };
-use crate::parser::whamm_parser::{handle_expr, handle_param, type_from_rule};
+use crate::parser::whamm_parser::{expr_from_pair, handle_param, type_from_rule};
 use glob::Pattern;
 use log::error;
 use pest::iterators::Pair;
@@ -725,7 +725,7 @@ impl CheckedFrom<BoundVarYml> for BoundVar {
         let ty = parse_helper::<DataType>("DataType", Rule::TYPE_YML, &value.ty, &type_from_rule);
 
         let derived_from = value.derived_from.map(|derived_from| {
-            parse_helper::<Expr>("Expr", Rule::expr, &derived_from, &handle_expr)
+            parse_helper::<Expr>("Expr", Rule::assignment_rhs, &derived_from, &expr_from_pair)
         });
 
         Ok(Self {

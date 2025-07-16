@@ -31,6 +31,7 @@ pub struct Probe {
     pub body: Option<Block>,
     pub metadata: Metadata,
     pub unshared_to_alloc: Vec<UnsharedVar>,
+    pub init_logic: Vec<Statement>,
     pub probe_number: u32,
     pub script_id: u8,
     pub loc: Option<Location>,
@@ -48,6 +49,7 @@ impl Probe {
             body: None,
             metadata: Metadata::default(),
             unshared_to_alloc: Vec::default(),
+            init_logic: Vec::default(),
             probe_number,
             script_id,
             loc: Some(loc),
@@ -68,6 +70,9 @@ impl Probe {
             report_metadata,
             loc: loc.clone(),
         });
+    }
+    pub(crate) fn add_init_logic(&mut self, stmt: Statement) {
+        self.init_logic.push(stmt);
     }
 }
 

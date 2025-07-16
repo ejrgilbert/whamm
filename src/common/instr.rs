@@ -26,11 +26,12 @@ use log::{error, info};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use wasmparser::MemoryType;
+use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::FunctionID;
-use wirm::ir::types::{DataType as WirmType, InitExpr, Value as WirmValue};
-use wirm::{InitInstr, Module};
-
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
+use wirm::ir::types::{DataType as WirmType, InitExpr, Value as WirmValue};
+use wirm::opcode::Instrumenter;
+use wirm::{InitInstr, Module, Opcode};
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -178,10 +179,10 @@ pub fn run_on_module(
         Ok(unparsed_str) => unparsed_str,
         Err(error) => {
             let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
-            err.add_error(ErrorGen::get_instrumentation_error(format!(
+            err.add_instr_error(format!(
                 "Cannot read specified file {}: {}",
                 script_path, error
-            )));
+            ));
             return Err(Box::new(err));
         }
     };
@@ -379,10 +380,12 @@ fn run_instr_wizard(
     let used_funcs = metadata_collector.used_bound_fns;
     let used_report_dts = metadata_collector.used_report_var_dts;
     let used_strings = metadata_collector.strings_to_emit;
+    let has_probe_state_init = metadata_collector.has_probe_state_init;
 
     let mut injected_funcs = vec![];
     let mut wizard_unshared_var_handler =
         crate::lang_features::alloc_vars::wizard::UnsharedVarHandler::new(target_wasm);
+
     let mut gen = crate::generator::wizard::WizardGenerator {
         emitter: ModuleEmitter::new(
             InjectStrategy::Wizard,
@@ -402,7 +405,14 @@ fn run_instr_wizard(
         curr_script_id: u8::MAX,
         unshared_var_handler: &mut wizard_unshared_var_handler,
     };
-    gen.run(wiz_ast, used_funcs, used_report_dts, used_strings);
+    gen.run(
+        wiz_ast,
+        used_funcs,
+        used_report_dts,
+        used_strings,
+        has_probe_state_init,
+    );
+    call_instr_init_at_start(None, target_wasm);
 }
 
 fn run_instr_rewrite(
@@ -425,6 +435,7 @@ fn run_instr_rewrite(
     let ast = metadata_collector.ast;
     let used_funcs = metadata_collector.used_bound_fns;
     let used_strings = metadata_collector.strings_to_emit;
+    let has_probe_state_init = metadata_collector.has_probe_state_init;
     let config = metadata_collector.config;
 
     // Phase 0 of instrumentation (emit bound variables and fns)
@@ -443,7 +454,7 @@ fn run_instr_rewrite(
         user_lib_modules,
         injected_funcs,
     };
-    init.run(whamm, used_funcs, used_strings);
+    init.run(whamm, used_funcs, used_strings, has_probe_state_init);
     if err.has_errors {
         return Err(());
     }
@@ -452,10 +463,12 @@ fn run_instr_rewrite(
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
     let simple_ast = SimpleAST::new(ast);
+    let mut init_func = FunctionBuilder::new(&[], &[]);
     let mut instr = InstrGenerator::new(
         VisitingEmitter::new(
             InjectStrategy::Rewriting,
             target_wasm,
+            &mut init_func,
             injected_funcs,
             table,
             mem_allocator,
@@ -475,6 +488,7 @@ fn run_instr_rewrite(
         metrics.start(&match_time);
     }
     instr.run();
+    configure_init_func(init_func, target_wasm);
     if config.metrics {
         metrics.end(&match_time);
     }
@@ -483,6 +497,49 @@ fn run_instr_rewrite(
         Err(())
     } else {
         Ok(())
+    }
+}
+pub fn configure_init_func<'a>(init_func: FunctionBuilder<'a>, module: &mut Module<'a>) {
+    let state_init_id = if init_func.body.num_instructions > 0 {
+        // Call the probe init state function in the instr_init body
+        let state_init_id = init_func.finish_module_with_tag(module, get_tag_for(&None));
+        module.set_fn_name(state_init_id, "init_probe_state".to_string());
+        Some(state_init_id)
+    } else {
+        None
+    };
+    call_instr_init_at_start(state_init_id, module);
+}
+
+fn call_instr_init_at_start(state_init_id: Option<FunctionID>, module: &mut Module) {
+    if let Some(instr_init_fid) = module.functions.get_local_fid_by_name("instr_init") {
+        if let Some(state_init_id) = state_init_id {
+            if let Some(mut instr_init) = module.functions.get_fn_modifier(instr_init_fid) {
+                instr_init.call(state_init_id);
+            } else {
+                unreachable!("Should have found the function in the module.")
+            }
+        }
+
+        // now call `instr_init` in the module's start function
+        if let Some(start_fid) = module.start {
+            if let Some(mut start_func) = module.functions.get_fn_modifier(start_fid) {
+                start_func.func_entry();
+                start_func.call(instr_init_fid);
+                start_func.finish_instr();
+            } else {
+                unreachable!("Should have found the function in the module.")
+            }
+        } else {
+            // create the start function and call the `instr_init` function
+            let mut start_func = FunctionBuilder::new(&[], &[]);
+            start_func.call(instr_init_fid);
+
+            let start_fid = start_func.finish_module_with_tag(module, get_tag_for(&None));
+            module.start = Some(start_fid);
+        }
+    } else if state_init_id.is_some() {
+        unreachable!("If there's a state init function, there should be an instr_init function!")
     }
 }
 

@@ -111,6 +111,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
         }
         Statement::UnsharedDecl { .. } => emit_unshared_decl_stmt(stmt, ctx),
+        Statement::UnsharedDeclInit { decl, .. } => emit_unshared_decl_stmt(decl, ctx),
         Statement::SetMap { .. } => {
             ctx.in_map_op = true;
             let res = emit_set_map_stmt(stmt, strategy, injector, ctx);
@@ -223,8 +224,8 @@ fn emit_unshared_decl_stmt(stmt: &mut Statement, ctx: &mut EmitCtx) -> bool {
         return true;
     }
     unreachable!(
-        "{} Wrong statement type, should be `report_decl`",
-        ctx.err_msg
+        "{} Wrong statement type, should be `unshared` decl, got: {:?}",
+        ctx.err_msg, stmt
     );
 }
 

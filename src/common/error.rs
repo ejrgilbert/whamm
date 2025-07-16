@@ -90,14 +90,16 @@ impl ErrorGen {
             info_loc: None,
         }
     }
+    pub fn add_instr_error(&mut self, msg: String) {
+        self.add_error(Self::get_instrumentation_error(msg));
+    }
 
     pub fn multiple_alt_matches(&mut self, instr_name: &str) {
         let msg = format!(
             "Multiple `alt` probes matched same bytecode location for instr_name: {}",
             instr_name
         );
-        let err = Self::get_instrumentation_error(msg);
-        self.add_error(err);
+        self.add_error(Self::get_instrumentation_error(msg));
     }
 
     pub fn get_arithmetic_error(message: String, loc: Option<Location>) -> WhammError {

@@ -489,6 +489,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 self.assign_ty = None;
                 res
             }
+            Statement::UnsharedDeclInit { decl, init, .. } => {
+                self.visit_stmt(decl);
+                self.visit_stmt(init);
+                None
+            }
             Statement::UnsharedDecl {
                 decl, is_report, ..
             } => {

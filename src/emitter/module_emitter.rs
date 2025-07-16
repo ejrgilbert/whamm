@@ -82,10 +82,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // ==== BASE MODULE SETUP LOGIC ====
     // =================================
 
-    pub fn setup_module(&mut self) -> Vec<FunctionID> {
+    pub fn setup_module(
+        &mut self,
+        is_rewriting: bool,
+        has_probe_state_init: bool,
+    ) -> Vec<FunctionID> {
         let mut injected_funcs = vec![];
-        // setup maps
-        if self.map_lib_adapter.used_in_global_scope {
+        // setup maps and probe state initialization
+        // We only do probe state initialization here for rewriting, the engine target handles that in the $alloc methods
+        if (is_rewriting && has_probe_state_init) | self.map_lib_adapter.used_in_global_scope {
             injected_funcs.push(self.create_instr_init());
         }
         injected_funcs
@@ -215,13 +220,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         let func = FunctionBuilder::new(params, results);
         self.emitting_func = Some(func);
 
-        if !block.is_empty() && self.map_lib_adapter.used_in_global_scope {
-            let fid = self.map_lib_adapter.get_map_init_fid(self.app_wasm);
-            if let Some(func) = &mut self.emitting_func {
-                self.map_lib_adapter.inject_map_init_check(func, fid);
-            }
-        }
-
         if let Some(dynamic_pred) = dynamic_pred {
             // overwrite the body by wrapping it with the predicate conditional!
             *block = Block {
@@ -273,27 +271,27 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         io_adapter: &mut IOAdapter,
         err: &mut ErrorGen,
     ) -> Option<FunctionID> {
-        if !used_report_dts.is_empty() {
+        let report_probes = {
+            let mut report_probes = vec![];
+            for script in ast.iter() {
+                for probe in script.probes.iter() {
+                    let rule = &probe.rule;
+                    if rule.provider.name == "wasm" && rule.package.name == "report" {
+                        report_probes.push((script.id, probe.clone()));
+                    }
+                }
+            }
+            if !report_probes.is_empty() {
+                Some(report_probes)
+            } else {
+                None
+            }
+        };
+
+        if !used_report_dts.is_empty() || report_probes.is_some() {
             // (ONLY DO THIS IF THERE ARE REPORT VARIABLES)
 
             let mut on_exit = FunctionBuilder::new(&[], &[]);
-
-            let report_probes = {
-                let mut report_probes = vec![];
-                for script in ast.iter() {
-                    for probe in script.probes.iter() {
-                        let rule = &probe.rule;
-                        if rule.provider.name == "wasm" && rule.package.name == "report" {
-                            report_probes.push((script.id, probe.clone()));
-                        }
-                    }
-                }
-                if !report_probes.is_empty() {
-                    Some(report_probes)
-                } else {
-                    None
-                }
-            };
 
             if let Some(probes) = report_probes {
                 for (script_id, probe) in probes {
@@ -482,7 +480,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                 unreachable!("instr_init function already exists - needs to be created by Whamm");
             }
             None => {
-                //time to make a instr_init fn
                 debug!("No instr_init function found, creating one");
                 let instr_init_fn = FunctionBuilder::new(&[], &[]);
                 let instr_init_id =

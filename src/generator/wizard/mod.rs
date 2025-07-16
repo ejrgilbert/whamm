@@ -36,10 +36,11 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         used_bound_funcs: HashSet<(String, String)>,
         used_report_dts: HashSet<DataType>,
         strings_to_emit: Vec<String>,
+        has_probe_state_init: bool,
     ) {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
-        self.emitter.setup_module();
+        self.emitter.setup_module(false, has_probe_state_init);
         emit_needed_funcs(used_bound_funcs, &mut self.emitter, self.injected_funcs);
         self.emitter.emit_strings(strings_to_emit);
         self.visit_ast(&mut ast);
@@ -48,10 +49,8 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_end_func(&mut self, ast: &[Script], used_report_dts: HashSet<DataType>) {
-        if !self.config.no_report {
-            self.emitter
-                .emit_end_fn(ast, used_report_dts, self.io_adapter, self.err);
-        }
+        self.emitter
+            .emit_end_fn(ast, used_report_dts, self.io_adapter, self.err);
     }
 
     // Visit the AST
@@ -124,6 +123,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         // create the probe's $alloc method
         let (alloc_fid, alloc_param_str) = self.unshared_var_handler.emit_alloc_func(
             &mut probe.unshared_to_alloc,
+            &mut probe.init_logic,
             &mut self.emitter,
             self.err,
         );

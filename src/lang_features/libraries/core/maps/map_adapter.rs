@@ -6,8 +6,7 @@ use crate::lang_features::libraries::core::LibAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{DataType, Location};
 use std::collections::HashMap;
-use wirm::ir::id::{FunctionID, GlobalID, LocalID};
-use wirm::ir::types::BlockType as WirmBlockType;
+use wirm::ir::id::{FunctionID, LocalID};
 use wirm::ir::types::DataType as WirmType;
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{Instrumenter, MacroOpcode};
@@ -473,25 +472,5 @@ impl MapLibAdapter {
 
         init_fn.finish_instr();
         map_id
-    }
-
-    pub fn inject_map_init_check<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &mut self,
-        func: &mut T,
-        map_init_fid: FunctionID,
-    ) {
-        if !self.is_used {
-            // no maps to init!
-            // only inject this IF NEEDED (not all scripts need global init)
-            return;
-        }
-
-        // 1 means the maps have not been initialized, 0 means they have
-        func.global_get(GlobalID(self.init_bool_location));
-        func.if_stmt(WirmBlockType::Empty);
-        func.i32_const(0);
-        func.global_set(GlobalID(self.init_bool_location));
-        func.call(map_init_fid);
-        func.end();
     }
 }

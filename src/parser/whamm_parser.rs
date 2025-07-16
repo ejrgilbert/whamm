@@ -418,8 +418,9 @@ fn handle_probe_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
     }
 }
 
-fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+pub fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     match pair.as_rule() {
+        Rule::assignment_rhs => expr_from_pair(pair.into_inner().next().unwrap()),
         Rule::ternary => handle_ternary(pair),
         Rule::arg => handle_arg(pair),
         Rule::expr => handle_expr(pair),
@@ -731,10 +732,7 @@ fn handle_decl_init(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     // create the decl
     let decl_pair = pairs.next().unwrap();
     let decls = match decl_pair.as_rule() {
-        Rule::special_decl => {
-            // handle_special_decl(decl_pair, err)
-            unimplemented!("Declaring a special variable and initializing is not currently supported (e.g. `report var i = 0;`).");
-        }
+        Rule::special_decl => handle_special_decl(decl_pair, err),
         Rule::decl => handle_decl(&mut decl_pair.into_inner(), err),
         rule => {
             err.parse_error(
@@ -748,33 +746,50 @@ fn handle_decl_init(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     };
     let decl = decls.first().unwrap();
 
-    let var_id = if let Statement::Decl { var_id, .. } = decl {
-        var_id.clone()
-    } else {
-        return vec![];
-    };
-
     // get the assignment
     let expr_rule = pairs.next().unwrap();
     let expr_line_col = LineColLocation::from(expr_rule.as_span());
-    let assign = match expr_from_pair(expr_rule) {
+    match expr_from_pair(expr_rule) {
         Ok(expr) => {
             let loc = decl
                 .line_col()
                 .map(|loc| Location::from(&loc.clone(), &expr_line_col, None));
-            Statement::Assign {
-                var_id: var_id.clone(),
-                expr,
-                loc,
+
+            match decl {
+                Statement::Decl { var_id, .. } => {
+                    vec![
+                        decl.to_owned(),
+                        Statement::Assign {
+                            var_id: var_id.clone(),
+                            expr,
+                            loc,
+                        },
+                    ]
+                }
+                Statement::UnsharedDecl { decl: inner, .. } => {
+                    if let Statement::Decl { var_id, .. } = &**inner {
+                        let assign = Statement::Assign {
+                            var_id: var_id.clone(),
+                            expr,
+                            loc: loc.clone(),
+                        };
+                        vec![Statement::UnsharedDeclInit {
+                            decl: Box::new(decl.to_owned()),
+                            init: Box::new(assign),
+                            loc,
+                        }]
+                    } else {
+                        vec![]
+                    }
+                }
+                _ => vec![],
             }
         }
         Err(errors) => {
             let _ = err.add_errors(errors);
-            return vec![];
+            vec![]
         }
-    };
-
-    vec![decl.to_owned(), assign]
+    }
 }
 fn handle_if(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     let if_stmt_line_col: LineColLocation = LineColLocation::from(pair.as_span());

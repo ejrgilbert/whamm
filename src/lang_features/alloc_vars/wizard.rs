@@ -1,13 +1,14 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::common::error::ErrorGen;
-use crate::emitter::memory_allocator::StringAddr;
+use crate::emitter::memory_allocator::{StringAddr, VAR_BLOCK_BASE_VAR};
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::tag_handler::get_tag_for;
+use crate::emitter::utils::{emit_stmt, EmitCtx};
 use crate::generator::ast::UnsharedVar;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::lang_features::report_vars::ReportVars;
-use crate::parser::types::{DataType, Definition};
+use crate::parser::types::{DataType, Definition, Statement};
 use crate::verifier::types::{Record, VarAddr};
 use wasmparser::MemArg;
 use wirm::ir::function::FunctionBuilder;
@@ -41,6 +42,7 @@ impl UnsharedVarHandler {
     pub fn emit_alloc_func(
         &self,
         unshared_to_alloc: &mut [UnsharedVar],
+        init_logic: &mut [Statement],
         emitter: &mut ModuleEmitter,
         err: &mut ErrorGen,
     ) -> (Option<u32>, String) {
@@ -101,10 +103,12 @@ impl UnsharedVarHandler {
             id: LocalID(2),
             ty: WirmType::I32,
         };
+        let addr_fid = VarAddr::Local { addr: *fid.id };
         let pc = Local {
             id: LocalID(3),
             ty: WirmType::I32,
         };
+        let addr_pc = VarAddr::Local { addr: *pc.id };
 
         // params: (fname_ptr, fname_len, fid, pc)
         let alloc_params = vec![fname_ptr.ty, fname_len.ty, fid.ty, pc.ty];
@@ -116,6 +120,9 @@ impl UnsharedVarHandler {
         let orig_offset = Local {
             id: alloc.add_local(WirmType::I32),
             ty: WirmType::I32,
+        };
+        let addr_offset = VarAddr::Local {
+            addr: *orig_offset.id,
         };
         let curr_offset = Local {
             id: alloc.add_local(WirmType::I32),
@@ -186,23 +193,22 @@ impl UnsharedVarHandler {
                     &mut alloc,
                     emitter.app_wasm,
                 );
-            }
 
-            // TODO -- if it's not a report variable...I shouldn't need to store this metadata.
-            // Store the header for the probe (this could be one per probe...but we're duplicating per variable
-            // to make the flushing logic simpler)
-            curr_offset += self.store_probe_header(
-                &mut alloc,
-                curr_offset,
-                &new_fname_ptr,
-                &fname_len,
-                &fid,
-                &pc,
-                emitter,
-            );
-            // Store the header for this variable
-            curr_offset +=
-                self.store_var_header(&mut alloc, curr_offset, report_metadata, emitter, err);
+                // Store the header for the probe (this could be one per probe...but we're duplicating per variable
+                // to make the flushing logic simpler)
+                curr_offset += self.store_probe_header(
+                    &mut alloc,
+                    curr_offset,
+                    &new_fname_ptr,
+                    &fname_len,
+                    &fid,
+                    &pc,
+                    emitter,
+                );
+                // Store the header for this variable
+                curr_offset +=
+                    self.store_var_header(&mut alloc, curr_offset, report_metadata, emitter, err);
+            }
 
             // allocate the space for the datatype value
             let var_addr = VarAddr::MemLoc {
@@ -239,6 +245,56 @@ impl UnsharedVarHandler {
                     alloc_var_mem_tracker_global,
                     &mut alloc,
                     emitter.app_wasm,
+                );
+            }
+        }
+
+        if !init_logic.is_empty() {
+            // TODO -- this is making assumptions on the state that will be
+            //  needed by the init logic, should pull this in the metadata-collector
+            emitter.table.put(
+                "fid".to_string(),
+                Record::Var {
+                    ty: DataType::I32,
+                    value: None,
+                    def: Definition::CompilerStatic,
+                    addr: Some(vec![addr_fid]),
+                    loc: None,
+                },
+            );
+            emitter.table.put(
+                "pc".to_string(),
+                Record::Var {
+                    ty: DataType::I32,
+                    value: None,
+                    def: Definition::CompilerStatic,
+                    addr: Some(vec![addr_pc]),
+                    loc: None,
+                },
+            );
+            emitter.table.put(
+                VAR_BLOCK_BASE_VAR.to_string(),
+                Record::Var {
+                    ty: DataType::I32,
+                    value: None,
+                    def: Definition::CompilerStatic,
+                    addr: Some(vec![addr_offset]),
+                    loc: None,
+                },
+            );
+            for stmt in init_logic.iter_mut() {
+                emit_stmt(
+                    stmt,
+                    emitter.strategy,
+                    &mut alloc,
+                    &mut EmitCtx::new(
+                        emitter.table,
+                        emitter.mem_allocator,
+                        &mut emitter.locals_tracker,
+                        emitter.map_lib_adapter,
+                        "UnsharedVarHandler: Looks like you've found a bug...please report this behavior!",
+                        err,
+                    ),
                 );
             }
         }

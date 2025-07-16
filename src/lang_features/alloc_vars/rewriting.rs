@@ -166,7 +166,7 @@ impl UnsharedVarHandler {
                 panic!("unexpected type");
             };
 
-            if *is_report {
+            let (probe_header, var_header) = if *is_report {
                 // 2. If is_report, prep the report var header (linked list)
                 if let Some(prev_idx) = &mut ty_tracker.last_var {
                     if let Some(prev_var) = self.allocated_vars.get_mut(*prev_idx) {
@@ -186,21 +186,25 @@ impl UnsharedVarHandler {
                     // update to point to where THIS var will be in the list!
                     ty_tracker.first_var = Some(self.allocated_vars.len() as u32);
                 }
-            }
 
-            // 3. Store the header for the probe (this could be one per probe...but we're duplicating per variable
-            //    to make the flushing logic simpler)
-            let fname = if _fname.is_empty() {
-                &format!("#{fid}")
+                // 3. Store the header for the probe (this could be one per probe...but we're duplicating per variable
+                //    to make the flushing logic simpler)
+                let fname = if _fname.is_empty() {
+                    &format!("#{fid}")
+                } else {
+                    _fname
+                };
+                mem_allocator.emit_string(wasm, &mut fname.to_string());
+                let (fname_addr, fname_len) = mem_allocator.lookup_emitted_string(fname);
+
+                // 4. Store the header for this variable
+                (
+                    Some(ProbeHeader::new((fname_addr, fname_len as u8), fid, pc)),
+                    Some(VarHeader::new(report_metadata, mem_allocator, err)),
+                )
             } else {
-                _fname
+                (None, None)
             };
-            mem_allocator.emit_string(wasm, &mut fname.to_string());
-            let (fname_addr, fname_len) = mem_allocator.lookup_emitted_string(fname);
-            let probe_header = ProbeHeader::new((fname_addr, fname_len as u8), fid, pc);
-
-            // 4. Store the header for this variable
-            let var_header = VarHeader::new(report_metadata, mem_allocator, err);
 
             let value = if matches!(ty, DataType::Map { .. }) {
                 let map_id = map_lib_adapter.emit_map_init(
@@ -253,8 +257,8 @@ struct AllocatedVar {
     value: Option<Value>,
     ty: DataType,
     report_var_header: Option<ReportVarHeader>,
-    probe_header: ProbeHeader,
-    var_header: VarHeader,
+    probe_header: Option<ProbeHeader>,
+    var_header: Option<VarHeader>,
     loc: Option<Location>,
 }
 impl AllocatedVar {
@@ -264,8 +268,12 @@ impl AllocatedVar {
         if let Some(report_header) = &self.report_var_header {
             res.extend(report_header.encode())
         }
-        res.extend(self.probe_header.encode());
-        res.extend(self.var_header.encode());
+        if let Some(probe_header) = &self.probe_header {
+            res.extend(probe_header.encode());
+        }
+        if let Some(var_header) = &self.var_header {
+            res.extend(var_header.encode());
+        }
 
         if let Some(value) = &self.value {
             res.extend(value.encode());

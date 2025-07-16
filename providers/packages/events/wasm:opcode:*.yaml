@@ -737,6 +737,11 @@ br_table: &br_table
       docs: "The number of NON-DEFAULT target branches for this br_table instruction (correlates with the number of immediates, e.g. `immN`).This means the total number of targets is really num_targets + 1, to include the default target. NOTE: This can be used in a predicate to ensure that the current br_table has the immN you need to interact with for the probe."
       lifetime: static
       derived_from: null
+    - name: target
+      type: u32
+      docs: The actual dynamic target of this br_table instruction.
+      lifetime: static
+      derived_from: "arg0 <= (num_targets - 1) ? arg0 : num_targets"
   bound_fns: []
   supported_modes: *branching_modes
 

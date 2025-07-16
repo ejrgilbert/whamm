@@ -33,10 +33,12 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         whamm: &mut Whamm,
         used_bound_funcs: HashSet<(String, String)>,
         strings_to_emit: Vec<String>,
+        has_probe_state_init: bool,
     ) -> bool {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
-        self.injected_funcs.extend(self.emitter.setup_module());
+        self.injected_funcs
+            .extend(self.emitter.setup_module(true, has_probe_state_init));
         emit_needed_funcs(used_bound_funcs, &mut self.emitter, self.injected_funcs);
         self.emitter.emit_strings(strings_to_emit);
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)

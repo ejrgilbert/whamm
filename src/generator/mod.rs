@@ -405,6 +405,12 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
                 is_success
             }
+            Statement::UnsharedDeclInit { decl, init, .. } => {
+                let mut is_success = true;
+                is_success &= self.visit_stmt(decl);
+                is_success &= self.visit_stmt(init);
+                is_success
+            }
             Statement::UnsharedDecl { decl, .. } => self.visit_stmt(decl),
             Statement::SetMap { map, key, val, .. } => {
                 let mut is_success = true;

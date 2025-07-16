@@ -30,42 +30,49 @@ use wirm::ir::module::Module;
 use wirm::ir::types::BlockType as WirmBlockType;
 use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as WirmIterator};
 use wirm::iterator::module_iterator::ModuleIterator;
+use wirm::module_builder::AddLocal;
 use wirm::opcode::{Instrumenter, MacroOpcode, Opcode};
 use wirm::Location;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub strategy: InjectStrategy,
     pub app_iter: ModuleIterator<'a, 'b>,
-    pub table: &'c mut SymbolTable,
-    pub mem_allocator: &'d mut MemoryAllocator,
+    pub init_func: &'c mut FunctionBuilder<'d>,
+    pub in_init: bool,
+
+    pub table: &'e mut SymbolTable,
+    pub mem_allocator: &'f mut MemoryAllocator,
     pub locals_tracker: LocalsTracker,
-    pub map_lib_adapter: &'e mut MapLibAdapter,
-    pub io_adapter: &'f mut IOAdapter,
-    pub(crate) report_vars: &'g mut ReportVars,
-    pub(crate) unshared_var_handler: &'g mut UnsharedVarHandler,
+    pub map_lib_adapter: &'g mut MapLibAdapter,
+    pub io_adapter: &'h mut IOAdapter,
+    pub(crate) report_vars: &'i mut ReportVars,
+    pub(crate) unshared_var_handler: &'i mut UnsharedVarHandler,
     instr_created_args: Vec<(String, usize)>,
     pub curr_unshared: Vec<UnsharedVar>,
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     // note: only used in integration test
     pub fn new(
         strategy: InjectStrategy,
         app_wasm: &'a mut Module<'b>,
+        init_func: &'c mut FunctionBuilder<'d>,
         injected_funcs: &Vec<FunctionID>,
-        table: &'c mut SymbolTable,
-        mem_allocator: &'d mut MemoryAllocator,
-        map_lib_adapter: &'e mut MapLibAdapter,
-        io_adapter: &'f mut IOAdapter,
-        report_vars: &'g mut ReportVars,
-        unshared_var_handler: &'g mut UnsharedVarHandler,
+        table: &'e mut SymbolTable,
+        mem_allocator: &'f mut MemoryAllocator,
+        map_lib_adapter: &'g mut MapLibAdapter,
+        io_adapter: &'h mut IOAdapter,
+        report_vars: &'i mut ReportVars,
+        unshared_var_handler: &'i mut UnsharedVarHandler,
     ) -> Self {
-        let a = Self {
+        Self {
             strategy,
             app_iter: ModuleIterator::new(app_wasm, injected_funcs),
+            init_func,
+            in_init: false,
             table,
             mem_allocator,
             locals_tracker: LocalsTracker::default(),
@@ -75,9 +82,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             unshared_var_handler,
             instr_created_args: vec![],
             curr_unshared: vec![],
-        };
-
-        a
+        }
     }
 
     /// bool -> whether there is a next instruction to process
@@ -257,7 +262,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         true
     }
 
-    pub(crate) fn emit_args(&mut self) -> bool {
+    pub(crate) fn emit_args(&mut self, err: &mut ErrorGen) -> bool {
+        if self.in_init {
+            err.add_instr_error("Cannot re-emit args as a variable initialization.".to_string());
+            return false;
+        }
         for (_param_name, param_rec_id) in self.instr_created_args.iter() {
             let param_rec = self.table.get_record_mut(*param_rec_id);
             if let Some(Record::Var {
@@ -418,7 +427,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         // emit the beginning of the else
         self.app_iter.else_stmt();
 
-        is_success &= self.emit_args();
+        is_success &= self.emit_args(err);
         is_success &= self.emit_orig();
 
         // emit the end of the if block
@@ -426,7 +435,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         Ok(is_success)
     }
 
-    fn handle_alt_call_by_name(&mut self, args: &mut [Expr]) -> bool {
+    fn handle_alt_call_by_name(&mut self, args: &mut [Expr], err: &mut ErrorGen) -> bool {
+        if self.in_init {
+            err.add_instr_error(
+                "Cannot call `alt_call_by_name` as a variable initialization.".to_string(),
+            );
+            return false;
+        }
         // args: vec![func_name: String]
         // Assume the correct args since we've gone through typechecking at this point!
         let fn_name = match args.iter().next().unwrap() {
@@ -443,7 +458,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             .functions
             .get_local_fid_by_name(fn_name.as_str())
         {
-            let is_success = self.emit_args();
+            let is_success = self.emit_args(err);
             self.app_iter.call(func_id);
             is_success
         } else {
@@ -454,7 +469,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         }
     }
 
-    fn handle_alt_call_by_id(&mut self, args: &mut [Expr]) -> bool {
+    fn handle_alt_call_by_id(&mut self, args: &mut [Expr], err: &mut ErrorGen) -> bool {
+        if self.in_init {
+            err.add_instr_error(
+                "Cannot call `alt_call_by_name` as a variable initialization.".to_string(),
+            );
+            return false;
+        }
         // args: vec![func_id: i32]
         // Assume the correct args since we've gone through typechecking at this point!
         let func_id = match args.iter().next().unwrap() {
@@ -469,12 +490,18 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             _ => return false,
         };
 
-        let is_success = self.emit_args();
+        let is_success = self.emit_args(err);
         self.app_iter.call(FunctionID(func_id as u32));
         is_success
     }
 
-    fn handle_drop_args(&mut self) -> bool {
+    fn handle_drop_args(&mut self, err: &mut ErrorGen) -> bool {
+        if self.in_init {
+            err.add_instr_error(
+                "Cannot call `drop_args` as a variable initialization.".to_string(),
+            );
+            return false;
+        }
         // Generate drops for all args to this opcode!
 
         let fid = match self.app_iter.curr_loc().0 {
@@ -497,11 +524,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         _curr_instr_args: &[Arg],
         target_fn_name: String,
         args: &mut [Expr],
+        err: &mut ErrorGen,
     ) -> bool {
         match target_fn_name.as_str() {
-            "alt_call_by_name" => self.handle_alt_call_by_name(args),
-            "alt_call_by_id" => self.handle_alt_call_by_id(args),
-            "drop_args" => self.handle_drop_args(),
+            "alt_call_by_name" => self.handle_alt_call_by_name(args, err),
+            "alt_call_by_id" => self.handle_alt_call_by_id(args, err),
+            "drop_args" => self.handle_drop_args(err),
             _ => {
                 unreachable!(
                     "{} Could not find handler for static function with name: {}",
@@ -509,16 +537,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 );
             }
         }
-    }
-
-    pub fn inject_map_init(&mut self) {
-        if !self.map_lib_adapter.used_in_global_scope {
-            return;
-        }
-        self.before();
-        let fid = self.map_lib_adapter.get_map_init_fid(self.app_iter.module);
-        self.map_lib_adapter
-            .inject_map_init_check(&mut self.app_iter, fid);
     }
 
     pub fn configure_flush_routines(
@@ -529,28 +547,26 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     ) {
         // create the function to call at the end
         // TODO -- this can be cleaned up to use the wizard logic instead!
-
-        // only do this is there are report variables
-        if has_reports {
-            // check if ast overrides report logic
-            let report_probe = if let Some(wasm) = ast.provs.get_mut("wasm") {
-                if let Some(report_probe) = wasm.pkgs.get_mut("report") {
-                    Some(
-                        report_probe
-                            .evts
-                            .get_mut("")
-                            .unwrap()
-                            .modes
-                            .get_mut(&ModeKind::Null)
-                            .unwrap(),
-                    )
-                } else {
-                    None
-                }
+        // check if ast overrides report logic
+        let report_probe = if let Some(wasm) = ast.provs.get_mut("wasm") {
+            if let Some(report_probe) = wasm.pkgs.get_mut("report") {
+                Some(
+                    report_probe
+                        .evts
+                        .get_mut("")
+                        .unwrap()
+                        .modes
+                        .get_mut(&ModeKind::Null)
+                        .unwrap(),
+                )
             } else {
                 None
-            };
+            }
+        } else {
+            None
+        };
 
+        if has_reports || report_probe.is_some() {
             let var_flush_fid = if report_probe.is_none() {
                 configure_flush_routines(
                     self.app_iter.module,
@@ -679,8 +695,131 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             main.finish_instr();
         }
     }
+
+    pub fn init_probe_state(
+        &mut self,
+        curr_instr_args: &[Arg],
+        init_logic: &mut [Statement],
+        err: &mut ErrorGen,
+    ) {
+        // Create the variable pointing to the start of the allocated memory block
+        let offset_info = if !self.curr_unshared.is_empty() {
+            // Create the required globals for this probe
+            // Sort by datatype to make generation deterministic!
+            // translate unshared vars to the correct format
+            let sorted_unshared = self
+                .curr_unshared
+                .iter()
+                .sorted_by(|a, b| Ord::cmp(&a.ty, &b.ty));
+
+            let (fid, pc) = match self.app_iter.curr_loc().0 {
+                Location::Module {
+                    func_idx,
+                    instr_idx,
+                    ..
+                }
+                | Location::Component {
+                    func_idx,
+                    instr_idx,
+                    ..
+                } => (*func_idx, instr_idx as u32),
+            };
+            let fname = self
+                .app_iter
+                .module
+                .functions
+                .get_name(FunctionID(fid))
+                .clone()
+                .unwrap_or_default();
+
+            let offset_value = self.unshared_var_handler.get_curr_offset();
+            self.unshared_var_handler.allocate_vars(
+                sorted_unshared.as_slice(),
+                &fname,
+                fid,
+                pc,
+                self.table,
+                self.mem_allocator,
+                self.map_lib_adapter,
+                self.report_vars,
+                self.app_iter.module,
+                err,
+            );
+
+            let id_probe = self
+                .locals_tracker
+                .use_local(WirmType::I32, &mut self.app_iter);
+            let addr_probe = VarAddr::Local { addr: id_probe };
+
+            // Define the memory address in the table for the state initialization logic.
+            if !init_logic.is_empty() {
+                let id_init = *self.init_func.add_local(WirmType::I32);
+                let addr_init = VarAddr::Local { addr: id_init };
+                redefine_offset(
+                    offset_value,
+                    addr_init,
+                    id_init,
+                    VAR_BLOCK_BASE_VAR,
+                    self.table,
+                    self.init_func,
+                );
+            }
+
+            Some((id_probe, addr_probe, offset_value))
+        } else {
+            None
+        };
+
+        // now that the unshared variables have been allocated, I need to emit
+        // initialization logic into the instr_init function
+        if !init_logic.is_empty() {
+            self.in_init = true;
+            for stmt in init_logic.iter_mut() {
+                self.emit_stmt(curr_instr_args, stmt, err);
+            }
+            self.in_init = false;
+        }
+
+        // If there was an offset override, now redefine it for the probe body
+        if let Some((id, local, offset)) = offset_info {
+            redefine_offset(
+                offset,
+                local,
+                id,
+                VAR_BLOCK_BASE_VAR,
+                self.table,
+                &mut self.app_iter,
+            );
+        }
+
+        fn redefine_offset<'a, T: Opcode<'a> + MacroOpcode<'a>>(
+            offset: u32,
+            local: VarAddr,
+            id: u32,
+            var_name: &str,
+            table: &mut SymbolTable,
+            target_func: &mut T,
+        ) {
+            if let Some(Record::Var { value, addr, .. }) = table.lookup_var_mut(var_name, false) {
+                *value = Some(Value::gen_u32(offset));
+                *addr = Some(vec![local]);
+            } else {
+                table.put(
+                    VAR_BLOCK_BASE_VAR.to_string(),
+                    Record::Var {
+                        ty: DataType::I32,
+                        value: Some(Value::gen_u32(offset)),
+                        def: Definition::CompilerStatic,
+                        addr: Some(vec![local]),
+                        loc: None,
+                    },
+                );
+            };
+            target_func.u32_const(offset).local_set(LocalID(id));
+        }
+    }
 }
-impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
+impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn reset_locals_for_probe(&mut self) {
         self.locals_tracker.reset_probe(&mut self.app_iter);
     }
@@ -691,76 +830,6 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
 
     fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool {
         let mut is_success = true;
-
-        // TODO -- this can be removed once we move to calling the generated functions!
-        // Create the required globals for this probe
-        // Sort by datatype to make generation deterministic!
-        // translate unshared vars to the correct format
-        let sorted_unshared = self
-            .curr_unshared
-            .iter()
-            .sorted_by(|a, b| Ord::cmp(&a.ty, &b.ty));
-
-        // Create the variable pointing to the start of the allocated memory block
-        if !self.curr_unshared.is_empty() {
-            let id = self
-                .locals_tracker
-                .use_local(WirmType::I32, &mut self.app_iter);
-
-            // THIS VAR NEEDS TO BE REDEFINED!
-            let offset_value = self.unshared_var_handler.get_curr_offset();
-            if let Some(Record::Var { value, addr, .. }) =
-                self.table.lookup_var_mut(VAR_BLOCK_BASE_VAR, false)
-            {
-                *value = Some(Value::gen_u32(offset_value));
-                *addr = Some(vec![VarAddr::Local { addr: id }]);
-            } else {
-                self.table.put(
-                    VAR_BLOCK_BASE_VAR.to_string(),
-                    Record::Var {
-                        ty: DataType::I32,
-                        value: Some(Value::gen_u32(offset_value)),
-                        def: Definition::CompilerStatic,
-                        addr: Some(vec![VarAddr::Local { addr: id }]),
-                        loc: None,
-                    },
-                );
-            };
-            self.app_iter.u32_const(offset_value).local_set(LocalID(id));
-        }
-
-        let (fid, pc) = match self.app_iter.curr_loc().0 {
-            Location::Module {
-                func_idx,
-                instr_idx,
-                ..
-            }
-            | Location::Component {
-                func_idx,
-                instr_idx,
-                ..
-            } => (*func_idx, instr_idx as u32),
-        };
-        let fname = self
-            .app_iter
-            .module
-            .functions
-            .get_name(FunctionID(fid))
-            .clone()
-            .unwrap_or_default();
-
-        self.unshared_var_handler.allocate_vars(
-            sorted_unshared.as_slice(),
-            &fname,
-            fid,
-            pc,
-            self.table,
-            self.mem_allocator,
-            self.map_lib_adapter,
-            self.report_vars,
-            self.app_iter.module,
-            err,
-        );
 
         for stmt in body.stmts.iter_mut() {
             is_success &= self.emit_stmt(curr_instr_args, stmt, err);
@@ -791,25 +860,24 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_> {
             };
             if matches!(def, Definition::CompilerStatic) {
                 // We want to handle this as unique logic rather than a simple function call to be emitted
-                return self.handle_special_fn_call(curr_instr_args, fn_name, args);
+                return self.handle_special_fn_call(curr_instr_args, fn_name, args, err);
             }
         }
 
         // everything else can be emitted as normal!
-
-        emit_stmt(
-            stmt,
-            self.strategy,
-            &mut self.app_iter,
-            &mut EmitCtx::new(
-                self.table,
-                self.mem_allocator,
-                &mut self.locals_tracker,
-                self.map_lib_adapter,
-                UNEXPECTED_ERR_MSG,
-                err,
-            ),
-        )
+        let mut ctx = EmitCtx::new(
+            self.table,
+            self.mem_allocator,
+            &mut self.locals_tracker,
+            self.map_lib_adapter,
+            UNEXPECTED_ERR_MSG,
+            err,
+        );
+        if self.in_init {
+            emit_stmt(stmt, self.strategy, self.init_func, &mut ctx)
+        } else {
+            emit_stmt(stmt, self.strategy, &mut self.app_iter, &mut ctx)
+        }
     }
 
     fn emit_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {

@@ -1,0 +1,179 @@
+// Adapted from Wizard's src/monitors/LoopTraceMonitor.v3
+// See: https://github.com/titzer/wizard-engine/blob/master/src/monitors/LoopTraceMonitor.v3
+
+// Copyright 2025 Wizard Authors. All rights reserved.
+// See LICENSE for details of Apache 2.0 license.
+
+def DEBUG = false;
+
+class TraceBuffer {
+	def events = Vector<TraceEntry>.new();
+	def starts = Vector<u30>.new();
+	def anchorLocs = Vector<TraceAnchorLoc>.new();
+	def anchorPositions = Vector<int>.new();
+	def trees = Vector<PrefixTrie<TraceEntry, u32>>.new();
+	def BRANCHES_MAX = 0x2000_0000u;
+	var branchHistory: u32 = 1;
+
+	def allocAnchorId(func: int, pc: int) -> u30 {
+		var id = anchorLocs.length;
+		anchorLocs.put(TraceAnchorLoc(func, pc));
+		anchorPositions.put(-1);
+		trees.put(null);
+		return u30.!(id);
+	}
+	def pushTaken() {
+		events.put(TraceEntry.Taken);
+//		if (branchHistory < BRANCHES_MAX) {
+//			branchHistory = (branchHistory << 1) | 1;
+//		} else {
+//			events.put(TraceEntry.BranchHistory(u30.view(branchHistory)));
+//			branchHistory = 0b11u32;
+//		}
+	}
+	def pushNotTaken() {
+		events.put(TraceEntry.NotTaken);
+//		if (branchHistory < BRANCHES_MAX) {
+//			branchHistory = (branchHistory << 1);
+//		} else {
+//			events.put(TraceEntry.BranchHistory(u30.view(branchHistory)));
+//			branchHistory = 0b10u32;
+//		}
+	}
+	def pushBranchTable(which: u30) {
+//		if (branchHistory != 1) { // flush branch history
+//			events.put(TraceEntry.BranchHistory(u30.view(branchHistory)));
+//			branchHistory = 1;
+//		}
+		events.put(TraceEntry.BranchTable(which));
+	}
+	def pushAnchor(anchor_id: u30) {
+//		if (branchHistory != 1) { // flush branch history
+//			events.put(TraceEntry.BranchHistory(u30.view(branchHistory)));
+//			branchHistory = 1;
+//		}
+		var start = anchorPositions[anchor_id];
+		if (start >= 0) {
+			// Record a trace in the trace tree
+			var r = events.array[start ... events.length];
+			if (DEBUG) {
+				putSeq(events.array[0 ... start], Trace.OUT);
+				Trace.OUT.puts(" {");
+				putSeq(r, Trace.OUT);
+				Trace.OUT.puts("} ").ln();
+			}
+			var tree = trees[anchor_id];
+			if (tree == null) tree = trees[anchor_id] = PrefixTrie.new();
+			tree.update(r, increment);
+			anchorPositions[anchor_id] = -1;
+			events.resize(start);
+			for (i = starts.length - 1; i >= 0; i--) {
+				var s = starts[i];
+				if (s == anchor_id) {
+					starts.resize(i);
+					break;
+				}
+				anchorPositions[s] = -1;
+			}
+		}
+		// Put the anchor ID in the trace and record its position
+		anchorPositions[anchor_id] = events.length;
+		if (DEBUG) {
+			putSeq(events.array[0 ... events.length], Trace.OUT);
+			Trace.OUT.puts(" ++ ");
+			Trace.OUT.put1("%q", anchorLocs[anchor_id].render);
+			Trace.OUT.ln();
+		}
+		events.put(TraceEntry.Anchor(anchor_id));
+		starts.put(anchor_id);
+	}
+	def report_as_csv() {
+		var paths = Vector<(Array<TraceEntry>, u32)>.new();
+		for (i < trees.length) {
+			var tree = trees[i];
+			if (tree != null) tree.apply(putCopy(paths, _));
+		}
+		var all = paths.extract();
+
+		def out = Trace.OUT;
+		out.puts("count, seq").ln();
+		for (e in all) {
+			out.put1("%d, ", e.1);
+			putSeq(e.0, out);
+			out.ln();
+		}
+	}
+	def report() {
+		var paths = Vector<(Array<TraceEntry>, u32)>.new();
+		for (i < trees.length) {
+			var tree = trees[i];
+			if (tree != null) tree.apply(putCopy(paths, _));
+		}
+		var all = paths.extract();
+//		all = Arrays.sort<(Array<TraceEntry>, u32)>(all, 0, all.length,
+//			fun (a, b) => b.1 < a.1						// by dynamic frequency
+//		);
+
+		def out = Trace.OUT;
+		for (e in all) {
+			out.beginColor(Color.COUNT);
+			out.mark();
+			out.put1(" x %d", e.1);
+			out.rjustify_mark(11);
+			out.endColors();
+			out.puts(": ");
+			putSeq(e.0, out);
+			out.ln();
+		}
+	}
+	def putCopy(all: Vector<(Array<TraceEntry>, u32)>, t: (Range<TraceEntry>, u32)) {
+		all.put(Ranges.dup(t.0), t.1);
+	}
+	def putSeq(seq: Range<TraceEntry>, buf: StringBuilder) {
+		for (p in seq) {
+			match (p) {
+				Invalid => {
+					Trace.OUT.putc('X');
+				}
+				Anchor(anchor_id) => {
+					var h = anchorLocs[anchor_id];
+//					Trace.OUT.put1("{id=%d}", anchor_id);
+					h.render(Trace.OUT);
+				}
+				Taken => {
+					Trace.OUT.putc('T');
+				}
+				NotTaken => {
+					Trace.OUT.putc('n');
+				}
+//				BranchHistory(bits) => {
+//					var v: u32 = bits, print = false;
+//					for (i < 32) {
+//						var b = (v & 0x8000_0000u) != 0;
+//						if (print) Trace.OUT.putc(if(b, 'T', 'n'));
+//						print |= b;
+//						v <<= 1;
+//					}
+//				}
+				BranchTable(which) => {
+					Trace.OUT.put1(",br_table(%d)", which);
+				}
+			}
+		}
+	}
+}
+def increment = u32.+(1, _);
+
+type TraceAnchorLoc(func: int, pc: int) {
+	def render(buf: StringBuilder) -> StringBuilder {
+		return buf.put2("[%d+%d]", func, pc); // XXX: module name
+	}
+}
+
+type TraceEntry #unboxed {
+	case Invalid;
+	case Anchor(id: u30);
+	case Taken;
+	case NotTaken;
+	case BranchTable(which: u30);
+}
