@@ -14,14 +14,14 @@ wasm:opcode:*if:before {
     tracer.on_if(arg0 as i32);
 }
 
+wasm:opcode:br_table:before {
+    // TODO -- will save memory to use `target_label` or `target_pc` instead
+    tracer.on_br_table(target as i32);
+}
+
 wasm:report {
     tracer.flush_csv();
 }
-
-// TODO: How to pull `target`?
-// wasm:opcode:br_table:before {
-//     tracer.on_br_table(target);
-// }
 
 // TODO: Handle GC opcodes
 // export "wasm:opcode:br_on_null" def br_on_null_probe() {

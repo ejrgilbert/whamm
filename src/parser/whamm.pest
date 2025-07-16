@@ -130,9 +130,11 @@ REPORT = @{ "report" }
 UNSHARED = @{ "unshared" }
 var_decorators = { ( REPORT | UNSHARED )+ }
 special_decl = { var_decorators ~ decl }
-assignment = { (get_map | ID) ~ "=" ~ (ternary | expr) }
+assignment = { (get_map | ID) ~ "=" ~ assignment_rhs }
 decl = { "var" ~ !RESERVED_KEYWORDS ~ ID ~ ":" ~ TYPE  }
-decl_init = { (special_decl | decl) ~ "=" ~ (ternary | expr) }
+decl_init = { (special_decl | decl) ~ "=" ~ assignment_rhs }
+
+assignment_rhs = { ternary | expr }
 
 // =====================
 // ---- Expressions ----

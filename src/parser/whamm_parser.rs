@@ -418,8 +418,9 @@ fn handle_probe_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
     }
 }
 
-fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+pub fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     match pair.as_rule() {
+        Rule::assignment_rhs => expr_from_pair(pair.into_inner().next().unwrap()),
         Rule::ternary => handle_ternary(pair),
         Rule::arg => handle_arg(pair),
         Rule::expr => handle_expr(pair),
