@@ -963,7 +963,7 @@ pub fn create_tuple_map() -> i32 {
 #[no_mangle]
 pub fn insert_i32_i32(id: i32, key: i32, value: i32) {
     if !insert_i32_i32_inner(id, key, value) {
-        red("i32_i32 map DNE: {id}");
+        red(&format!("i32_i32 map DNE: {id}"));
         panic!()
     }
 }
@@ -972,7 +972,7 @@ pub fn insert_i32_string(id: i32, key: i32, val_offset: *const u8, val_length: u
     let value = string_from_data(val_offset, val_length);
     debug!("DEBUG: inserting ({key}, \"{value}\") into map '{id}'");
     if !insert_i32_string_inner(id, key, value) {
-        red("i32_string map DNE: {id}");
+        red(&format!("i32_string map DNE: {id}"));
         panic!()
     }
 }
@@ -980,21 +980,21 @@ pub fn insert_i32_string(id: i32, key: i32, val_offset: *const u8, val_length: u
 pub fn insert_string_i32(id: i32, key_offset: *const u8, key_length: usize, val: i32) {
     let key = string_from_data(key_offset, key_length);
     if !insert_string_i32_inner(id, key, val) {
-        red("string_i32 map DNE: {id}");
+        red(&format!("string_i32 map DNE: {id}"));
         panic!()
     }
 }
 #[no_mangle]
 pub fn insert_i32i32tuple_i32(id: i32, key0: i32, key1: i32, value: i32) {
     if !insert_tuple_i32_inner(id, TupleVariant::i32_i32(key0, key1), value) {
-        red("i32_i32 map DNE: {id}");
+        red(&format!("i32i32tuple_i32 map DNE: {id}"));
         panic!()
     }
 }
 #[no_mangle]
 pub fn insert_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32, value: i32) {
     if !insert_tuple_i32_inner(id, TupleVariant::i32_i32_i32(key0, key1, key2), value) {
-        red("i32_i32_i32 map DNE: {id}");
+        red(&format!("i32i32i32tuple_i32 map DNE: {id}"));
         panic!()
     }
 }

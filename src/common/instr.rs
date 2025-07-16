@@ -405,7 +405,6 @@ fn run_instr_wizard(
         curr_script_id: u8::MAX,
         unshared_var_handler: &mut wizard_unshared_var_handler,
     };
-    // TODO -- handle the init func!
     gen.run(
         wiz_ast,
         used_funcs,
@@ -413,6 +412,7 @@ fn run_instr_wizard(
         used_strings,
         has_probe_state_init,
     );
+    call_instr_init_at_start(None, target_wasm);
 }
 
 fn run_instr_rewrite(
@@ -508,7 +508,10 @@ pub fn configure_init_func<'a>(init_func: FunctionBuilder<'a>, module: &mut Modu
     } else {
         None
     };
+    call_instr_init_at_start(state_init_id, module);
+}
 
+fn call_instr_init_at_start(state_init_id: Option<FunctionID>, module: &mut Module) {
     if let Some(instr_init_fid) = module.functions.get_local_fid_by_name("instr_init") {
         if let Some(state_init_id) = state_init_id {
             if let Some(mut instr_init) = module.functions.get_fn_modifier(instr_init_fid) {

@@ -40,7 +40,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     ) {
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
-        self.emitter.setup_module(has_probe_state_init);
+        self.emitter.setup_module(false, has_probe_state_init);
         emit_needed_funcs(used_bound_funcs, &mut self.emitter, self.injected_funcs);
         self.emitter.emit_strings(strings_to_emit);
         self.visit_ast(&mut ast);

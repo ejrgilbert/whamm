@@ -82,10 +82,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // ==== BASE MODULE SETUP LOGIC ====
     // =================================
 
-    pub fn setup_module(&mut self, has_probe_state_init: bool) -> Vec<FunctionID> {
+    pub fn setup_module(
+        &mut self,
+        is_rewriting: bool,
+        has_probe_state_init: bool,
+    ) -> Vec<FunctionID> {
         let mut injected_funcs = vec![];
         // setup maps and probe state initialization
-        if has_probe_state_init | self.map_lib_adapter.used_in_global_scope {
+        // We only do probe state initialization here for rewriting, the engine target handles that in the $alloc methods
+        if (is_rewriting && has_probe_state_init) | self.map_lib_adapter.used_in_global_scope {
             injected_funcs.push(self.create_instr_init());
         }
         injected_funcs

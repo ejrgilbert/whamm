@@ -184,7 +184,7 @@ fn instrument_with_branch_monitor_scripts() {
 
     // TODO -- fix wizard side (THEN merge with below test)
     //   - pull `fname`, `targets`, `num_targets`, `default_target`
-    run_core_suite("branch-monitor", processed_scripts, true, true)
+    run_core_suite("branch-monitor", processed_scripts, false, true)
 }
 #[test]
 fn instrument_with_branch_monitor_rewriting_scripts() {
