@@ -385,6 +385,7 @@ fn run_instr_wizard(
     let mut injected_funcs = vec![];
     let mut wizard_unshared_var_handler =
         crate::lang_features::alloc_vars::wizard::UnsharedVarHandler::new(target_wasm);
+
     let mut gen = crate::generator::wizard::WizardGenerator {
         emitter: ModuleEmitter::new(
             InjectStrategy::Wizard,

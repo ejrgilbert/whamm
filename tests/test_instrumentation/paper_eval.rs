@@ -105,5 +105,5 @@ fn loop_tracing() {
     let processed_scripts = setup_tests("paper_eval/loop_tracer");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-loop_tracer", processed_scripts, true, true)
+    run_core_suite("paper_eval-loop_tracer", processed_scripts, false, true)
 }

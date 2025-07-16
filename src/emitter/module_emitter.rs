@@ -84,7 +84,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
     pub fn setup_module(&mut self, has_probe_state_init: bool) -> Vec<FunctionID> {
         let mut injected_funcs = vec![];
-        // setup maps
+        // setup maps and probe state initialization
         if has_probe_state_init | self.map_lib_adapter.used_in_global_scope {
             injected_funcs.push(self.create_instr_init());
         }
