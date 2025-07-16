@@ -194,7 +194,6 @@ impl UnsharedVarHandler {
                     emitter.app_wasm,
                 );
 
-                // TODO -- if it's not a report variable...I shouldn't need to store this metadata.
                 // Store the header for the probe (this could be one per probe...but we're duplicating per variable
                 // to make the flushing logic simpler)
                 curr_offset += self.store_probe_header(
@@ -250,7 +249,6 @@ impl UnsharedVarHandler {
             }
         }
 
-        // TODO init_logic here
         if !init_logic.is_empty() {
             // TODO -- this is making assumptions on the state that will be
             //  needed by the init logic, should pull this in the metadata-collector

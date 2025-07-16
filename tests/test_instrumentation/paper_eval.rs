@@ -15,7 +15,7 @@ fn categories() {
     let processed_scripts = setup_tests("paper_eval/categories");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-categories", processed_scripts, false, true)
+    run_core_suite("paper_eval-categories", processed_scripts, true, true)
 }
 #[test]
 fn hotness() {
@@ -73,7 +73,7 @@ fn mem_access_tracing() {
     let processed_scripts = setup_tests("paper_eval/mem_access_tracing");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-mem_access", processed_scripts, false, true)
+    run_core_suite("paper_eval-mem_access", processed_scripts, true, true)
 }
 
 #[test]
@@ -82,7 +82,7 @@ fn call_graph() {
     let processed_scripts = setup_tests("paper_eval/call_graph");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-call_graph", processed_scripts, false, true)
+    run_core_suite("paper_eval-call_graph", processed_scripts, true, true)
 }
 
 #[test]

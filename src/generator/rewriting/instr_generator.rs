@@ -332,8 +332,6 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         let mut is_success = true;
 
         is_success &= self.save_args();
-        //after saving args, we run the check if we need to initialize global maps
-        // self.emitter.inject_map_init();
         self.configure_probe_mode(mode_override);
 
         // Now we know we're going to insert the probe, let's define
