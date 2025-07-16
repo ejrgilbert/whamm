@@ -453,10 +453,12 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_probe_as_if(&mut self) -> bool {
-        if let Some((_, Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
+        if let Some((state_init, Some(ref mut body), Some(ref mut pred))) = &mut self.curr_probe {
             match (self.config.no_body, self.config.no_pred) {
                 // emit as normal
                 (false, false) => {
+                    self.emitter
+                        .init_probe_state(&self.curr_instr_args, state_init, self.err);
                     match self
                         .emitter
                         .emit_if(&self.curr_instr_args, pred, body, self.err)
@@ -492,21 +494,25 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_probe_as_if_else(&mut self) -> bool {
-        if let Some((_, Some(ref mut body), Some(ref mut pred))) = self.curr_probe {
+        if let Some((state_init, Some(ref mut body), Some(ref mut pred))) = &mut self.curr_probe {
             match (self.config.no_body, self.config.no_pred) {
                 // normal
-                (false, false) => match self.emitter.emit_if_with_orig_as_else(
-                    &self.curr_instr_args,
-                    pred,
-                    body,
-                    self.err,
-                ) {
-                    Err(e) => {
-                        self.err.add_error(*e);
-                        false
+                (false, false) => {
+                    self.emitter
+                        .init_probe_state(&self.curr_instr_args, state_init, self.err);
+                    match self.emitter.emit_if_with_orig_as_else(
+                        &self.curr_instr_args,
+                        pred,
+                        body,
+                        self.err,
+                    ) {
+                        Err(e) => {
+                            self.err.add_error(*e);
+                            false
+                        }
+                        Ok(res) => res,
                     }
-                    Ok(res) => res,
-                },
+                }
                 // unpredicated body
                 (false, true) => self.emit_body(),
                 // empty if stmt

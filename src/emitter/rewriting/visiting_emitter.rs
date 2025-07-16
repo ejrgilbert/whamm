@@ -743,6 +743,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
                 .clone()
                 .unwrap_or_default();
 
+            let offset_value = self.unshared_var_handler.get_curr_offset();
             self.unshared_var_handler.allocate_vars(
                 sorted_unshared.as_slice(),
                 &fname,
@@ -762,7 +763,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
             let addr_probe = VarAddr::Local { addr: id_probe };
 
             // Define the memory address in the table for the state initialization logic.
-            let offset_value = self.unshared_var_handler.get_curr_offset();
             if !init_logic.is_empty() {
                 let id_init = *self.init_func.add_local(WirmType::I32);
                 let addr_init = VarAddr::Local { addr: id_init };
