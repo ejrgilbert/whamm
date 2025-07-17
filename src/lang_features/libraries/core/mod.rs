@@ -35,10 +35,8 @@ pub trait LibAdapter {
         if let Some(fid) = self.get_funcs().get(fname) {
             *fid
         } else {
-            unreachable!(
-                "{} Could not find expected configured library function: {}",
-                UNEXPECTED_ERR_MSG, fname
-            );
+            // Just return a fake value, the error generator will handle this
+            0
         }
     }
 

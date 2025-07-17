@@ -566,6 +566,18 @@ offset: &offset
   docs: The static offset of the load's target address.
   lifetime: static
   derived_from: null
+is_write_true: &is_write_true
+  name: is_write
+  type: bool
+  docs: "Whether this memory operation is a write."
+  lifetime: static
+  derived_from: true
+is_write_false: &is_write_false
+  name: is_write
+  type: bool
+  docs: "Whether this memory operation is a write."
+  lifetime: static
+  derived_from: false
 
 # =======================
 # ==== wasm:opcode:* ====
@@ -944,6 +956,7 @@ i32_load: &i32_load
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -970,6 +983,7 @@ i64_load: &i64_load
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -996,6 +1010,7 @@ f32_load: &f32_load
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1022,6 +1037,7 @@ f64_load: &f64_load
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1048,6 +1064,7 @@ i32_load8_s: &i32_load8_s
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1074,6 +1091,7 @@ i32_load8_u: &i32_load8_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1100,6 +1118,7 @@ i32_load16_s: &i32_load16_s
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1126,6 +1145,7 @@ i32_load16_u: &i32_load16_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1152,6 +1172,7 @@ i64_load8_s: &i64_load8_s
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1178,6 +1199,7 @@ i64_load8_u: &i64_load8_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1204,6 +1226,7 @@ i64_load16_s: &i64_load16_s
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1230,6 +1253,7 @@ i64_load16_u: &i64_load16_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1256,6 +1280,7 @@ i64_load32_s: &i64_load32_s
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1282,6 +1307,7 @@ i64_load32_u: &i64_load32_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1309,6 +1335,7 @@ i32_store: &i32_store
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1336,6 +1363,7 @@ i64_store: &i64_store
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1363,6 +1391,7 @@ f32_store: &f32_store
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1390,6 +1419,7 @@ f64_store: &f64_store
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1417,6 +1447,7 @@ i32_store8: &i32_store8
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1444,6 +1475,7 @@ i32_store16: &i32_store16
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1471,6 +1503,7 @@ i64_store8: &i64_store8
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1499,6 +1532,7 @@ i64_store16: &i64_store16
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -1526,6 +1560,7 @@ i64_store32: &i64_store32
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
   bound_fns: []
   supported_modes: *default_modes
@@ -3952,6 +3987,7 @@ memory_atomic_notify: &memory_atomic_notify
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -3974,6 +4010,7 @@ memory_atomic_wait32: &memory_atomic_wait32
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
     - *arg0_i64
     - *arg1_i32
@@ -3997,6 +4034,7 @@ memory_atomic_wait64: &memory_atomic_wait64
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
     - *arg0_i64
     - *arg1_i64
@@ -4036,6 +4074,7 @@ i32_atomic_load: &i32_atomic_load
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
     - *arg0_u32
   bound_fns: []
@@ -4062,6 +4101,7 @@ i64_atomic_load: &i64_atomic_load
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
     - *arg0_u32
   bound_fns: []
@@ -4088,6 +4128,7 @@ i32_atomic_load8_u: &i32_atomic_load8_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
     - *arg0_u32
   bound_fns: []
@@ -4114,6 +4155,7 @@ i32_atomic_load16_u: &i32_atomic_load16_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
     - *arg0_u32
   bound_fns: []
@@ -4140,6 +4182,7 @@ i64_atomic_load8_u: &i64_atomic_load8_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
     - *arg0_u32
   bound_fns: []
@@ -4166,6 +4209,7 @@ i64_atomic_load16_u: &i64_atomic_load16_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
     - *arg0_u32
   bound_fns: []
@@ -4192,6 +4236,7 @@ i64_atomic_load32_u: &i64_atomic_load32_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_false
     - *offset
     - *arg0_u32
   bound_fns: []
@@ -4218,6 +4263,7 @@ i32_atomic_store: &i32_atomic_store
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -4245,6 +4291,7 @@ i32_atomic_store8: &i32_atomic_store8
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -4272,6 +4319,7 @@ i32_atomic_store16: &i32_atomic_store16
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -4299,6 +4347,7 @@ i64_atomic_store: &i64_atomic_store
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4326,6 +4375,7 @@ i64_atomic_store8: &i64_atomic_store8
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4353,6 +4403,7 @@ i64_atomic_store16: &i64_atomic_store16
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4380,6 +4431,7 @@ i64_atomic_store32: &i64_atomic_store32
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4407,6 +4459,7 @@ i32_atomic_rmw_add: &i32_atomic_rmw_add
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -4434,6 +4487,7 @@ i32_atomic_rmw8_add_u: &i32_atomic_rmw8_add_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -4461,6 +4515,7 @@ i32_atomic_rmw16_add_u: &i32_atomic_rmw16_add_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -4488,6 +4543,7 @@ i64_atomic_rmw_add: &i64_atomic_rmw_add
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4515,6 +4571,7 @@ i64_atomic_rmw8_add_u: &i64_atomic_rmw8_add_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4542,6 +4599,7 @@ i64_atomic_rmw16_add_u: &i64_atomic_rmw16_add_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4569,6 +4627,7 @@ i64_atomic_rmw32_add_u: &i64_atomic_rmw32_add_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4596,6 +4655,7 @@ i32_atomic_rmw_sub: &i32_atomic_rmw_sub
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -4623,6 +4683,7 @@ i32_atomic_rmw8_sub_u: &i32_atomic_rmw8_sub_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -4650,6 +4711,7 @@ i32_atomic_rmw16_sub_u: &i32_atomic_rmw16_sub_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -4677,6 +4739,7 @@ i64_atomic_rmw_sub: &i64_atomic_rmw_sub
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4704,6 +4767,7 @@ i64_atomic_rmw8_sub_u: &i64_atomic_rmw8_sub_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4731,6 +4795,7 @@ i64_atomic_rmw16_sub_u: &i64_atomic_rmw16_sub_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4758,6 +4823,7 @@ i64_atomic_rmw32_sub_u: &i64_atomic_rmw32_sub_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4785,6 +4851,7 @@ i32_atomic_rmw_and: &i32_atomic_rmw_and
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -4812,6 +4879,7 @@ i32_atomic_rmw8_and_u: &i32_atomic_rmw8_and_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -4839,6 +4907,7 @@ i32_atomic_rmw16_and_u: &i32_atomic_rmw16_and_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -4866,6 +4935,7 @@ i64_atomic_rmw_and: &i64_atomic_rmw_and
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4893,6 +4963,7 @@ i64_atomic_rmw8_and_u: &i64_atomic_rmw8_and_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4920,6 +4991,7 @@ i64_atomic_rmw16_and_u: &i64_atomic_rmw16_and_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4947,6 +5019,7 @@ i64_atomic_rmw32_and_u: &i64_atomic_rmw32_and_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -4974,6 +5047,7 @@ i32_atomic_rmw_or: &i32_atomic_rmw_or
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -5001,6 +5075,7 @@ i32_atomic_rmw8_or_u: &i32_atomic_rmw8_or_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -5028,6 +5103,7 @@ i32_atomic_rmw16_or_u: &i32_atomic_rmw16_or_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -5055,6 +5131,7 @@ i64_atomic_rmw_or: &i64_atomic_rmw_or
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5082,6 +5159,7 @@ i64_atomic_rmw8_or_u: &i64_atomic_rmw8_or_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5109,6 +5187,7 @@ i64_atomic_rmw16_or_u: &i64_atomic_rmw16_or_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5136,6 +5215,7 @@ i64_atomic_rmw32_or_u: &i64_atomic_rmw32_or_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5163,6 +5243,7 @@ i32_atomic_rmw_xor: &i32_atomic_rmw_xor
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -5190,6 +5271,7 @@ i32_atomic_rmw8_xor_u: &i32_atomic_rmw8_xor_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -5217,6 +5299,7 @@ i32_atomic_rmw16_xor_u: &i32_atomic_rmw16_xor_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -5244,6 +5327,7 @@ i64_atomic_rmw_xor: &i64_atomic_rmw_xor
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5271,6 +5355,7 @@ i64_atomic_rmw8_xor_u: &i64_atomic_rmw8_xor_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5298,6 +5383,7 @@ i64_atomic_rmw16_xor_u: &i64_atomic_rmw16_xor_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5325,6 +5411,7 @@ i64_atomic_rmw32_xor_u: &i64_atomic_rmw32_xor_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5352,6 +5439,7 @@ i32_atomic_rmw_xchg: &i32_atomic_rmw_xchg
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -5379,6 +5467,7 @@ i32_atomic_rmw8_xchg_u: &i32_atomic_rmw8_xchg_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -5406,6 +5495,7 @@ i32_atomic_rmw16_xchg_u: &i32_atomic_rmw16_xchg_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -5433,6 +5523,7 @@ i64_atomic_rmw_xchg: &i64_atomic_rmw_xchg
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5460,6 +5551,7 @@ i64_atomic_rmw8_xchg_u: &i64_atomic_rmw8_xchg_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5487,6 +5579,7 @@ i64_atomic_rmw16_xchg_u: &i64_atomic_rmw16_xchg_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5514,6 +5607,7 @@ i64_atomic_rmw32_xchg_u: &i64_atomic_rmw32_xchg_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5541,6 +5635,7 @@ i32_atomic_rmw_cmpxchg: &i32_atomic_rmw_cmpxchg
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -5568,6 +5663,7 @@ i32_atomic_rmw8_cmpxchg_u: &i32_atomic_rmw8_cmpxchg_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -5595,6 +5691,7 @@ i32_atomic_rmw16_cmpxchg_u: &i32_atomic_rmw16_cmpxchg_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i32
     - *arg1_u32
@@ -5622,6 +5719,7 @@ i64_atomic_rmw_cmpxchg: &i64_atomic_rmw_cmpxchg
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5649,6 +5747,7 @@ i64_atomic_rmw8_cmpxchg_u: &i64_atomic_rmw8_cmpxchg_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5676,6 +5775,7 @@ i64_atomic_rmw16_cmpxchg_u: &i64_atomic_rmw16_cmpxchg_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
@@ -5703,6 +5803,7 @@ i64_atomic_rmw32_cmpxchg_u: &i64_atomic_rmw32_cmpxchg_u
     - *memory
     - *align
     - *effective_addr
+    - *is_write_true
     - *offset
     - *arg0_i64
     - *arg1_u32
