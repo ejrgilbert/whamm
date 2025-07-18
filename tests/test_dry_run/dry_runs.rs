@@ -1,5 +1,7 @@
 use crate::util::{print_side_effects, setup_logger, CORE_WASM_PATH};
-use whamm::api::instrument::{instrument_as_dry_run_rewriting, instrument_as_dry_run_wizard, WhammError};
+use whamm::api::instrument::{
+    instrument_as_dry_run_rewriting, instrument_as_dry_run_wizard, WhammError,
+};
 
 // TODO add tests for:
 //  - user global data
