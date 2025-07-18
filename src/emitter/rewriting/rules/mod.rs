@@ -2528,7 +2528,7 @@ fn handle_block_events(
                 match event.as_str() {
                     "entry" |
                     "exit" => if matches!(instr, Operator::End) && !at_func_end {
-                        // semantics of End requires that this be injected AFTER to it executes!
+                        // semantics of End requires that this be injected AFTER it to execute!
                         Some(InstrumentationMode::After)
                     } else {
                         Some(InstrumentationMode::Before)

@@ -8,8 +8,6 @@ use wirm::Module;
 
 pub const WHAMM_CORE_LIB_NAME: &str = "whamm_core";
 pub const WHAMM_CORE_LIB_MEM_NAME: &str = "memory";
-const UNEXPECTED_ERR_MSG: &str =
-    "Adapter: Looks like you've found a bug...please report this behavior! Exiting now...";
 
 // A lib package needs to be able to visit the AST and determine if it's needed (should be linked)
 pub trait LibPackage: AstVisitor<bool> {

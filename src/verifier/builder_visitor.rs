@@ -945,8 +945,13 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
             Expr::LibCall { call, .. } => {
                 self.visit_expr(call);
             }
-            Expr::Primitive { val: Value::Tuple {vals, ..}, .. } => for val in vals.iter_mut() {
-                self.visit_expr(val);
+            Expr::Primitive {
+                val: Value::Tuple { vals, .. },
+                ..
+            } => {
+                for val in vals.iter_mut() {
+                    self.visit_expr(val);
+                }
             }
             Expr::MapGet { map, key, .. } => {
                 self.visit_expr(map);
