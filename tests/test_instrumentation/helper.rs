@@ -5,7 +5,7 @@ use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 use std::process::Command;
-use whamm::api::instrument::{instrument_as_dry_run, WhammError};
+use whamm::api::instrument::{instrument_as_dry_run_rewriting, WhammError};
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
 use wirm::Module;
 
@@ -411,7 +411,7 @@ pub(crate) fn run_script(
         )
     }?;
     if TEST_DRY_RUN && !target_wizard {
-        let _side_effects = instrument_as_dry_run(
+        let _side_effects = instrument_as_dry_run_rewriting(
             wasm_path.to_string(),
             script_path.to_str().unwrap().to_string(),
             user_libs,
