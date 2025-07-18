@@ -1,5 +1,5 @@
 use crate::util::{print_side_effects, setup_logger, CORE_WASM_PATH};
-use whamm::api::instrument::{instrument_as_dry_run, WhammError};
+use whamm::api::instrument::{instrument_as_dry_run_rewriting, WhammError};
 
 // TODO add tests for:
 //  - user global data
@@ -14,7 +14,7 @@ fn dry_run() {
     let wasm_path = "tests/apps/core_suite/rust/cf.wasm";
     let script_path =
         "tests/scripts/core_suite/branch-monitor_rewriting/branch-br__br_if__br_table.mm";
-    let side_effects = instrument_as_dry_run(
+    let side_effects = instrument_as_dry_run_rewriting(
         wasm_path.to_string(),
         script_path.to_string(),
         vec![],
@@ -31,7 +31,7 @@ fn dry_run_errs() {
     setup_logger();
     let wasm_path = "tests/apps/core_suite/rust/cf.wasm";
     let script_path = "tests/scripts/error/bad.mm";
-    let errs = instrument_as_dry_run(
+    let errs = instrument_as_dry_run_rewriting(
         wasm_path.to_string(),
         script_path.to_string(),
         vec![],
