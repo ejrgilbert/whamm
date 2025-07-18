@@ -1,8 +1,8 @@
 use whamm_core;
-report var accesses: map<u32, u32>;
+report var accesses: map<(u32, bool), u32>;
 
-wasm:opcode:*load*|*store*:before {
-    accesses[effective_addr]++;
+wasm:opcode:*load*|*store*|*atomic_rmw*:before {
+    accesses[(effective_addr, is_write)]++;
 }
 
 wasm:report {

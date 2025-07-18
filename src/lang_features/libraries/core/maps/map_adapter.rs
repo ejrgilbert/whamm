@@ -98,12 +98,14 @@ impl MapLibAdapter {
             ("insert_i32_string".to_string(), 0),
             ("insert_string_i32".to_string(), 0),
             ("insert_i32i32tuple_i32".to_string(), 0),
+            ("insert_i32booltuple_i32".to_string(), 0),
             ("insert_i32i32i32tuple_i32".to_string(), 0),
             // get from map
             ("get_i32_i32".to_string(), 0),
             ("get_i32_string".to_string(), 0),
             ("get_string_i32".to_string(), 0),
             ("get_i32i32tuple_i32".to_string(), 0),
+            ("get_i32booltuple_i32".to_string(), 0),
             ("get_i32i32i32tuple_i32".to_string(), 0),
             // printing maps
             ("print_map".to_string(), 0),
