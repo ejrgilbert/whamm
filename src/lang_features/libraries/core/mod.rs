@@ -8,8 +8,6 @@ use wirm::Module;
 
 pub const WHAMM_CORE_LIB_NAME: &str = "whamm_core";
 pub const WHAMM_CORE_LIB_MEM_NAME: &str = "memory";
-const UNEXPECTED_ERR_MSG: &str =
-    "Adapter: Looks like you've found a bug...please report this behavior! Exiting now...";
 
 // A lib package needs to be able to visit the AST and determine if it's needed (should be linked)
 pub trait LibPackage: AstVisitor<bool> {
@@ -35,10 +33,8 @@ pub trait LibAdapter {
         if let Some(fid) = self.get_funcs().get(fname) {
             *fid
         } else {
-            unreachable!(
-                "{} Could not find expected configured library function: {}",
-                UNEXPECTED_ERR_MSG, fname
-            );
+            // Just return a fake value, the error generator will handle this
+            0
         }
     }
 

@@ -945,11 +945,19 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
             Expr::LibCall { call, .. } => {
                 self.visit_expr(call);
             }
-            Expr::Primitive { .. } => {}
+            Expr::Primitive {
+                val: Value::Tuple { vals, .. },
+                ..
+            } => {
+                for val in vals.iter_mut() {
+                    self.visit_expr(val);
+                }
+            }
             Expr::MapGet { map, key, .. } => {
                 self.visit_expr(map);
                 self.visit_expr(key);
             }
+            _ => {}
         }
     }
     fn visit_value(&mut self, _val: &mut Value) {
