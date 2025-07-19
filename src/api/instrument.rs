@@ -131,7 +131,7 @@ pub fn generate_monitor_module(
 /// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
 /// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
-pub fn instrument_as_dry_run(
+pub fn instrument_as_dry_run_rewriting(
     app_wasm_path: String,
     script_path: String,
     user_lib_paths: Vec<String>,
@@ -142,7 +142,7 @@ pub fn instrument_as_dry_run(
     let mut target_wasm = Module::parse(&buff, false).unwrap();
 
     let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
-    match instr::dry_run_on_bytes(
+    let response = instr::dry_run_on_bytes(
         &core_lib,
         &def_yamls,
         &mut target_wasm,
@@ -150,7 +150,41 @@ pub fn instrument_as_dry_run(
         user_lib_paths,
         MAX_ERRORS,
         Config::default_rewriting(),
-    ) {
+    );
+    handle_dry_run_response(response)
+}
+
+/// Using the passed Whamm script, perform a dry run of non-intrusive instrumentation via the wizard engine API
+///
+/// * `script_path`: The path to the whamm script .mm file.
+/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
+/// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
+/// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
+pub fn instrument_as_dry_run_wizard(
+    script_path: String,
+    user_lib_paths: Vec<String>,
+    core_lib_path: Option<String>,
+    defs_path: Option<String>,
+) -> Result<HashMap<WirmInjectType, Vec<Injection>>, Vec<WhammError>> {
+    let mut module = Module::default();
+    let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
+
+    let response = instr::dry_run_on_bytes(
+        &core_lib,
+        &def_yamls,
+        &mut module,
+        script_path,
+        user_lib_paths,
+        MAX_ERRORS,
+        Config::default_monitor_module(),
+    );
+    handle_dry_run_response(response)
+}
+
+fn handle_dry_run_response(
+    response: Result<HashMap<WirmInjectType, Vec<WirmInjection>>, Vec<ErrorInternal>>,
+) -> Result<HashMap<WirmInjectType, Vec<Injection>>, Vec<WhammError>> {
+    match response {
         Ok(mut side_effects) => {
             let mut injections = HashMap::new();
             for (ty, l) in side_effects.iter_mut() {
