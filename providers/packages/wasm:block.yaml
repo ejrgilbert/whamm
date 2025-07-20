@@ -8,5 +8,5 @@ wasm_block: &wasm_block
   bound_vars: []
   bound_fns: []
   events:
-    - *block_entry
-    - *block_exit
+    - *block_start
+    - *block_end

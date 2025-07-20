@@ -2451,11 +2451,11 @@ fn handle_block(
     // Retain the following order for semantics
     // FIRST, exit
     // SECOND, entry
-    if let Some(evt) = pkg.evts.get("exit") {
-        handle_evt("exit", evt);
+    if let Some(evt) = pkg.evts.get("end") {
+        handle_evt("end", evt);
     }
-    if let Some(evt) = pkg.evts.get("entry") {
-        handle_evt("entry", evt);
+    if let Some(evt) = pkg.evts.get("start") {
+        handle_evt("start", evt);
     }
     res
 }
@@ -2526,8 +2526,8 @@ fn handle_block_events(
                 define_block_data(event.as_str(), block_state, &mut loc_info);
                 block_state.end_block_here();
                 match event.as_str() {
-                    "entry" |
-                    "exit" => if matches!(instr, Operator::End) && !at_func_end {
+                    "start" |
+                    "end" => if matches!(instr, Operator::End) && !at_func_end {
                         // semantics of End requires that this be injected AFTER it to execute!
                         Some(InstrumentationMode::After)
                     } else {
@@ -2535,7 +2535,7 @@ fn handle_block_events(
                     },
                     _ => panic!("Event not available: 'wasm:block:{event}'"),
                 }
-            } else if pc == 0 && event == "entry" {
+            } else if pc == 0 && event == "start" {
                 // if we're at the start of the function, we want to insert basic block entry probes
                 define_block_data(event.as_str(), block_state, &mut loc_info);
                 block_state.continue_block();
@@ -2568,17 +2568,17 @@ fn handle_block_events(
 
             match event.as_str() {
                 // exit | : before this instruction (to ensure it executes)
-                "entry" |
-                "exit" => Some(InstrumentationMode::Before),
+                "start" |
+                "end" => Some(InstrumentationMode::Before),
                 _ => panic!("Event not available: 'wasm:block:{event}'"),
             }
         },
         _ => {
             block_state.continue_block();
             // handle block:entry at the top of a function!
-            if (pc == 0 && event == "entry")
+            if (pc == 0 && event == "start")
                 // handle block:exit if this is program exit call
-                || (is_prog_exit && event == "exit") {
+                || (is_prog_exit && event == "end") {
                 Some(InstrumentationMode::Before)
             } else {
                 None
@@ -2599,7 +2599,7 @@ fn handle_block_events(
 }
 
 fn define_block_data(evt: &str, block_state: &BasicBlockState, loc_info: &mut LocInfo) {
-    if evt == "exit" {
+    if evt == "end" {
         loc_info.static_data.insert(
             "instr_count".to_string(),
             Some(Value::gen_u32(block_state.get_instr_cnt() as u32)),

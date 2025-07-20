@@ -95,7 +95,7 @@ fn basic_block_profiling() {
         "paper_eval-basic_block_profiling",
         processed_scripts,
         true,
-        false,
+        true,
     )
 }
 

@@ -2,15 +2,15 @@
 # ==== wasm:block:* ====
 # =======================
 
-entry: &block_entry
-  name: entry
+start: &block_start
+  name: start
   bound_vars: []
   bound_fns: []
   supported_modes: []
   docs: "Inserts instrumentation at the start of a wasm basic block."
 
-exit: &block_exit
-  name: exit
+end: &block_end
+  name: end
   bound_vars:
     - name: instr_count
       type: u32

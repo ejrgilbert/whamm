@@ -1,6 +1,6 @@
 use dyninstr;
 
-wasm:block:exit {
+wasm:block:end {
     report unshared var reached: bool;
     reached = true;
 
