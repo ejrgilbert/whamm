@@ -157,7 +157,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
         }
     }
 
-    pub(crate) fn get_loc_info(&self, state: &mut MatchState, ast: &mut SimpleAST) -> Option<LocInfo> {
+    pub(crate) fn get_loc_info(
+        &self,
+        state: &mut MatchState,
+        ast: &mut SimpleAST,
+    ) -> Option<LocInfo> {
         let (loc, at_func_end) = self.app_iter.curr_loc();
 
         if let Some(curr_instr) = self.app_iter.curr_op() {

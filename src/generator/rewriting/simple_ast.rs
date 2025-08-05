@@ -104,7 +104,7 @@ impl SimpleAST {
 #[derive(Default)]
 pub struct SimpleProv {
     pub pkgs: HashMap<String, SimplePkg>,
-    all_params: Option<Vec<WhammParam>>
+    all_params: Option<Vec<WhammParam>>,
 }
 impl SimpleProv {
     fn new(package_name: &str, event_name: &str, mode_name: &str, probe: Probe) -> Self {
@@ -133,7 +133,7 @@ impl SimpleProv {
 #[derive(Default)]
 pub struct SimplePkg {
     pub evts: HashMap<String, SimpleEvt>,
-    all_params: Option<Vec<WhammParam>>
+    all_params: Option<Vec<WhammParam>>,
 }
 impl SimplePkg {
     fn new(event_name: &str, mode_name: &str, probe: Probe) -> Self {
@@ -162,7 +162,7 @@ impl SimplePkg {
 #[derive(Default)]
 pub struct SimpleEvt {
     pub modes: HashMap<ModeKind, Vec<Probe>>,
-    all_params: Option<Vec<WhammParam>>
+    all_params: Option<Vec<WhammParam>>,
 }
 impl SimpleEvt {
     fn new(mode_name: &str, probe: Probe) -> Self {

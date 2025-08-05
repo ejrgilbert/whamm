@@ -238,7 +238,7 @@ fn handle_opcode_events(
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "throw" => if let Operator::Throw { tag_index } = instr {
-            define_imm0::<u32>(*tag_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*tag_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "throw_ref" => if let Operator::ThrowRef {..} = instr {
@@ -248,37 +248,37 @@ fn handle_opcode_events(
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "br" => if let Operator::Br { relative_depth } = instr {
-            define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "br_if" => if let Operator::BrIf { relative_depth } = instr {
-            define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "br_table" => if let Operator::BrTable { targets } = instr {
-            bind_vars_br_table(targets, &mut loc_info, &all_params)?;
+            bind_vars_br_table(targets, &mut loc_info, all_params)?;
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "return" => if let Operator::Return {..} = instr {
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "call" => if let Operator::Call {function_index} = instr {
-            if bind_vars_call(&mut loc_info, &all_params, *function_index, app_wasm).is_ok() {
+            if bind_vars_call(&mut loc_info, all_params, *function_index, app_wasm).is_ok() {
                 loc_info.add_probes(probe_rule.clone(), evt, None);
             }
         },
         "call_indirect" => if let Operator::CallIndirect {type_index,
             table_index,} = instr {
-            define_imm0_u32_imm1_u32(*type_index, *table_index, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*type_index, *table_index, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "return_call" => if let Operator::ReturnCall {function_index} = instr {
-            if bind_vars_call(&mut loc_info, &all_params, *function_index, app_wasm).is_ok() {
+            if bind_vars_call(&mut loc_info, all_params, *function_index, app_wasm).is_ok() {
                 loc_info.add_probes(probe_rule.clone(), evt, None);
             }
         },
         "return_call_indirect" => if let Operator::ReturnCallIndirect {type_index, table_index } = instr {
-            define_imm0_u32_imm1_u32(*type_index, *table_index, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*type_index, *table_index, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "drop" => if let Operator::Drop = instr {
@@ -291,23 +291,23 @@ fn handle_opcode_events(
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "local.get" => if let Operator::LocalGet {local_index} = instr {
-            define_imm0::<u32>(*local_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*local_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "local.set" => if let Operator::LocalSet {local_index} = instr {
-            define_imm0::<u32>(*local_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*local_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "local.tee" => if let Operator::LocalTee {local_index} = instr {
-            define_imm0::<u32>(*local_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*local_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "global.get" => if let Operator::GlobalGet {global_index} = instr {
-            define_imm0::<u32>(*global_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*global_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "global.set" => if let Operator::GlobalSet {global_index} = instr {
-            define_imm0::<u32>(*global_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*global_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.load" => if let Operator::I32Load {memarg: MemArg {
@@ -316,7 +316,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.load" => if let Operator::I64Load {memarg: MemArg {
@@ -325,7 +325,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.load" => if let Operator::F32Load {memarg: MemArg {
@@ -334,7 +334,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.load" => if let Operator::F64Load {memarg: MemArg {
@@ -343,7 +343,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.load8_s" => if let Operator::I32Load8S {memarg: MemArg {
@@ -352,7 +352,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.load8_u" => if let Operator::I32Load8U {memarg: MemArg {
@@ -361,7 +361,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.load16_s" => if let Operator::I32Load16S {memarg: MemArg {
@@ -370,7 +370,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.load16_u" => if let Operator::I32Load16U {memarg: MemArg {
@@ -379,7 +379,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.load8_s" => if let Operator::I64Load8S {memarg: MemArg {
@@ -388,7 +388,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.load8_u" => if let Operator::I64Load8U {memarg: MemArg {
@@ -397,7 +397,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.load16_s" => if let Operator::I64Load16S {memarg: MemArg {
@@ -406,7 +406,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.load16_u" => if let Operator::I64Load16U {memarg: MemArg {
@@ -415,7 +415,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.load32_s" => if let Operator::I64Load32S {memarg: MemArg {
@@ -424,7 +424,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.load32_u" => if let Operator::I64Load32U {memarg: MemArg {
@@ -433,7 +433,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.store" => if let Operator::I32Store {memarg: MemArg {
@@ -442,7 +442,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.store" => if let Operator::I64Store {memarg: MemArg {
@@ -451,7 +451,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.store" => if let Operator::F32Store {memarg: MemArg {
@@ -460,7 +460,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.store" => if let Operator::F64Store {memarg: MemArg {
@@ -469,7 +469,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.store8" => if let Operator::I32Store8 {memarg: MemArg {
@@ -478,7 +478,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.store16" => if let Operator::I32Store16 {memarg: MemArg {
@@ -487,7 +487,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.store8" => if let Operator::I64Store8 {memarg: MemArg {
@@ -496,7 +496,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.store16" => if let Operator::I64Store16 {memarg: MemArg {
@@ -505,7 +505,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.store32" => if let Operator::I64Store32 {memarg: MemArg {
@@ -514,31 +514,31 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.size" => if let Operator::MemorySize {mem} = instr {
-            define_imm0::<u32>(*mem, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*mem, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.grow" => if let Operator::MemoryGrow {mem} = instr {
-            define_imm0::<u32>(*mem, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*mem, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.const" => if let Operator::I32Const {value} = instr {
-            define_imm0::<i32>(*value, DataType::I32, &Value::gen_i32, &mut loc_info, &all_params);
+            define_imm0::<i32>(*value, DataType::I32, &Value::gen_i32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.const" => if let Operator::I64Const {value} = instr {
-            define_imm0::<i64>(*value, DataType::I64, &Value::gen_i64, &mut loc_info, &all_params);
+            define_imm0::<i64>(*value, DataType::I64, &Value::gen_i64, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f32.const" => if let Operator::F32Const {value} = instr {
-            define_imm0::<f32>(f32::from(*value), DataType::F32, &Value::gen_f32, &mut loc_info, &all_params);
+            define_imm0::<f32>(f32::from(*value), DataType::F32, &Value::gen_f32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "f64.const" => if let Operator::F64Const {value} = instr {
-            define_imm0::<f64>(f64::from(*value), DataType::F64, &Value::gen_f64, &mut loc_info, &all_params);
+            define_imm0::<f64>(f64::from(*value), DataType::F64, &Value::gen_f64, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.null" => if let Operator::RefNull {..} = instr {
@@ -548,7 +548,7 @@ fn handle_opcode_events(
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.func" => if let Operator::RefFunc {function_index} = instr {
-            define_imm0::<u32>(*function_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*function_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.eq" => if let Operator::RefEq {..} = instr {
@@ -933,82 +933,82 @@ fn handle_opcode_events(
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "struct.new" => if let Operator::StructNew {struct_type_index} = instr {
-            define_imm0::<u32>(*struct_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*struct_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "struct.new_default" => if let Operator::StructNewDefault {struct_type_index} = instr {
-            define_imm0::<u32>(*struct_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*struct_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "struct.get" => if let Operator::StructGet {struct_type_index, field_index} = instr {
-            define_imm0_u32_imm1_u32(*struct_type_index, *field_index, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*struct_type_index, *field_index, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "struct.get_s" => if let Operator::StructGetS {struct_type_index, field_index} = instr {
-            define_imm0_u32_imm1_u32(*struct_type_index, *field_index, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*struct_type_index, *field_index, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "struct.get_u" => if let Operator::StructGetU {struct_type_index, field_index} = instr {
-            define_imm0_u32_imm1_u32(*struct_type_index, *field_index, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*struct_type_index, *field_index, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "struct.set" => if let Operator::StructSet {struct_type_index, field_index} = instr {
-            define_imm0_u32_imm1_u32(*struct_type_index, *field_index, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*struct_type_index, *field_index, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.new" => if let Operator::ArrayNew {array_type_index} = instr {
-            define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.new_default" => if let Operator::ArrayNewDefault {array_type_index} = instr {
-            define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.new_fixed" => if let Operator::ArrayNewFixed {array_type_index, array_size} = instr {
-            define_imm0_u32_imm1_u32(*array_type_index, *array_size, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*array_type_index, *array_size, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.new_data" => if let Operator::ArrayNewData {array_type_index, array_data_index} = instr {
-            define_imm0_u32_imm1_u32(*array_type_index, *array_data_index, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*array_type_index, *array_data_index, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.new_elem" => if let Operator::ArrayNewElem {array_type_index, array_elem_index} = instr {
-            define_imm0_u32_imm1_u32(*array_type_index, *array_elem_index, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*array_type_index, *array_elem_index, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.get" => if let Operator::ArrayGet {array_type_index} = instr {
-            define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.get_s" => if let Operator::ArrayGetS {array_type_index} = instr {
-            define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.get_u" => if let Operator::ArrayGetU {array_type_index} = instr {
-            define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.set" => if let Operator::ArraySet {array_type_index} = instr {
-            define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.len" => if let Operator::ArrayLen = instr {
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.fill" => if let Operator::ArrayFill {array_type_index} = instr {
-            define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*array_type_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.copy" => if let Operator::ArrayCopy {array_type_index_dst, array_type_index_src} = instr {
-            define_imm0_u32_imm1_u32(*array_type_index_dst, *array_type_index_src, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*array_type_index_dst, *array_type_index_src, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.init_data" => if let Operator::ArrayInitData {array_type_index, array_data_index} = instr {
-            define_imm0_u32_imm1_u32(*array_type_index, *array_data_index, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*array_type_index, *array_data_index, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "array.init_elem" => if let Operator::ArrayInitElem {array_type_index, array_elem_index} = instr {
-            define_imm0_u32_imm1_u32(*array_type_index, *array_elem_index, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*array_type_index, *array_elem_index, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.test" => if let Operator::RefTestNonNull {..} = instr {
@@ -1024,11 +1024,11 @@ fn handle_opcode_events(
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "br_on_cast" => if let Operator::BrOnCast {relative_depth, ..} = instr {
-            define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "br_on_cast_fail" => if let Operator::BrOnCastFail {relative_depth, ..} = instr {
-            define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "any.convert_extern" => if let Operator::AnyConvertExtern = instr {
@@ -1071,51 +1071,51 @@ fn handle_opcode_events(
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.init" => if let Operator::MemoryInit {data_index, mem} = instr {
-            define_imm0_u32_imm1_u32(*data_index, *mem, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*data_index, *mem, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.copy" => if let Operator::MemoryCopy {dst_mem, src_mem} = instr {
-            define_imm0_u32_imm1_u32(*dst_mem, *src_mem, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*dst_mem, *src_mem, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.fill" => if let Operator::MemoryFill {mem} = instr {
-            define_imm0::<u32>(*mem, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*mem, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "data.drop" => if let Operator::DataDrop {data_index} = instr {
-            define_imm0::<u32>(*data_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*data_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "elem.drop" => if let Operator::ElemDrop {elem_index} = instr {
-            define_imm0::<u32>(*elem_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*elem_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.copy" => if let Operator::TableCopy {dst_table, src_table} = instr {
-            define_imm0_u32_imm1_u32(*dst_table, *src_table, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*dst_table, *src_table, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.init" => if let Operator::TableInit {elem_index, table} = instr {
-            define_imm0_u32_imm1_u32(*elem_index, *table, &mut loc_info, &all_params);
+            define_imm0_u32_imm1_u32(*elem_index, *table, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.fill" => if let Operator::TableFill {table} = instr {
-            define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.get" => if let Operator::TableGet {table} = instr {
-            define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.set" => if let Operator::TableSet {table} = instr {
-            define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.grow" => if let Operator::TableGrow {table} = instr {
-            define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.size" => if let Operator::TableSize {table} = instr {
-            define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.atomic_notify" => if let Operator::MemoryAtomicNotify {memarg: MemArg {
@@ -1124,7 +1124,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.atomic_wait32" => if let Operator::MemoryAtomicWait32 {memarg: MemArg {
@@ -1133,7 +1133,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "memory.atomic_wait64" => if let Operator::MemoryAtomicWait64 {memarg: MemArg {
@@ -1142,7 +1142,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "atomic.fence" => if let Operator::AtomicFence = instr {
@@ -1154,7 +1154,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_load" => if let Operator::I64AtomicLoad {memarg: MemArg {
@@ -1163,7 +1163,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_load8_u" => if let Operator::I32AtomicLoad8U {memarg: MemArg {
@@ -1172,7 +1172,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_load16_u" => if let Operator::I32AtomicLoad16U {memarg: MemArg {
@@ -1181,7 +1181,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_load8_u" => if let Operator::I64AtomicLoad8U {memarg: MemArg {
@@ -1190,7 +1190,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_load16_u" => if let Operator::I64AtomicLoad16U {memarg: MemArg {
@@ -1199,7 +1199,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_load32_u" => if let Operator::I64AtomicLoad32U {memarg: MemArg {
@@ -1208,7 +1208,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_store" => if let Operator::I32AtomicStore {memarg: MemArg {
@@ -1217,7 +1217,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_store8" => if let Operator::I32AtomicStore8 {memarg: MemArg {
@@ -1226,7 +1226,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_store16" => if let Operator::I32AtomicStore16 {memarg: MemArg {
@@ -1235,7 +1235,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_store" => if let Operator::I64AtomicStore {memarg: MemArg {
@@ -1244,7 +1244,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_store8" => if let Operator::I64AtomicStore8 {memarg: MemArg {
@@ -1253,7 +1253,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_store16" => if let Operator::I64AtomicStore16 {memarg: MemArg {
@@ -1262,7 +1262,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_store32" => if let Operator::I64AtomicStore32 {memarg: MemArg {
@@ -1271,7 +1271,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw_add" => if let Operator::I32AtomicRmwAdd {memarg: MemArg {
@@ -1280,7 +1280,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw8_add_u" => if let Operator::I32AtomicRmw8AddU {memarg: MemArg {
@@ -1289,7 +1289,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw16_add_u" => if let Operator::I32AtomicRmw16AddU {memarg: MemArg {
@@ -1298,7 +1298,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw_add" => if let Operator::I64AtomicRmwAdd {memarg: MemArg {
@@ -1307,7 +1307,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw8_add_u" => if let Operator::I64AtomicRmw8AddU {memarg: MemArg {
@@ -1316,7 +1316,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw16_add_u" => if let Operator::I64AtomicRmw16AddU {memarg: MemArg {
@@ -1325,7 +1325,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw32_add_u" => if let Operator::I64AtomicRmw32AddU {memarg: MemArg {
@@ -1334,7 +1334,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw_sub" => if let Operator::I32AtomicRmwSub {memarg: MemArg {
@@ -1343,7 +1343,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw8_sub_u" => if let Operator::I32AtomicRmw8SubU {memarg: MemArg {
@@ -1352,7 +1352,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw16_sub_u" => if let Operator::I32AtomicRmw16SubU {memarg: MemArg {
@@ -1361,7 +1361,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw_sub" => if let Operator::I64AtomicRmwSub {memarg: MemArg {
@@ -1370,7 +1370,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw8_sub_u" => if let Operator::I64AtomicRmw8SubU {memarg: MemArg {
@@ -1379,7 +1379,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw16_sub_u" => if let Operator::I64AtomicRmw16SubU {memarg: MemArg {
@@ -1388,7 +1388,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw32_sub_u" => if let Operator::I64AtomicRmw32SubU {memarg: MemArg {
@@ -1397,7 +1397,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw_and" => if let Operator::I32AtomicRmwAnd {memarg: MemArg {
@@ -1406,7 +1406,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw8_and_u" => if let Operator::I32AtomicRmw8AndU {memarg: MemArg {
@@ -1415,7 +1415,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw16_and_u" => if let Operator::I32AtomicRmw16AndU {memarg: MemArg {
@@ -1424,7 +1424,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw_and" => if let Operator::I64AtomicRmwAnd {memarg: MemArg {
@@ -1433,7 +1433,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw8_and_u" => if let Operator::I64AtomicRmw8AndU {memarg: MemArg {
@@ -1442,7 +1442,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw16_and_u" => if let Operator::I64AtomicRmw16AndU {memarg: MemArg {
@@ -1451,7 +1451,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw32_and_u" => if let Operator::I64AtomicRmw32AndU {memarg: MemArg {
@@ -1460,7 +1460,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw_or" => if let Operator::I32AtomicRmwOr {memarg: MemArg {
@@ -1469,7 +1469,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw8_or_u" => if let Operator::I32AtomicRmw8OrU {memarg: MemArg {
@@ -1478,7 +1478,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw16_or_u" => if let Operator::I32AtomicRmw16OrU {memarg: MemArg {
@@ -1487,7 +1487,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw_or" => if let Operator::I64AtomicRmwOr {memarg: MemArg {
@@ -1496,7 +1496,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw8_or_u" => if let Operator::I64AtomicRmw8OrU {memarg: MemArg {
@@ -1505,7 +1505,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw16_or_u" => if let Operator::I64AtomicRmw16OrU {memarg: MemArg {
@@ -1514,7 +1514,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw32_or_u" => if let Operator::I64AtomicRmw32OrU {memarg: MemArg {
@@ -1523,7 +1523,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw_xor" => if let Operator::I32AtomicRmwXor {memarg: MemArg {
@@ -1532,7 +1532,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw8_xor_u" => if let Operator::I32AtomicRmw8XorU {memarg: MemArg {
@@ -1541,7 +1541,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw16_xor_u" => if let Operator::I32AtomicRmw16XorU {memarg: MemArg {
@@ -1550,7 +1550,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw_xor" => if let Operator::I64AtomicRmwXor {memarg: MemArg {
@@ -1559,7 +1559,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw8_xor_u" => if let Operator::I64AtomicRmw8XorU {memarg: MemArg {
@@ -1568,7 +1568,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw16_xor_u" => if let Operator::I64AtomicRmw16XorU {memarg: MemArg {
@@ -1577,7 +1577,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw32_xor_u" => if let Operator::I64AtomicRmw32XorU {memarg: MemArg {
@@ -1586,7 +1586,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw_xchg" => if let Operator::I32AtomicRmwXchg {memarg: MemArg {
@@ -1595,7 +1595,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw8_xchg_u" => if let Operator::I32AtomicRmw8XchgU {memarg: MemArg {
@@ -1604,7 +1604,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw16_xchg_u" => if let Operator::I32AtomicRmw16XchgU {memarg: MemArg {
@@ -1613,7 +1613,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw_xchg" => if let Operator::I64AtomicRmwXchg {memarg: MemArg {
@@ -1622,7 +1622,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw8_xchg_u" => if let Operator::I64AtomicRmw8XchgU {memarg: MemArg {
@@ -1631,7 +1631,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw16_xchg_u" => if let Operator::I64AtomicRmw16XchgU {memarg: MemArg {
@@ -1640,7 +1640,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw32_xchg_u" => if let Operator::I64AtomicRmw32XchgU {memarg: MemArg {
@@ -1649,7 +1649,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw_cmpxchg" => if let Operator::I32AtomicRmwCmpxchg {memarg: MemArg {
@@ -1658,7 +1658,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw8_cmpxchg_u" => if let Operator::I32AtomicRmw8CmpxchgU {memarg: MemArg {
@@ -1667,7 +1667,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i32.atomic_rmw16_cmpxchg_u" => if let Operator::I32AtomicRmw16CmpxchgU {memarg: MemArg {
@@ -1676,7 +1676,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw_cmpxchg" => if let Operator::I64AtomicRmwCmpxchg {memarg: MemArg {
@@ -1685,7 +1685,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw8_cmpxchg_u" => if let Operator::I64AtomicRmw8CmpxchgU {memarg: MemArg {
@@ -1694,7 +1694,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw16_cmpxchg_u" => if let Operator::I64AtomicRmw16CmpxchgU {memarg: MemArg {
@@ -1703,7 +1703,7 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "i64.atomic_rmw32_cmpxchg_u" => if let Operator::I64AtomicRmw32CmpxchgU {memarg: MemArg {
@@ -1712,26 +1712,26 @@ fn handle_opcode_events(
             memory,
             ..
         }} = instr {
-            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, &all_params);
+            bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "call_ref" => if let Operator::CallRef {type_index} = instr {
-            define_imm0::<u32>(*type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*type_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "return_call_ref" => if let Operator::ReturnCallRef {type_index} = instr {
-            define_imm0::<u32>(*type_index, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*type_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.as_non_null" => if let Operator::RefAsNonNull = instr {
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "br_on_null" => if let Operator::BrOnNull {relative_depth} = instr {
-            define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "br_on_non_null" => if let Operator::BrOnNonNull {relative_depth} = instr {
-            define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, &all_params);
+            define_imm0::<u32>(*relative_depth, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         _ => panic!("Event not available: 'wasm:opcode:{event}'"),
@@ -1777,7 +1777,7 @@ fn define_imm0_u32_imm1_u32(
     value0: u32,
     value1: u32,
     loc_info: &mut LocInfo,
-    all_params: &Vec<WhammParam>,
+    all_params: &[WhammParam],
 ) {
     for param in all_params.iter() {
         if let Some(n) = param.n_for("imm") {
@@ -1798,7 +1798,7 @@ fn define_imm0<T>(
     _dt: DataType,
     gen: &dyn Fn(T) -> Value,
     loc_info: &mut LocInfo,
-    all_params: &Vec<WhammParam>,
+    all_params: &[WhammParam],
 ) {
     for param in all_params.iter() {
         if let Some(n) = param.n_for("imm") {
@@ -1820,7 +1820,7 @@ fn bind_vars_memarg(
     offset: u64,
     memory: u32,
     loc_info: &mut LocInfo,
-    all_params: &Vec<WhammParam>,
+    all_params: &[WhammParam],
 ) {
     for param in all_params.iter() {
         match param.name.as_str() {
@@ -1840,7 +1840,7 @@ fn bind_vars_memarg(
 fn bind_vars_br_table(
     targets: &BrTable,
     loc_info: &mut LocInfo,
-    all_params: &Vec<WhammParam>,
+    all_params: &[WhammParam],
 ) -> Option<()> {
     for param in all_params.iter() {
         if let Some(n) = param.n_for("imm") {
@@ -1895,7 +1895,7 @@ fn bind_vars_br_table(
 
 fn bind_vars_call(
     loc_info: &mut LocInfo,
-    all_params: &Vec<WhammParam>,
+    all_params: &[WhammParam],
     fid: u32,
     app_wasm: &Module,
 ) -> Result<(), ()> {
