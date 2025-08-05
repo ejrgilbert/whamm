@@ -21,10 +21,10 @@ pub fn get_loc_info_for_active_probes(
     loc: Location,
     at_func_end: bool,
     instr: &Operator,
-    ast: &SimpleAST,
+    ast: &mut SimpleAST,
 ) -> Option<LocInfo> {
     let mut res: Option<LocInfo> = None;
-    for (provider, packages) in ast.provs.iter() {
+    for (provider, packages) in ast.provs.iter_mut() {
         if let Some(mut tmp) =
             handle_provider(app_wasm, state, loc, at_func_end, instr, provider, packages)
         {
@@ -45,7 +45,7 @@ fn handle_provider(
     at_func_end: bool,
     instr: &Operator,
     provider: &str,
-    prov: &SimpleProv,
+    prov: &mut SimpleProv,
 ) -> Option<LocInfo> {
     match provider {
         "wasm" => handle_wasm(app_wasm, state, loc, at_func_end, instr, prov),
@@ -59,7 +59,7 @@ fn handle_wasm(
     loc: Location,
     at_func_end: bool,
     instr: &Operator,
-    prov: &SimpleProv,
+    prov: &mut SimpleProv,
 ) -> Option<LocInfo> {
     let mut loc_info = LocInfo::new();
     let (fid, pc, fname) = match loc {
@@ -137,7 +137,7 @@ fn handle_wasm(
     }
 
     let mut res: Option<LocInfo> = Some(loc_info);
-    for (package, pkg) in prov.pkgs.iter() {
+    for (package, pkg) in prov.pkgs.iter_mut() {
         if let Some(mut tmp) =
             handle_wasm_packages(app_wasm, state, at_func_end, &fid, pc, instr, package, pkg)
         {
@@ -159,7 +159,7 @@ fn handle_wasm_packages(
     pc: usize,
     instr: &Operator,
     package: &str,
-    pkg: &SimplePkg,
+    pkg: &mut SimplePkg,
 ) -> Option<LocInfo> {
     match package {
         "opcode" => handle_opcode(app_wasm, fid, instr, pkg),
@@ -175,10 +175,10 @@ fn handle_opcode(
     app_wasm: &Module,
     fid: &FunctionID,
     instr: &Operator,
-    pkg: &SimplePkg,
+    pkg: &mut SimplePkg,
 ) -> Option<LocInfo> {
     let mut res: Option<LocInfo> = None;
-    for (package, evt) in pkg.evts.iter() {
+    for (package, evt) in pkg.evts.iter_mut() {
         // See OpcodeEvent.get_loc_info
         if let Some(mut tmp) = handle_opcode_events(app_wasm, fid, instr, package, evt) {
             if let Some(r) = &mut res {
@@ -197,7 +197,7 @@ fn handle_opcode_events(
     fid: &FunctionID,
     instr: &Operator,
     event: &String,
-    evt: &SimpleEvt,
+    evt: &mut SimpleEvt,
 ) -> Option<LocInfo> {
     let mut loc_info = LocInfo::new();
 
@@ -206,18 +206,7 @@ fn handle_opcode_events(
         .insert("op_name".to_string(), Some(Value::Str{val: event.clone()}));
 
     // create a combination of WhammParams for all probes here
-    let mut all_params = HashSet::new();
-    for probes in evt.modes.values() {
-        for Probe { metadata, .. } in probes.iter() {
-            for param in metadata.body_args.params.iter() {
-                all_params.insert(param);
-            }
-
-            for param in metadata.pred_args.params.iter() {
-                all_params.insert(param);
-            }
-        }
-    }
+    let all_params = evt.all_params();
     let mut req_args = ReqArgs::None;
     let probe_rule = ProbeRule {
         provider: Some(RulePart::new("wasm".to_string(), None)),
@@ -1788,9 +1777,9 @@ fn define_imm0_u32_imm1_u32(
     value0: u32,
     value1: u32,
     loc_info: &mut LocInfo,
-    all_params: &HashSet<&WhammParam>,
+    all_params: &Vec<WhammParam>,
 ) {
-    for param in all_params {
+    for param in all_params.iter() {
         if let Some(n) = param.n_for("imm") {
             assert!(matches!(param.ty, DataType::U32));
             if n == 0 {
@@ -1809,9 +1798,9 @@ fn define_imm0<T>(
     _dt: DataType,
     gen: &dyn Fn(T) -> Value,
     loc_info: &mut LocInfo,
-    all_params: &HashSet<&WhammParam>,
+    all_params: &Vec<WhammParam>,
 ) {
-    for param in all_params {
+    for param in all_params.iter() {
         if let Some(n) = param.n_for("imm") {
             assert_eq!(n, 0);
             assert!(matches!(&param.ty, _dt));
@@ -1831,9 +1820,9 @@ fn bind_vars_memarg(
     offset: u64,
     memory: u32,
     loc_info: &mut LocInfo,
-    all_params: &HashSet<&WhammParam>,
+    all_params: &Vec<WhammParam>,
 ) {
-    for param in all_params {
+    for param in all_params.iter() {
         match param.name.as_str() {
             "align" => loc_info
                 .static_data
@@ -1851,9 +1840,9 @@ fn bind_vars_memarg(
 fn bind_vars_br_table(
     targets: &BrTable,
     loc_info: &mut LocInfo,
-    all_params: &HashSet<&WhammParam>,
+    all_params: &Vec<WhammParam>,
 ) -> Option<()> {
-    for param in all_params {
+    for param in all_params.iter() {
         if let Some(n) = param.n_for("imm") {
             if n > targets.len() {
                 // this location doesn't match since the immN is out of bound
@@ -1906,7 +1895,7 @@ fn bind_vars_br_table(
 
 fn bind_vars_call(
     loc_info: &mut LocInfo,
-    all_params: &HashSet<&WhammParam>,
+    all_params: &Vec<WhammParam>,
     fid: u32,
     app_wasm: &Module,
 ) -> Result<(), ()> {
@@ -1946,7 +1935,7 @@ fn bind_vars_call(
             );
         };
 
-    for param in all_params {
+    for param in all_params.iter() {
         if let Some(n) = param.n_for("arg") {
             // check that the types match!
             if n as usize >= func_params.len() {
