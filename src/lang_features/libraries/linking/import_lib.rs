@@ -10,9 +10,9 @@ use crate::parser::types::Location;
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
 use std::collections::HashSet;
-use wasmparser::{ExternalKind, MemoryType};
+use wasmparser::{ComponentExternalKind, ComponentType, ComponentTypeRef, ComponentValType, ExternalKind, MemoryType, PrimitiveValType};
 use wirm::ir::id::FunctionID;
-use wirm::{DataType, Module};
+use wirm::{Component, DataType, Module};
 // Some documentation on why it's difficult to only import the *used* functions.
 //
 // TLDR; Rust ownership.
@@ -30,6 +30,7 @@ pub fn link_core_lib(
     ast: &[Script],
     app_wasm: &mut Module,
     core_lib: &[u8],
+    libs_as_components: bool,
     mem_allocator: &mut MemoryAllocator,
     packages: &mut [&mut dyn LibPackage],
     err: &mut ErrorGen,
@@ -51,6 +52,7 @@ pub fn link_core_lib(
                 &None,
                 WHAMM_CORE_LIB_NAME.to_string(),
                 core_lib,
+                libs_as_components,
                 *package,
                 err,
             ));
@@ -62,7 +64,7 @@ pub fn link_core_lib(
 pub fn link_user_lib(
     app_wasm: &mut Module,
     loc: &Option<Location>,
-    lib_wasm: &[u8],
+    lib_bytes: &[u8],
     libs_as_components: bool,
     lib_name: String,
     used_lib_fns: &HashSet<String>,
@@ -70,13 +72,16 @@ pub fn link_user_lib(
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
     let added = if libs_as_components {
-        unimplemented!("Have not implemented support for component libraries.")
+        // unimplemented!("Have not implemented support for component libraries.")
+        let lib_wasm = Component::parse(lib_bytes, false).unwrap();
+
     } else {
-        import_lib_fn_names(
+        let lib_wasm = Module::parse(lib_bytes, false).unwrap();
+        import_lib_fn_names_from_module(
             app_wasm,
             loc,
             lib_name,
-            lib_wasm,
+            &lib_wasm,
             used_lib_fns,
             Some(table),
             err,
@@ -110,21 +115,27 @@ fn import_lib_package(
     loc: &Option<Location>,
     lib_name: String,
     lib_bytes: &[u8],
+    libs_as_components: bool,
     package: &mut dyn LibPackage,
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
     trace!("Enter import_lib");
 
     // should only import the EXPORTED contents of the lib_wasm
-    let added = import_lib_fn_names(
-        app_wasm,
-        loc,
-        lib_name,
-        lib_bytes,
-        &HashSet::from_iter(package.get_fn_names().iter().cloned()),
-        None,
-        err,
-    );
+    let added = if libs_as_components {
+        unimplemented!("Have not implemented support for component libraries.")
+    } else {
+        let lib_wasm = Module::parse(lib_bytes, false).unwrap();
+        import_lib_fn_names_from_module(
+            app_wasm,
+            loc,
+            lib_name,
+            &lib_wasm,
+            &HashSet::from_iter(package.get_fn_names().iter().cloned()),
+            None,
+            err,
+        )
+    };
 
     for (name, fid) in added.iter() {
         // save the FID
@@ -138,16 +149,103 @@ fn import_lib_package(
     injected_funcs
 }
 
-fn import_lib_fn_names(
+fn canon_lower(ty: ComponentValType) -> DataType {
+    match ty {
+        ComponentValType::Primitive(pty) => match pty {
+            PrimitiveValType::Bool |
+            PrimitiveValType::S8 |
+            PrimitiveValType::U8 |
+            PrimitiveValType::S16 |
+            PrimitiveValType::U16 |
+            PrimitiveValType::S32 |
+            PrimitiveValType::U32 => DataType::I32,
+            PrimitiveValType::S64 |
+            PrimitiveValType::U64 => DataType::I64,
+            PrimitiveValType::F32 => DataType::F32,
+            PrimitiveValType::F64 => DataType::F64,
+            PrimitiveValType::Char |
+            PrimitiveValType::String |
+            PrimitiveValType::ErrorContext => todo!()
+        },
+        ComponentValType::Type(_) => todo!()
+    }
+}
+
+fn import_lib_fn_names_from_component(
     app_wasm: &mut Module,
     loc: &Option<Location>,
     lib_name: String,
-    lib_bytes: &[u8],
+    lib_wasm: &Component,
     lib_fns: &HashSet<String>,
     mut table: Option<&mut SymbolTable>,
     err: &mut ErrorGen,
 ) -> Vec<(String, u32)> {
-    let lib_wasm = Module::parse(lib_bytes, false).unwrap();
+
+    let mut injected_fns = vec![];
+    for export in lib_wasm.exports.iter() {
+        // we don't care about non-function exports
+        if let ComponentExternalKind::Func = export.kind {
+            let fn_name = export.name.0;
+            if lib_fns.contains(fn_name) {
+                if let Some(ComponentTypeRef::Func(ty_id)) = export.ty {
+                    if let Some(ComponentType::Func(ty)) = lib_wasm.component_types.get(ty_id) {
+                        let mut params = vec![];
+                        for (_, pty) in ty.params.iter() {
+                            params.push(DataType::from(pty))
+                        }
+
+                        let fid = import_func(
+                            lib_name.as_str(),
+                            fn_name,
+                            &ty.params().clone(),
+                            &ty.results().clone(),
+                            loc,
+                            app_wasm,
+                        );
+                        // save the FID to the symbol table
+                        if let Some(table) = table.as_mut() {
+                            let Some(Record::LibFn { addr, .. }) =
+                                table.lookup_lib_fn_mut(&lib_name, fn_name)
+                            else {
+                                panic!("unexpected type");
+                            };
+
+                            *addr = Some(fid);
+                        }
+
+                        // save the FID as an injected function
+                        injected_fns.push((export.name.clone(), fid));
+                    }
+                }
+                let func = lib_wasm..functions.get(FunctionID(export.index));
+                if let Some(ty) = lib_wasm.types.get(func.get_type_id()) {
+                    let fn_name = export.name.as_str();
+
+                } else {
+                    err.unexpected_error(
+                        true,
+                        Some(format!(
+                            "ImportLib: Could not add function \"{}\" as application import",
+                            export.name
+                        )),
+                        None,
+                    );
+                }
+            }
+        }
+    }
+    injected_fns
+}
+
+fn import_lib_fn_names_from_module(
+    app_wasm: &mut Module,
+    loc: &Option<Location>,
+    lib_name: String,
+    lib_wasm: &Module,
+    lib_fns: &HashSet<String>,
+    mut table: Option<&mut SymbolTable>,
+    err: &mut ErrorGen,
+) -> Vec<(String, u32)> {
 
     let mut injected_fns = vec![];
     for export in lib_wasm.exports.iter() {

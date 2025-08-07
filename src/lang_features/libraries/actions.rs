@@ -20,18 +20,15 @@ pub fn link_core_lib(
 ) -> Vec<FunctionID> {
     match method {
         LibraryLinkStrategy::Imported => {
-            if libs_as_components {
-                unimplemented!("Have not implemented support for component libraries.");
-            } else {
-                crate::lang_features::libraries::linking::import_lib::link_core_lib(
-                    ast,
-                    app_wasm,
-                    core_lib,
-                    mem_allocator,
-                    packages,
-                    err,
-                )
-            }
+            crate::lang_features::libraries::linking::import_lib::link_core_lib(
+                ast,
+                app_wasm,
+                core_lib,
+                libs_as_components,
+                mem_allocator,
+                packages,
+                err,
+            )
         }
         LibraryLinkStrategy::Merged => {
             unimplemented!("Have not implemented support for merging core library code.");
