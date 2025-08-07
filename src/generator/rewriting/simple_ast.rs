@@ -104,6 +104,7 @@ impl SimpleAST {
 #[derive(Default)]
 pub struct SimpleProv {
     pub pkgs: HashMap<String, SimplePkg>,
+    all_params: Option<Vec<WhammParam>>,
 }
 impl SimpleProv {
     fn new(package_name: &str, event_name: &str, mode_name: &str, probe: Probe) -> Self {
@@ -119,17 +120,20 @@ impl SimpleProv {
             })
             .or_insert(SimplePkg::new(event_name, mode_name, probe));
     }
-    pub fn all_params(&self) -> Vec<&WhammParam> {
-        let mut ps = vec![];
-        for pkg in self.pkgs.values() {
-            ps.extend(&pkg.all_params());
-        }
-        ps
+    pub fn all_params(&mut self) -> &Vec<WhammParam> {
+        self.all_params.get_or_insert_with(|| {
+            let mut ps = vec![];
+            for pkg in self.pkgs.values_mut() {
+                ps.extend(pkg.all_params().clone());
+            }
+            ps
+        })
     }
 }
 #[derive(Default)]
 pub struct SimplePkg {
     pub evts: HashMap<String, SimpleEvt>,
+    all_params: Option<Vec<WhammParam>>,
 }
 impl SimplePkg {
     fn new(event_name: &str, mode_name: &str, probe: Probe) -> Self {
@@ -145,17 +149,20 @@ impl SimplePkg {
             })
             .or_insert(SimpleEvt::new(mode_name, probe));
     }
-    pub fn all_params(&self) -> Vec<&WhammParam> {
-        let mut ps = vec![];
-        for evt in self.evts.values() {
-            ps.extend(&evt.all_params());
-        }
-        ps
+    pub fn all_params(&mut self) -> &Vec<WhammParam> {
+        self.all_params.get_or_insert_with(|| {
+            let mut ps = vec![];
+            for evt in self.evts.values_mut() {
+                ps.extend(evt.all_params().clone());
+            }
+            ps
+        })
     }
 }
 #[derive(Default)]
 pub struct SimpleEvt {
     pub modes: HashMap<ModeKind, Vec<Probe>>,
+    all_params: Option<Vec<WhammParam>>,
 }
 impl SimpleEvt {
     fn new(mode_name: &str, probe: Probe) -> Self {
@@ -172,14 +179,16 @@ impl SimpleEvt {
             })
             .or_insert(vec![probe]);
     }
-    pub fn all_params(&self) -> Vec<&WhammParam> {
-        let mut ps = vec![];
-        for probes in self.modes.values() {
-            for p in probes.iter() {
-                ps.extend(&p.metadata.pred_args.params);
-                ps.extend(&p.metadata.body_args.params);
+    pub fn all_params(&mut self) -> &Vec<WhammParam> {
+        self.all_params.get_or_insert_with(|| {
+            let mut ps = vec![];
+            for probes in self.modes.values() {
+                for p in probes.iter() {
+                    ps.extend(p.metadata.pred_args.params.clone());
+                    ps.extend(p.metadata.body_args.params.clone());
+                }
             }
-        }
-        ps
+            ps
+        })
     }
 }
