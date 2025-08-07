@@ -3,138 +3,731 @@
 //   * runtime_path: "wit_bindgen_rt"
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_putc_wrap_cabi<T: Guest>(arg0: i32) {
+pub unsafe fn _export_putc_cabi<T: Guest>(arg0: i32) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    T::putc_wrap(arg0 as u8);
+    T::putc(arg0 as u8);
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_puts_wrap_cabi<T: Guest>(arg0: i32, arg1: i32) {
+pub unsafe fn _export_puts_cabi<T: Guest>(arg0: i32, arg1: i32) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    T::puts_wrap(arg0 as u32, arg1 as u32);
+    T::puts(arg0 as u32, arg1 as u32);
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_putu8_wrap_cabi<T: Guest>(arg0: i32) {
+pub unsafe fn _export_putu8_cabi<T: Guest>(arg0: i32) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    T::putu8_wrap(arg0 as u8);
+    T::putu8(arg0 as u8);
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_puti8_wrap_cabi<T: Guest>(arg0: i32) {
+pub unsafe fn _export_puti8_cabi<T: Guest>(arg0: i32) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    T::puti8_wrap(arg0 as i8);
+    T::puti8(arg0 as i8);
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_putu16_wrap_cabi<T: Guest>(arg0: i32) {
+pub unsafe fn _export_putu16_cabi<T: Guest>(arg0: i32) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    T::putu16_wrap(arg0 as u16);
+    T::putu16(arg0 as u16);
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_puti16_wrap_cabi<T: Guest>(arg0: i32) {
+pub unsafe fn _export_puti16_cabi<T: Guest>(arg0: i32) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    T::puti16_wrap(arg0 as i16);
+    T::puti16(arg0 as i16);
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_putu32_wrap_cabi<T: Guest>(arg0: i32) {
+pub unsafe fn _export_putu32_cabi<T: Guest>(arg0: i32) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    T::putu32_wrap(arg0 as u32);
+    T::putu32(arg0 as u32);
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_puti32_wrap_cabi<T: Guest>(arg0: i32) {
+pub unsafe fn _export_puti32_cabi<T: Guest>(arg0: i32) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    T::puti32_wrap(arg0);
+    T::puti32(arg0);
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_putu64_wrap_cabi<T: Guest>(arg0: i64) {
+pub unsafe fn _export_putu64_cabi<T: Guest>(arg0: i64) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    T::putu64_wrap(arg0 as u64);
+    T::putu64(arg0 as u64);
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_puti64_wrap_cabi<T: Guest>(arg0: i64) {
+pub unsafe fn _export_puti64_cabi<T: Guest>(arg0: i64) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    T::puti64_wrap(arg0);
+    T::puti64(arg0);
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_putf32_wrap_cabi<T: Guest>(arg0: f32) {
+pub unsafe fn _export_putf32_cabi<T: Guest>(arg0: f32) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    T::putf32_wrap(arg0);
+    T::putf32(arg0);
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_putf64_wrap_cabi<T: Guest>(arg0: f64) {
+pub unsafe fn _export_putf64_cabi<T: Guest>(arg0: f64) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    T::putf64_wrap(arg0);
+    T::putf64(arg0);
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_putbool_wrap_cabi<T: Guest>(arg0: i32) {
+pub unsafe fn _export_putbool_cabi<T: Guest>(arg0: i32) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    T::putbool_wrap(arg0 as u8);
+    T::putbool(arg0 as u8);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_i32_i32_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_i32_i32_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_i32_i32_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_i32_i32();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_i32_bool_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_i32_bool_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_i32_bool_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_i32_bool();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_i32_string_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_i32_string_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_i32_string_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_i32_string();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_i32_tuple_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_i32_tuple_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_i32_tuple_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_i32_tuple();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_i32_map_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_i32_map_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_i32_map_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_i32_map();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_string_i32_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_string_i32_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_string_i32_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_string_i32();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_string_bool_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_string_bool_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_string_bool_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_string_bool();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_string_string_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_string_string_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_string_string_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_string_string();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_string_tuple_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_string_tuple_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_string_tuple_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_string_tuple();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_string_map_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_string_map_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_string_map_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_string_map();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_bool_i32_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_bool_i32_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_bool_i32_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_bool_i32();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_bool_bool_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_bool_bool_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_bool_bool_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_bool_bool();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_bool_string_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_bool_string_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_bool_string_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_bool_string();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_bool_tuple_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_bool_tuple_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_bool_tuple_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_bool_tuple();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_bool_map_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_bool_map_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_bool_map_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_bool_map();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_tuple_i32_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_tuple_i32_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_tuple_i32_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_tuple_i32();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_tuple_bool_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_tuple_bool_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_tuple_bool_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_tuple_bool();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_tuple_string_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_tuple_string_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_tuple_string_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_tuple_string();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_tuple_tuple_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_tuple_tuple_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_tuple_tuple_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_tuple_tuple();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_tuple_map_with_id_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::create_tuple_map_with_id(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_create_tuple_map_cabi<T: Guest>() -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::create_tuple_map();
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_insert_i32_i32_cabi<T: Guest>(arg0: i32, arg1: i32, arg2: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::insert_i32_i32(arg0, arg1, arg2);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_insert_i32_string_cabi<T: Guest>(
+    arg0: i32,
+    arg1: i32,
+    arg2: i32,
+    arg3: i32,
+) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::insert_i32_string(arg0, arg1, arg2, arg3);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_insert_string_i32_cabi<T: Guest>(
+    arg0: i32,
+    arg1: i32,
+    arg2: i32,
+    arg3: i32,
+) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::insert_string_i32(arg0, arg1, arg2, arg3);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_insert_i32i32tuple_i32_cabi<T: Guest>(
+    arg0: i32,
+    arg1: i32,
+    arg2: i32,
+    arg3: i32,
+) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::insert_i32i32tuple_i32(arg0, arg1, arg2, arg3);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_insert_i32i32i32tuple_i32_cabi<T: Guest>(
+    arg0: i32,
+    arg1: i32,
+    arg2: i32,
+    arg3: i32,
+    arg4: i32,
+) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::insert_i32i32i32tuple_i32(arg0, arg1, arg2, arg3, arg4);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_get_i32_i32_cabi<T: Guest>(arg0: i32, arg1: i32) -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::get_i32_i32(arg0, arg1);
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_get_i32_string_cabi<T: Guest>(arg0: i32, arg1: i32) -> *mut u8 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::get_i32_string(arg0, arg1);
+    let ptr1 = (&raw mut _RET_AREA.0).cast::<u8>();
+    let vec2 = (result0.into_bytes()).into_boxed_slice();
+    let ptr2 = vec2.as_ptr().cast::<u8>();
+    let len2 = vec2.len();
+    ::core::mem::forget(vec2);
+    *ptr1.add(::core::mem::size_of::<*const u8>()).cast::<usize>() = len2;
+    *ptr1.add(0).cast::<*mut u8>() = ptr2.cast_mut();
+    ptr1
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn __post_return_get_i32_string<T: Guest>(arg0: *mut u8) {
+    let l0 = *arg0.add(0).cast::<*mut u8>();
+    let l1 = *arg0.add(::core::mem::size_of::<*const u8>()).cast::<usize>();
+    _rt::cabi_dealloc(l0, l1, 1);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_get_string_i32_cabi<T: Guest>(
+    arg0: i32,
+    arg1: i32,
+    arg2: i32,
+) -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::get_string_i32(arg0, arg1, arg2);
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_get_i32i32tuple_i32_cabi<T: Guest>(
+    arg0: i32,
+    arg1: i32,
+    arg2: i32,
+) -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::get_i32i32tuple_i32(arg0, arg1, arg2);
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_get_i32i32i32tuple_i32_cabi<T: Guest>(
+    arg0: i32,
+    arg1: i32,
+    arg2: i32,
+    arg3: i32,
+) -> i32 {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let result0 = T::get_i32i32i32tuple_i32(arg0, arg1, arg2, arg3);
+    _rt::as_i32(result0)
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_print_map_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::print_map(arg0);
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_print_map_as_csv_cabi<T: Guest>(arg0: i32) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    T::print_map_as_csv(arg0);
 }
 pub trait Guest {
     /// =============
     /// ==== I/O ====
     /// =============
-    fn putc_wrap(c: u8) -> ();
-    fn puts_wrap(a: u32, l: u32) -> ();
-    fn putu8_wrap(u: u8) -> ();
-    fn puti8_wrap(i: i8) -> ();
-    fn putu16_wrap(u: u16) -> ();
-    fn puti16_wrap(i: i16) -> ();
-    fn putu32_wrap(u: u32) -> ();
-    fn puti32_wrap(i: i32) -> ();
-    fn putu64_wrap(u: u64) -> ();
-    fn puti64_wrap(i: i64) -> ();
-    fn putf32_wrap(f: f32) -> ();
-    fn putf64_wrap(f: f64) -> ();
-    fn putbool_wrap(u: u8) -> ();
+    fn putc(c: u8) -> ();
+    fn puts(a: u32, l: u32) -> ();
+    fn putu8(u: u8) -> ();
+    fn puti8(i: i8) -> ();
+    fn putu16(u: u16) -> ();
+    fn puti16(i: i16) -> ();
+    fn putu32(u: u32) -> ();
+    fn puti32(i: i32) -> ();
+    fn putu64(u: u64) -> ();
+    fn puti64(i: i64) -> ();
+    fn putf32(f: f32) -> ();
+    fn putf64(f: f64) -> ();
+    fn putbool(u: u8) -> ();
+    /// ==============
+    /// ==== Maps ====
+    /// ==============
+    /// INSERT
+    fn create_i32_i32_with_id(id: i32) -> ();
+    fn create_i32_i32() -> i32;
+    fn create_i32_bool_with_id(id: i32) -> ();
+    fn create_i32_bool() -> i32;
+    fn create_i32_string_with_id(id: i32) -> ();
+    fn create_i32_string() -> i32;
+    fn create_i32_tuple_with_id(id: i32) -> ();
+    fn create_i32_tuple() -> i32;
+    fn create_i32_map_with_id(id: i32) -> ();
+    fn create_i32_map() -> i32;
+    fn create_string_i32_with_id(id: i32) -> ();
+    fn create_string_i32() -> i32;
+    fn create_string_bool_with_id(id: i32) -> ();
+    fn create_string_bool() -> i32;
+    fn create_string_string_with_id(id: i32) -> ();
+    fn create_string_string() -> i32;
+    fn create_string_tuple_with_id(id: i32) -> ();
+    fn create_string_tuple() -> i32;
+    fn create_string_map_with_id(id: i32) -> ();
+    fn create_string_map() -> i32;
+    fn create_bool_i32_with_id(id: i32) -> ();
+    fn create_bool_i32() -> i32;
+    fn create_bool_bool_with_id(id: i32) -> ();
+    fn create_bool_bool() -> i32;
+    fn create_bool_string_with_id(id: i32) -> ();
+    fn create_bool_string() -> i32;
+    fn create_bool_tuple_with_id(id: i32) -> ();
+    fn create_bool_tuple() -> i32;
+    fn create_bool_map_with_id(id: i32) -> ();
+    fn create_bool_map() -> i32;
+    fn create_tuple_i32_with_id(id: i32) -> ();
+    fn create_tuple_i32() -> i32;
+    fn create_tuple_bool_with_id(id: i32) -> ();
+    fn create_tuple_bool() -> i32;
+    fn create_tuple_string_with_id(id: i32) -> ();
+    fn create_tuple_string() -> i32;
+    fn create_tuple_tuple_with_id(id: i32) -> ();
+    fn create_tuple_tuple() -> i32;
+    fn create_tuple_map_with_id(id: i32) -> ();
+    fn create_tuple_map() -> i32;
+    /// INSERT
+    fn insert_i32_i32(id: i32, key: i32, value: i32) -> ();
+    fn insert_i32_string(id: i32, key: i32, val_offset: i32, val_length: i32) -> ();
+    fn insert_string_i32(id: i32, key_offset: i32, key_length: i32, val: i32) -> ();
+    fn insert_i32i32tuple_i32(id: i32, key0: i32, key1: i32, value: i32) -> ();
+    fn insert_i32i32i32tuple_i32(
+        id: i32,
+        key0: i32,
+        key1: i32,
+        key2: i32,
+        value: i32,
+    ) -> ();
+    /// GET
+    fn get_i32_i32(id: i32, key: i32) -> i32;
+    fn get_i32_string(id: i32, key: i32) -> _rt::String;
+    fn get_string_i32(id: i32, key_offset: i32, key_length: i32) -> i32;
+    fn get_i32i32tuple_i32(id: i32, key0: i32, key1: i32) -> i32;
+    fn get_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32) -> i32;
+    /// PRINT
+    fn print_map(id: i32) -> ();
+    fn print_map_as_csv(id: i32) -> ();
 }
 #[doc(hidden)]
 macro_rules! __export_world_support_lib_cabi {
     ($ty:ident with_types_in $($path_to_types:tt)*) => {
-        const _ : () = { #[unsafe (export_name = "putc-wrap")] unsafe extern "C" fn
-        export_putc_wrap(arg0 : i32,) { unsafe { $($path_to_types)*::
-        _export_putc_wrap_cabi::<$ty > (arg0) } } #[unsafe (export_name = "puts-wrap")]
-        unsafe extern "C" fn export_puts_wrap(arg0 : i32, arg1 : i32,) { unsafe {
-        $($path_to_types)*:: _export_puts_wrap_cabi::<$ty > (arg0, arg1) } } #[unsafe
-        (export_name = "putu8-wrap")] unsafe extern "C" fn export_putu8_wrap(arg0 : i32,)
-        { unsafe { $($path_to_types)*:: _export_putu8_wrap_cabi::<$ty > (arg0) } }
-        #[unsafe (export_name = "puti8-wrap")] unsafe extern "C" fn
-        export_puti8_wrap(arg0 : i32,) { unsafe { $($path_to_types)*::
-        _export_puti8_wrap_cabi::<$ty > (arg0) } } #[unsafe (export_name =
-        "putu16-wrap")] unsafe extern "C" fn export_putu16_wrap(arg0 : i32,) { unsafe {
-        $($path_to_types)*:: _export_putu16_wrap_cabi::<$ty > (arg0) } } #[unsafe
-        (export_name = "puti16-wrap")] unsafe extern "C" fn export_puti16_wrap(arg0 :
-        i32,) { unsafe { $($path_to_types)*:: _export_puti16_wrap_cabi::<$ty > (arg0) } }
-        #[unsafe (export_name = "putu32-wrap")] unsafe extern "C" fn
-        export_putu32_wrap(arg0 : i32,) { unsafe { $($path_to_types)*::
-        _export_putu32_wrap_cabi::<$ty > (arg0) } } #[unsafe (export_name =
-        "puti32-wrap")] unsafe extern "C" fn export_puti32_wrap(arg0 : i32,) { unsafe {
-        $($path_to_types)*:: _export_puti32_wrap_cabi::<$ty > (arg0) } } #[unsafe
-        (export_name = "putu64-wrap")] unsafe extern "C" fn export_putu64_wrap(arg0 :
-        i64,) { unsafe { $($path_to_types)*:: _export_putu64_wrap_cabi::<$ty > (arg0) } }
-        #[unsafe (export_name = "puti64-wrap")] unsafe extern "C" fn
-        export_puti64_wrap(arg0 : i64,) { unsafe { $($path_to_types)*::
-        _export_puti64_wrap_cabi::<$ty > (arg0) } } #[unsafe (export_name =
-        "putf32-wrap")] unsafe extern "C" fn export_putf32_wrap(arg0 : f32,) { unsafe {
-        $($path_to_types)*:: _export_putf32_wrap_cabi::<$ty > (arg0) } } #[unsafe
-        (export_name = "putf64-wrap")] unsafe extern "C" fn export_putf64_wrap(arg0 :
-        f64,) { unsafe { $($path_to_types)*:: _export_putf64_wrap_cabi::<$ty > (arg0) } }
-        #[unsafe (export_name = "putbool-wrap")] unsafe extern "C" fn
-        export_putbool_wrap(arg0 : i32,) { unsafe { $($path_to_types)*::
-        _export_putbool_wrap_cabi::<$ty > (arg0) } } };
+        const _ : () = { #[unsafe (export_name = "putc")] unsafe extern "C" fn
+        export_putc(arg0 : i32,) { unsafe { $($path_to_types)*:: _export_putc_cabi::<$ty
+        > (arg0) } } #[unsafe (export_name = "puts")] unsafe extern "C" fn
+        export_puts(arg0 : i32, arg1 : i32,) { unsafe { $($path_to_types)*::
+        _export_puts_cabi::<$ty > (arg0, arg1) } } #[unsafe (export_name = "putu8")]
+        unsafe extern "C" fn export_putu8(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_putu8_cabi::<$ty > (arg0) } } #[unsafe (export_name = "puti8")] unsafe
+        extern "C" fn export_puti8(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_puti8_cabi::<$ty > (arg0) } } #[unsafe (export_name = "putu16")] unsafe
+        extern "C" fn export_putu16(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_putu16_cabi::<$ty > (arg0) } } #[unsafe (export_name = "puti16")] unsafe
+        extern "C" fn export_puti16(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_puti16_cabi::<$ty > (arg0) } } #[unsafe (export_name = "putu32")] unsafe
+        extern "C" fn export_putu32(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_putu32_cabi::<$ty > (arg0) } } #[unsafe (export_name = "puti32")] unsafe
+        extern "C" fn export_puti32(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_puti32_cabi::<$ty > (arg0) } } #[unsafe (export_name = "putu64")] unsafe
+        extern "C" fn export_putu64(arg0 : i64,) { unsafe { $($path_to_types)*::
+        _export_putu64_cabi::<$ty > (arg0) } } #[unsafe (export_name = "puti64")] unsafe
+        extern "C" fn export_puti64(arg0 : i64,) { unsafe { $($path_to_types)*::
+        _export_puti64_cabi::<$ty > (arg0) } } #[unsafe (export_name = "putf32")] unsafe
+        extern "C" fn export_putf32(arg0 : f32,) { unsafe { $($path_to_types)*::
+        _export_putf32_cabi::<$ty > (arg0) } } #[unsafe (export_name = "putf64")] unsafe
+        extern "C" fn export_putf64(arg0 : f64,) { unsafe { $($path_to_types)*::
+        _export_putf64_cabi::<$ty > (arg0) } } #[unsafe (export_name = "putbool")] unsafe
+        extern "C" fn export_putbool(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_putbool_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-i32-i32-with-id")] unsafe extern "C" fn
+        export_create_i32_i32_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_i32_i32_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-i32-i32")] unsafe extern "C" fn export_create_i32_i32() -> i32 { unsafe {
+        $($path_to_types)*:: _export_create_i32_i32_cabi::<$ty > () } } #[unsafe
+        (export_name = "create-i32-bool-with-id")] unsafe extern "C" fn
+        export_create_i32_bool_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_i32_bool_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-i32-bool")] unsafe extern "C" fn export_create_i32_bool() -> i32 { unsafe
+        { $($path_to_types)*:: _export_create_i32_bool_cabi::<$ty > () } } #[unsafe
+        (export_name = "create-i32-string-with-id")] unsafe extern "C" fn
+        export_create_i32_string_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_i32_string_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-i32-string")] unsafe extern "C" fn export_create_i32_string() -> i32 {
+        unsafe { $($path_to_types)*:: _export_create_i32_string_cabi::<$ty > () } }
+        #[unsafe (export_name = "create-i32-tuple-with-id")] unsafe extern "C" fn
+        export_create_i32_tuple_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_i32_tuple_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-i32-tuple")] unsafe extern "C" fn export_create_i32_tuple() -> i32 {
+        unsafe { $($path_to_types)*:: _export_create_i32_tuple_cabi::<$ty > () } }
+        #[unsafe (export_name = "create-i32-map-with-id")] unsafe extern "C" fn
+        export_create_i32_map_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_i32_map_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-i32-map")] unsafe extern "C" fn export_create_i32_map() -> i32 { unsafe {
+        $($path_to_types)*:: _export_create_i32_map_cabi::<$ty > () } } #[unsafe
+        (export_name = "create-string-i32-with-id")] unsafe extern "C" fn
+        export_create_string_i32_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_string_i32_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-string-i32")] unsafe extern "C" fn export_create_string_i32() -> i32 {
+        unsafe { $($path_to_types)*:: _export_create_string_i32_cabi::<$ty > () } }
+        #[unsafe (export_name = "create-string-bool-with-id")] unsafe extern "C" fn
+        export_create_string_bool_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_string_bool_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name
+        = "create-string-bool")] unsafe extern "C" fn export_create_string_bool() -> i32
+        { unsafe { $($path_to_types)*:: _export_create_string_bool_cabi::<$ty > () } }
+        #[unsafe (export_name = "create-string-string-with-id")] unsafe extern "C" fn
+        export_create_string_string_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_string_string_with_id_cabi::<$ty > (arg0) } } #[unsafe
+        (export_name = "create-string-string")] unsafe extern "C" fn
+        export_create_string_string() -> i32 { unsafe { $($path_to_types)*::
+        _export_create_string_string_cabi::<$ty > () } } #[unsafe (export_name =
+        "create-string-tuple-with-id")] unsafe extern "C" fn
+        export_create_string_tuple_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_string_tuple_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name
+        = "create-string-tuple")] unsafe extern "C" fn export_create_string_tuple() ->
+        i32 { unsafe { $($path_to_types)*:: _export_create_string_tuple_cabi::<$ty > () }
+        } #[unsafe (export_name = "create-string-map-with-id")] unsafe extern "C" fn
+        export_create_string_map_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_string_map_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-string-map")] unsafe extern "C" fn export_create_string_map() -> i32 {
+        unsafe { $($path_to_types)*:: _export_create_string_map_cabi::<$ty > () } }
+        #[unsafe (export_name = "create-bool-i32-with-id")] unsafe extern "C" fn
+        export_create_bool_i32_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_bool_i32_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-bool-i32")] unsafe extern "C" fn export_create_bool_i32() -> i32 { unsafe
+        { $($path_to_types)*:: _export_create_bool_i32_cabi::<$ty > () } } #[unsafe
+        (export_name = "create-bool-bool-with-id")] unsafe extern "C" fn
+        export_create_bool_bool_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_bool_bool_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-bool-bool")] unsafe extern "C" fn export_create_bool_bool() -> i32 {
+        unsafe { $($path_to_types)*:: _export_create_bool_bool_cabi::<$ty > () } }
+        #[unsafe (export_name = "create-bool-string-with-id")] unsafe extern "C" fn
+        export_create_bool_string_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_bool_string_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name
+        = "create-bool-string")] unsafe extern "C" fn export_create_bool_string() -> i32
+        { unsafe { $($path_to_types)*:: _export_create_bool_string_cabi::<$ty > () } }
+        #[unsafe (export_name = "create-bool-tuple-with-id")] unsafe extern "C" fn
+        export_create_bool_tuple_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_bool_tuple_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-bool-tuple")] unsafe extern "C" fn export_create_bool_tuple() -> i32 {
+        unsafe { $($path_to_types)*:: _export_create_bool_tuple_cabi::<$ty > () } }
+        #[unsafe (export_name = "create-bool-map-with-id")] unsafe extern "C" fn
+        export_create_bool_map_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_bool_map_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-bool-map")] unsafe extern "C" fn export_create_bool_map() -> i32 { unsafe
+        { $($path_to_types)*:: _export_create_bool_map_cabi::<$ty > () } } #[unsafe
+        (export_name = "create-tuple-i32-with-id")] unsafe extern "C" fn
+        export_create_tuple_i32_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_tuple_i32_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-tuple-i32")] unsafe extern "C" fn export_create_tuple_i32() -> i32 {
+        unsafe { $($path_to_types)*:: _export_create_tuple_i32_cabi::<$ty > () } }
+        #[unsafe (export_name = "create-tuple-bool-with-id")] unsafe extern "C" fn
+        export_create_tuple_bool_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_tuple_bool_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-tuple-bool")] unsafe extern "C" fn export_create_tuple_bool() -> i32 {
+        unsafe { $($path_to_types)*:: _export_create_tuple_bool_cabi::<$ty > () } }
+        #[unsafe (export_name = "create-tuple-string-with-id")] unsafe extern "C" fn
+        export_create_tuple_string_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_tuple_string_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name
+        = "create-tuple-string")] unsafe extern "C" fn export_create_tuple_string() ->
+        i32 { unsafe { $($path_to_types)*:: _export_create_tuple_string_cabi::<$ty > () }
+        } #[unsafe (export_name = "create-tuple-tuple-with-id")] unsafe extern "C" fn
+        export_create_tuple_tuple_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_tuple_tuple_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name
+        = "create-tuple-tuple")] unsafe extern "C" fn export_create_tuple_tuple() -> i32
+        { unsafe { $($path_to_types)*:: _export_create_tuple_tuple_cabi::<$ty > () } }
+        #[unsafe (export_name = "create-tuple-map-with-id")] unsafe extern "C" fn
+        export_create_tuple_map_with_id(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_create_tuple_map_with_id_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "create-tuple-map")] unsafe extern "C" fn export_create_tuple_map() -> i32 {
+        unsafe { $($path_to_types)*:: _export_create_tuple_map_cabi::<$ty > () } }
+        #[unsafe (export_name = "insert-i32-i32")] unsafe extern "C" fn
+        export_insert_i32_i32(arg0 : i32, arg1 : i32, arg2 : i32,) { unsafe {
+        $($path_to_types)*:: _export_insert_i32_i32_cabi::<$ty > (arg0, arg1, arg2) } }
+        #[unsafe (export_name = "insert-i32-string")] unsafe extern "C" fn
+        export_insert_i32_string(arg0 : i32, arg1 : i32, arg2 : i32, arg3 : i32,) {
+        unsafe { $($path_to_types)*:: _export_insert_i32_string_cabi::<$ty > (arg0, arg1,
+        arg2, arg3) } } #[unsafe (export_name = "insert-string-i32")] unsafe extern "C"
+        fn export_insert_string_i32(arg0 : i32, arg1 : i32, arg2 : i32, arg3 : i32,) {
+        unsafe { $($path_to_types)*:: _export_insert_string_i32_cabi::<$ty > (arg0, arg1,
+        arg2, arg3) } } #[unsafe (export_name = "insert-i32i32tuple-i32")] unsafe extern
+        "C" fn export_insert_i32i32tuple_i32(arg0 : i32, arg1 : i32, arg2 : i32, arg3 :
+        i32,) { unsafe { $($path_to_types)*:: _export_insert_i32i32tuple_i32_cabi::<$ty >
+        (arg0, arg1, arg2, arg3) } } #[unsafe (export_name =
+        "insert-i32i32i32tuple-i32")] unsafe extern "C" fn
+        export_insert_i32i32i32tuple_i32(arg0 : i32, arg1 : i32, arg2 : i32, arg3 : i32,
+        arg4 : i32,) { unsafe { $($path_to_types)*::
+        _export_insert_i32i32i32tuple_i32_cabi::<$ty > (arg0, arg1, arg2, arg3, arg4) } }
+        #[unsafe (export_name = "get-i32-i32")] unsafe extern "C" fn
+        export_get_i32_i32(arg0 : i32, arg1 : i32,) -> i32 { unsafe {
+        $($path_to_types)*:: _export_get_i32_i32_cabi::<$ty > (arg0, arg1) } } #[unsafe
+        (export_name = "get-i32-string")] unsafe extern "C" fn export_get_i32_string(arg0
+        : i32, arg1 : i32,) -> * mut u8 { unsafe { $($path_to_types)*::
+        _export_get_i32_string_cabi::<$ty > (arg0, arg1) } } #[unsafe (export_name =
+        "cabi_post_get-i32-string")] unsafe extern "C" fn
+        _post_return_get_i32_string(arg0 : * mut u8,) { unsafe { $($path_to_types)*::
+        __post_return_get_i32_string::<$ty > (arg0) } } #[unsafe (export_name =
+        "get-string-i32")] unsafe extern "C" fn export_get_string_i32(arg0 : i32, arg1 :
+        i32, arg2 : i32,) -> i32 { unsafe { $($path_to_types)*::
+        _export_get_string_i32_cabi::<$ty > (arg0, arg1, arg2) } } #[unsafe (export_name
+        = "get-i32i32tuple-i32")] unsafe extern "C" fn export_get_i32i32tuple_i32(arg0 :
+        i32, arg1 : i32, arg2 : i32,) -> i32 { unsafe { $($path_to_types)*::
+        _export_get_i32i32tuple_i32_cabi::<$ty > (arg0, arg1, arg2) } } #[unsafe
+        (export_name = "get-i32i32i32tuple-i32")] unsafe extern "C" fn
+        export_get_i32i32i32tuple_i32(arg0 : i32, arg1 : i32, arg2 : i32, arg3 : i32,) ->
+        i32 { unsafe { $($path_to_types)*:: _export_get_i32i32i32tuple_i32_cabi::<$ty >
+        (arg0, arg1, arg2, arg3) } } #[unsafe (export_name = "print-map")] unsafe extern
+        "C" fn export_print_map(arg0 : i32,) { unsafe { $($path_to_types)*::
+        _export_print_map_cabi::<$ty > (arg0) } } #[unsafe (export_name =
+        "print-map-as-csv")] unsafe extern "C" fn export_print_map_as_csv(arg0 : i32,) {
+        unsafe { $($path_to_types)*:: _export_print_map_as_csv_cabi::<$ty > (arg0) } } };
     };
 }
 #[doc(hidden)]
 pub(crate) use __export_world_support_lib_cabi;
+#[cfg_attr(target_pointer_width = "64", repr(align(8)))]
+#[cfg_attr(target_pointer_width = "32", repr(align(4)))]
+struct _RetArea([::core::mem::MaybeUninit<u8>; 2 * ::core::mem::size_of::<*const u8>()]);
+static mut _RET_AREA: _RetArea = _RetArea(
+    [::core::mem::MaybeUninit::uninit(); 2 * ::core::mem::size_of::<*const u8>()],
+);
 #[rustfmt::skip]
 mod _rt {
     #![allow(dead_code, clippy::all)]
@@ -142,6 +735,75 @@ mod _rt {
     pub fn run_ctors_once() {
         wit_bindgen_rt::run_ctors_once();
     }
+    pub fn as_i32<T: AsI32>(t: T) -> i32 {
+        t.as_i32()
+    }
+    pub trait AsI32 {
+        fn as_i32(self) -> i32;
+    }
+    impl<'a, T: Copy + AsI32> AsI32 for &'a T {
+        fn as_i32(self) -> i32 {
+            (*self).as_i32()
+        }
+    }
+    impl AsI32 for i32 {
+        #[inline]
+        fn as_i32(self) -> i32 {
+            self as i32
+        }
+    }
+    impl AsI32 for u32 {
+        #[inline]
+        fn as_i32(self) -> i32 {
+            self as i32
+        }
+    }
+    impl AsI32 for i16 {
+        #[inline]
+        fn as_i32(self) -> i32 {
+            self as i32
+        }
+    }
+    impl AsI32 for u16 {
+        #[inline]
+        fn as_i32(self) -> i32 {
+            self as i32
+        }
+    }
+    impl AsI32 for i8 {
+        #[inline]
+        fn as_i32(self) -> i32 {
+            self as i32
+        }
+    }
+    impl AsI32 for u8 {
+        #[inline]
+        fn as_i32(self) -> i32 {
+            self as i32
+        }
+    }
+    impl AsI32 for char {
+        #[inline]
+        fn as_i32(self) -> i32 {
+            self as i32
+        }
+    }
+    impl AsI32 for usize {
+        #[inline]
+        fn as_i32(self) -> i32 {
+            self as i32
+        }
+    }
+    pub unsafe fn cabi_dealloc(ptr: *mut u8, size: usize, align: usize) {
+        if size == 0 {
+            return;
+        }
+        let layout = alloc::Layout::from_size_align_unchecked(size, align);
+        alloc::dealloc(ptr, layout);
+    }
+    pub use alloc_crate::string::String;
+    pub use alloc_crate::alloc;
+    extern crate alloc as alloc_crate;
 }
 /// Generates `#[unsafe(no_mangle)]` functions to export the specified type as
 /// the root implementation of all generated traits.
@@ -178,19 +840,48 @@ pub(crate) use __export_support_lib_impl as export;
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 475] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xd9\x02\x01A\x02\x01\
-A\x19\x01@\x01\x01c}\x01\0\x04\0\x09putc-wrap\x01\0\x01@\x02\x01ay\x01ly\x01\0\x04\
-\0\x09puts-wrap\x01\x01\x01@\x01\x01u}\x01\0\x04\0\x0aputu8-wrap\x01\x02\x01@\x01\
-\x01i~\x01\0\x04\0\x0aputi8-wrap\x01\x03\x01@\x01\x01u{\x01\0\x04\0\x0bputu16-wr\
-ap\x01\x04\x01@\x01\x01i|\x01\0\x04\0\x0bputi16-wrap\x01\x05\x01@\x01\x01uy\x01\0\
-\x04\0\x0bputu32-wrap\x01\x06\x01@\x01\x01iz\x01\0\x04\0\x0bputi32-wrap\x01\x07\x01\
-@\x01\x01uw\x01\0\x04\0\x0bputu64-wrap\x01\x08\x01@\x01\x01ix\x01\0\x04\0\x0bput\
-i64-wrap\x01\x09\x01@\x01\x01fv\x01\0\x04\0\x0bputf32-wrap\x01\x0a\x01@\x01\x01f\
-u\x01\0\x04\0\x0bputf64-wrap\x01\x0b\x04\0\x0cputbool-wrap\x01\x02\x04\0\x20comp\
-onent:whamm-core/support-lib\x04\0\x0b\x11\x01\0\x0bsupport-lib\x03\0\0\0G\x09pr\
-oducers\x01\x0cprocessed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x06\
-0.41.0";
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 1980] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xba\x0e\x01A\x02\x01\
+AY\x01@\x01\x01c}\x01\0\x04\0\x04putc\x01\0\x01@\x02\x01ay\x01ly\x01\0\x04\0\x04\
+puts\x01\x01\x01@\x01\x01u}\x01\0\x04\0\x05putu8\x01\x02\x01@\x01\x01i~\x01\0\x04\
+\0\x05puti8\x01\x03\x01@\x01\x01u{\x01\0\x04\0\x06putu16\x01\x04\x01@\x01\x01i|\x01\
+\0\x04\0\x06puti16\x01\x05\x01@\x01\x01uy\x01\0\x04\0\x06putu32\x01\x06\x01@\x01\
+\x01iz\x01\0\x04\0\x06puti32\x01\x07\x01@\x01\x01uw\x01\0\x04\0\x06putu64\x01\x08\
+\x01@\x01\x01ix\x01\0\x04\0\x06puti64\x01\x09\x01@\x01\x01fv\x01\0\x04\0\x06putf\
+32\x01\x0a\x01@\x01\x01fu\x01\0\x04\0\x06putf64\x01\x0b\x04\0\x07putbool\x01\x02\
+\x01@\x01\x02idz\x01\0\x04\0\x16create-i32-i32-with-id\x01\x0c\x01@\0\0z\x04\0\x0e\
+create-i32-i32\x01\x0d\x04\0\x17create-i32-bool-with-id\x01\x0c\x04\0\x0fcreate-\
+i32-bool\x01\x0d\x04\0\x19create-i32-string-with-id\x01\x0c\x04\0\x11create-i32-\
+string\x01\x0d\x04\0\x18create-i32-tuple-with-id\x01\x0c\x04\0\x10create-i32-tup\
+le\x01\x0d\x04\0\x16create-i32-map-with-id\x01\x0c\x04\0\x0ecreate-i32-map\x01\x0d\
+\x04\0\x19create-string-i32-with-id\x01\x0c\x04\0\x11create-string-i32\x01\x0d\x04\
+\0\x1acreate-string-bool-with-id\x01\x0c\x04\0\x12create-string-bool\x01\x0d\x04\
+\0\x1ccreate-string-string-with-id\x01\x0c\x04\0\x14create-string-string\x01\x0d\
+\x04\0\x1bcreate-string-tuple-with-id\x01\x0c\x04\0\x13create-string-tuple\x01\x0d\
+\x04\0\x19create-string-map-with-id\x01\x0c\x04\0\x11create-string-map\x01\x0d\x04\
+\0\x17create-bool-i32-with-id\x01\x0c\x04\0\x0fcreate-bool-i32\x01\x0d\x04\0\x18\
+create-bool-bool-with-id\x01\x0c\x04\0\x10create-bool-bool\x01\x0d\x04\0\x1acrea\
+te-bool-string-with-id\x01\x0c\x04\0\x12create-bool-string\x01\x0d\x04\0\x19crea\
+te-bool-tuple-with-id\x01\x0c\x04\0\x11create-bool-tuple\x01\x0d\x04\0\x17create\
+-bool-map-with-id\x01\x0c\x04\0\x0fcreate-bool-map\x01\x0d\x04\0\x18create-tuple\
+-i32-with-id\x01\x0c\x04\0\x10create-tuple-i32\x01\x0d\x04\0\x19create-tuple-boo\
+l-with-id\x01\x0c\x04\0\x11create-tuple-bool\x01\x0d\x04\0\x1bcreate-tuple-strin\
+g-with-id\x01\x0c\x04\0\x13create-tuple-string\x01\x0d\x04\0\x1acreate-tuple-tup\
+le-with-id\x01\x0c\x04\0\x12create-tuple-tuple\x01\x0d\x04\0\x18create-tuple-map\
+-with-id\x01\x0c\x04\0\x10create-tuple-map\x01\x0d\x01@\x03\x02idz\x03keyz\x05va\
+luez\x01\0\x04\0\x0einsert-i32-i32\x01\x0e\x01@\x04\x02idz\x03keyz\x0aval-offset\
+z\x0aval-lengthz\x01\0\x04\0\x11insert-i32-string\x01\x0f\x01@\x04\x02idz\x0akey\
+-offsetz\x0akey-lengthz\x03valz\x01\0\x04\0\x11insert-string-i32\x01\x10\x01@\x04\
+\x02idz\x04key0z\x04key1z\x05valuez\x01\0\x04\0\x16insert-i32i32tuple-i32\x01\x11\
+\x01@\x05\x02idz\x04key0z\x04key1z\x04key2z\x05valuez\x01\0\x04\0\x19insert-i32i\
+32i32tuple-i32\x01\x12\x01@\x02\x02idz\x03keyz\0z\x04\0\x0bget-i32-i32\x01\x13\x01\
+@\x02\x02idz\x03keyz\0s\x04\0\x0eget-i32-string\x01\x14\x01@\x03\x02idz\x0akey-o\
+ffsetz\x0akey-lengthz\0z\x04\0\x0eget-string-i32\x01\x15\x01@\x03\x02idz\x04key0\
+z\x04key1z\0z\x04\0\x13get-i32i32tuple-i32\x01\x16\x01@\x04\x02idz\x04key0z\x04k\
+ey1z\x04key2z\0z\x04\0\x16get-i32i32i32tuple-i32\x01\x17\x04\0\x09print-map\x01\x0c\
+\x04\0\x10print-map-as-csv\x01\x0c\x04\0\x20component:whamm-core/support-lib\x04\
+\0\x0b\x11\x01\0\x0bsupport-lib\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0d\
+wit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

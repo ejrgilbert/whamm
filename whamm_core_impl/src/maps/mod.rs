@@ -780,169 +780,128 @@ fn create_map_internal(id: Option<i32>, map: AnyMap) -> i32 {
     binding.insert(id, map);
     id
 }
-#[no_mangle]
 pub fn create_i32_i32_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::i32_i32_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_i32_i32() -> i32 {
     create_map_internal(None, AnyMap::i32_i32_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_i32_bool_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::i32_bool_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_i32_bool() -> i32 {
     create_map_internal(None, AnyMap::i32_bool_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_i32_string_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::i32_string_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_i32_string() -> i32 {
     create_map_internal(None, AnyMap::i32_string_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_i32_tuple_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::i32_tuple_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_i32_tuple() -> i32 {
     create_map_internal(None, AnyMap::i32_tuple_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_i32_map_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::i32_map_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_i32_map() -> i32 {
     create_map_internal(None, AnyMap::i32_map_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_string_i32_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::string_i32_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_string_i32() -> i32 {
     create_map_internal(None, AnyMap::string_i32_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_string_bool_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::string_bool_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_string_bool() -> i32 {
     create_map_internal(None, AnyMap::string_bool_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_string_string_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::string_string_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_string_string() -> i32 {
     create_map_internal(None, AnyMap::string_string_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_string_tuple_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::string_tuple_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_string_tuple() -> i32 {
     create_map_internal(None, AnyMap::string_tuple_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_string_map_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::string_map_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_string_map() -> i32 {
     create_map_internal(None, AnyMap::string_map_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_bool_i32_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::bool_i32_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_bool_i32() -> i32 {
     create_map_internal(None, AnyMap::bool_i32_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_bool_bool_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::bool_bool_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_bool_bool() -> i32 {
     create_map_internal(None, AnyMap::bool_bool_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_bool_string_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::bool_string_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_bool_string() -> i32 {
     create_map_internal(None, AnyMap::bool_string_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_bool_tuple_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::bool_tuple_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_bool_tuple() -> i32 {
     create_map_internal(None, AnyMap::bool_tuple_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_bool_map_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::bool_map_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_bool_map() -> i32 {
     create_map_internal(None, AnyMap::bool_map_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_tuple_i32_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::tuple_i32_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_tuple_i32() -> i32 {
     create_map_internal(None, AnyMap::tuple_i32_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_tuple_bool_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::tuple_bool_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_tuple_bool() -> i32 {
     create_map_internal(None, AnyMap::tuple_bool_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_tuple_string_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::tuple_string_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_tuple_string() -> i32 {
     create_map_internal(None, AnyMap::tuple_string_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_tuple_tuple_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::tuple_tuple_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_tuple_tuple() -> i32 {
     create_map_internal(None, AnyMap::tuple_tuple_Map(HashMap::new()))
 }
-#[no_mangle]
 pub fn create_tuple_map_with_id(id: i32) {
     create_map_internal(Some(id), AnyMap::tuple_map_Map(HashMap::new()));
 }
-#[no_mangle]
 pub fn create_tuple_map() -> i32 {
     create_map_internal(None, AnyMap::tuple_map_Map(HashMap::new()))
 }
 
 // INSERT
-#[no_mangle]
 pub fn insert_i32_i32(id: i32, key: i32, value: i32) {
     debug!("DEBUG: inserting ({key}, {value}) into map '{id}'");
     if !insert_i32_i32_inner(id, key, value) {
@@ -950,7 +909,6 @@ pub fn insert_i32_i32(id: i32, key: i32, value: i32) {
         panic!()
     }
 }
-#[no_mangle]
 pub fn insert_i32_string(id: i32, key: i32, val_offset: *const u8, val_length: usize) {
     let value = string_from_data(val_offset, val_length);
     debug!("DEBUG: inserting ({key}, \"{value}\") into map '{id}'");
@@ -959,7 +917,6 @@ pub fn insert_i32_string(id: i32, key: i32, val_offset: *const u8, val_length: u
         panic!()
     }
 }
-#[no_mangle]
 pub fn insert_string_i32(id: i32, key_offset: *const u8, key_length: usize, val: i32) {
     let key = string_from_data(key_offset, key_length);
     if !insert_string_i32_inner(id, key, val) {
@@ -967,43 +924,35 @@ pub fn insert_string_i32(id: i32, key_offset: *const u8, key_length: usize, val:
         panic!()
     }
 }
-#[no_mangle]
 pub fn insert_i32i32tuple_i32(id: i32, key0: i32, key1: i32, value: i32) {
     insert_tuple_i32_inner(id, TupleVariant::i32_i32(key0, key1), value);
 }
-#[no_mangle]
 pub fn insert_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32, value: i32) {
     insert_tuple_i32_inner(id, TupleVariant::i32_i32_i32(key0, key1, key2), value);
 }
 
 
 // GET
-#[no_mangle]
 pub fn get_i32_i32(id: i32, key: i32) -> i32 {
     debug!("getting key '{key}' from map '{id}'");
     get_i32(id, &key)
 }
-#[no_mangle]
 pub fn get_i32_string(id: i32, key: i32) -> String {
     get_string(id, &key)
 }
-#[no_mangle]
 pub fn get_string_i32(id: i32, key_offset: *const u8, key_length: usize) -> i32 {
     let key = string_from_data(key_offset, key_length);
     get_i32(id, &key)
 }
-#[no_mangle]
 pub fn get_i32i32tuple_i32(id: i32, key0: i32, key1: i32) -> i32 {
     get_i32(id, &Box::new(TupleVariant::i32_i32(key0, key1)))
 }
-#[no_mangle]
 pub fn get_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32) -> i32 {
     get_i32(id, &Box::new(TupleVariant::i32_i32_i32(key0, key1, key2)))
 }
 
 
 // PRINT
-#[no_mangle]
 pub fn print_map(id: i32) {
     let binding = MY_MAPS.lock().unwrap();
 
@@ -1015,7 +964,6 @@ pub fn print_map(id: i32) {
     }
 }
 
-#[no_mangle]
 pub fn print_map_as_csv(id: i32) {
     let binding = MY_MAPS.lock().unwrap();
 

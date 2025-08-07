@@ -125,12 +125,10 @@ fn print(str: &str) {
     });
 }
 
-#[no_mangle]
 pub fn putc(c: u8) {
     print(&String::from_utf8([c].to_vec()).expect("Our bytes should be valid utf8"));
 }
 
-#[no_mangle]
 pub unsafe fn puts(start: i32, len: i32) {
     let ptr: *const u8 = start as *const u8;
     let s: &[u8] = unsafe { slice::from_raw_parts(ptr, usize::try_from(len).unwrap()) };
@@ -139,57 +137,46 @@ pub unsafe fn puts(start: i32, len: i32) {
     print(s.as_str());
 }
 
-#[no_mangle]
 pub fn putu8(i: u8) {
     print(&format!("{i}"));
 }
 
-#[no_mangle]
 pub fn puti8(i: i8) {
     print(&format!("{i}"));
 }
 
-#[no_mangle]
 pub fn putu16(i: u16) {
     print(&format!("{i}"));
 }
 
-#[no_mangle]
 pub fn puti16(i: i16) {
     print(&format!("{i}"));
 }
 
-#[no_mangle]
 pub fn putu32(i: u32) {
     print(&format!("{i}"));
 }
 
-#[no_mangle]
 pub fn puti32(i: i32) {
     print(&format!("{i}"));
 }
 
-#[no_mangle]
 pub fn putu64(i: u64) {
     print(&format!("{i}"));
 }
 
-#[no_mangle]
 pub fn puti64(i: i64) {
     print(&format!("{i}"));
 }
 
-#[no_mangle]
 pub fn putf32(f: f32) {
     print(&format!("{:+e}", f));
 }
 
-#[no_mangle]
 pub fn putf64(f: f64) {
     print(&format!("{:+e}", f));
 }
 
-#[no_mangle]
 pub fn putbool(i: i32) {
     if i != 0 {
         print("true");

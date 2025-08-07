@@ -1,10 +1,10 @@
 [package]
-name = "whamm_core_component"
+name = "whamm_core"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-whamm_core = { path = "../whamm_core" }
+whamm_core_impl = { path = "../whamm_core_impl" }
 wit-bindgen-rt = { version = "0.43.0", features = ["bitflags"] }
 
 [lib]

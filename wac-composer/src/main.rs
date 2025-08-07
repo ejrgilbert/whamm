@@ -6,7 +6,7 @@ const RUN_FUNC_PREFIX: &str = "wasi:cli/run@";
 const APP_COMPONENT: &str = "./component.manually-fixed.wasm";
 const CORE_LIB_NAME: &str = "whamm-core";
 // const CORE_LIB_COMPONENT: &str = "../whamm_core-component/target/wasm32-wasip1/release/whamm_core_component.wasm";
-const CORE_LIB_COMPONENT: &str = "./whamm_core_component.wasm";
+const CORE_LIB_COMPONENT: &str = "./whamm_core.wasm";
 
 fn main() {
     let mut graph = CompositionGraph::new();

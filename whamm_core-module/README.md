@@ -1,4 +1,10 @@
-# Whamm's Core Library #
+# `whamm_core` Library (as a Wasm module) #
+
+To build:
+```shell
+# Wasm module is output to: ./target/wasm32-wasip1/release/whamm_core_module.wasm
+cargo build --release
+```
 
 ## Maps Package ##
 
