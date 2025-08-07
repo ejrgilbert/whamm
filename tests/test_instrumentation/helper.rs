@@ -8,7 +8,8 @@ use std::process::Command;
 use whamm::api::instrument::instrument_as_dry_run;
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
 
-pub const DEFAULT_CORE_LIB_PATH: &str = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
+pub const DEFAULT_CORE_LIB_PATH: &str =
+    "whamm_core-module/target/wasm32-wasip1/release/whamm_core.wasm";
 pub const DEFAULT_DEFS_PATH: &str = "./";
 const TEST_RSC_DIR: &str = "tests/scripts/";
 const WAT_PATTERN: &str = "*.wat";
@@ -368,7 +369,7 @@ fn build_lib(lib_path: &str) {
 
 pub(crate) fn build_whamm_core_lib() {
     // Build the whamm_core library
-    build_lib("whamm_core");
+    build_lib("whamm_core-module");
 }
 
 pub(crate) fn build_user_libs() {
@@ -453,7 +454,7 @@ fn run_testcase_rewriting(
     // run the instrumented application on wasmtime
     // let res = Command::new(format!("{home}/.cargo/bin/cargo"))
 
-    let whamm_core_lib_path = "whamm_core=whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
+    let whamm_core_lib_path = format!("whamm_core={DEFAULT_CORE_LIB_PATH}");
     let out_filename = "instr-flush.out";
     let out_file = format!("{outdir}/{out_filename}");
     let _ = fs::remove_file(out_file.clone());
@@ -527,7 +528,6 @@ fn run_testcase_wizard(
     );
 
     // run the instrumented application on wizard
-    let whamm_core_lib_path = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
     let wizeng_path = "output/tests/engines/wizeng";
 
     let out_filename = "instr-flush.out";
@@ -548,7 +548,7 @@ fn run_testcase_wizard(
     let res = cmd
         // .arg("-tw")
         .arg("--env=TO_CONSOLE=true")
-        .arg(format!("--monitors={}+{}{}", instr_app_path, whamm_core_lib_path, libs_to_link))
+        .arg(format!("--monitors={}+{}{}", instr_app_path, DEFAULT_CORE_LIB_PATH, libs_to_link))
         .arg(app_path_str)
         .output()
         .expect(&format!("Failed to run wizard command, please make sure the wizeng executable is available at the path: {}", wizeng_path));

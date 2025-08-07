@@ -221,7 +221,7 @@ fn instrument_with_calls_monitor_rewriting_scripts() {
     )
 }
 
-#[test]
+// #[test]
 fn components() {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/components");

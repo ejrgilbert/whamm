@@ -10,7 +10,6 @@ use crate::parser::types::{DataType, Location, Statement, Value, Whamm, WhammVis
 use crate::verifier::types::Record;
 use std::collections::{HashMap, HashSet};
 use wirm::ir::id::FunctionID;
-use wirm::Module;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -25,7 +24,8 @@ pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
     pub err: &'g mut ErrorGen,
     pub injected_funcs: &'h mut Vec<FunctionID>,
     pub used_fns_per_lib: HashMap<String, HashSet<String>>,
-    pub user_lib_modules: &'i HashMap<String, Module<'j>>,
+    pub user_lib_modules: &'i HashMap<String, &'j [u8]>,
+    pub libs_as_components: bool,
 }
 impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
@@ -87,6 +87,7 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_>
                     self.emitter.app_wasm,
                     loc,
                     lib_wasm,
+                    self.libs_as_components,
                     lib_name.to_string(),
                     used_fns,
                     self.emitter.table,

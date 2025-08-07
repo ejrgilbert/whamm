@@ -18,7 +18,8 @@ const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a 
 
 pub struct SymbolTableBuilder<'a, 'b, 'c> {
     pub table: SymbolTable,
-    pub user_libs: &'b HashMap<String, Module<'c>>,
+    pub user_libs: &'b HashMap<String, &'c [u8]>,
+    pub libs_as_components: bool,
     pub err: &'a mut ErrorGen,
     pub curr_whamm: Option<usize>,  // indexes into this::table::records
     pub curr_script: Option<usize>, // indexes into this::table::records
@@ -270,73 +271,79 @@ impl SymbolTableBuilder<'_, '_, '_> {
         // functions should be globally accessible within the scope of the
         // script. Not having a scope for the Library supports this!
 
-        if let Some(lib_module) = self.user_libs.get(lib_name) {
-            // add user library to the current scope (should be Script)
-            // enters a new scope (named 'lib_name')
-            // for each exported function in 'lib_module':
-            //   -- add new function to the lib scope
-            //   -- with the right type information
-            // THEN:
-            // -- should be able to do a normal function call AND type check
-            // -- (after looking up the library scope in the table)
-            if check_duplicate_id(lib_name, &None, &Definition::User, &self.table, self.err) {
-                return;
-            }
+        if let Some(lib_bytes) = self.user_libs.get(lib_name) {
+            if self.libs_as_components {
+                unimplemented!("Have not implemented support for component libraries.")
+            } else {
+                let lib_module = Module::parse(lib_bytes, false).unwrap();
 
-            let lib_id = self.table.put(
-                lib_name.clone(),
-                Record::Library {
-                    fns: Default::default(),
-                },
-            );
-            match self.table.get_record_mut(self.curr_script.unwrap()) {
-                Some(Record::Script { user_libs, .. }) => {
-                    user_libs.push(lib_id);
+                // add user library to the current scope (should be Script)
+                // enters a new scope (named 'lib_name')
+                // for each exported function in 'lib_module':
+                //   -- add new function to the lib scope
+                //   -- with the right type information
+                // THEN:
+                // -- should be able to do a normal function call AND type check
+                // -- (after looking up the library scope in the table)
+                if check_duplicate_id(lib_name, &None, &Definition::User, &self.table, self.err) {
+                    return;
                 }
-                _ => {
-                    self.err
-                        .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+
+                let lib_id = self.table.put(
+                    lib_name.clone(),
+                    Record::Library {
+                        fns: Default::default(),
+                    },
+                );
+                match self.table.get_record_mut(self.curr_script.unwrap()) {
+                    Some(Record::Script { user_libs, .. }) => {
+                        user_libs.push(lib_id);
+                    }
+                    _ => {
+                        self.err
+                            .unexpected_error(true, Some(UNEXPECTED_ERR_MSG.to_string()), None);
+                    }
                 }
-            }
 
-            for export in lib_module.exports.iter() {
-                // we don't care about non-function exports
-                if let ExternalKind::Func = export.kind {
-                    let func = lib_module.functions.get(FunctionID(export.index));
-                    if let Some(ty) = lib_module.types.get(func.get_type_id()) {
-                        let mut params = vec![];
-                        for p in ty.params().iter() {
-                            params.push(DataType::from_wasm_type(p));
-                        }
-                        let mut results = vec![];
-                        for p in ty.results().iter() {
-                            results.push(DataType::from_wasm_type(p));
-                        }
-                        let fn_name = export.name.clone();
-                        let fn_rec = Record::LibFn {
-                            name: fn_name.clone(),
-                            def: Definition::User,
-                            params,
-                            results,
-                            addr: None,
-                            loc: None,
-                        };
+                for export in lib_module.exports.iter() {
+                    // we don't care about non-function exports
+                    if let ExternalKind::Func = export.kind {
+                        let func = lib_module.functions.get(FunctionID(export.index));
+                        if let Some(ty) = lib_module.types.get(func.get_type_id()) {
+                            let mut params = vec![];
+                            for p in ty.params().iter() {
+                                params.push(DataType::from_wasm_type(p));
+                            }
+                            let mut results = vec![];
+                            for p in ty.results().iter() {
+                                results.push(DataType::from_wasm_type(p));
+                            }
+                            let fn_name = export.name.clone();
+                            let fn_rec = Record::LibFn {
+                                name: fn_name.clone(),
+                                def: Definition::User,
+                                params,
+                                results,
+                                addr: None,
+                                loc: None,
+                            };
 
-                        // Add fn to library
-                        let id = self.table.put(fn_name.clone(), fn_rec);
-                        match self.table.get_record_mut(lib_id) {
-                            Some(Record::Library { fns, .. }) => {
-                                fns.insert(fn_name.clone(), id);
+                            // Add fn to library
+                            let id = self.table.put(fn_name.clone(), fn_rec);
+                            match self.table.get_record_mut(lib_id) {
+                                Some(Record::Library { fns, .. }) => {
+                                    fns.insert(fn_name.clone(), id);
+                                }
+                                _ => {
+                                    panic!("{}", UNEXPECTED_ERR_MSG);
+                                }
                             }
-                            _ => {
-                                panic!("{}", UNEXPECTED_ERR_MSG);
-                            }
+                        } else {
+                            panic!(
+                                "UserLib: Could not find type ID for function {}",
+                                export.name
+                            );
                         }
-                    } else {
-                        panic!(
-                            "UserLib: Could not find type ID for function {}",
-                            export.name
-                        );
                     }
                 }
             }

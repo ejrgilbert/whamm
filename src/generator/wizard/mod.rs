@@ -12,7 +12,6 @@ use log::trace;
 use std::collections::{HashMap, HashSet};
 use wirm::ir::id::{FunctionID, LocalID};
 use wirm::ir::types::DataType as WirmType;
-use wirm::Module;
 
 pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm> {
     pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
@@ -22,7 +21,8 @@ pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm> {
     pub injected_funcs: &'i mut Vec<FunctionID>,
     pub config: &'j Config,
     pub used_fns_per_lib: HashMap<String, HashSet<String>>,
-    pub user_lib_modules: &'k HashMap<String, Module<'l>>,
+    pub user_lib_modules: &'k HashMap<String, &'l [u8]>,
+    pub libs_as_components: bool,
 
     // tracking
     pub curr_script_id: u8,
@@ -264,6 +264,7 @@ impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '
                     self.emitter.app_wasm,
                     loc,
                     lib_wasm,
+                    self.libs_as_components,
                     lib_name.to_string(),
                     used_fns,
                     self.emitter.table,

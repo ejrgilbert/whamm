@@ -2,18 +2,19 @@
 
 use crate::api::instrument::{Config, LibraryLinkStrategy};
 use crate::api::utils::wasm2wat_on_file;
-use crate::common::instr::{get_libs, run, try_path};
+use crate::common::instr::{run, try_path};
 use crate::common::metrics::Metrics;
 use crate::lang_features::libraries::core::WHAMM_CORE_LIB_NAME;
 use crate::parser::yml_processor::pull_all_yml_files;
 use log::{debug, error};
+use std::collections::HashMap;
 use std::fs::{remove_dir_all, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use wirm::Module;
 
-const CORE_WASM_PATH: &str = "./whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
+const CORE_WASM_PATH: &str = "./whamm_core-module/target/wasm32-wasip1/release/whamm_core.wasm";
 const DEFS_PATH: &str = "./";
 const TEST_DEBUG_DIR: &str = "output/tests/debug_me/";
 const OUTPUT_DIR: &str = "output/tests/wast_suite";
@@ -242,21 +243,20 @@ fn generate_instrumented_bin_wast(
         let mut metrics = Metrics::default();
 
         // handle the libraries
-        let libs = vec![];
-        let (core_lib, mut user_libs) = get_libs(&core_lib_buff, &libs);
+        let core_lib_buff_vec = core_lib_buff.as_slice();
+        let mut libs = HashMap::default();
+        // let (core_lib, mut user_libs) = user_libs_as_modules(&core_lib_buff_vec, &libs);
         // add the core library just in case the script needs it
-        user_libs.insert(
-            WHAMM_CORE_LIB_NAME.to_string(),
-            Module::parse(&core_lib_buff, false).unwrap(),
-        );
+        libs.insert(WHAMM_CORE_LIB_NAME.to_string(), core_lib_buff_vec);
 
         if let Err(mut err) = run(
-            &core_lib,
+            core_lib_buff_vec,
             &def_yamls,
             &mut module_to_instrument,
             &test_case.whamm_script,
             &wast_path_str,
-            &mut user_libs,
+            &mut libs,
+            false,
             0,
             &mut metrics,
             &Config {

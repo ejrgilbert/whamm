@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_tag_for;
@@ -28,7 +29,7 @@ use wirm::{DataType, Module};
 pub fn link_core_lib(
     ast: &[Script],
     app_wasm: &mut Module,
-    core_lib: &Module,
+    core_lib: &[u8],
     mem_allocator: &mut MemoryAllocator,
     packages: &mut [&mut dyn LibPackage],
     err: &mut ErrorGen,
@@ -61,21 +62,26 @@ pub fn link_core_lib(
 pub fn link_user_lib(
     app_wasm: &mut Module,
     loc: &Option<Location>,
-    lib_wasm: &Module,
+    lib_wasm: &[u8],
+    libs_as_components: bool,
     lib_name: String,
     used_lib_fns: &HashSet<String>,
     table: &mut SymbolTable,
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
-    let added = import_lib_fn_names(
-        app_wasm,
-        loc,
-        lib_name,
-        lib_wasm,
-        used_lib_fns,
-        Some(table),
-        err,
-    );
+    let added = if libs_as_components {
+        unimplemented!("Have not implemented support for component libraries.")
+    } else {
+        import_lib_fn_names(
+            app_wasm,
+            loc,
+            lib_name,
+            lib_wasm,
+            used_lib_fns,
+            Some(table),
+            err,
+        )
+    };
 
     let mut injected_funcs = vec![];
     for (_, fid) in added.iter() {
@@ -103,7 +109,7 @@ fn import_lib_package(
     app_wasm: &mut Module,
     loc: &Option<Location>,
     lib_name: String,
-    lib_wasm: &Module,
+    lib_bytes: &[u8],
     package: &mut dyn LibPackage,
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
@@ -114,7 +120,7 @@ fn import_lib_package(
         app_wasm,
         loc,
         lib_name,
-        lib_wasm,
+        lib_bytes,
         &HashSet::from_iter(package.get_fn_names().iter().cloned()),
         None,
         err,
@@ -136,11 +142,13 @@ fn import_lib_fn_names(
     app_wasm: &mut Module,
     loc: &Option<Location>,
     lib_name: String,
-    lib_wasm: &Module,
+    lib_bytes: &[u8],
     lib_fns: &HashSet<String>,
     mut table: Option<&mut SymbolTable>,
     err: &mut ErrorGen,
 ) -> Vec<(String, u32)> {
+    let lib_wasm = Module::parse(lib_bytes, false).unwrap();
+
     let mut injected_fns = vec![];
     for export in lib_wasm.exports.iter() {
         // we don't care about non-function exports
