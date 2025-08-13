@@ -1,6 +1,7 @@
 use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::ModuleEmitter;
+use crate::emitter::tag_handler::get_tag_for;
 use crate::generator::ast::{Probe, Script, WhammParams};
 use crate::generator::{create_curr_loc, emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
@@ -186,10 +187,11 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             &body_param_str,
         );
         if let Some(fid) = body_fid {
-            self.emitter
-                .app_wasm
-                .exports
-                .add_export_func(match_rule, fid, None);
+            self.emitter.app_wasm.exports.add_export_func_with_tag(
+                match_rule,
+                fid,
+                get_tag_for(&None),
+            );
         } else {
             unreachable!()
         }

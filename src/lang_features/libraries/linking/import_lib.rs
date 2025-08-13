@@ -221,7 +221,9 @@ pub fn import_func(
     loc: &Option<Location>,
     app_wasm: &mut Module,
 ) -> u32 {
-    let ty_id = app_wasm.types.add_func_type(params, results, None);
+    let ty_id = app_wasm
+        .types
+        .add_func_type_with_tag(params, results, get_tag_for(loc));
     let (fid, imp_id) = app_wasm.add_import_func_with_tag(
         module_name.to_string(),
         fname.to_string(),
