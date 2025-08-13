@@ -243,12 +243,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             if let Some(name) = name {
                 self.app_wasm.set_fn_name(fid, name.clone());
                 if export {
-                    self.app_wasm.exports.add_export_func(name, *fid, None);
+                    self.app_wasm
+                        .exports
+                        .add_export_func_with_tag(name, *fid, get_tag_for(loc));
                 }
             } else if export {
-                self.app_wasm
-                    .exports
-                    .add_export_func(format!("${}", *fid), *fid, None);
+                self.app_wasm.exports.add_export_func_with_tag(
+                    format!("${}", *fid),
+                    *fid,
+                    get_tag_for(loc),
+                );
             }
             Some(*fid)
         } else {
@@ -342,9 +346,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             let on_exit_id = on_exit.finish_module_with_tag(self.app_wasm, get_tag_for(&None));
             self.app_wasm.set_fn_name(on_exit_id, "on_exit".to_string());
 
-            self.app_wasm
-                .exports
-                .add_export_func("wasm:exit".to_string(), *on_exit_id, None);
+            self.app_wasm.exports.add_export_func_with_tag(
+                "wasm:exit".to_string(),
+                *on_exit_id,
+                get_tag_for(&None),
+            );
             Some(on_exit_id)
         } else {
             None

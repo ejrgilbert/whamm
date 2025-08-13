@@ -14,7 +14,7 @@ glob = "0.3.1"
 lazy_static = "1.4.0"
 itertools = "0.14.0"
 #wirm = { path = "../wirm" }
-wirm = "=1.0.2"
+wirm = "=1.2.0"
 wasmparser = "0.235.0"
 
 # Logging

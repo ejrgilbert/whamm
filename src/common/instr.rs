@@ -602,9 +602,11 @@ fn get_memory_allocator(
             },
             get_tag_for(&None),
         );
-        target_wasm
-            .exports
-            .add_export_mem("engine:data".to_string(), engine_id, None);
+        target_wasm.exports.add_export_mem_with_tag(
+            "engine:data".to_string(),
+            engine_id,
+            get_tag_for(&None),
+        );
 
         (Some(alloc_id), Some(alloc_tracker_global), Some(engine_id))
     } else {

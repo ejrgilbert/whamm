@@ -421,7 +421,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
                 };
 
                 // we only care about the result of the original
-                WirmBlockType::FuncType(self.app_iter.module.types.add_func_type(&[], &ty, None))
+                WirmBlockType::FuncType(self.app_iter.module.types.add_func_type_with_tag(
+                    &[],
+                    &ty,
+                    get_tag_for(&None),
+                ))
             }
             None => WirmBlockType::Empty,
         };

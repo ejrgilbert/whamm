@@ -309,10 +309,11 @@ impl UnsharedVarHandler {
         alloc.local_get(orig_offset.id);
 
         let alloc_id = alloc.finish_module_with_tag(emitter.app_wasm, get_tag_for(&None));
-        emitter
-            .app_wasm
-            .exports
-            .add_export_func(format!("${}", *alloc_id), *alloc_id, None);
+        emitter.app_wasm.exports.add_export_func_with_tag(
+            format!("${}", *alloc_id),
+            *alloc_id,
+            get_tag_for(&None),
+        );
         (Some(*alloc_id), "fname, fid, pc".to_string())
     }
 
