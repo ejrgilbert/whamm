@@ -33,6 +33,7 @@ use wirm::{Component, InitInstr, Module};
 
 use crate::lang_features::libraries::actions::configure_component_libraries;
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
+use crate::api::get_core_lib;
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -42,7 +43,7 @@ pub(crate) fn try_path(path: &String) {
 }
 
 pub fn run_with_path(
-    core_lib: &[u8],
+    core_lib_path: Option<String>,
     def_yamls: &Vec<String>,
     app_wasm_path: String,
     script_path: String,
@@ -61,7 +62,7 @@ pub fn run_with_path(
         vec![]
     };
     run_on_bytes_and_encode(
-        core_lib,
+        core_lib_path,
         def_yamls,
         &bytes,
         script_path,
@@ -182,7 +183,7 @@ pub fn parse_user_lib_paths(paths: &[String]) -> HashMap<String, Vec<u8>> {
 // }
 
 pub fn run_on_bytes_and_encode(
-    core_lib_bytes: &[u8],
+    core_lib_path: Option<String>,
     def_yamls: &Vec<String>,
     target_wasm_bytes: &[u8],
     script_path: String,
@@ -193,9 +194,7 @@ pub fn run_on_bytes_and_encode(
     let mut metrics = Metrics::default();
 
     // handle the libraries
-    let mut user_lib_bytes = parse_user_lib_paths(&user_lib_paths);
-    // add the core library just in case the script needs it
-    user_lib_bytes.insert(WHAMM_CORE_LIB_NAME.to_string(), core_lib_bytes.to_vec());
+    let user_lib_bytes = parse_user_lib_paths(&user_lib_paths);
     let mut user_lib_map = HashMap::default();
     for (n, v) in user_lib_bytes.iter() {
         user_lib_map.insert(n.clone(), v.as_slice());
@@ -205,9 +204,12 @@ pub fn run_on_bytes_and_encode(
         // handle emitting a monitor module
         // Create a new wasm file to use as `mon.wasm`
         let mut module = Module::default();
-        // let (core_lib, mut user_libs) = user_libs_as_modules(core_lib_bytes, &user_lib_map);
+        let core_lib_bytes = get_core_lib(core_lib_path, true);
+
+        // add the core library just in case the script needs it
+        user_lib_map.insert(WHAMM_CORE_LIB_NAME.to_string(), &core_lib_bytes);
         if let Err(mut err) = run_on_module(
-            core_lib_bytes,
+            &core_lib_bytes,
             def_yamls,
             &mut module,
             &script_path,
@@ -221,9 +223,13 @@ pub fn run_on_bytes_and_encode(
         }
         module.encode()
     } else {
+        let core_lib_bytes = get_core_lib(core_lib_path, Module::parse(target_wasm_bytes, true).is_ok());
+
+        // add the core library just in case the script needs it
+        user_lib_map.insert(WHAMM_CORE_LIB_NAME.to_string(), &core_lib_bytes);
         run_and_encode_module_or_component(
             target_wasm_bytes,
-            core_lib_bytes,
+            &core_lib_bytes,
             def_yamls,
             &script_path,
             &mut user_lib_map,
@@ -250,13 +256,8 @@ fn run_and_encode_module_or_component(
     // handle a wasm component OR module
     let res = match bytes_to_wasm(target_wasm_bytes) {
         (Some(mut module), None) => {
-            // let mut user_lib_map = HashMap::default();
-            // for (n, v) in user_libs_bytes.iter() {
-            //     user_lib_map.insert(n.clone(), v.as_slice());
-            // }
-            // let (core_lib, mut user_libs) = user_libs_as_modules(core_lib_bytes, &user_lib_map);
             match run_on_module(
-                core_lib_bytes,
+                &core_lib_bytes,
                 def_yamls,
                 &mut module,
                 script_path,
@@ -279,18 +280,19 @@ fn run_and_encode_module_or_component(
             module.encode()
         }
         (None, Some(mut component)) => {
-            // handle instrumenting a component
-            // let core_lib = Component::parse(core_lib_bytes, false).unwrap_or_else(|e| {
-            //     panic!("Could not parse core library into a component: {e}")
-            // });
-            // let mut user_libs = HashMap::default();
-            // for (name, bytes) in user_libs_bytes.iter() {
-            //     user_libs.insert(name.clone(), Component::parse(bytes, false).unwrap_or_else(|e| {
-            //         panic!("Could not parse core library into a component: {e}")
-            //     }));
-            // }
+            // make sure none of the user libraries are provided as modules
+            check_is_component(WHAMM_CORE_LIB_NAME, &core_lib_bytes);
+            for (name, bytes) in user_libs_bytes.iter() {
+                check_is_component(name, bytes);
+            }
+
+            fn check_is_component(name: &str, bytes: &[u8]) {
+                if Module::parse(bytes, true).is_ok() {
+                    panic!("When instrumenting a component, the libraries MUST be provided as components, this library is a module: {}", name);
+                }
+            }
             match run_on_component(
-                core_lib_bytes,
+                &core_lib_bytes,
                 def_yamls,
                 &mut component,
                 script_path,
@@ -299,8 +301,12 @@ fn run_and_encode_module_or_component(
                 metrics,
                 config,
             ) {
-                Ok(ran) => {
-                    if !ran {
+                Ok(ran_on) => {
+                    if let Some(id) = ran_on {
+                        // Now that the component has been instrumented, we need to add in the support libraries
+                        // so that they are linked appropriately!
+                        configure_component_libraries(id as u32, &mut component, &core_lib_bytes, user_libs_bytes);
+                    } else {
                         error!("Could not find an instrument-able module in the target component (MUST have a main).");
                         exit(1)
                     }
@@ -309,10 +315,6 @@ fn run_and_encode_module_or_component(
                     err.check_has_errors();
                 }
             }
-
-            // Now that the component has been instrumented, we need to add in the support libraries
-            // so that they are linked appropriately!
-            configure_component_libraries(&mut component, core_lib_bytes, user_libs_bytes);
 
             component.encode()
         }
@@ -352,16 +354,10 @@ fn run_on_component(
     max_errors: i32,
     metrics: &mut Metrics,
     config: &Config,
-) -> Result<bool, Box<ErrorGen>> {
-    let mut ran: bool = false;
-    // TODO
-    //  I probably want to have an outer function that iterates over the modules within a
-    //  component and then passes each &mut Module to the `run_on_module` function!
-    //  This will keep from copy/pasting a ton of code.
-
+) -> Result<Option<usize>, Box<ErrorGen>> {
     // instrument the component's modules first
-    for module in target_wasm.modules.iter_mut() {
-        ran |= run_on_module(
+    for (i, module) in target_wasm.modules.iter_mut().enumerate() {
+        if run_on_module(
             core_lib,
             def_yamls,
             module,
@@ -371,12 +367,14 @@ fn run_on_component(
             max_errors,
             metrics,
             config,
-        )?;
+        )? {
+            return Ok(Some(i));
+        }
     }
 
     // then visit the component's components
     for component in target_wasm.components.iter_mut() {
-        ran |= run_on_component(
+        if let Ok(id) = run_on_component(
             core_lib,
             def_yamls,
             component,
@@ -385,10 +383,12 @@ fn run_on_component(
             max_errors,
             metrics,
             config,
-        )?;
+        ) {
+            return Ok(id);
+        }
     }
 
-    Ok(ran)
+    return Ok(None)
 }
 
 pub fn run_on_module(
@@ -772,7 +772,7 @@ fn get_memory_allocator(
         );
         target_wasm
             .exports
-            .add_export_mem("engine:data".to_string(), engine_id, None);
+            .add_export_mem("engine:data".to_string(), engine_id);
 
         (Some(alloc_id), Some(alloc_tracker_global), Some(engine_id))
     } else {

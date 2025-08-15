@@ -28,6 +28,7 @@ fn instrument_dfinity_with_fault_injection() {
             wasm_path,
             fs::read(wasm_path).unwrap(),
             vec![],
+            DEFAULT_CORE_LIB_PATH.to_string(),
             None,
             false,
             true,
@@ -131,7 +132,7 @@ fn instrument_with_wizard_monitors() {
     let processed_scripts = setup_wizard_monitors();
     assert!(!processed_scripts.is_empty());
 
-    build_whamm_core_lib();
+    build_whamm_core_lib(false);
     wat2wasm_on_dir("tests/apps/core_suite/handwritten");
     for (script_path, ..) in processed_scripts {
         run_script(
@@ -139,6 +140,7 @@ fn instrument_with_wizard_monitors() {
             APP_WASM_PATH,
             fs::read(APP_WASM_PATH).unwrap(),
             vec![],
+            DEFAULT_CORE_LIB_PATH.to_string(),
             None,
             false,
             true,
@@ -160,7 +162,7 @@ fn instrument_with_numerics_scripts() {
     let processed_scripts = setup_numerics_monitors();
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("numerics", processed_scripts, true, true, true)
+    run_core_suite("numerics", processed_scripts, false, true, true, true)
 }
 
 #[test]
@@ -171,7 +173,7 @@ fn instrument_with_branch_monitor_scripts() {
 
     // TODO -- fix wizard side (THEN merge with below test)
     //   - pull `fname`, `targets`, `num_targets`, `default_target`
-    run_core_suite("branch-monitor", processed_scripts, true, true, true)
+    run_core_suite("branch-monitor", processed_scripts, false, true, true, true)
 }
 #[test]
 fn instrument_with_branch_monitor_rewriting_scripts() {
@@ -182,6 +184,7 @@ fn instrument_with_branch_monitor_rewriting_scripts() {
     run_core_suite(
         "branch-monitor_rewriting",
         processed_scripts,
+        false,
         true,
         false,
         true,
@@ -193,7 +196,7 @@ fn instrument_with_local_n_scripts() {
     let processed_scripts = setup_tests("core_suite/localN");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("localN", processed_scripts, true, true, true)
+    run_core_suite("localN", processed_scripts,  false, true, true, true)
 }
 
 #[test]
@@ -204,7 +207,7 @@ fn instrument_with_calls_monitor_scripts() {
 
     // TODO -- fix wizard side (THEN merge with below test)
     //   - pull `fname`
-    run_core_suite("calls-monitor", processed_scripts, true, true, true)
+    run_core_suite("calls-monitor", processed_scripts,  false, true, true, true)
 }
 #[test]
 fn instrument_with_calls_monitor_rewriting_scripts() {
@@ -215,17 +218,18 @@ fn instrument_with_calls_monitor_rewriting_scripts() {
     run_core_suite(
         "calls-monitor_rewriting",
         processed_scripts,
+        false,
         true,
         false,
         true,
     )
 }
 
-// #[test]
+#[test]
 fn components() {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/components");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("core-components", processed_scripts, true, false, false)
+    run_core_suite("core-components", processed_scripts,  true, true, false, false)
 }

@@ -10,8 +10,8 @@ use crate::parser::types::Location;
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
 use std::collections::HashSet;
-use wasmparser::{ComponentExternalKind, ComponentType, ComponentTypeRef, ComponentValType, ExternalKind, MemoryType, PrimitiveValType};
-use wirm::ir::id::FunctionID;
+use wasmparser::{CanonicalFunction, ComponentAlias, ComponentExport, ComponentExternalKind, ComponentFuncType, ComponentType, ComponentTypeRef, ComponentValType, ExternalKind, MemoryType, PrimitiveValType};
+use wirm::ir::id::{ComponentExportId, FunctionID};
 use wirm::{Component, DataType, Module};
 // Some documentation on why it's difficult to only import the *used* functions.
 //
@@ -72,9 +72,16 @@ pub fn link_user_lib(
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
     let added = if libs_as_components {
-        // unimplemented!("Have not implemented support for component libraries.")
         let lib_wasm = Component::parse(lib_bytes, false).unwrap();
-
+        import_lib_fn_names_from_component(
+            app_wasm,
+            loc,
+            lib_name,
+            &lib_wasm,
+            used_lib_fns,
+            Some(table),
+            err
+        )
     } else {
         let lib_wasm = Module::parse(lib_bytes, false).unwrap();
         import_lib_fn_names_from_module(
@@ -84,7 +91,7 @@ pub fn link_user_lib(
             &lib_wasm,
             used_lib_fns,
             Some(table),
-            err,
+            err
         )
     };
 
@@ -123,7 +130,16 @@ fn import_lib_package(
 
     // should only import the EXPORTED contents of the lib_wasm
     let added = if libs_as_components {
-        unimplemented!("Have not implemented support for component libraries.")
+        let lib_wasm = Component::parse(lib_bytes, false).unwrap();
+        import_lib_fn_names_from_component(
+            app_wasm,
+            loc,
+            lib_name,
+            &lib_wasm,
+            &HashSet::from_iter(package.get_fn_names().iter().cloned()),
+            None,
+            err
+        )
     } else {
         let lib_wasm = Module::parse(lib_bytes, false).unwrap();
         import_lib_fn_names_from_module(
@@ -149,7 +165,7 @@ fn import_lib_package(
     injected_funcs
 }
 
-fn canon_lower(ty: ComponentValType) -> DataType {
+fn canon_lower(ty: &ComponentValType) -> DataType {
     match ty {
         ComponentValType::Primitive(pty) => match pty {
             PrimitiveValType::Bool |
@@ -182,60 +198,134 @@ fn import_lib_fn_names_from_component(
 ) -> Vec<(String, u32)> {
 
     let mut injected_fns = vec![];
-    for export in lib_wasm.exports.iter() {
-        // we don't care about non-function exports
-        if let ComponentExternalKind::Func = export.kind {
-            let fn_name = export.name.0;
-            if lib_fns.contains(fn_name) {
-                if let Some(ComponentTypeRef::Func(ty_id)) = export.ty {
-                    if let Some(ComponentType::Func(ty)) = lib_wasm.component_types.get(ty_id) {
-                        let mut params = vec![];
-                        for (_, pty) in ty.params.iter() {
-                            params.push(DataType::from(pty))
-                        }
+    let mut num_exported_fns = 0;
+    for (i, export) in lib_wasm.exports.iter().enumerate() {
+        if !matches!(export.kind, ComponentExternalKind::Func) {
+            // we don't care about non-function exports
+            continue;
+        }
 
-                        let fid = import_func(
-                            lib_name.as_str(),
-                            fn_name,
-                            &ty.params().clone(),
-                            &ty.results().clone(),
-                            loc,
-                            app_wasm,
-                        );
-                        // save the FID to the symbol table
-                        if let Some(table) = table.as_mut() {
-                            let Some(Record::LibFn { addr, .. }) =
-                                table.lookup_lib_fn_mut(&lib_name, fn_name)
-                            else {
-                                panic!("unexpected type");
-                            };
-
-                            *addr = Some(fid);
-                        }
-
-                        // save the FID as an injected function
-                        injected_fns.push((export.name.clone(), fid));
-                    }
+        let fn_name = export.name.0;
+        // println!("export: {:#?}", export);
+        if lib_fns.contains(fn_name) {
+            let ty = lib_wasm.get_type_of_exported_func(ComponentExportId(i as u32));
+            // let mut fn_start_idx = 0;
+            // while !matches!(lib_wasm.canons.get(fn_start_idx), Some(CanonicalFunction::Lift {..}) | Some(CanonicalFunction::Lower {..})) {
+            //     // Handle non-lift/lower canonical functions
+            //     fn_start_idx += 1;
+            // }
+            // // println!("fn_start_idx: {}", fn_start_idx);
+            // if let Some(CanonicalFunction::Lift {type_index: ty_id, ..}) = lib_wasm.canons.get((export.index as usize + fn_start_idx) - num_exported_fns) {
+            //     let mut num_non_func_tys = 0;
+            //     while !matches!(lib_wasm.component_types.get(num_non_func_tys), Some(ComponentType::Func(..))) {
+            //         // Handle non-lift/lower canonical functions
+            //         num_non_func_tys += 1;
+            //     }
+            //     let mut i = 0;
+            //     let mut num_aliased_types = 0;
+            //     while num_aliased_types < (*ty_id as usize - num_non_func_tys) && i < lib_wasm.alias.len() {
+            //         if matches!(lib_wasm.alias.get(i), Some(ComponentAlias::InstanceExport {kind: ComponentExternalKind::Type, ..})) {
+            //             // aliased types
+            //             num_aliased_types += 1;
+            //         }
+            //         i += 1;
+            //     }
+            //     // println!("aliased types: {}", num_aliased_types);
+            //
+            //     // println!("====\n@{}->{}: {:#?}\n====\n\n", ty_id, *ty_id as usize - num_aliased_types, lib_wasm.component_types.get(*ty_id as usize - num_aliased_types));
+            //     // println!("====\ncomponent_types: {:#?}\n====\n\n", lib_wasm.component_types);
+            //     // println!("====\nalias: {:#?}\n====\n\n", lib_wasm.alias);
+            //     // println!("====\ncanons: {:#?}\n====\n\n", lib_wasm.canons);
+            //     // panic!("blah");
+            if let Some(ComponentType::Func(ty)) = ty {
+                // println!("ty: {:#?}", ty);
+                // panic!("blah");
+                let mut params = vec![];
+                for (_, pty) in ty.params.iter() {
+                    params.push(canon_lower(pty))
                 }
-                let func = lib_wasm..functions.get(FunctionID(export.index));
-                if let Some(ty) = lib_wasm.types.get(func.get_type_id()) {
-                    let fn_name = export.name.as_str();
-
+                let results = if let Some(rty) = &ty.result {
+                    vec![canon_lower(rty)]
                 } else {
-                    err.unexpected_error(
-                        true,
-                        Some(format!(
-                            "ImportLib: Could not add function \"{}\" as application import",
-                            export.name
-                        )),
-                        None,
-                    );
+                    vec![]
+                };
+
+                let fid = import_func(
+                    lib_name.as_str(),
+                    fn_name,
+                    params.as_slice(),
+                    results.as_slice(),
+                    loc,
+                    app_wasm,
+                );
+                // save the FID to the symbol table
+                if let Some(table) = table.as_mut() {
+                    let Some(Record::LibFn { addr, .. }) =
+                        table.lookup_lib_fn_mut(&lib_name, fn_name)
+                    else {
+                        panic!("unexpected type");
+                    };
+
+                    *addr = Some(fid);
                 }
+
+                // save the FID as an injected function
+                injected_fns.push((export.name.0.to_string(), fid));
+            } else {
+            err.unexpected_error(
+                true,
+                Some(format!(
+                    "ImportLib::component: Could not add function \"{}\" as application import, looking at ID {}, actual type: {:?}. Full export: {:?}",
+                    export.name.0,
+                    export.index,
+                    export.ty,
+                    export
+                )),
+                None,
+            );
             }
         }
+        num_exported_fns += 1;
     }
     injected_fns
 }
+
+// pub fn get_fn_type_from_component_export<'a, 'b>(lib_wasm: &'a Component<'b>, num_exported_fns: usize, export: &ComponentExport) -> Option<&'a ComponentType<'b>> {
+//     let mut fn_start_idx = 0;
+//     while !matches!(lib_wasm.canons.get(fn_start_idx), Some(CanonicalFunction::Lift {..}) | Some(CanonicalFunction::Lower {..})) {
+//         println!("item: {:#?}", lib_wasm.canons.get(fn_start_idx));
+//         // Handle non-lift/lower canonical functions
+//         fn_start_idx += 1;
+//     }
+// 
+//     // println!("fn_start_idx: {}", fn_start_idx);
+//     if let Some(CanonicalFunction::Lift {type_index: ty_id, ..}) = lib_wasm.canons.get((export.index as usize + fn_start_idx) - num_exported_fns) {
+//         let mut num_non_func_tys = 0;
+//         while !matches!(lib_wasm.component_types.get(num_non_func_tys), Some(ComponentType::Func(..))) {
+//             // Handle non-lift/lower canonical functions
+//             num_non_func_tys += 1;
+//         }
+//         let mut i = 0;
+//         let mut num_aliased_types = 0;
+//         while num_aliased_types < (*ty_id as usize - num_non_func_tys) && i < lib_wasm.alias.len() {
+//             if matches!(lib_wasm.alias.get(i), Some(ComponentAlias::InstanceExport {kind: ComponentExternalKind::Type, ..})) {
+//                 // aliased types
+//                 num_aliased_types += 1;
+//             }
+//             i += 1;
+//         }
+//         lib_wasm.component_types.get(*ty_id as usize - num_aliased_types)
+//         // println!("aliased types: {}", num_aliased_types);
+// 
+//         // println!("====\n@{}->{}: {:#?}\n====\n\n", ty_id, *ty_id as usize - num_aliased_types, lib_wasm.component_types.get(*ty_id as usize - num_aliased_types));
+//         // println!("====\ncomponent_types: {:#?}\n====\n\n", lib_wasm.component_types);
+//         // println!("====\nalias: {:#?}\n====\n\n", lib_wasm.alias);
+//         // println!("====\ncanons: {:#?}\n====\n\n", lib_wasm.canons);
+//         // panic!("blah");
+//     } else {
+//         None
+//     }
+// }
 
 fn import_lib_fn_names_from_module(
     app_wasm: &mut Module,
@@ -280,7 +370,7 @@ fn import_lib_fn_names_from_module(
                     err.unexpected_error(
                         true,
                         Some(format!(
-                            "ImportLib: Could not add function \"{}\" as application import",
+                            "ImportLib::module: Could not add function \"{}\" as application import",
                             export.name
                         )),
                         None,
@@ -324,7 +414,7 @@ pub fn import_func(
     loc: &Option<Location>,
     app_wasm: &mut Module,
 ) -> u32 {
-    let ty_id = app_wasm.types.add_func_type(params, results, None);
+    let ty_id = app_wasm.types.add_func_type(params, results);
     let (fid, imp_id) = app_wasm.add_import_func_with_tag(
         module_name.to_string(),
         fname.to_string(),

@@ -261,7 +261,7 @@ impl UnsharedVarHandler {
         emitter
             .app_wasm
             .exports
-            .add_export_func(format!("${}", *alloc_id), *alloc_id, None);
+            .add_export_func(format!("${}", *alloc_id), *alloc_id);
         (Some(*alloc_id), "fname, fid, pc".to_string())
     }
 

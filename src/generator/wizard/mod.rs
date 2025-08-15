@@ -194,7 +194,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             self.emitter
                 .app_wasm
                 .exports
-                .add_export_func(match_rule, fid, None);
+                .add_export_func(match_rule, fid);
         } else {
             unreachable!()
         }

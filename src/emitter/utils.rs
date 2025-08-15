@@ -430,7 +430,7 @@ pub fn emit_global_getter(
     let getter_id = getter.finish_module_with_tag(app_wasm, get_tag_for(loc));
     let fn_name = format!("get_{name}");
     app_wasm.set_fn_name(getter_id, fn_name.clone());
-    app_wasm.exports.add_export_func(fn_name, *getter_id, None);
+    app_wasm.exports.add_export_func(fn_name, *getter_id);
 
     getter_id
 }

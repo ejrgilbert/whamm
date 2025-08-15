@@ -244,12 +244,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             if let Some(name) = name {
                 self.app_wasm.set_fn_name(fid, name.clone());
                 if export {
-                    self.app_wasm.exports.add_export_func(name, *fid, None);
+                    self.app_wasm.exports.add_export_func(name, *fid);
                 }
             } else if export {
                 self.app_wasm
                     .exports
-                    .add_export_func(format!("${}", *fid), *fid, None);
+                    .add_export_func(format!("${}", *fid), *fid);
             }
             Some(*fid)
         } else {
@@ -351,7 +351,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
             self.app_wasm
                 .exports
-                .add_export_func("wasm:exit".to_string(), *on_exit_id, None);
+                .add_export_func("wasm:exit".to_string(), *on_exit_id);
             Some(on_exit_id)
         } else {
             None

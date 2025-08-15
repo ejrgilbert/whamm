@@ -1,6 +1,5 @@
 #![allow(clippy::too_many_arguments)]
 
-use crate::api::get_defs_and_lib;
 use crate::common::error::WhammError;
 use crate::common::instr;
 use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
@@ -11,6 +10,7 @@ use wasmparser::{ExternalKind, TypeRef};
 use wirm::ir::module::module_types::Types;
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
 use wirm::ir::types::{DataType as WirmType, FuncInstrMode, InstrumentationMode};
+use crate::api::{get_defs, get_defs_and_lib};
 
 pub const MAX_ERRORS: i32 = 15;
 
@@ -30,9 +30,9 @@ pub fn instrument_with_config(
     core_lib_path: Option<String>,
     defs_path: Option<String>,
 ) -> Vec<u8> {
-    let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
+    let def_yamls = get_defs(defs_path);
     instr::run_with_path(
-        &core_lib,
+        core_lib_path,
         &def_yamls,
         app_wasm_path,
         script_path,
@@ -80,9 +80,9 @@ pub fn instrument_bytes_with_rewriting(
     core_lib_path: Option<String>,
     defs_path: Option<String>,
 ) -> Vec<u8> {
-    let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
+    let def_yamls = get_defs(defs_path);
     instr::run_on_bytes_and_encode(
-        &core_lib,
+        core_lib_path,
         &def_yamls,
         &target_wasm_bytes,
         script_path,
@@ -131,7 +131,7 @@ pub fn instrument_as_dry_run(
     core_lib_path: Option<String>,
     defs_path: Option<String>,
 ) -> Result<HashMap<WirmInjectType, Vec<Injection>>, Vec<WhammError>> {
-    let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
+    let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path, true);
 
     let bytes = if let Ok(bytes) = std::fs::read(&app_wasm_path) {
         bytes

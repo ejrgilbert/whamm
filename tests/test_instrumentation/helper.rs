@@ -1,4 +1,4 @@
-use crate::util::{setup_logger, CORE_WASM_PATH};
+use crate::util::setup_logger;
 use glob::{glob, glob_with};
 use log::{error, warn};
 use std::fs;
@@ -188,12 +188,13 @@ pub fn setup_tests(dir_name: &str) -> Vec<(PathBuf, String)> {
 pub(crate) fn run_core_suite(
     suite_name: &str,
     processed_scripts: Vec<(PathBuf, String)>,
+    as_component: bool,
     with_br: bool,
     with_wizard: bool,
     dry_run: bool,
 ) {
-    build_whamm_core_lib();
-    build_user_libs();
+    let core_lib_path = build_whamm_core_lib(as_component);
+    build_user_libs(as_component);
     // wat2wasm_on_dir("tests/apps/core_suite/rust");
     // wat2wasm_on_dir("tests/apps/core_suite/handwritten");
     // wat2wasm_on_dir("tests/apps/core_suite/clang");
@@ -270,6 +271,7 @@ pub(crate) fn run_core_suite(
                 script,
                 &app_path_str,
                 libs_path_str,
+                core_lib_path.clone(),
                 exp_out,
                 &outdir,
                 &instr_app_path,
@@ -315,6 +317,7 @@ pub(crate) fn run_core_suite(
                 script,
                 &app_path_str,
                 libs_path_str,
+                core_lib_path.clone(),
                 exp_out,
                 &outdir,
                 &instr_app_path,
@@ -348,15 +351,31 @@ fn file_hash(file: &PathBuf) -> String {
     }
 }
 
-fn build_lib(lib_path: &str) {
-    let res = Command::new("cargo")
-        .arg("build")
-        .arg("--target")
-        .arg("wasm32-wasip1")
-        .arg("--release")
-        .current_dir(lib_path)
-        .output()
-        .expect("failed to execute process");
+fn build_lib(lib_path: &str, lib_name: &str, as_component: bool) -> String {
+    let (res, build_ty) = if as_component {
+        (
+            Command::new("cargo")
+                .arg("component")
+                .arg("build")
+                // .arg("--release") // TODO: for some reason, including '--release' causes it to generate a module...
+                .current_dir(lib_path)
+                .output()
+                .expect("failed to execute process"),
+            "debug"
+        )
+    } else {
+        (
+            Command::new("cargo")
+                .arg("build")
+                .arg("--target")
+                .arg("wasm32-wasip1")
+                .arg("--release")
+                .current_dir(lib_path)
+                .output()
+                .expect("failed to execute process"),
+            "release"
+        )
+    };
     if !res.status.success() {
         println!(
             "[ERROR] 'whamm_core' build project failed:\n{}\n{}",
@@ -365,18 +384,28 @@ fn build_lib(lib_path: &str) {
         );
     }
     assert!(res.status.success());
+
+    format!("{lib_path}/target/wasm32-wasip1/{build_ty}/{lib_name}.wasm")
 }
 
-pub(crate) fn build_whamm_core_lib() {
+pub(crate) fn build_whamm_core_lib(as_component: bool) -> String {
     // Build the whamm_core library
-    build_lib("whamm_core-module");
+    if as_component {
+        build_lib("whamm_core-component", "whamm_core", true)
+    } else {
+        build_lib("whamm_core-module", "whamm_core", true)
+    }
 }
 
-pub(crate) fn build_user_libs() {
+pub(crate) fn build_user_libs(as_component: bool) {
+    if as_component {
+        error!("haven't thought through user libs as components yet!");
+        return;
+    }
     let lib_projects = fs::read_dir("./user_libs").unwrap();
 
     for path in lib_projects {
-        build_lib(path.unwrap().path().display().to_string().as_str());
+        build_lib(path.unwrap().path().display().to_string().as_str(), "", as_component);
     }
 }
 
@@ -392,6 +421,7 @@ pub(crate) fn run_script(
     wasm_path: &str,
     target_wasm_bytes: Vec<u8>,
     user_libs: Vec<String>,
+    core_wasm_path: String,
     output_path: Option<String>,
     target_wizard: bool,
     dry_run: bool,
@@ -401,7 +431,7 @@ pub(crate) fn run_script(
         whamm::api::instrument::generate_monitor_module(
             script_path_str,
             user_libs.clone(),
-            Some(CORE_WASM_PATH.to_string()),
+            Some(core_wasm_path.clone()),
             Some("./".to_string()),
         )
     } else {
@@ -409,7 +439,7 @@ pub(crate) fn run_script(
             target_wasm_bytes,
             script_path_str,
             user_libs.clone(),
-            Some(CORE_WASM_PATH.to_string()),
+            Some(core_wasm_path.clone()),
             Some("./".to_string()),
         )
     };
@@ -418,7 +448,7 @@ pub(crate) fn run_script(
             wasm_path.to_string(),
             script_path.to_str().unwrap().to_string(),
             user_libs,
-            Some(CORE_WASM_PATH.to_string()),
+            Some(core_wasm_path),
             Some("./".to_string()),
         )
         .expect("Failed to run dry-run");
@@ -435,6 +465,7 @@ fn run_testcase_rewriting(
     script: &PathBuf,
     app_path_str: &str,
     user_libs: Vec<String>,
+    core_wasm_path: String,
     exp_output: ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
@@ -446,6 +477,7 @@ fn run_testcase_rewriting(
         app_path_str,
         fs::read(app_path_str).unwrap(),
         user_libs.clone(),
+        core_wasm_path.clone(),
         Some(instr_app_path.clone()),
         false,
         dry_run,
@@ -454,7 +486,7 @@ fn run_testcase_rewriting(
     // run the instrumented application on wasmtime
     // let res = Command::new(format!("{home}/.cargo/bin/cargo"))
 
-    let whamm_core_lib_path = format!("whamm_core={DEFAULT_CORE_LIB_PATH}");
+    let whamm_core_lib_path = format!("whamm_core={core_wasm_path}");
     let out_filename = "instr-flush.out";
     let out_file = format!("{outdir}/{out_filename}");
     let _ = fs::remove_file(out_file.clone());
@@ -504,6 +536,7 @@ fn run_testcase_wizard(
     script: &PathBuf,
     app_path_str: &str,
     user_libs: Vec<String>,
+    core_wasm_path: String,
     exp_output: ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
@@ -522,6 +555,7 @@ fn run_testcase_wizard(
         app_path_str,
         vec![], // unused
         user_libs,
+        core_wasm_path.clone(),
         Some(instr_app_path.clone()),
         true,
         dry_run,
@@ -548,7 +582,7 @@ fn run_testcase_wizard(
     let res = cmd
         // .arg("-tw")
         .arg("--env=TO_CONSOLE=true")
-        .arg(format!("--monitors={}+{}{}", instr_app_path, DEFAULT_CORE_LIB_PATH, libs_to_link))
+        .arg(format!("--monitors={}+{}{}", instr_app_path, core_wasm_path, libs_to_link))
         .arg(app_path_str)
         .output()
         .expect(&format!("Failed to run wizard command, please make sure the wizeng executable is available at the path: {}", wizeng_path));
