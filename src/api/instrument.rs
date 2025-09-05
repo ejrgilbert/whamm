@@ -7,10 +7,10 @@ use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
 use log::error;
 use std::collections::HashMap;
 use std::process::exit;
-use wasmparser::{ExternalKind, TypeRef};
 use wirm::ir::module::module_types::Types;
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
 use wirm::ir::types::{DataType as WirmType, FuncInstrMode, InstrumentationMode};
+use wirm::wasmparser::{ExternalKind, TypeRef};
 use wirm::Module;
 
 pub const MAX_ERRORS: i32 = 15;
@@ -558,8 +558,8 @@ impl Injection {
                 tag,
             } => {
                 let mut body_ops = vec![];
-                for instr in body.iter() {
-                    body_ops.push(format!("{:?}", instr.op));
+                for op in body.iter() {
+                    body_ops.push(format!("{:?}", op));
                 }
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Func {

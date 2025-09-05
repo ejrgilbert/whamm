@@ -3,13 +3,13 @@ use crate::emitter::tag_handler::get_tag_for;
 use crate::parser::types::DataType;
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use std::collections::HashMap;
-use wasmparser::MemArg;
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::{FunctionID, GlobalID, LocalID, MemoryID};
 use wirm::ir::types::DataType as WirmType;
 use wirm::ir::types::{BlockType, InitExpr, Value as WirmValue};
 use wirm::module_builder::AddLocal;
 use wirm::opcode::MacroOpcode;
+use wirm::wasmparser::MemArg;
 use wirm::{DataSegment, DataSegmentKind, InitInstr, Module, Opcode};
 
 pub const WASM_PAGE_SIZE: u32 = 65_536;

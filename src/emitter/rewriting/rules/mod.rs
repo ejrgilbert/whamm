@@ -6,13 +6,13 @@ use crate::verifier::types::VarAddr;
 use log::warn;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
-use wasmparser::{BrTable, GlobalType, MemArg, Operator};
 use wirm::ir::id::{FunctionID, GlobalID, TypeID};
 use wirm::ir::module::module_functions::{FuncKind, ImportedFunction};
 use wirm::ir::module::module_globals::{GlobalKind, ImportedGlobal, LocalGlobal};
 use wirm::ir::module::module_types::Types;
 use wirm::ir::module::Module;
 use wirm::ir::types::{DataType as WirmType, InstrumentationMode};
+use wirm::wasmparser::{BlockType, BrTable, GlobalType, MemArg, Operator};
 use wirm::Location;
 
 pub fn get_loc_info_for_active_probes(
@@ -2027,10 +2027,10 @@ pub fn get_ty_info_for_instr(
             (vec![Some(WirmType::I32)], None)
         }
         Operator::Block {
-            blockty: wasmparser::BlockType::FuncType(ty_id),
+            blockty: BlockType::FuncType(ty_id),
         }
         | Operator::Loop {
-            blockty: wasmparser::BlockType::FuncType(ty_id),
+            blockty: BlockType::FuncType(ty_id),
         } => {
             if let Some(ty) = app_wasm.types.get(TypeID(*ty_id)) {
                 let mut res = vec![];

@@ -10,12 +10,12 @@ use log::info;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use wasmparser::MemArg;
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::{FunctionID, GlobalID, LocalID};
 use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value};
 use wirm::module_builder::AddLocal;
 use wirm::opcode::MacroOpcode;
+use wirm::wasmparser::MemArg;
 use wirm::{InitInstr, Module, Opcode};
 
 pub const NULL_PTR_IN_MEM: i32 = -1;

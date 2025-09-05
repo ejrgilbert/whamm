@@ -201,7 +201,7 @@ fn generate_should_fail_bin_wast(
                 &test_setup.support_stmts,
                 &test_setup.target_module_wat,
                 &"None".to_string(),
-                &[assertion.clone()],
+                std::slice::from_ref(assertion),
             )?;
             created_wast_files.push(new_file_path);
         }

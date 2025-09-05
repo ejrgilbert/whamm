@@ -1234,7 +1234,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                             Some(*val_ty)
                         } else if matches!(map_ty, DataType::AssumeGood) {
-                            return Some(DataType::AssumeGood);
+                            Some(DataType::AssumeGood)
                         } else {
                             self.err.type_check_error(
                                 "Expected Map type".to_string(),

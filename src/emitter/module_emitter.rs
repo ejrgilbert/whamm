@@ -24,6 +24,7 @@ use wirm::ir::types::{
 };
 use wirm::module_builder::AddLocal;
 use wirm::opcode::Opcode;
+use wirm::wasmparser::MemArg;
 use wirm::InitInstr;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -407,7 +408,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             .i32_add()
             // load a byte from memory
             .i32_load8_u(
-                wasmparser::MemArg {
+                MemArg {
                     align: 0,
                     max_align: 0,
                     offset: 0,
@@ -422,7 +423,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             .i32_add()
             // load a byte from memory
             .i32_load8_u(
-                wasmparser::MemArg {
+                MemArg {
                     align: 0,
                     max_align: 0,
                     offset: 0,
