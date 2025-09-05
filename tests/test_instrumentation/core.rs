@@ -143,7 +143,7 @@ fn instrument_with_wizard_monitors() {
             DEFAULT_CORE_LIB_PATH.to_string(),
             None,
             false,
-            true,
+            false,
         );
     }
 }
@@ -162,7 +162,7 @@ fn instrument_with_numerics_scripts() {
     let processed_scripts = setup_numerics_monitors();
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("numerics", processed_scripts, false, true, true, true)
+    run_core_suite("numerics", processed_scripts, false, true, true, false)
 }
 
 #[test]
@@ -173,7 +173,7 @@ fn instrument_with_branch_monitor_scripts() {
 
     // TODO -- fix wizard side (THEN merge with below test)
     //   - pull `fname`, `targets`, `num_targets`, `default_target`
-    run_core_suite("branch-monitor", processed_scripts, false, true, true, true)
+    run_core_suite("branch-monitor", processed_scripts, false, true, true, false)
 }
 #[test]
 fn instrument_with_branch_monitor_rewriting_scripts() {
@@ -187,7 +187,7 @@ fn instrument_with_branch_monitor_rewriting_scripts() {
         false,
         true,
         false,
-        true,
+        false,
     )
 }
 #[test]
@@ -196,7 +196,7 @@ fn instrument_with_local_n_scripts() {
     let processed_scripts = setup_tests("core_suite/localN");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("localN", processed_scripts,  false, true, true, true)
+    run_core_suite("localN", processed_scripts,  false, true, true, false)
 }
 
 #[test]
@@ -207,7 +207,7 @@ fn instrument_with_calls_monitor_scripts() {
 
     // TODO -- fix wizard side (THEN merge with below test)
     //   - pull `fname`
-    run_core_suite("calls-monitor", processed_scripts,  false, true, true, true)
+    run_core_suite("calls-monitor", processed_scripts,  false, true, true, false)
 }
 #[test]
 fn instrument_with_calls_monitor_rewriting_scripts() {
@@ -221,7 +221,7 @@ fn instrument_with_calls_monitor_rewriting_scripts() {
         false,
         true,
         false,
-        true,
+        false,
     )
 }
 
