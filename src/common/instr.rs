@@ -25,12 +25,12 @@ use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use wasmparser::MemoryType;
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::FunctionID;
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
 use wirm::ir::types::{DataType as WirmType, InitExpr, Value as WirmValue};
 use wirm::opcode::Instrumenter;
+use wirm::wasmparser::MemoryType;
 use wirm::{InitInstr, Module, Opcode};
 
 /// create output path if it doesn't exist

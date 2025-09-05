@@ -10,8 +10,8 @@ use crate::parser::types::Location;
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
 use std::collections::HashSet;
-use wasmparser::{ExternalKind, MemoryType};
 use wirm::ir::id::FunctionID;
+use wirm::wasmparser::{ExternalKind, MemoryType};
 use wirm::{DataType, Module};
 // Some documentation on why it's difficult to only import the *used* functions.
 //

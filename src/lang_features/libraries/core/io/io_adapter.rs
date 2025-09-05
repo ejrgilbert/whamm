@@ -105,7 +105,7 @@ impl IOAdapter {
             .i32_add()
             // load a byte from memory
             .i32_load8_u(
-                wasmparser::MemArg {
+                wirm::wasmparser::MemArg {
                     align: 0,
                     max_align: 0,
                     offset: 0,
