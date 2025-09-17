@@ -101,15 +101,15 @@ pub fn configure_component_libraries<'a>(
             }
             num_exported_fns += 1;
         }
-        let (inst_id, ..) = wasm.add_type_instance(decls);
+        let (inst_ty_id, ..) = wasm.add_type_instance(decls);
 
         // Import the library from an external provider
-        wasm.add_import(ComponentImport { name: ComponentImportName(lib_name), ty: ComponentTypeRef::Instance(*inst_id)});
+        let inst_id = wasm.add_import(ComponentImport { name: ComponentImportName(lib_name), ty: ComponentTypeRef::Instance(*inst_ty_id)});
 
         // Lower the exported functions using aliases
         let mut exports = vec![];
         for ComponentExport {name, kind, ..} in lib_wasm.exports.iter() {
-            let (alias_func_id, ..) = wasm.add_alias_func(ComponentAlias::InstanceExport {name: name.0, kind: kind.clone(), instance_index: *inst_id});
+            let (alias_func_id, ..) = wasm.add_alias_func(ComponentAlias::InstanceExport {name: name.0, kind: kind.clone(), instance_index: inst_id});
             let canon_id = wasm.add_canon_func(CanonicalFunction::Lower {func_index: *alias_func_id, options: vec![].into_boxed_slice()});
 
             exports.push(Export {name: name.0, kind: ExternalKind::Func, index: *canon_id});
