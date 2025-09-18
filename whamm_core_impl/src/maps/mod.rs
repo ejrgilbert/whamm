@@ -937,9 +937,9 @@ pub fn get_i32_i32(id: i32, key: i32) -> i32 {
     debug!("getting key '{key}' from map '{id}'");
     get_i32(id, &key)
 }
-pub fn get_i32_string(id: i32, key: i32) -> String {
-    get_string(id, &key)
-}
+// pub fn get_i32_string(id: i32, key: i32) -> String {
+//     get_string(id, &key)
+// }
 pub fn get_string_i32(id: i32, key_offset: *const u8, key_length: usize) -> i32 {
     let key = string_from_data(key_offset, key_length);
     get_i32(id, &key)

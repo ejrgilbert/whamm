@@ -88,23 +88,30 @@ pub fn configure_component_libraries<'a>(
         // Create an instance type that defines the library
         let mut decls = vec![];
         let mut num_exported_fns = 0;
+        let mut curr_ty_id = 0;
         for (i, export) in lib_wasm.exports.iter().enumerate() {
+            println!("[configure_lib] component export: {}", export.name.0);
             if !matches!(export.kind, ComponentExternalKind::Func) {
+                println!("  --> skipped");
                 continue;
             }
-            let comp_ty = lib_wasm.get_type_of_exported_func(ComponentExportId(i as u32));
+            let comp_ty = lib_wasm.get_type_of_exported_lift_func(ComponentExportId(i as u32));
             // let comp_ty = get_fn_type_from_component_export(&lib_wasm, num_exported_fns, export);
             if let Some(ComponentType::Func(ty)) = comp_ty {
-                let ty_id = decls.len();
+                println!("  --> used");
                 decls.push(InstanceTypeDeclaration::Type(comp_ty.unwrap().clone()));
-                decls.push(InstanceTypeDeclaration::Export { name: export.name, ty: ComponentTypeRef::Func(ty_id as u32)});
+                decls.push(InstanceTypeDeclaration::Export { name: export.name, ty: ComponentTypeRef::Func(curr_ty_id)});
+                curr_ty_id += 1;
+            } else {
+                println!("  --> skipped, {:?}", comp_ty);
             }
             num_exported_fns += 1;
         }
         let (inst_ty_id, ..) = wasm.add_type_instance(decls);
 
         // Import the library from an external provider
-        let inst_id = wasm.add_import(ComponentImport { name: ComponentImportName(lib_name), ty: ComponentTypeRef::Instance(*inst_ty_id)});
+        // TODO -- switch to general case! (convert to kebab case)
+        let inst_id = wasm.add_import(ComponentImport { name: ComponentImportName("whamm-core"), ty: ComponentTypeRef::Instance(*inst_ty_id)});
 
         // Lower the exported functions using aliases
         let mut exports = vec![];

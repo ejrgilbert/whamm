@@ -399,27 +399,6 @@ pub unsafe fn _export_get_i32_i32_cabi<T: Guest>(arg0: i32, arg1: i32) -> i32 {
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_get_i32_string_cabi<T: Guest>(arg0: i32, arg1: i32) -> *mut u8 {
-    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    let result0 = T::get_i32_string(arg0, arg1);
-    let ptr1 = (&raw mut _RET_AREA.0).cast::<u8>();
-    let vec2 = (result0.into_bytes()).into_boxed_slice();
-    let ptr2 = vec2.as_ptr().cast::<u8>();
-    let len2 = vec2.len();
-    ::core::mem::forget(vec2);
-    *ptr1.add(::core::mem::size_of::<*const u8>()).cast::<usize>() = len2;
-    *ptr1.add(0).cast::<*mut u8>() = ptr2.cast_mut();
-    ptr1
-}
-#[doc(hidden)]
-#[allow(non_snake_case)]
-pub unsafe fn __post_return_get_i32_string<T: Guest>(arg0: *mut u8) {
-    let l0 = *arg0.add(0).cast::<*mut u8>();
-    let l1 = *arg0.add(::core::mem::size_of::<*const u8>()).cast::<usize>();
-    _rt::cabi_dealloc(l0, l1, 1);
-}
-#[doc(hidden)]
-#[allow(non_snake_case)]
 pub unsafe fn _export_get_string_i32_cabi<T: Guest>(
     arg0: i32,
     arg1: i32,
@@ -539,7 +518,7 @@ pub trait Guest {
     ) -> ();
     /// GET
     fn get_i32_i32(id: i32, key: i32) -> i32;
-    fn get_i32_string(id: i32, key: i32) -> _rt::String;
+    /// export get-i32-string: func(id: s32, key: s32) -> string;
     fn get_string_i32(id: i32, key_offset: i32, key_length: i32) -> i32;
     fn get_i32i32tuple_i32(id: i32, key0: i32, key1: i32) -> i32;
     fn get_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32) -> i32;
@@ -698,14 +677,8 @@ macro_rules! __export_world_support_lib_cabi {
         #[unsafe (export_name = "get-i32-i32")] unsafe extern "C" fn
         export_get_i32_i32(arg0 : i32, arg1 : i32,) -> i32 { unsafe {
         $($path_to_types)*:: _export_get_i32_i32_cabi::<$ty > (arg0, arg1) } } #[unsafe
-        (export_name = "get-i32-string")] unsafe extern "C" fn export_get_i32_string(arg0
-        : i32, arg1 : i32,) -> * mut u8 { unsafe { $($path_to_types)*::
-        _export_get_i32_string_cabi::<$ty > (arg0, arg1) } } #[unsafe (export_name =
-        "cabi_post_get-i32-string")] unsafe extern "C" fn
-        _post_return_get_i32_string(arg0 : * mut u8,) { unsafe { $($path_to_types)*::
-        __post_return_get_i32_string::<$ty > (arg0) } } #[unsafe (export_name =
-        "get-string-i32")] unsafe extern "C" fn export_get_string_i32(arg0 : i32, arg1 :
-        i32, arg2 : i32,) -> i32 { unsafe { $($path_to_types)*::
+        (export_name = "get-string-i32")] unsafe extern "C" fn export_get_string_i32(arg0
+        : i32, arg1 : i32, arg2 : i32,) -> i32 { unsafe { $($path_to_types)*::
         _export_get_string_i32_cabi::<$ty > (arg0, arg1, arg2) } } #[unsafe (export_name
         = "get-i32i32tuple-i32")] unsafe extern "C" fn export_get_i32i32tuple_i32(arg0 :
         i32, arg1 : i32, arg2 : i32,) -> i32 { unsafe { $($path_to_types)*::
@@ -722,12 +695,6 @@ macro_rules! __export_world_support_lib_cabi {
 }
 #[doc(hidden)]
 pub(crate) use __export_world_support_lib_cabi;
-#[cfg_attr(target_pointer_width = "64", repr(align(8)))]
-#[cfg_attr(target_pointer_width = "32", repr(align(4)))]
-struct _RetArea([::core::mem::MaybeUninit<u8>; 2 * ::core::mem::size_of::<*const u8>()]);
-static mut _RET_AREA: _RetArea = _RetArea(
-    [::core::mem::MaybeUninit::uninit(); 2 * ::core::mem::size_of::<*const u8>()],
-);
 #[rustfmt::skip]
 mod _rt {
     #![allow(dead_code, clippy::all)]
@@ -794,16 +761,6 @@ mod _rt {
             self as i32
         }
     }
-    pub unsafe fn cabi_dealloc(ptr: *mut u8, size: usize, align: usize) {
-        if size == 0 {
-            return;
-        }
-        let layout = alloc::Layout::from_size_align_unchecked(size, align);
-        alloc::dealloc(ptr, layout);
-    }
-    pub use alloc_crate::string::String;
-    pub use alloc_crate::alloc;
-    extern crate alloc as alloc_crate;
 }
 /// Generates `#[unsafe(no_mangle)]` functions to export the specified type as
 /// the root implementation of all generated traits.
@@ -840,9 +797,9 @@ pub(crate) use __export_support_lib_impl as export;
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 1980] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xba\x0e\x01A\x02\x01\
-AY\x01@\x01\x01c}\x01\0\x04\0\x04putc\x01\0\x01@\x02\x01ay\x01ly\x01\0\x04\0\x04\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 1947] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x99\x0e\x01A\x02\x01\
+AW\x01@\x01\x01c}\x01\0\x04\0\x04putc\x01\0\x01@\x02\x01ay\x01ly\x01\0\x04\0\x04\
 puts\x01\x01\x01@\x01\x01u}\x01\0\x04\0\x05putu8\x01\x02\x01@\x01\x01i~\x01\0\x04\
 \0\x05puti8\x01\x03\x01@\x01\x01u{\x01\0\x04\0\x06putu16\x01\x04\x01@\x01\x01i|\x01\
 \0\x04\0\x06puti16\x01\x05\x01@\x01\x01uy\x01\0\x04\0\x06putu32\x01\x06\x01@\x01\
@@ -875,13 +832,12 @@ z\x0aval-lengthz\x01\0\x04\0\x11insert-i32-string\x01\x0f\x01@\x04\x02idz\x0akey
 \x02idz\x04key0z\x04key1z\x05valuez\x01\0\x04\0\x16insert-i32i32tuple-i32\x01\x11\
 \x01@\x05\x02idz\x04key0z\x04key1z\x04key2z\x05valuez\x01\0\x04\0\x19insert-i32i\
 32i32tuple-i32\x01\x12\x01@\x02\x02idz\x03keyz\0z\x04\0\x0bget-i32-i32\x01\x13\x01\
-@\x02\x02idz\x03keyz\0s\x04\0\x0eget-i32-string\x01\x14\x01@\x03\x02idz\x0akey-o\
-ffsetz\x0akey-lengthz\0z\x04\0\x0eget-string-i32\x01\x15\x01@\x03\x02idz\x04key0\
-z\x04key1z\0z\x04\0\x13get-i32i32tuple-i32\x01\x16\x01@\x04\x02idz\x04key0z\x04k\
-ey1z\x04key2z\0z\x04\0\x16get-i32i32i32tuple-i32\x01\x17\x04\0\x09print-map\x01\x0c\
-\x04\0\x10print-map-as-csv\x01\x0c\x04\0\x20component:whamm-core/support-lib\x04\
-\0\x0b\x11\x01\0\x0bsupport-lib\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0d\
-wit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
+@\x03\x02idz\x0akey-offsetz\x0akey-lengthz\0z\x04\0\x0eget-string-i32\x01\x14\x01\
+@\x03\x02idz\x04key0z\x04key1z\0z\x04\0\x13get-i32i32tuple-i32\x01\x15\x01@\x04\x02\
+idz\x04key0z\x04key1z\x04key2z\0z\x04\0\x16get-i32i32i32tuple-i32\x01\x16\x04\0\x09\
+print-map\x01\x0c\x04\0\x10print-map-as-csv\x01\x0c\x04\0\x20component:whamm-cor\
+e/support-lib\x04\0\x0b\x11\x01\0\x0bsupport-lib\x03\0\0\0G\x09producers\x01\x0c\
+processed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

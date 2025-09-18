@@ -72,7 +72,9 @@ pub fn link_user_lib(
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
     let added = if libs_as_components {
+
         let lib_wasm = Component::parse(lib_bytes, false).unwrap();
+
         import_lib_fn_names_from_component(
             app_wasm,
             loc,
@@ -130,7 +132,10 @@ fn import_lib_package(
 
     // should only import the EXPORTED contents of the lib_wasm
     let added = if libs_as_components {
+        println!("HEY!!!");
         let lib_wasm = Component::parse(lib_bytes, false).unwrap();
+
+        println!("HEY!!! -- end");
         import_lib_fn_names_from_component(
             app_wasm,
             loc,
@@ -208,7 +213,7 @@ fn import_lib_fn_names_from_component(
         let fn_name = export.name.0;
         // println!("export: {:#?}", export);
         if lib_fns.contains(fn_name) {
-            let ty = lib_wasm.get_type_of_exported_func(ComponentExportId(i as u32));
+            let ty = lib_wasm.get_type_of_exported_lift_func(ComponentExportId(i as u32));
             // let mut fn_start_idx = 0;
             // while !matches!(lib_wasm.canons.get(fn_start_idx), Some(CanonicalFunction::Lift {..}) | Some(CanonicalFunction::Lower {..})) {
             //     // Handle non-lift/lower canonical functions
@@ -272,17 +277,13 @@ fn import_lib_fn_names_from_component(
                 // save the FID as an injected function
                 injected_fns.push((export.name.0.to_string(), fid));
             } else {
-            err.unexpected_error(
-                true,
-                Some(format!(
+                panic!(
                     "ImportLib::component: Could not add function \"{}\" as application import, looking at ID {}, actual type: {:?}. Full export: {:?}",
                     export.name.0,
                     export.index,
                     export.ty,
                     export
-                )),
-                None,
-            );
+                );
             }
         }
         num_exported_fns += 1;
