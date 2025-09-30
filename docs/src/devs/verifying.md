@@ -1,4 +1,4 @@
-# Phase 3: Verify #
+# Phase 2: Verify #
 
 Here is documentation describing how we _verify_ `.mm` scripts.
 
@@ -23,18 +23,20 @@ The types of scopes present in a `.mm` script can be found in the `enum` named `
 The concept of scopes in this context is the same as in other programming languages.
 A scope defines where variables and functions are accessible based on their location in a program.
 
-In the context of `whamm!` there are some scopes that exist but aren't accessible to the end-user.
+In the context of `Whamm` there are some scopes that exist but aren't accessible to the end-user.
 Consider the probe match rule: `provider:package:event:mode`.
 Each part of this match rule really has its own scope.
-This enables each part to introduce its own helpful global variables and functions that the user can leverage to write more expressive instrumentation!
-These bound variables and functions are added to the AST in the [`whamm_parser.rs`] file.
+This enables each part to introduce its own helpful bound variables and functions that the user can leverage to write more expressive instrumentation!
+These bound variables and functions are added to the AST in the [`whamm_parser.rs`] file by calling the `get_matches` function of [`provider_handler.rs`].
 See the [probes syntax documentation] for a helpful CLI tool that enables the user to see what is in-scope for any given probe match rule.
-
+See the [extending providers documentation] for how you can extend the providers and their bound functions/variables.
 
 [`verifier/types.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/verifier/types.rs
 [`InitGenerator` documentation]: emit/emitting.md#parta-initgenerator
 [probes syntax documentation]: ../intro/syntax/probes.md#helpful-info-in-cli
+[extending providers documentation]: extending_providers.md
 [`whamm_parser.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/parser/whamm_parser.rs
+[`provider_handler.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/parser/provider_handler.rs
 
 ### Problems / Workarounds ###
 

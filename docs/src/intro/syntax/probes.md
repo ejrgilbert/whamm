@@ -3,7 +3,7 @@
 
 We use the term `probe` to refer to this triple of `probe_rule`, `predicate` and `actions`.
 
-When performing bytecode rewriting, `whamm!`:
+When performing bytecode rewriting, `Whamm`:
 1. traverses the application's Wasm module to find the locations-of-interest as specified by each probe's `probe_rule`.
 2. checks if the `predicate` evaluates to `false` statically
     - if it does evaluate to `false` it continues on, not injecting the probe's actions
@@ -77,7 +77,7 @@ Huh...we still have a part of the predicate left over! What should we do...
 We still need to predicate on this part of the expression, we just need to inject this partially-evaluated expression to run at runtime!
 So, we'd inject the probe body, wrapped with this condition!
 
-Note that this does look a bit different for the Wizard target, `whamm` has to do some other tinkering with the predicate there, which enables the engine to run the correct part of the predicate at the correct time (match time vs. runtime).
+Note that this does look a bit different for the Wizard target, `Whamm` has to do some other tinkering with the predicate there, which enables the engine to run the correct part of the predicate at the correct time (match time vs. runtime).
 
 ## The Actions ##
 `{ <actions> }`

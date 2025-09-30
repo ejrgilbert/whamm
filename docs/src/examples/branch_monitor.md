@@ -1,40 +1,38 @@
 # Branch Monitor #
 
-Here is an example monitor that can be written in `Whamm!`, it does not require an instrumentation library.
+Here is an example monitor that can be written in `Whamm`, it does not require an instrumentation library.
 Rather, it uses the DSL to express all of its monitoring logic.
 
 ```
-wasm::br:before {
-    report unshared i32 taken;
-    // branch always taken for `br`
-    // count stores an array of counters
-    taken++;
-}
+// Matches _if and br_if events
+wasm::*if:before {
+  report unshared var taken: i32;
+  report unshared var total: i32;
 
-wasm::br_if:before {
-    report unshared i32 taken;
-    report unshared i32 not_taken;
-    
-    // which branch was taken?
-    if (arg0 != 0) { // arg0: Wasm top-of-stack
-        taken++;
-    } else {
-        not_taken++;
-    }
+  // which branch was taken?
+  var was_taken: bool = arg0 != 0;
+  taken = taken + (was_taken as i32);
+  total++;
 }
 
 wasm::br_table:before {
-    report unshared map<i32, i32> taken_branches;
-    
-    // which branch was taken?
-    i32 index;
-    
-    // arg0: the Wasm top-of-stack
-    // num_targets: the number of targets for this br_table
-    // targets: the branches that can be targeted by this br_table
-    // default_target: the default target for this br_table
-    index = arg0 < (num_targets - 1) ? targets[arg0] : default_target;
-    
-    taken_branches[index]++;
+  report unshared var taken_branches: map<u32, u32>;
+
+  // which branch was taken?
+  // default branch is at 'num_targets' in the map
+  var index: u32 = arg0 <= (num_targets - 1) ? arg0 : num_targets;
+
+  // count stores an array of counters
+  taken_branches[index]++;
+}
+
+wasm::select(arg0: i32):before {
+  report unshared var selected_first: u32;
+  report unshared var total: u32;
+
+  // which branch was taken?
+  var was_taken: bool = arg0 != 0;
+  selected_first = selected_first + (was_taken as u32);
+  total++;
 }
 ```

@@ -1,12 +1,15 @@
 # Instrumentable Events #
 
 Currently available `packages`:
-- `wasm:opcode`, e.g. `wasm:opcode:call:alt`
+- `wasm:opcode`: to instrument Wasm opcodes
+- `wasm:func`: to instrument Wasm functions
+  - currently supports `entry` and `exit`
+  - future: `unwind`
+- `wasm:block`: to instrument Wasm basic blocks
 
 `Packages` to be added:
 - `thread` operation events
 - `gc` operation events
-- `function` enter/exit/unwind events, e.g. `wasm:fn:enter:before`
 - `memory` access (read/write) events
 - `table` access (read/write) events
 - WASI `component` operation events, e.g. `wasi:http:send_req:alt`

@@ -17,5 +17,5 @@ There will be as many emitters as there are target representations supported by 
 The code that is emitted, and the methodology in which emitting happens, depends on the injection strategy specified by the user.
 
 There are currently two supported injection strategies:
-1. [Bytecode Rewriting](./rewriting_target.md)
-2. Interfacing with an [engine](./engine_target.md)
+1. [Bytecode Rewriting](./rewriting.md)
+2. Interfacing with an [engine](wei.md)

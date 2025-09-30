@@ -1,12 +1,12 @@
 # Arithmetic #
 
 Arithmetic is fundamental to computation.
-`whamm!` defines a number of arithmetic operators on the primitive types.
+`Whamm` defines a number of arithmetic operators on the primitive types.
 
 ## Integer types ##
 
 ```
-i32 a;
+var a: i32;
 a = 0;
 a++;       // increment == 1
 a--;       // decrement == 0

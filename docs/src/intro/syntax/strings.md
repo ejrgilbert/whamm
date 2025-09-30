@@ -2,7 +2,7 @@
 
 NOTE: This functionality hasn't been fully implemented! More docs to come post-implementation!
 
-[//]: # (`whamm!` has very basic support for strings; they are injected into the instrumented Wasm program and are represented as the tuple: `&#40;memory_address, length&#41;`.)
+[//]: # (`Whamm` has very basic support for strings; they are injected into the instrumented Wasm program and are represented as the tuple: `&#40;memory_address, length&#41;`.)
 
 [//]: # (Follows are the strings docs from the Virgil repo that I can customize to this context.)
 [//]: # (String literals are translated into arrays of bytes and usable as arrays of bytes in your program.

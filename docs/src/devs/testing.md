@@ -91,9 +91,9 @@ There are several conventions to follow when writing `.wast` test cases for `wha
 1. Only one `module`-to-instrument per `.wast` file.
    - The test setup goes at the top (which can include multiple modules when considering testing imports).
    - The `module`-to-instrument is the final part of the setup and is marked by `;; @instrument` above the module.
-2. Use comment to specify the `whamm!` script, syntax: `;; WHAMM --> <whamm_script>`
+2. Use comment to specify the `Whamm` script, syntax: `;; WHAMM --> <whamm_script>`
    - The scripts are run on the `module` in the `.wast` file.
-   - If there are multiple `asserts` under a `whamm!` comment, they are all run against the instrumented variation of the `module` that results from that `whamm!` script.
+   - If there are multiple `asserts` under a `Whamm` comment, they are all run against the instrumented variation of the `module` that results from that `Whamm` script.
 3. All asserts should _**fail**_ if they were to run without instrumentation.
 
 NOTE: For wizard, don't do manipulations that change arg* (that requires the frame accessor). Instead change global state for now?

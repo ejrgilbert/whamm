@@ -19,7 +19,7 @@ wasm:opcode:call:before {
     count++;
     
     // This variable will be reinitialized to 0 each time this probe's body is executed
-    i32 local_variable;
+    var local_variable: i32;
     local_variable++;
 }
 ```
