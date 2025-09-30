@@ -20,7 +20,7 @@
     - [Probes](intro/syntax/probes.md)
     - [Scripts](intro/syntax/scripts.md)
   - [Events](intro/events.md)
-  - [WIP - Libraries](intro/libraries.md)
+  - [Libraries](intro/libraries.md)
   - [WIP - Testing](intro/testing.md)
   - [Injection Strategies](intro/injection_strategies.md)
 
