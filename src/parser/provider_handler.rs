@@ -15,6 +15,7 @@ use pest::Parser;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use std::process::exit;
 use termcolor::Buffer;
 
 pub fn yml_to_providers(def_yamls: &[String]) -> Result<Vec<ProviderDef>, Box<ErrorGen>> {
@@ -41,7 +42,8 @@ pub fn get_matches(
             err.add_error(e);
         } else {
             // shouldn't happen, panic
-            panic!("Got no matches, but without an error")
+            error!("Got no matches, but without an error");
+            exit(1)
         }
     }
 
@@ -276,7 +278,8 @@ impl MatchOn for ProviderDef {
             }
         } else {
             // shouldn't happen, panic
-            panic!("No provider pattern in the rule!")
+            error!("No provider pattern in the rule!");
+            exit(1)
         }
     }
 }
@@ -405,7 +408,8 @@ impl MatchOn for PackageDef {
                 }
             }
         } else {
-            panic!("No package pattern in the rule!")
+            error!("No package pattern in the rule!");
+            exit(1)
         }
     }
 }
@@ -535,7 +539,8 @@ impl MatchOn for EventDef {
                 }
             }
         } else {
-            panic!("No event pattern in the rule!")
+            error!("The rule must contain an event pattern.");
+            exit(1);
         }
     }
 }
@@ -611,7 +616,10 @@ impl From<String> for ModeKind {
             "entry" => Self::Entry,
             "exit" => Self::Exit,
             "<no-mode>" => Self::Null,
-            _ => panic!("unable to match mode kind: {value}"),
+            _ => {
+                error!("unable to match mode kind: {value}");
+                exit(1);
+            }
         }
     }
 }
@@ -680,7 +688,8 @@ impl MatchOn for ModeDef {
                 Err(())
             }
         } else {
-            panic!("No mode pattern in the rule!")
+            error!("No mode pattern in the rule!");
+            exit(1);
         }
     }
 }
@@ -799,7 +808,7 @@ impl CheckedFrom<BoundFuncYml> for BoundFunc {
                     "Could not parse the token as function parameters: {}\n{:?}",
                     e, value.params
                 );
-                panic!();
+                exit(1);
             }
         };
         let results =
@@ -968,17 +977,18 @@ fn parse_helper<T>(target: &str, parse_rule: Rule, token: &str, handler: &RuleHa
                 handler(pair).unwrap_or_else(|errs| {
                     error!("Could not parse the token correctly");
                     for e in errs.iter() {
-                        println!("{:?}", e)
+                        error!("{:?}", e)
                     }
-                    panic!()
+                    exit(1)
                 })
             } else {
-                panic!("Could not parse the token correctly");
+                error!("Could not parse the token correctly");
+                exit(1)
             }
         }
         Err(e) => {
             error!("Could not parse the token as a {target}: {token}\n{:?}", e);
-            panic!();
+            exit(1)
         }
     }
 }
