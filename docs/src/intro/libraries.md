@@ -1,7 +1,5 @@
 # Libraries #
 
-NOTE: This functionality hasn't been fully implemented! More docs to come post-implementation!
-
 Libraries are used to define instrumentation behavior when it goes beyond the scope of the core DSL grammar.
 In fact, `Whamm` itself depends on the Whamm core library, named `whamm_core.wasm`, to provide printing support and a map implementation.
 
