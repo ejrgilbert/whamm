@@ -2,7 +2,7 @@
 Conditional statements are useful for controlling the way a program executes
 
 ## Syntax ## 
-`whamm!` supports 3 different signifiers for conditional statements:
+`Whamm` supports 3 different signifiers for conditional statements:
 All `if`/`else` blocks must begin with an `if` statement, which is then followed by any number of `elif` statments and either 0 or 1 `else` statments. Finally, the whole chain must be closed with a `;`. 
 
 ### Formal Syntax ### 

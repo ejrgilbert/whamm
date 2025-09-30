@@ -1,3 +1,3 @@
-# Phase 2: Configure The `Whamm!` Core Library #
+# Phase 2: Configure The `Whamm` Core Library #
 
 TODO

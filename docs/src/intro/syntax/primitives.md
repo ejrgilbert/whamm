@@ -1,10 +1,10 @@
 # Primitives #
 
-`whamm!` offers a small set of primitive types that are useful for performing arithmetic and representing data.
+`Whamm` offers a small set of primitive types that are useful for performing arithmetic and representing data.
 
 ## Booleans ##
 
-With only two values, `true`, and `false`, booleans are represented in `whamm!` with the type `bool`.
+With only two values, `true`, and `false`, booleans are represented in `Whamm` with the type `bool`.
 
 ```
 bool x; // default == false
@@ -14,7 +14,7 @@ x = false;
 
 ## Integers ##
 
-Right now, `whamm!` supports `i32` (_signed_ 32-bit values) and `u32` (_unsigned_ 32-bit values) integers, but will be supporting all numeric types provided by Wasm in the future.
+Right now, `Whamm` supports `i32` (_signed_ 32-bit values) and `u32` (_unsigned_ 32-bit values) integers, but will be supporting all numeric types provided by Wasm in the future.
 
 ```
 // with declared types

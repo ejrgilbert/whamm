@@ -1,6 +1,6 @@
 # Branch Monitor #
 
-Here is an example monitor that can be written in `Whamm!`, it does not require an instrumentation library.
+Here is an example monitor that can be written in `Whamm`, it does not require an instrumentation library.
 Rather, it uses the DSL to express all of its monitoring logic.
 
 ```

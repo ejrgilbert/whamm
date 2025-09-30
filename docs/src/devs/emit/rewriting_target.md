@@ -32,14 +32,14 @@ When a probed location is found, the `generator` emits Wasm code into the applic
 
 ### Constant Propagation and Folding!! ###
 
-Constant propagation and folding are a compiler optimizations that serve a special purpose in `whamm!`.
+Constant propagation and folding are a compiler optimizations that serve a special purpose in `Whamm`.
 There are lots of resources online explaining these concepts if that would be useful to the reader.
 
 The `whamm info` command helps users see various variables that are in scope when using various probe match rules.
-All of these global variables are defined by `whamm!`'s compiler and _should only be emitted as constant literals_.
+All of these global variables are defined by `Whamm`'s compiler and _should only be emitted as constant literals_.
 If the variable were ever directly emitted into an instrumented program, with no compiler-provided definition, the program would fail to execute since the variable _would not be defined_.
 
-`whamm!` uses constant propagation and folding to remedy this situation!
+`Whamm` uses constant propagation and folding to remedy this situation!
 
 The `define` function in [`visiting_emitter.rs`] is **how compiler constants are defined** while traversing the application bytecode.
 These specific variables are defined in the emitter since their definitions are tied to locations in the Wasm program being instrumented.

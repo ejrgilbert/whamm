@@ -23,7 +23,7 @@ The types of scopes present in a `.mm` script can be found in the `enum` named `
 The concept of scopes in this context is the same as in other programming languages.
 A scope defines where variables and functions are accessible based on their location in a program.
 
-In the context of `whamm!` there are some scopes that exist but aren't accessible to the end-user.
+In the context of `Whamm` there are some scopes that exist but aren't accessible to the end-user.
 Consider the probe match rule: `provider:package:event:mode`.
 Each part of this match rule really has its own scope.
 This enables each part to introduce its own helpful global variables and functions that the user can leverage to write more expressive instrumentation!

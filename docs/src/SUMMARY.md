@@ -38,4 +38,4 @@
   - [CLI](devs/cli.md)
   - [Testing](devs/testing.md)
   - [Error Handling](devs/error_handling.md)
-  - [Contributors to `whamm!`](devs/contributors.md)
+  - [Contributors to `Whamm`](devs/contributors.md)

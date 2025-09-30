@@ -1,6 +1,6 @@
 # Ternary Expressions #
 
-`whamm!` supports a version of the "conditional" expression that chooses one of two values based on a condition.
+`Whamm` supports a version of the "conditional" expression that chooses one of two values based on a condition.
 The syntax follows C, C++, and Java, which uses `? :`.
 
 ```

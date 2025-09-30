@@ -3,7 +3,7 @@
 
 We use the term `probe` to refer to this triple of `probe_rule`, `predicate` and `actions`.
 
-When performing bytecode rewriting, `whamm!`:
+When performing bytecode rewriting, `Whamm`:
 1. traverses the application's Wasm module to find the locations-of-interest as specified by each probe's `probe_rule`.
 2. checks if the `predicate` evaluates to `false` statically
     - if it does evaluate to `false` it continues on, not injecting the probe's actions

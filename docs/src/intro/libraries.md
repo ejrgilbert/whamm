@@ -5,7 +5,7 @@ NOTE: This functionality hasn't been fully implemented! More docs to come post-i
 [//]: # (Libraries are used to define instrumentation behavior when it goes beyond the scope of the core DSL grammar.)
 
 [//]: # ()
-[//]: # (## How does `whamm!` use libraries? ##)
+[//]: # (## How does `Whamm` use libraries? ##)
 
 [//]: # (TODO)
 

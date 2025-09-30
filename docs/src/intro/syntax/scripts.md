@@ -1,8 +1,8 @@
-# `whamm!` Scripts #
+# `Whamm` Scripts #
 
 Instrumentation (aka a monitor) is expressed as a set of predicated probes in a script with the `.mm` extension.
 
-Here is a high-level view of the grammar for a `whamm!` script:
+Here is a high-level view of the grammar for a `Whamm` script:
 ```
 // Statements to initialize the global state of the instrumentation
 global_statements;

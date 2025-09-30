@@ -1,3 +1,3 @@
-# The `whamm!` CLI #
+# The `Whamm` CLI #
 
 The CLI is defined using the `clap` Rust crate.
