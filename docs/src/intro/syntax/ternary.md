@@ -5,7 +5,7 @@ The syntax follows C, C++, and Java, which uses `? :`.
 
 ```
 // with declared types
-int a;
+var a: i32;
 a = 1 > 0 ? 16 : 27; // == 16
 a = 1 < 0 ? 17 : 29; // == 29
 ```

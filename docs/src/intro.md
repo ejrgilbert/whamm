@@ -35,7 +35,7 @@ This means that developer tools written in `Whamm` could support a **vast domain
 
 Injection strategies:
 - Paper describing the _non-intrusive_ injection strategy used by `Whamm`: [Flexible Non-intrusive Dynamic Instrumentation for WebAssembly](https://dl.acm.org/doi/10.1145/3620666.3651338)
-- The library used to do the _intrusive_ injection strategy (bytecode rewriting): [orca](https://github.com/thesuhas/orca)
+- The library used to do the _intrusive_ injection strategy (bytecode rewriting): [wirm](https://github.com/composablesys/wirm)
 
 ## Some helpful terms and concepts ##
 

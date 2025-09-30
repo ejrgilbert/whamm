@@ -14,13 +14,13 @@ And else is: "else" ~  "{" ~ statement* ~ "}"
 
 ### Examples of Conditional Statements
 ```
-i32 a = 5; 
+var a: i32 = 5; 
 if (a == 5) {
     a = 3;
 };
 ```
 ```
-i32 a = 5;
+var a: i32 = 5; 
 if (a == 4){
     a = 3;
 }elif (a == 3){
@@ -31,10 +31,10 @@ if (a == 4){
 ```
 ```
 //This is an example in a function that returns a bool
-my_fn (i32 param) -> bool {
+my_fn (param: i32) -> bool {
     return (param/10 == 0);    
 }
-i32 a = 5;
+var a: i32 = 5; 
 if(my_fn(a)) {
     a = 3;
 }else{
@@ -45,4 +45,3 @@ if(my_fn(a)) {
 
 Conditional expressions will only evaluate the branch corresponding to the value of the condition.
 In other words, it short-circuits.
-

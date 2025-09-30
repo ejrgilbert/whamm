@@ -25,7 +25,7 @@ This AST is leveraged in different ways for each of the subsequent compiler phas
 
 During [**verification**](verifying.md), the AST is used to build the `SymbolTable` and perform type checking.
 
-While [**translating the AST**](translate.md) into the injection strategy's representation, the AST is visited and restructured in a way that is simpler to compile for each strategy.
+While [**transforming the AST**](transform_ast.md) into the injection strategy's representation, the AST is visited and restructured in a way that is simpler to compile for each strategy.
 Each node contains new data unique to each strategy that is helpful while emitting.
 
 While [**emitting**](emit/emitting.md), the _simpler AST variation_ mentioned above is used to lookup global statements and iterate over probe definitions to inject them into locations-of-interest in the Wasm program.

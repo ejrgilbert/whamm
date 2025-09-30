@@ -12,10 +12,9 @@ Parsing:
 
 The [_four phases_ of compilation](compiler_phases.md):
 1. [Parse](parsing.md)
-2. Configure the `Whamm` [Core Library](./core_lib.md) (if needed)
-3. [Verify](verifying.md)
-4. [Translate](translate.md) AST into the injection strategy's representation
-5. [Emit](emit/emitting.md)
+2. [Verify](verifying.md)
+3. [Transform](devs/transform_ast.md) AST into the injection strategy's representation
+4. [Emit](emit/emitting.md)
 
 Other helpful concepts:
 - The `Whamm` [CLI](cli.md)

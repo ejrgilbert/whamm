@@ -82,5 +82,5 @@ However, this time the actions emitted _will retain a conditional_, but it will 
 
 Pretty cool, right??
 
-[`visiting_emitter.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/emitter/rewriting/*.rs
-[`folding.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/generator/types.rs
+[`visiting_emitter.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/emitter/rewriting/visiting_emitter.rs
+[`folding.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/generator/folding.rs

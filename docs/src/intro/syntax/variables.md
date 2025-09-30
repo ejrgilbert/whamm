@@ -4,7 +4,7 @@ Variables store data, such as numbers and strings.
 
 ```
 // Declaring a new variable `<type> <var_name>;`:
-i32 i;
+var i: i32;
 ```
 
 ```

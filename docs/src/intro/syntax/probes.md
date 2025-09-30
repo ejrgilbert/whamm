@@ -77,7 +77,7 @@ Huh...we still have a part of the predicate left over! What should we do...
 We still need to predicate on this part of the expression, we just need to inject this partially-evaluated expression to run at runtime!
 So, we'd inject the probe body, wrapped with this condition!
 
-Note that this does look a bit different for the Wizard target, `whamm` has to do some other tinkering with the predicate there, which enables the engine to run the correct part of the predicate at the correct time (match time vs. runtime).
+Note that this does look a bit different for the Wizard target, `Whamm` has to do some other tinkering with the predicate there, which enables the engine to run the correct part of the predicate at the correct time (match time vs. runtime).
 
 ## The Actions ##
 `{ <actions> }`

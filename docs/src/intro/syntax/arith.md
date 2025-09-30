@@ -6,7 +6,7 @@ Arithmetic is fundamental to computation.
 ## Integer types ##
 
 ```
-i32 a;
+var a: i32;
 a = 0;
 a++;       // increment == 1
 a--;       // decrement == 0

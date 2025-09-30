@@ -8,12 +8,13 @@ In the future, users will be able to download pre-built binaries on the GH relea
 
 Steps:
 1. Clone the [`Whamm` repo](https://github.com/ejrgilbert/whamm)
-2. Build the source code with `cargo build`
+2. Build the source code with `cargo build --release`
 3. Add the built binary to your `PATH`.
-   This binary should be located at `target/debug/whamm`<sup>[1](#why_target)</sup>.
+   This binary should be located at `target/release/whamm`<sup>[1](#why_target)</sup>.
 
 ## Basic Test ##
-A basic test you can run to make sure that the `Whamm` binary is on your path and working as-expected is running the following command: `whamm --help`. The CLI will provide information on various commands and options available for use.
+A basic test you can run to make sure that the `Whamm` binary is on your path and working as-expected is running the following command: `whamm --help`.
+The CLI will provide information on various commands and options available for use.
 
 # Wasm monitors and manipulators #
 
@@ -41,7 +42,8 @@ _**Where** to insert instrumentation._
 
 This `Whamm` script describes a unit of instrumentation by specifying the points to probe in an application using the [probe syntax](./syntax/probes.md).
 These probes contain the logic to inject at these match point in their bodies.
-This logic _can_ call out to the user's instrumentation library, provided as `lib.wasm`.
+The DSL is expressive enough to support some monitoring use cases; however, to keep from DSL scope creep, we have decided to offload general-purpose programmability to any source language that can compile to Wasm.
+A script can call out to such a user's instrumentation library, provided as `lib.wasm`.
 
 ## `lib.wasm` ##
 _**What** logic to insert at the targeted application points._
