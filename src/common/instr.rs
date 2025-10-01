@@ -33,6 +33,11 @@ use wirm::opcode::Instrumenter;
 use wirm::wasmparser::MemoryType;
 use wirm::{InitInstr, Module, Opcode};
 
+const ENGINE_BUFFER_NAME: &str = "whamm_buffer";
+const ENGINE_BUFFER_START_NAME: &str = "whamm_buffer:start";
+const ENGINE_BUFFER_MAX_NAME: &str = "whamm_buffer:max";
+const ENGINE_BUFFER_MAX_SIZE: i32 = 2i32.pow(10); // max set to 1KB = 2^10 = 1024 bytes
+
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
     if !PathBuf::from(path).exists() {
@@ -592,7 +597,7 @@ fn get_memory_allocator(
             false,
             get_tag_for(&None),
         );
-        let engine_id = *target_wasm.add_local_memory_with_tag(
+        let engine_mem_id = target_wasm.add_local_memory_with_tag(
             MemoryType {
                 memory64: false,
                 shared: false,
@@ -602,13 +607,43 @@ fn get_memory_allocator(
             },
             get_tag_for(&None),
         );
+        let engine_mem_start_id = target_wasm.add_global_with_tag(
+            InitExpr::new(vec![InitInstr::Value(WirmValue::I32(0))]),
+            WirmType::I32,
+            false,
+            false,
+            get_tag_for(&None),
+        );
+        let engine_mem_max_id = target_wasm.add_global_with_tag(
+            InitExpr::new(vec![InitInstr::Value(WirmValue::I32(
+                ENGINE_BUFFER_MAX_SIZE,
+            ))]),
+            WirmType::I32,
+            false,
+            false,
+            get_tag_for(&None),
+        );
         target_wasm.exports.add_export_mem_with_tag(
-            "engine:data".to_string(),
-            engine_id,
+            ENGINE_BUFFER_NAME.to_string(),
+            *engine_mem_id,
+            get_tag_for(&None),
+        );
+        target_wasm.exports.add_export_global_with_tag(
+            ENGINE_BUFFER_START_NAME.to_string(),
+            *engine_mem_start_id,
+            get_tag_for(&None),
+        );
+        target_wasm.exports.add_export_global_with_tag(
+            ENGINE_BUFFER_MAX_NAME.to_string(),
+            *engine_mem_max_id,
             get_tag_for(&None),
         );
 
-        (Some(alloc_id), Some(alloc_tracker_global), Some(engine_id))
+        (
+            Some(alloc_id),
+            Some(alloc_tracker_global),
+            Some(*engine_mem_id),
+        )
     } else {
         (None, None, None)
     };
