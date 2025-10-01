@@ -17,7 +17,7 @@ providers:
         derived_from: null
         lifetime: static
         docs: The instruction offset of the probe within the function (zero-based indexing).
-      - name: is_func_end
+      - name: at_func_end
         type: bool
         derived_from: null
         lifetime: static

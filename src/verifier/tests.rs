@@ -478,7 +478,7 @@ wasm::call:alt /
 
     // 7 scopes: whamm, strcmp, drop_args, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt
     let num_scopes = 10;
-    // records: num_scopes PLUS (is_func_end, str_addr, func_id, func_name, value, probe_id, fid, fname, pc, opname, localN, target_imp_name, target_fn_name, target_fn_type, target_imp_module, imm0, arg[0:9]+, category_name, category_id)
+    // records: num_scopes PLUS (at_func_end, str_addr, func_id, func_name, value, probe_id, fid, fname, pc, opname, localN, target_imp_name, target_fn_name, target_fn_type, target_imp_module, imm0, arg[0:9]+, category_name, category_id)
     let num_recs = num_scopes + 18;
     // asserts on very high level table structure
     assert_eq!(num_scopes, table.scopes.len());

@@ -93,7 +93,7 @@ fn handle_wasm(
         .insert("pc".to_string(), Some(Value::gen_u32(pc as u32)));
 
     loc_info.static_data.insert(
-        "is_func_end".to_string(),
+        "at_func_end".to_string(),
         Some(Value::Boolean { val: at_func_end }),
     );
 
