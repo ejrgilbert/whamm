@@ -11,7 +11,7 @@
     - [Arithmetic](intro/syntax/arith.md)
     - [WIP - Strings](intro/syntax/strings.md)
     - [WIP - Tuples](intro/syntax/tuples.md)
-    - [WIP - Maps](intro/syntax/maps.md)
+    - [Maps](intro/syntax/maps.md)
     - [WIP - Functions](intro/syntax/functions.md)
     - [Type Bounds](intro/syntax/type_bounds.md)
     - [Report Variables](intro/syntax/report_vars.md)
