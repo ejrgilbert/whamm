@@ -203,7 +203,7 @@ fn handle_opcode_events(
 
     loc_info
         .static_data
-        .insert("op_name".to_string(), Some(Value::Str{val: event.clone()}));
+        .insert("opname".to_string(), Some(Value::Str{val: event.clone()}));
 
     // create a combination of WhammParams for all probes here
     let all_params = evt.all_params();

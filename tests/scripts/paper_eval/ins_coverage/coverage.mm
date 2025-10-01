@@ -1,4 +1,4 @@
-wasm:opcode:*:before / is_func_end || op_name != "end" / {
+wasm:opcode:*:before / is_func_end || opname != "end" / {
     report unshared var reached: bool;
     reached = true;
 }

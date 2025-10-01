@@ -3,7 +3,7 @@
 # ============================
 
 opname: &opname
-  name: op_name
+  name: opname
   type: str
   docs: The name of the activated opcode.
   lifetime: static
