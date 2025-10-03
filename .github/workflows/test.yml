@@ -82,7 +82,7 @@ jobs:
           
           echo "[INFO] Configuring the 'wizeng' spectest interpreter..."
           mkdir -p output/tests/engines
-          mv wizard-engine/bin/spectest.x86-linux output/tests/engines/wizard-spectest
+          mv wizard-engine/bin/unittest.x86-linux output/tests/engines/wizard-spectest
           
           echo "[INFO] Testing the 'wizeng' spectest interpreter configuration..."
           ls -al output/tests/engines
