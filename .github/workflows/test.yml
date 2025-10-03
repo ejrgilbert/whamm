@@ -86,7 +86,7 @@ jobs:
           
           echo "[INFO] Testing the 'wizeng' spectest interpreter configuration..."
           ls -al output/tests/engines
-          ./output/tests/engines/wizard-spectest --help || [ $? == 3 ]
+          ./output/tests/engines/wizard-spectest --help || [ $? == 1 ]
           
           echo "[INFO] Configuring the 'wizeng' binary..."
           ln -s ${PWD}/wizard-engine/scripts/wizeng output/tests/engines/wizeng
