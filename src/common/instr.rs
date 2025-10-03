@@ -36,7 +36,7 @@ use wirm::{InitInstr, Module, Opcode};
 const ENGINE_BUFFER_NAME: &str = "whamm_buffer";
 const ENGINE_BUFFER_START_NAME: &str = "whamm_buffer:start";
 const ENGINE_BUFFER_MAX_NAME: &str = "whamm_buffer:max";
-const ENGINE_BUFFER_MAX_SIZE: i32 = 2i32.pow(10); // max set to 1KB = 2^10 = 1024 bytes
+pub const ENGINE_BUFFER_MAX_SIZE: i32 = 2i32.pow(10); // max set to 1KB = 2^10 = 1024 bytes
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
@@ -355,7 +355,7 @@ pub fn run(
     // Bump the memory pages to account for used memory
     mem_allocator.memory_grow(target_wasm);
     // Update the memory tracker global to point to the start of free memory
-    mem_allocator.update_memory_global_ptr(target_wasm);
+    mem_allocator.update_memory_global_ptrs(target_wasm);
 
     // for debugging
     report_vars.print_metadata();
@@ -579,74 +579,67 @@ fn get_memory_allocator(
         get_tag_for(&None),
     );
 
-    let (alloc_var_mem_id, alloc_var_mem_tracker_global, engine_mem_id) = if as_monitor_module {
-        let alloc_id = *target_wasm.add_local_memory_with_tag(
-            MemoryType {
-                memory64: false,
-                shared: false,
-                initial: 1,
-                maximum: None,
-                page_size_log2: None,
-            },
-            get_tag_for(&None),
-        );
-        let alloc_tracker_global = target_wasm.add_global_with_tag(
-            InitExpr::new(vec![InitInstr::Value(WirmValue::I32(0))]),
-            WirmType::I32,
-            true,
-            false,
-            get_tag_for(&None),
-        );
-        let engine_mem_id = target_wasm.add_local_memory_with_tag(
-            MemoryType {
-                memory64: false,
-                shared: false,
-                initial: 1,
-                maximum: None,
-                page_size_log2: None,
-            },
-            get_tag_for(&None),
-        );
-        let engine_mem_start_id = target_wasm.add_global_with_tag(
-            InitExpr::new(vec![InitInstr::Value(WirmValue::I32(0))]),
-            WirmType::I32,
-            false,
-            false,
-            get_tag_for(&None),
-        );
-        let engine_mem_max_id = target_wasm.add_global_with_tag(
-            InitExpr::new(vec![InitInstr::Value(WirmValue::I32(
-                ENGINE_BUFFER_MAX_SIZE,
-            ))]),
-            WirmType::I32,
-            false,
-            false,
-            get_tag_for(&None),
-        );
-        target_wasm.exports.add_export_mem_with_tag(
-            ENGINE_BUFFER_NAME.to_string(),
-            *engine_mem_id,
-            get_tag_for(&None),
-        );
-        target_wasm.exports.add_export_global_with_tag(
-            ENGINE_BUFFER_START_NAME.to_string(),
-            *engine_mem_start_id,
-            get_tag_for(&None),
-        );
-        target_wasm.exports.add_export_global_with_tag(
-            ENGINE_BUFFER_MAX_NAME.to_string(),
-            *engine_mem_max_id,
-            get_tag_for(&None),
-        );
+    let (alloc_var_mem_id, alloc_var_mem_tracker_global, engine_mem_id, engine_mem_start_id) =
+        if as_monitor_module {
+            let alloc_id = *target_wasm.add_local_memory_with_tag(
+                MemoryType {
+                    memory64: false,
+                    shared: false,
+                    initial: 1,
+                    maximum: None,
+                    page_size_log2: None,
+                },
+                get_tag_for(&None),
+            );
+            let alloc_tracker_global = target_wasm.add_global_with_tag(
+                InitExpr::new(vec![InitInstr::Value(WirmValue::I32(0))]),
+                WirmType::I32,
+                true,
+                false,
+                get_tag_for(&None),
+            );
+            let engine_mem_start_id = target_wasm.add_global_with_tag(
+                InitExpr::new(vec![InitInstr::Value(WirmValue::I32(0))]),
+                WirmType::I32,
+                false,
+                false,
+                get_tag_for(&None),
+            );
+            let engine_mem_max_id = target_wasm.add_global_with_tag(
+                InitExpr::new(vec![InitInstr::Value(WirmValue::I32(
+                    ENGINE_BUFFER_MAX_SIZE,
+                ))]),
+                WirmType::I32,
+                false,
+                false,
+                get_tag_for(&None),
+            );
+            target_wasm.exports.add_export_mem_with_tag(
+                ENGINE_BUFFER_NAME.to_string(),
+                // just use the same memory we store our static strings in (enables more efficient strcmp in predicates for the engine)
+                mem_id,
+                get_tag_for(&None),
+            );
+            target_wasm.exports.add_export_global_with_tag(
+                ENGINE_BUFFER_START_NAME.to_string(),
+                *engine_mem_start_id,
+                get_tag_for(&None),
+            );
+            target_wasm.exports.add_export_global_with_tag(
+                ENGINE_BUFFER_MAX_NAME.to_string(),
+                *engine_mem_max_id,
+                get_tag_for(&None),
+            );
 
-        (
-            Some(alloc_id),
-            Some(alloc_tracker_global),
-            Some(*engine_mem_id),
-        )
-    } else {
-        (None, None, None)
-    };
+            (
+                Some(alloc_id),
+                Some(alloc_tracker_global),
+                Some(mem_id),
+                Some(engine_mem_start_id),
+            )
+        } else {
+            (None, None, None, None)
+        };
 
     MemoryAllocator::new(
         mem_id,
@@ -654,6 +647,7 @@ fn get_memory_allocator(
         alloc_var_mem_id,
         alloc_var_mem_tracker_global,
         engine_mem_id,
+        engine_mem_start_id,
     )
 }
 
