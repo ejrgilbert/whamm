@@ -127,6 +127,38 @@ arg2_u32: &arg2_u32
   lifetime: dynamic
   derived_from: null
 
+# ===========================
+# ==== resultN Constants ====
+# ===========================
+
+res0_i32: &res0_i32
+  name: res0
+  type: i32
+  docs: The result of the opcode at index 0.
+  lifetime: dynamic
+  derived_from: null
+
+res0_i64: &res0_i64
+  name: res0
+  type: i64
+  docs: The result of the opcode at index 0.
+  lifetime: dynamic
+  derived_from: null
+
+res0_f32: &res0_f32
+  name: res0
+  type: f32
+  docs: The result of the opcode at index 0.
+  lifetime: dynamic
+  derived_from: null
+
+res0_f64: &res0_f64
+  name: res0
+  type: f64
+  docs: The result of the opcode at index 0.
+  lifetime: dynamic
+  derived_from: null
+
 # ========================
 # ==== immN Constants ====
 # ========================
@@ -953,6 +985,7 @@ i32_load: &i32_load
     - *category_id_load
     - *category_name_load
     - *arg0_u32
+    - *res0_i32
     - *memory
     - *align
     - *effective_addr
@@ -980,6 +1013,7 @@ i64_load: &i64_load
     - *category_id_load
     - *category_name_load
     - *arg0_u32
+    - *res0_i64
     - *memory
     - *align
     - *effective_addr
@@ -1007,6 +1041,7 @@ f32_load: &f32_load
     - *category_id_load
     - *category_name_load
     - *arg0_u32
+    - *res0_f32
     - *memory
     - *align
     - *effective_addr
@@ -1034,6 +1069,7 @@ f64_load: &f64_load
     - *category_id_load
     - *category_name_load
     - *arg0_u32
+    - *res0_f64
     - *memory
     - *align
     - *effective_addr
@@ -1061,6 +1097,7 @@ i32_load8_s: &i32_load8_s
     - *category_id_load
     - *category_name_load
     - *arg0_u32
+    - *res0_i32
     - *memory
     - *align
     - *effective_addr
@@ -1088,6 +1125,7 @@ i32_load8_u: &i32_load8_u
     - *category_id_load
     - *category_name_load
     - *arg0_u32
+    - *res0_i32
     - *memory
     - *align
     - *effective_addr
@@ -1115,6 +1153,7 @@ i32_load16_s: &i32_load16_s
     - *category_id_load
     - *category_name_load
     - *arg0_u32
+    - *res0_i32
     - *memory
     - *align
     - *effective_addr
@@ -1142,6 +1181,7 @@ i32_load16_u: &i32_load16_u
     - *category_id_load
     - *category_name_load
     - *arg0_u32
+    - *res0_i32
     - *memory
     - *align
     - *effective_addr
@@ -1169,6 +1209,7 @@ i64_load8_s: &i64_load8_s
     - *category_id_load
     - *category_name_load
     - *arg0_u32
+    - *res0_i64
     - *memory
     - *align
     - *effective_addr
@@ -1196,6 +1237,7 @@ i64_load8_u: &i64_load8_u
     - *category_id_load
     - *category_name_load
     - *arg0_u32
+    - *res0_i64
     - *memory
     - *align
     - *effective_addr
@@ -1223,6 +1265,7 @@ i64_load16_s: &i64_load16_s
     - *category_id_load
     - *category_name_load
     - *arg0_u32
+    - *res0_i64
     - *memory
     - *align
     - *effective_addr
@@ -1250,6 +1293,7 @@ i64_load16_u: &i64_load16_u
     - *category_id_load
     - *category_name_load
     - *arg0_u32
+    - *res0_i64
     - *memory
     - *align
     - *effective_addr
@@ -1277,6 +1321,7 @@ i64_load32_s: &i64_load32_s
     - *category_id_load
     - *category_name_load
     - *arg0_u32
+    - *res0_i64
     - *memory
     - *align
     - *effective_addr
@@ -1304,6 +1349,7 @@ i64_load32_u: &i64_load32_u
     - *category_id_load
     - *category_name_load
     - *arg0_u32
+    - *res0_i64
     - *memory
     - *align
     - *effective_addr
@@ -1322,7 +1368,7 @@ i32_store: &i32_store
       type: u32
       derived_from: 4
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -1350,7 +1396,7 @@ i64_store: &i64_store
       type: u32
       derived_from: 8
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -1378,7 +1424,7 @@ f32_store: &f32_store
       type: u32
       derived_from: 4
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -1406,7 +1452,7 @@ f64_store: &f64_store
       type: u32
       derived_from: 8
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -1434,7 +1480,7 @@ i32_store8: &i32_store8
       type: u32
       derived_from: 1
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -1462,7 +1508,7 @@ i32_store16: &i32_store16
       type: u32
       derived_from: 2
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -1490,7 +1536,7 @@ i64_store8: &i64_store8
       type: u32
       derived_from: 1
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -1519,7 +1565,7 @@ i64_store16: &i64_store16
       type: u32
       derived_from: 2
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -1547,7 +1593,7 @@ i64_store32: &i64_store32
       type: u32
       derived_from: 4
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -4077,6 +4123,7 @@ i32_atomic_load: &i32_atomic_load
     - *is_write_false
     - *offset
     - *arg0_u32
+    - *res0_i32
   bound_fns: []
   supported_modes: *default_modes
 
@@ -4104,6 +4151,7 @@ i64_atomic_load: &i64_atomic_load
     - *is_write_false
     - *offset
     - *arg0_u32
+    - *res0_i64
   bound_fns: []
   supported_modes: *default_modes
 
@@ -4131,6 +4179,7 @@ i32_atomic_load8_u: &i32_atomic_load8_u
     - *is_write_false
     - *offset
     - *arg0_u32
+    - *res0_i32
   bound_fns: []
   supported_modes: *default_modes
 
@@ -4158,6 +4207,7 @@ i32_atomic_load16_u: &i32_atomic_load16_u
     - *is_write_false
     - *offset
     - *arg0_u32
+    - *res0_i32
   bound_fns: []
   supported_modes: *default_modes
 
@@ -4185,6 +4235,7 @@ i64_atomic_load8_u: &i64_atomic_load8_u
     - *is_write_false
     - *offset
     - *arg0_u32
+    - *res0_i64
   bound_fns: []
   supported_modes: *default_modes
 
@@ -4212,6 +4263,7 @@ i64_atomic_load16_u: &i64_atomic_load16_u
     - *is_write_false
     - *offset
     - *arg0_u32
+    - *res0_i64
   bound_fns: []
   supported_modes: *default_modes
 
@@ -4239,6 +4291,7 @@ i64_atomic_load32_u: &i64_atomic_load32_u
     - *is_write_false
     - *offset
     - *arg0_u32
+    - *res0_i64
   bound_fns: []
   supported_modes: *default_modes
 
@@ -4252,7 +4305,7 @@ i32_atomic_store: &i32_atomic_store
       type: u32
       derived_from: 4
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -4280,7 +4333,7 @@ i32_atomic_store8: &i32_atomic_store8
       type: u32
       derived_from: 1
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -4308,7 +4361,7 @@ i32_atomic_store16: &i32_atomic_store16
       type: u32
       derived_from: 2
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -4336,7 +4389,7 @@ i64_atomic_store: &i64_atomic_store
       type: u32
       derived_from: 8
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -4364,7 +4417,7 @@ i64_atomic_store8: &i64_atomic_store8
       type: u32
       derived_from: 1
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -4392,7 +4445,7 @@ i64_atomic_store16: &i64_atomic_store16
       type: u32
       derived_from: 2
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
@@ -4420,7 +4473,7 @@ i64_atomic_store32: &i64_atomic_store32
       type: u32
       derived_from: 4
       lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
     - name: addr
       type: u32
       derived_from: arg1
