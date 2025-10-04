@@ -1,4 +1,5 @@
 use crate::common::error::ErrorGen;
+use crate::common::instr::ENGINE_BUFFER_MAX_SIZE;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::parser::types::DataType;
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
@@ -28,6 +29,7 @@ pub struct MemoryAllocator {
 
     // used to save off data transmitted from the engine (e.g. fname)
     pub engine_mem_id: Option<u32>,
+    pub engine_mem_start_global: Option<GlobalID>,
     // Constant pool for strings emitted thus far
     pub emitted_strings: HashMap<String, StringAddr>,
 
@@ -44,6 +46,7 @@ impl MemoryAllocator {
         alloc_var_mem_id: Option<u32>,
         alloc_var_mem_tracker_global: Option<GlobalID>,
         engine_mem_id: Option<u32>,
+        engine_mem_start_global: Option<GlobalID>,
     ) -> Self {
         Self {
             mem_id,
@@ -51,6 +54,7 @@ impl MemoryAllocator {
             alloc_var_mem_id,
             alloc_var_mem_tracker_global,
             engine_mem_id,
+            engine_mem_start_global,
             curr_mem_offset: 0,
             emitted_strings: HashMap::new(),
             base_mem_checker_fid: None,
@@ -610,7 +614,9 @@ impl MemoryAllocator {
         // If we've allocated any memory, bump the app's memory up to account for that
         if !self.emitted_strings.is_empty() {
             if let Some(mem) = wasm.memories.get_mut(MemoryID(self.mem_id)) {
-                let req_pages = ((self.curr_mem_offset as u32 / WASM_PAGE_SIZE) + 1) as u64;
+                let req_pages = (((self.curr_mem_offset as i32 + ENGINE_BUFFER_MAX_SIZE) as u32
+                    / WASM_PAGE_SIZE)
+                    + 1) as u64;
                 if mem.ty.initial < req_pages {
                     mem.ty.initial = req_pages;
                 }
@@ -618,14 +624,29 @@ impl MemoryAllocator {
         }
     }
 
-    pub(crate) fn update_memory_global_ptr(&mut self, wasm: &mut Module) {
+    pub(crate) fn update_memory_global_ptrs(&mut self, wasm: &mut Module) {
         // use this function to account for the statically-used memory
+        let buffer_size = if let Some(buffer_start) = self.engine_mem_start_global {
+            // engine buffer should start after the statically used memory
+            wasm.mod_global_init_expr(
+                buffer_start,
+                InitExpr::new(vec![InitInstr::Value(WirmValue::I32(
+                    self.curr_mem_offset as i32,
+                ))]),
+            );
+            ENGINE_BUFFER_MAX_SIZE
+        } else {
+            // There's no engine buffer!
+            0
+        };
+
+        // memory tracker should point after the engine buffer
         wasm.mod_global_init_expr(
             self.mem_tracker_global,
             InitExpr::new(vec![InitInstr::Value(WirmValue::I32(
-                self.curr_mem_offset as i32,
+                self.curr_mem_offset as i32 + buffer_size,
             ))]),
-        )
+        );
     }
 }
 

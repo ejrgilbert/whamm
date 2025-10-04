@@ -66,7 +66,7 @@ jobs:
           which progress.x86-64-linux
           
           echo "[INFO] Building 'virgil'..."
-          git clone --branch FOR_WHAMM https://github.com/ejrgilbert/virgil.git
+          git clone https://github.com/titzer/virgil.git
           pushd virgil && make && popd
           echo "$GITHUB_WORKSPACE/virgil/bin" >> $GITHUB_PATH
       - name: Setup Wizard-Engine
@@ -75,18 +75,18 @@ jobs:
           which v3c
           
           echo "[INFO] Building 'wizeng'..."
-          git clone --branch FOR_WHAMM https://github.com/ejrgilbert/wizard-engine.git
+          git clone https://github.com/titzer/wizard-engine.git
           pushd wizard-engine
           make -j
           popd
           
           echo "[INFO] Configuring the 'wizeng' spectest interpreter..."
           mkdir -p output/tests/engines
-          mv wizard-engine/bin/spectest.x86-linux output/tests/engines/wizard-spectest
+          mv wizard-engine/bin/unittest.x86-linux output/tests/engines/wizard-spectest
           
           echo "[INFO] Testing the 'wizeng' spectest interpreter configuration..."
           ls -al output/tests/engines
-          ./output/tests/engines/wizard-spectest --help || [ $? == 3 ]
+          ./output/tests/engines/wizard-spectest --help || [ $? == 1 ]
           
           echo "[INFO] Configuring the 'wizeng' binary..."
           ln -s ${PWD}/wizard-engine/scripts/wizeng output/tests/engines/wizeng
