@@ -1,4 +1,4 @@
-use crate::emitter::rewriting::rules::Arg;
+use crate::emitter::rewriting::rules::StackVal;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::parser::types::{Block, DataType, Expr, Global, Location, RulePart, Statement};
 use itertools::Itertools;
@@ -145,7 +145,7 @@ impl Metadata {
 }
 
 #[derive(Clone, Debug, Default)]
-pub enum ReqArgs {
+pub enum StackReq {
     #[default]
     None,
     FirstN {
@@ -153,7 +153,7 @@ pub enum ReqArgs {
     },
     All,
 }
-impl ReqArgs {
+impl StackReq {
     pub fn new(n: i32) -> Self {
         if n == -1 {
             Self::All
@@ -178,24 +178,24 @@ impl ReqArgs {
     /// Make `self` request the most of the two `ReqArgs` instances.
     pub fn combine(&mut self, other: &Self) {
         match self {
-            ReqArgs::All => {} // already max
-            ReqArgs::None => match other {
-                ReqArgs::None => {} // equal amount
-                ReqArgs::FirstN { .. } | ReqArgs::All => *self = other.clone(),
+            Self::All => {} // already max
+            Self::None => match other {
+                Self::None => {} // equal amount
+                Self::FirstN { .. } | Self::All => *self = other.clone(),
             },
-            ReqArgs::FirstN { n: my_n } => match other {
-                ReqArgs::None => {} // less than self
-                ReqArgs::FirstN { n: other_n } => {
+            Self::FirstN { n: my_n } => match other {
+                Self::None => {} // less than self
+                Self::FirstN { n: other_n } => {
                     let mut cmp_n = *other_n;
-                    *self = ReqArgs::FirstN {
+                    *self = Self::FirstN {
                         n: *my_n.max(&mut cmp_n),
                     }
                 }
-                ReqArgs::All => *self = other.clone(), // other is max
+                Self::All => *self = other.clone(), // other is max
             },
         }
     }
-    pub fn of(&self, args: Vec<Arg>) -> Vec<Arg> {
+    pub fn of(&self, args: Vec<StackVal>) -> Vec<StackVal> {
         if args.is_empty() {
             return vec![];
         }
@@ -216,46 +216,56 @@ impl ReqArgs {
 #[derive(Clone, Debug, Default)]
 pub struct WhammParams {
     pub params: HashSet<WhammParam>,
-    pub req_args: ReqArgs,
+    pub req_args: StackReq,
+    pub req_results: StackReq,
 
     requested_args: Vec<u32>,
+    requested_results: Vec<u32>,
 }
 impl WhammParams {
     pub fn push(&mut self, param: WhammParam) {
         if let Some(n) = param.n_for("arg") {
             self.requested_args.push(n);
         }
+        if let Some(n) = param.n_for("res") {
+            self.requested_results.push(n);
+        }
         self.params.insert(param);
     }
 
     /// This gets called at the end of a probe visit to figure out
-    /// which args to save off!!
+    /// which stack values to save off!!
     /// (see MetadataCollector::visit_probe)
-    pub fn process_req_args(&mut self) {
-        if self.requested_args.is_empty() {
-            // not requesting any args, but could have been set externally!
+    pub fn process_stack_reqs(&mut self) {
+        Self::process_stack_req(&mut self.requested_args, &mut self.req_args);
+        Self::process_stack_req(&mut self.requested_results, &mut self.req_results);
+    }
+    
+    fn process_stack_req(requested: &mut [u32], stack_req: &mut StackReq) {
+        if requested.is_empty() {
+            // not requesting any stack vals, but could have been set externally!
             // so tentatively do the combination here
-            self.req_args.combine(&ReqArgs::None);
+            stack_req.combine(&StackReq::None);
             return;
         }
-        let sorted_args = self.requested_args.iter().sorted();
+        let sorted = requested.iter().sorted();
 
         let mut first_n = 0;
-        for (i, arg_n) in sorted_args.into_iter().enumerate() {
-            if i as u32 == *arg_n {
+        for (i, req_n) in sorted.into_iter().enumerate() {
+            if i as u32 == *req_n {
                 // is requesting the first N thus far
-                first_n = *arg_n;
+                first_n = *req_n;
             } else {
                 // is requesting out of order...
                 // tentatively do the combination here in case hardcoded elsewhere
-                self.req_args.combine(&ReqArgs::All);
+                stack_req.combine(&StackReq::All);
                 return;
             }
         }
 
-        // has requested the first N args without skipping any!
+        // has requested the first N reqs without skipping any!
         // tentatively do the combination here in case hardcoded elsewhere
-        self.req_args.combine(&ReqArgs::FirstN { n: first_n });
+        stack_req.combine(&StackReq::FirstN { n: first_n });
     }
 }
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

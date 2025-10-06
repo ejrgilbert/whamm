@@ -1,4 +1,4 @@
-use crate::generator::ast::ReqArgs;
+use crate::generator::ast::StackReq;
 use crate::parser::types::{DataType, Definition, FnId, Location, ProbeRule, Value};
 use pest::error::LineColLocation;
 use std::collections::HashMap;
@@ -632,7 +632,7 @@ pub enum Record {
 
         /// Bookkeeping for bound functions that need the args defined
         /// (only tracks this for dynamic bound functions)
-        req_args: ReqArgs,
+        req_args: StackReq,
     },
     Var {
         ty: DataType,

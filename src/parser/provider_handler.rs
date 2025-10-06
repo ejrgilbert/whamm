@@ -2,7 +2,7 @@
 
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{cyan, green, long_line, magenta_italics, white};
-use crate::generator::ast::ReqArgs;
+use crate::generator::ast::StackReq;
 use crate::parser::types::{
     Block, DataType, Definition, Expr, Fn as WhammFn, FnId, Location, ProbeRule, Rule, RulePart,
     WhammParser,
@@ -777,7 +777,7 @@ where
 #[derive(Clone, Debug)]
 pub struct BoundFunc {
     pub func: WhammFn,
-    pub req_args: ReqArgs, // TODO: Remove this...it's wasm opcode specific...
+    pub req_args: StackReq, // TODO: Remove this...it's wasm opcode specific...
     docs: String,
 }
 impl CheckedFrom<BoundFuncYml> for BoundFunc {
@@ -825,7 +825,7 @@ impl CheckedFrom<BoundFuncYml> for BoundFunc {
                 results,
                 body: Block::default(),
             },
-            req_args: ReqArgs::new(value.req_args),
+            req_args: StackReq::new(value.req_args),
             docs: value.docs.to_owned(),
         })
     }

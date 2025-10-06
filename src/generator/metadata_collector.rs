@@ -1,6 +1,6 @@
 use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
-use crate::generator::ast::{Probe, ReqArgs, Script};
+use crate::generator::ast::{Probe, StackReq, Script, WhammParams};
 use crate::lang_features::report_vars::{BytecodeLoc, Metadata as ReportMetadata};
 use crate::parser::provider_handler::{Event, ModeKind, Package, Probe as ParserProbe, Provider};
 use crate::parser::types::{
@@ -96,27 +96,33 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             self.curr_probe.metadata.pred_is_dynamic = true;
         }
     }
-    fn combine_req_args(&mut self, req_args: ReqArgs) {
+    fn get_curr_params(&mut self) -> &mut WhammParams {
         match self.visiting {
             Visiting::Predicate => {
-                self.curr_probe
+                &mut self.curr_probe
                     .metadata
                     .pred_args
-                    .req_args
-                    .combine(&req_args);
             }
             Visiting::Body => {
-                self.curr_probe
+                &mut self.curr_probe
                     .metadata
                     .body_args
-                    .req_args
-                    .combine(&req_args);
             }
             Visiting::None => {
                 // error
                 unreachable!("Expected a set variant of 'Visiting', but found 'None'");
             }
         }
+    }
+    fn combine_req_args(&mut self, req_args: StackReq) {
+        self.get_curr_params()
+            .req_args
+            .combine(&req_args);
+    }
+    fn combine_req_results(&mut self, req_results: StackReq) {
+        self.get_curr_params()
+            .req_results
+            .combine(&req_results);
     }
     fn push_metadata(&mut self, name: &str, ty: &DataType) {
         match self.visiting {
@@ -255,18 +261,18 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
             self.visit_expr(pred);
         }
         // compile which args have been requested
-        self.curr_probe.metadata.pred_args.process_req_args();
+        self.curr_probe.metadata.pred_args.process_stack_reqs();
         if let Some(body) = &probe.body {
             self.visiting = Visiting::Body;
             self.visit_stmts(body.stmts.as_slice());
             if probe.kind == ModeKind::Alt {
                 // XXX: this is bad
                 // always save all args for an alt probe
-                self.combine_req_args(ReqArgs::All);
+                self.combine_req_args(StackReq::All);
             }
         }
         // compile which args have been requested
-        self.curr_probe.metadata.body_args.process_req_args();
+        self.curr_probe.metadata.body_args.process_stack_reqs();
         self.visiting = Visiting::None;
 
         trace!("Exiting: CodeGenerator::visit_probe");
@@ -437,7 +443,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                         results.first().unwrap().clone()
                     };
 
-                    (def, ret_ty, ReqArgs::None, None)
+                    (def, ret_ty, StackReq::None, None)
                 } else {
                     let (
                         Some(Record::Fn {

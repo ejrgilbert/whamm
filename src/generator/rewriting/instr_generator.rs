@@ -1,6 +1,6 @@
 use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
-use crate::emitter::rewriting::rules::{Arg, LocInfo, MatchState, ProbeRule};
+use crate::emitter::rewriting::rules::{StackVal, LocInfo, MatchState, ProbeRule};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::Emitter;
@@ -56,7 +56,8 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k> {
     pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i>,
     pub ast: SimpleAST,
     pub err: &'j mut ErrorGen,
-    curr_instr_args: Vec<Arg>,
+    curr_instr_args: Vec<StackVal>,
+    curr_instr_results: Vec<StackVal>,
     curr_probe_rule: ProbeRule,
     is_prog_exit: bool,
     curr_probe_loc: Option<Location>,
@@ -83,6 +84,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
             ast,
             err,
             curr_instr_args: vec![],
+            curr_instr_results: vec![],
             curr_probe_rule: ProbeRule::default(),
             is_prog_exit: false,
             curr_probe_loc: None,
@@ -264,6 +266,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
                     }
 
                     self.curr_instr_args = loc_info.args.clone(); // must clone so that this lives long enough
+                    self.curr_instr_results = loc_info.results.clone(); // must clone so that this lives long enough
                     self.curr_probe_rule = probe_rule.clone();
                     self.curr_probe_loc = loc_clone;
                     self.curr_probe = Some((state_init_clone, body_clone, pred_clone));
@@ -399,6 +402,22 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.emitter.emit_args(self.err)
     }
 
+    fn save_results(&mut self) -> bool {
+        if !self.curr_instr_results.is_empty() {
+            // The current instruction has args, save them (before)
+            self.emitter.before();
+            self.emitter.save_results(&self.curr_instr_results)
+        } else {
+            // If no results, just return true
+            true
+        }
+    }
+    fn replace_results(&mut self) -> bool {
+        // Place the original arguments back on the stack.
+        self.emitter.after();
+        self.emitter.emit_results(self.err)
+    }
+
     fn pred_is_true(&mut self) -> bool {
         if let Some((.., pred)) = &self.curr_probe {
             if let Some(pred) = pred {
@@ -419,9 +438,9 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         if let Some((state_init, body, ..)) = &mut self.curr_probe {
             if let Some(ref mut body) = body {
                 self.emitter
-                    .init_probe_state(&self.curr_instr_args, state_init, self.err);
+                    .init_probe_state(state_init, self.err);
                 self.emitter
-                    .emit_body(&self.curr_instr_args, body, self.err)
+                    .emit_body(body, self.err)
             } else {
                 let curr_probe_mode = self.curr_probe_rule.mode.as_ref().unwrap();
                 if matches!(curr_probe_mode, ModeKind::Alt) {
@@ -456,10 +475,10 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 // emit as normal
                 (false, false) => {
                     self.emitter
-                        .init_probe_state(&self.curr_instr_args, state_init, self.err);
+                        .init_probe_state(state_init, self.err);
                     match self
                         .emitter
-                        .emit_if(&self.curr_instr_args, pred, body, self.err)
+                        .emit_if(pred, body, self.err)
                     {
                         Err(e) => {
                             self.err.add_error(*e);
@@ -472,7 +491,6 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 (false, true) => self.emit_body(),
                 // emit empty if block
                 (true, false) => match self.emitter.emit_if(
-                    &self.curr_instr_args,
                     pred,
                     &mut Block::default(),
                     self.err,
@@ -497,9 +515,8 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 // normal
                 (false, false) => {
                     self.emitter
-                        .init_probe_state(&self.curr_instr_args, state_init, self.err);
+                        .init_probe_state(state_init, self.err);
                     match self.emitter.emit_if_with_orig_as_else(
-                        &self.curr_instr_args,
                         pred,
                         body,
                         self.err,
@@ -515,7 +532,6 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 (false, true) => self.emit_body(),
                 // empty if stmt
                 (true, false) => match self.emitter.emit_if_with_orig_as_else(
-                    &self.curr_instr_args,
                     pred,
                     &mut Block::default(),
                     self.err,

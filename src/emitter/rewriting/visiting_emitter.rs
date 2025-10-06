@@ -1,6 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::rules::{
-    get_loc_info_for_active_probes, get_ty_info_for_instr, Arg, LocInfo, MatchState, ProbeRule,
+    get_loc_info_for_active_probes, get_ty_info_for_instr, StackVal, LocInfo, MatchState, ProbeRule,
 };
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
@@ -51,6 +51,7 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     pub(crate) report_vars: &'i mut ReportVars,
     pub(crate) unshared_var_handler: &'i mut UnsharedVarHandler,
     instr_created_args: Vec<(String, usize)>,
+    instr_created_results: Vec<(String, usize)>,
     pub curr_unshared: Vec<UnsharedVar>,
 }
 
@@ -81,6 +82,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
             report_vars,
             unshared_var_handler,
             instr_created_args: vec![],
+            instr_created_results: vec![],
             curr_unshared: vec![],
         }
     }
@@ -204,7 +206,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
         is_success
     }
 
-    pub(crate) fn save_args(&mut self, args: &[Arg]) -> bool {
+    pub(crate) fn save_args(&mut self, args: &[StackVal]) -> bool {
         // No opcodes should have been emitted in the module yet!
         // So, we can just save off the first * items in the stack as the args
         // to the call.
@@ -212,7 +214,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
 
         let mut arg_locals: Vec<(String, u32)> = vec![];
         args.iter().for_each(
-            |Arg {
+            |StackVal {
                  name: arg_name,
                  ty: arg_ty,
              }| {
@@ -295,6 +297,101 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
         true
     }
 
+    pub(crate) fn save_results(&mut self, results: &[StackVal]) -> bool {
+        // TODO -- factor this
+        
+        // No opcodes should have been emitted in the module yet!
+        // So, we can just save off the first * items in the stack as the args
+        // to the call.
+        let mut res_recs: Vec<(String, usize)> = vec![]; // vec to retain order!
+
+        let mut res_locals: Vec<(String, u32)> = vec![];
+        results.iter().for_each(
+            |StackVal {
+                 name: res_name,
+                 ty: res_ty,
+             }| {
+                let ty = if let Some(ty) = res_ty {
+                    *ty
+                } else {
+                    warn!("The current way that probes with polymorphic result types is supported for the bytecode rewriting target is incomplete.\
+                           In a future version, we need to have a virtual stack on the side to compute the actual result type and compare with the \
+                           result bounds of the probe to see if the location is a map. For now, it may generate invalid instrumented modules!");
+                    let Some(Record::Var {
+                                 ty,
+                                 ..
+                             }) = self.table.lookup_var(res_name, true)
+                    else {
+                        unreachable!("unexpected type");
+                    };
+                    let wasm_ty = if ty.to_wasm_type().len() > 1 {
+                        unimplemented!()
+                    } else {
+                        *ty.to_wasm_type().first().unwrap()
+                    };
+                    wasm_ty
+                };
+                // create local for the result in the module
+                let res_local_id = LocalID(self.locals_tracker.use_local(ty, &mut self.app_iter));
+                res_locals.push((res_name.to_string(), *res_local_id));
+            },
+        );
+
+        // Save args in reverse order (the leftmost arg is at the bottom of the stack)
+        res_locals.iter().for_each(|(res_name, res_local_id)| {
+            // emit an opcode in the event to assign the ToS to this new local
+            self.app_iter.local_set(LocalID(*res_local_id));
+
+            // place in symbol table with var addr for future reference
+            let id = self.table.put(
+                res_name.to_string(),
+                Record::Var {
+                    ty: DataType::I32, // TODO we only support integers right now.
+                    value: None,
+                    def: Definition::User,
+                    addr: Some(vec![VarAddr::Local {
+                        addr: *res_local_id,
+                    }]),
+                    loc: None,
+                },
+            );
+            res_recs.insert(0, (res_name.to_string(), id));
+        });
+        self.instr_created_results = res_recs;
+        true
+    }
+
+    pub(crate) fn emit_results(&mut self, err: &mut ErrorGen) -> bool {
+        // TODO -- factor this
+        
+        if self.in_init {
+            err.add_instr_error("Cannot re-emit results as a variable initialization.".to_string());
+            return false;
+        }
+        for (_param_name, param_rec_id) in self.instr_created_results.iter() {
+            let param_rec = self.table.get_record_mut(*param_rec_id);
+            if let Some(Record::Var {
+                            addr: Some(addrs), ..
+                        }) = param_rec
+            {
+                let VarAddr::Local { addr } = addrs.first().unwrap() else {
+                    assert_eq!(addrs.len(), 1);
+                    panic!("arg address should be represented with a single address")
+                };
+                // Inject at tracker.orig_instr_idx to make sure that this actually emits the args
+                // for the instrumented instruction right before that instruction is called!
+                self.app_iter.local_get(LocalID(*addr));
+            } else {
+                unreachable!(
+                    "{} \
+                Could not emit parameters, something went wrong...",
+                    UNEXPECTED_ERR_MSG
+                );
+            }
+        }
+        true
+    }
+
     pub(crate) fn emit_empty_alternate(&mut self) -> Result<bool, Box<WhammError>> {
         self.app_iter.empty_alternate();
         Ok(true)
@@ -352,6 +449,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
             let arg_name = format!("arg{}", i);
             self.table.override_record_val(&arg_name, None, false);
         }
+        for i in 0..loc_info.results.len() {
+            let res_name = format!("res{}", i);
+            self.table.override_record_val(&res_name, None, false);
+        }
         self.instr_created_args.clear();
     }
 
@@ -370,7 +471,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
 
     pub fn emit_if(
         &mut self,
-        curr_instr_args: &[Arg],
         condition: &mut Expr,
         conseq: &mut Block,
         err: &mut ErrorGen,
@@ -383,7 +483,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
 
         self.app_iter.if_stmt(block_type_to_wasm(conseq));
 
-        is_success &= self.emit_body(curr_instr_args, conseq, err);
+        is_success &= self.emit_body(conseq, err);
 
         // emit the end of the if block
         self.app_iter.end();
@@ -392,7 +492,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
 
     pub(crate) fn emit_if_with_orig_as_else(
         &mut self,
-        curr_instr_args: &[Arg],
         condition: &mut Expr,
         conseq: &mut Block,
         err: &mut ErrorGen,
@@ -407,7 +506,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
             Location::Module { func_idx, .. } | Location::Component { func_idx, .. } => func_idx,
         };
         let orig_ty_id =
-            get_ty_info_for_instr(self.app_iter.module, &fid, self.app_iter.curr_op().unwrap()).1;
+            get_ty_info_for_instr(self.app_iter.module, &fid, self.app_iter.curr_op().unwrap()).2;
 
         // emit the condition of the `if` expression
         is_success &= self.emit_expr(condition, err);
@@ -430,7 +529,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
             None => WirmBlockType::Empty,
         };
         self.app_iter.if_stmt(block_ty);
-        is_success &= self.emit_body(curr_instr_args, conseq, err);
+        is_success &= self.emit_body(conseq, err);
 
         // emit the beginning of the else
         self.app_iter.else_stmt();
@@ -529,7 +628,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
 
     fn handle_special_fn_call(
         &mut self,
-        _curr_instr_args: &[Arg],
         target_fn_name: String,
         args: &mut [Expr],
         err: &mut ErrorGen,
@@ -706,7 +804,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
 
     pub fn init_probe_state(
         &mut self,
-        curr_instr_args: &[Arg],
         init_logic: &mut [Statement],
         err: &mut ErrorGen,
     ) {
@@ -783,7 +880,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
         if !init_logic.is_empty() {
             self.in_init = true;
             for stmt in init_logic.iter_mut() {
-                self.emit_stmt(curr_instr_args, stmt, err);
+                self.emit_stmt(stmt, err);
             }
             self.in_init = false;
         }
@@ -836,18 +933,17 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         self.locals_tracker.reset_function();
     }
 
-    fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool {
+    fn emit_body(&mut self, body: &mut Block, err: &mut ErrorGen) -> bool {
         let mut is_success = true;
 
         for stmt in body.stmts.iter_mut() {
-            is_success &= self.emit_stmt(curr_instr_args, stmt, err);
+            is_success &= self.emit_stmt(stmt, err);
         }
         is_success
     }
 
     fn emit_stmt(
         &mut self,
-        curr_instr_args: &[Arg],
         stmt: &mut Statement,
         err: &mut ErrorGen,
     ) -> bool {
@@ -868,7 +964,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
             };
             if matches!(def, Definition::CompilerStatic) {
                 // We want to handle this as unique logic rather than a simple function call to be emitted
-                return self.handle_special_fn_call(curr_instr_args, fn_name, args, err);
+                return self.handle_special_fn_call(fn_name, args, err);
             }
         }
 

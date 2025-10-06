@@ -10,7 +10,7 @@ pub mod utils;
 
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
-use crate::emitter::rewriting::rules::Arg;
+use crate::emitter::rewriting::rules::StackVal;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -33,10 +33,9 @@ pub enum InjectStrategy {
 pub trait Emitter {
     fn reset_locals_for_probe(&mut self);
     fn reset_locals_for_function(&mut self);
-    fn emit_body(&mut self, curr_instr_args: &[Arg], body: &mut Block, err: &mut ErrorGen) -> bool;
+    fn emit_body(&mut self, body: &mut Block, err: &mut ErrorGen) -> bool;
     fn emit_stmt(
         &mut self,
-        curr_instr_args: &[Arg],
         stmt: &mut Statement,
         err: &mut ErrorGen,
     ) -> bool;

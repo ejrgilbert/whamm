@@ -8,7 +8,7 @@ use termcolor::Buffer;
 
 use crate::common::error::ErrorGen;
 use crate::common::terminal::{green, grey_italics, magenta, white, yellow};
-use crate::generator::ast::ReqArgs;
+use crate::generator::ast::StackReq;
 use crate::parser::provider_handler::{
     get_matches, BoundVar, Event, Package, Probe, Provider, ProviderDef,
 };
@@ -1503,7 +1503,7 @@ impl Whamm {
             strcmp_params,
             DataType::Boolean,
             false,
-            ReqArgs::None,
+            StackReq::None,
         );
 
         vec![strcmp]
@@ -1826,7 +1826,7 @@ fn get_loc(rule_part: &Option<RulePart>) -> Option<Location> {
 pub struct BoundFunction {
     pub docs: String,
     pub function: Fn,
-    pub req_args: ReqArgs,
+    pub req_args: StackReq,
 }
 impl BoundFunction {
     pub fn new(
@@ -1835,7 +1835,7 @@ impl BoundFunction {
         params: Vec<(Expr, DataType)>,
         return_ty: DataType,
         is_static: bool,
-        req_args: ReqArgs,
+        req_args: StackReq,
     ) -> Self {
         Self {
             docs,

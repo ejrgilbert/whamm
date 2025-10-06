@@ -1,7 +1,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
-use crate::emitter::rewriting::rules::Arg;
+use crate::emitter::rewriting::rules::StackVal;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::emitter::utils::{
     emit_body, emit_expr, emit_global_getter, emit_probes, emit_stmt, whamm_type_to_wasm_global,
@@ -236,7 +236,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         }
 
         // emit the function body
-        self.emit_body(&[], block, err);
+        self.emit_body(block, err);
 
         // emit the function
         if let Some(func) = self.emitting_func.take() {
@@ -655,7 +655,6 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
     }
     fn emit_body(
         &mut self,
-        _curr_instr_args: &[Arg],
         body: &mut Block,
         err: &mut ErrorGen,
     ) -> bool {
@@ -680,7 +679,6 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
 
     fn emit_stmt(
         &mut self,
-        _curr_instr_args: &[Arg],
         stmt: &mut Statement,
         err: &mut ErrorGen,
     ) -> bool {

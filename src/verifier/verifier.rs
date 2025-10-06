@@ -1,5 +1,5 @@
 use crate::common::error::ErrorGen;
-use crate::generator::ast::ReqArgs;
+use crate::generator::ast::StackReq;
 use crate::parser::provider_handler::{Event, Package, Probe, Provider};
 use crate::parser::types::Definition::{CompilerDynamic, CompilerStatic};
 use crate::parser::types::{
@@ -44,7 +44,7 @@ pub fn build_symbol_table(
         aliases: HashMap::default(),
         used_derived_vars: HashSet::default(),
         derived_vars: HashMap::default(),
-        req_args: ReqArgs::None,
+        req_args: StackReq::None,
     };
     visitor.visit_whamm(ast);
     visitor.table

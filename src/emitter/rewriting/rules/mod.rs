@@ -1,4 +1,4 @@
-use crate::generator::ast::{Probe, ReqArgs, WhammParam};
+use crate::generator::ast::{Probe, StackReq, WhammParam};
 use crate::generator::rewriting::simple_ast::{SimpleAST, SimpleEvt, SimplePkg, SimpleProv};
 use crate::parser::provider_handler::ModeKind;
 use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
@@ -207,7 +207,8 @@ fn handle_opcode_events(
 
     // create a combination of WhammParams for all probes here
     let all_params = evt.all_params();
-    let mut req_args = ReqArgs::None;
+    let mut req_args = StackReq::None;
+    let mut req_results = StackReq::None;
     let probe_rule = ProbeRule {
         provider: Some(RulePart::new("wasm".to_string(), None)),
         package: Some(RulePart::new("opcode".to_string(), None)),
@@ -1737,9 +1738,13 @@ fn handle_opcode_events(
         _ => panic!("Event not available: 'wasm:opcode:{event}'"),
     }
 
-    let (all_args, ..) = get_ty_info_for_instr(app_wasm, fid, instr);
+    let (all_args, all_results, ..) = get_ty_info_for_instr(app_wasm, fid, instr);
 
     // figure out which args are requested based on matched probes
+    // (we don't have a match if the requested argument is beyond the
+    // length of what's possible)
+    // we don't have conditional probe matching on this property for results
+    // yet, so we don't consider those here
     let mut probes_to_remove = vec![];
     for (i, (_, probe, _)) in loc_info.probes.iter_mut().enumerate() {
         if probe.metadata.body_args.req_args.matches(all_args.len()) {
@@ -1763,6 +1768,9 @@ fn handle_opcode_events(
 
     if req_args.is_some() {
         loc_info.args = req_args.of(all_args);
+    }
+    if req_results.is_some() {
+        loc_info.results = req_results.of(all_results);
     }
 
     loc_info.is_prog_exit = is_prog_exit_call(instr, app_wasm);
@@ -2001,9 +2009,12 @@ pub fn get_ty_info_for_instr(
     app_wasm: &Module,
     curr_fid: &FunctionID,
     instr: &Operator,
-) -> (Vec<Arg>, Option<u32>) {
+) -> (Vec<StackVal>, Vec<StackVal>, Option<u32>) {
     // TODO -- how to make this less manual?
-    let (ty_list, ty_id): (Vec<Option<WirmType>>, Option<u32>) = match instr {
+    let (arg_list, res_list, ty_id): (Vec<Option<WirmType>>, Vec<Option<WirmType>>, Option<u32>) = match instr {
+        Operator::If { .. } | Operator::BrIf { .. } | Operator::BrTable { .. } => {
+            (vec![Some(WirmType::I32)], vec![], None)
+        },
         Operator::Call {
             function_index: fid,
         } => {
@@ -2012,49 +2023,42 @@ pub fn get_ty_info_for_instr(
                 FuncKind::Local(func) => func.ty_id,
             };
             if let Some(ty) = app_wasm.types.get(ty_id) {
-                let mut res = vec![];
+                let mut args = vec![];
                 for t in ty.params().iter().rev() {
-                    res.push(Some(*t));
+                    args.push(Some(*t));
                 }
-                (res, Some(*ty_id))
+                let mut results = vec![];
+                for t in ty.results().iter().rev() {
+                    results.push(Some(*t));
+                }
+                (args, results, Some(*ty_id))
             } else {
                 // no type info found!!
                 warn!("No type information found for import with FID {fid}");
-                (vec![], None)
+                (vec![], vec![], None)
             }
-        }
-        Operator::If { .. } | Operator::BrIf { .. } | Operator::BrTable { .. } => {
-            (vec![Some(WirmType::I32)], None)
-        }
+        },
         Operator::Block {
             blockty: BlockType::FuncType(ty_id),
         }
         | Operator::Loop {
             blockty: BlockType::FuncType(ty_id),
-        } => {
+        } 
+        | Operator::CallIndirect { type_index: ty_id, .. } => {
             if let Some(ty) = app_wasm.types.get(TypeID(*ty_id)) {
-                let mut res = vec![];
-                for t in ty.params().iter() {
-                    res.push(Some(*t));
+                let mut args = vec![];
+                for t in ty.params().iter().rev() {
+                    args.push(Some(*t));
                 }
-                (res, Some(*ty_id))
+                let mut results = vec![];
+                for t in ty.results().iter().rev() {
+                    results.push(Some(*t));
+                }
+                (args, results, Some(*ty_id))
             } else {
                 // no type info found!!
                 warn!("No type information found for opcode");
-                (vec![], None)
-            }
-        }
-        Operator::CallIndirect { type_index, .. } => {
-            if let Some(ty) = app_wasm.types.get(TypeID(*type_index)) {
-                let mut res = vec![];
-                for t in ty.params().iter().rev() {
-                    res.push(Some(*t));
-                }
-                (res, Some(*type_index))
-            } else {
-                // no type info found!!
-                warn!("No type information found for CallIndirect");
-                (vec![], None)
+                (vec![], vec![], None)
             }
         }
         Operator::Drop => {
@@ -2063,7 +2067,7 @@ pub fn get_ty_info_for_instr(
             //     HOWEVER, we will need to keep a virtual stack to check if this match site is in fact
             //     a match based on the type bounds. (if they don't match up, not a match, don't emit)
             // e.g. [unknown]
-            (vec![None], None)
+            (vec![None], vec![], None)
         }
         Operator::Select => {
             // TODO -- how to express an unknown type?
@@ -2071,17 +2075,17 @@ pub fn get_ty_info_for_instr(
             //     HOWEVER, we will need to keep a virtual stack to check if this match site is in fact
             //     a match based on the type bounds. (if they don't match up, not a match, don't emit)
             // e.g. [unknown, unknown, i32]
-            (vec![None, None, Some(WirmType::I32)], None)
+            (vec![None, None, Some(WirmType::I32)], vec![None], None)
         }
         Operator::LocalSet { local_index } | Operator::LocalTee { local_index } => {
             if let FuncKind::Local(func) = app_wasm.functions.get_kind(*curr_fid) {
                 if let Some((_, ty)) = func.body.locals.get(*local_index as usize) {
-                    (vec![Some(*ty)], None)
+                    (vec![Some(*ty)], vec![], None)
                 } else {
-                    (vec![], None) // ignore
+                    (vec![], vec![], None) // ignore
                 }
             } else {
-                (vec![], None) // ignore
+                (vec![], vec![], None) // ignore
             }
         }
         Operator::GlobalSet { global_index } => {
@@ -2095,7 +2099,7 @@ pub fn get_ty_info_for_instr(
                     ..
                 }) => WirmType::from(*content_type),
             };
-            (vec![Some(ty)], None)
+            (vec![Some(ty)], vec![], None)
         }
         Operator::I32Load { .. }
         | Operator::I64Load { .. }
@@ -2113,17 +2117,17 @@ pub fn get_ty_info_for_instr(
         | Operator::I64Load32U { .. } => (vec![Some(WirmType::I32)], None),
 
         Operator::I32Store { .. } | Operator::I32Store8 { .. } | Operator::I32Store16 { .. } => {
-            (vec![Some(WirmType::I32), Some(WirmType::I32)], None)
+            (vec![Some(WirmType::I32), Some(WirmType::I32)], vec![], None)
         }
         Operator::I64Store { .. }
         | Operator::I64Store8 { .. }
         | Operator::I64Store16 { .. }
-        | Operator::I64Store32 { .. } => (vec![Some(WirmType::I64), Some(WirmType::I32)], None),
-        Operator::F32Store { .. } => (vec![Some(WirmType::F32), Some(WirmType::I32)], None),
-        Operator::F64Store { .. } => (vec![Some(WirmType::F64), Some(WirmType::I32)], None),
+        | Operator::I64Store32 { .. } => (vec![Some(WirmType::I64), Some(WirmType::I32)], vec![], None),
+        Operator::F32Store { .. } => (vec![Some(WirmType::F32), Some(WirmType::I32)], vec![], None),
+        Operator::F64Store { .. } => (vec![Some(WirmType::F64), Some(WirmType::I32)], vec![], None),
         Operator::MemoryGrow { .. } => (vec![Some(WirmType::I32)], None),
 
-        Operator::I32Eqz => (vec![Some(WirmType::I32)], None),
+        Operator::I32Eqz => (vec![Some(WirmType::I32)], vec![Some(WirmType::I32)], None),
         Operator::I32Ne
         | Operator::I32Eq
         | Operator::I32LtS
@@ -2133,10 +2137,10 @@ pub fn get_ty_info_for_instr(
         | Operator::I32LeS
         | Operator::I32LeU
         | Operator::I32GeS
-        | Operator::I32GeU => (vec![Some(WirmType::I32), Some(WirmType::I32)], None),
+        | Operator::I32GeU => (vec![Some(WirmType::I32), Some(WirmType::I32)], vec![Some(WirmType::I32)], None),
 
         Operator::I32Clz | Operator::I32Ctz | Operator::I32Popcnt => {
-            (vec![Some(WirmType::I32)], None)
+            (vec![Some(WirmType::I32)], vec![Some(WirmType::I32)], None)
         }
 
         Operator::I32Add
@@ -2153,9 +2157,9 @@ pub fn get_ty_info_for_instr(
         | Operator::I32ShrS
         | Operator::I32ShrU
         | Operator::I32Rotl
-        | Operator::I32Rotr => (vec![Some(WirmType::I32), Some(WirmType::I32)], None),
+        | Operator::I32Rotr => (vec![Some(WirmType::I32), Some(WirmType::I32)], vec![Some(WirmType::I32)], None),
 
-        Operator::I64Eqz => (vec![Some(WirmType::I64)], None),
+        Operator::I64Eqz => (vec![Some(WirmType::I64)], vec![Some(WirmType::I32)], None),
         Operator::I64Eq
         | Operator::I64Ne
         | Operator::I64LtS
@@ -2165,10 +2169,10 @@ pub fn get_ty_info_for_instr(
         | Operator::I64LeS
         | Operator::I64LeU
         | Operator::I64GeS
-        | Operator::I64GeU => (vec![Some(WirmType::I64), Some(WirmType::I64)], None),
+        | Operator::I64GeU => (vec![Some(WirmType::I64), Some(WirmType::I64)], vec![Some(WirmType::I32)], None),
 
         Operator::I64Clz | Operator::I64Ctz | Operator::I64Popcnt => {
-            (vec![Some(WirmType::I64)], None)
+            (vec![Some(WirmType::I64)], vec![Some(WirmType::I64)], None)
         }
         Operator::I64Add
         | Operator::I64Sub
@@ -2184,14 +2188,14 @@ pub fn get_ty_info_for_instr(
         | Operator::I64ShrS
         | Operator::I64ShrU
         | Operator::I64Rotl
-        | Operator::I64Rotr => (vec![Some(WirmType::I64), Some(WirmType::I64)], None),
+        | Operator::I64Rotr => (vec![Some(WirmType::I64), Some(WirmType::I64)], vec![Some(WirmType::I64)], None),
 
         Operator::F32Eq
         | Operator::F32Ne
         | Operator::F32Lt
         | Operator::F32Gt
         | Operator::F32Le
-        | Operator::F32Ge => (vec![Some(WirmType::F32), Some(WirmType::F32)], None),
+        | Operator::F32Ge => (vec![Some(WirmType::F32), Some(WirmType::F32)], vec![Some(WirmType::I32)], None),
 
         Operator::F32Abs
         | Operator::F32Neg
@@ -2199,21 +2203,21 @@ pub fn get_ty_info_for_instr(
         | Operator::F32Floor
         | Operator::F32Trunc
         | Operator::F32Nearest
-        | Operator::F32Sqrt => (vec![Some(WirmType::F32)], None),
+        | Operator::F32Sqrt => (vec![Some(WirmType::F32)], vec![Some(WirmType::F32)], None),
         Operator::F32Add
         | Operator::F32Sub
         | Operator::F32Mul
         | Operator::F32Div
         | Operator::F32Min
         | Operator::F32Max
-        | Operator::F32Copysign => (vec![Some(WirmType::F32), Some(WirmType::F32)], None),
+        | Operator::F32Copysign => (vec![Some(WirmType::F32), Some(WirmType::F32)], vec![Some(WirmType::F32)], None),
 
         Operator::F64Eq
         | Operator::F64Ne
         | Operator::F64Lt
         | Operator::F64Gt
         | Operator::F64Le
-        | Operator::F64Ge => (vec![Some(WirmType::F64), Some(WirmType::F64)], None),
+        | Operator::F64Ge => (vec![Some(WirmType::F64), Some(WirmType::F64)], vec![Some(WirmType::I32)], None),
 
         Operator::F64Abs
         | Operator::F64Neg
@@ -2221,14 +2225,14 @@ pub fn get_ty_info_for_instr(
         | Operator::F64Floor
         | Operator::F64Trunc
         | Operator::F64Nearest
-        | Operator::F64Sqrt => (vec![Some(WirmType::F32)], None),
+        | Operator::F64Sqrt => (vec![Some(WirmType::F32)], vec![Some(WirmType::F64)], None),
         Operator::F64Add
         | Operator::F64Sub
         | Operator::F64Mul
         | Operator::F64Div
         | Operator::F64Min
         | Operator::F64Max
-        | Operator::F64Copysign => (vec![Some(WirmType::F64), Some(WirmType::F64)], None),
+        | Operator::F64Copysign => (vec![Some(WirmType::F64), Some(WirmType::F64)], vec![Some(WirmType::F64)], None),
 
         Operator::I32WrapI64
         | Operator::F32ConvertI64S
@@ -2239,7 +2243,7 @@ pub fn get_ty_info_for_instr(
         | Operator::I64Extend8S
         | Operator::I64Extend16S
         | Operator::I64Extend32S => (vec![Some(WirmType::I64)], None),
-        Operator::I32TruncF32S | Operator::I32TruncF32U => (vec![Some(WirmType::F32)], None),
+        Operator::I32TruncF32S | Operator::I32TruncF32U => (vec![Some(WirmType::F32)], vec![Some(WirmType::I32)], None),
         Operator::I32TruncF64S
         | Operator::I32TruncF64U
         | Operator::I64TruncF64S
@@ -2400,11 +2404,15 @@ pub fn get_ty_info_for_instr(
     };
 
     let mut args = vec![];
-    for (idx, ty) in ty_list.iter().enumerate() {
-        args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
+    for (idx, ty) in arg_list.iter().enumerate() {
+        args.push(StackVal::new(format!("arg{}", idx), ty.to_owned()));
+    }
+    let mut results = vec![];
+    for (idx, ty) in res_list.iter().enumerate() {
+        results.push(StackVal::new(format!("res{}", idx), ty.to_owned()));
     }
 
-    (args, ty_id)
+    (args, results, ty_id)
 }
 
 fn handle_block(
@@ -2696,11 +2704,11 @@ pub fn is_prog_exit_call(opcode: &Operator, wasm: &Module) -> bool {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Arg {
+pub struct StackVal {
     pub name: String,
     pub ty: Option<WirmType>,
 }
-impl Arg {
+impl StackVal {
     fn new(name: String, ty: Option<WirmType>) -> Self {
         Self { name, ty }
     }
@@ -2748,8 +2756,12 @@ pub struct LocInfo {
     /// dynamic information to be defined at the probe location
     pub dynamic_data: HashMap<String, Block>,
     pub(crate) dynamic_alias: HashMap<String, (WirmType, VarAddr)>,
+
     /// dynamic information corresponding to the operands of this location
-    pub(crate) args: Vec<Arg>,
+    pub(crate) args: Vec<StackVal>,
+    /// dynamic information corresponding to the results of this location
+    pub(crate) results: Vec<StackVal>,
+
     pub num_alt_probes: usize,
     /// the probes that were matched for this instruction
     /// note the Script ID is contained in Probe
@@ -3011,6 +3023,19 @@ impl LocInfo {
         } else {
             // just set to the other's args
             self.args = other.args.to_owned()
+        }
+        // handle results
+        if !self.results.is_empty() {
+            if !other.results.is_empty() {
+                // assert that results are equivalent
+                if !self.results.iter().all(|item| other.results.contains(item)) {
+                    panic!("Emitter rules found different values for instruction results, please report this bug!");
+                }
+            }
+            // just keep self results the way it is (other clearly doesn't populate them)
+        } else {
+            // just set to the other's results
+            self.results = other.results.to_owned()
         }
 
         // handle num_alt_probes
