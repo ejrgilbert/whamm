@@ -1,5 +1,5 @@
 use crate::common::error::ErrorGen;
-use crate::generator::ast::ReqArgs;
+use crate::generator::ast::StackReq;
 use crate::parser::provider_handler::{BoundFunc, BoundVar, Event, Package, Probe, Provider};
 use crate::parser::types as parser_types;
 use crate::parser::types::{BoundFunction, Definition, FnId, Global, WhammVisitorMut};
@@ -34,7 +34,7 @@ pub struct SymbolTableBuilder<'a, 'b, 'c> {
     pub derived_vars: HashMap<String, (DataType, Expr)>,
 
     // bookkeeping for boundfunctions
-    pub req_args: ReqArgs,
+    pub req_args: StackReq,
 }
 impl SymbolTableBuilder<'_, '_, '_> {
     fn add_script(&mut self, script: &Script) {

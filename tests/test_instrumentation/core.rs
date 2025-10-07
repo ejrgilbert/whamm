@@ -202,6 +202,14 @@ fn instrument_with_local_n_scripts() {
 
     run_core_suite("localN", processed_scripts, true, true)
 }
+#[test]
+fn instrument_with_res0_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/res0");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("res0", processed_scripts, true, false)
+}
 
 #[test]
 fn instrument_with_calls_monitor_scripts() {

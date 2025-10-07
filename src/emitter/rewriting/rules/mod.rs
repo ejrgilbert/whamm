@@ -1,4 +1,4 @@
-use crate::generator::ast::{Probe, ReqArgs, WhammParam};
+use crate::generator::ast::{Probe, StackReq, WhammParam};
 use crate::generator::rewriting::simple_ast::{SimpleAST, SimpleEvt, SimplePkg, SimpleProv};
 use crate::parser::provider_handler::ModeKind;
 use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
@@ -207,7 +207,8 @@ fn handle_opcode_events(
 
     // create a combination of WhammParams for all probes here
     let all_params = evt.all_params();
-    let mut req_args = ReqArgs::None;
+    let mut req_args = StackReq::None;
+    let mut req_results = StackReq::None;
     let probe_rule = ProbeRule {
         provider: Some(RulePart::new("wasm".to_string(), None)),
         package: Some(RulePart::new("opcode".to_string(), None)),
@@ -1737,33 +1738,45 @@ fn handle_opcode_events(
         _ => panic!("Event not available: 'wasm:opcode:{event}'"),
     }
 
-    let (all_args, ..) = get_ty_info_for_instr(app_wasm, fid, instr);
+    let (all_args, all_results, ..) = get_ty_info_for_instr(app_wasm, fid, instr);
 
     // figure out which args are requested based on matched probes
+    // (we don't have a match if the requested argument or result is beyond the
+    // length of what's possible)
     let mut probes_to_remove = vec![];
+    let max_arg_req = all_args.len();
+    let max_res_req = all_results.len();
     for (i, (_, probe, _)) in loc_info.probes.iter_mut().enumerate() {
-        if probe.metadata.body_args.req_args.matches(all_args.len()) {
-            req_args.combine(&probe.metadata.body_args.req_args);
-        } else {
-            // remove probe!
-            probes_to_remove.push(i);
+        let body_args = &probe.metadata.body_args;
+        let pred_params = &probe.metadata.pred_args;
+        if !check_match(&body_args.req_args, max_arg_req, &mut req_args, i, &mut probes_to_remove) {
             continue;
         }
-        if probe.metadata.pred_args.req_args.matches(all_args.len()) {
-            req_args.combine(&probe.metadata.pred_args.req_args);
-        } else {
-            // remove probe!
-            probes_to_remove.push(i);
+        if !check_match(&body_args.req_results, max_res_req, &mut req_results, i, &mut probes_to_remove) {
             continue;
+        }
+        if !check_match(&pred_params.req_args, max_arg_req, &mut req_args, i, &mut probes_to_remove) {
+            continue;
+        }
+        if !check_match(&pred_params.req_results, max_res_req, &mut req_results, i, &mut probes_to_remove) {
+            continue;
+        }
+        fn check_match(to_check: &StackReq, max_req: usize, all_reqs: &mut StackReq, curr_probe: usize, to_remove: &mut Vec<usize>) -> bool {
+            if to_check.matches(max_req) {
+                all_reqs.combine(to_check);
+                true
+            } else {
+                // remove probe!
+                to_remove.push(curr_probe);
+                false
+            }
         }
     }
     for i in probes_to_remove.iter() {
         loc_info.probes.remove(*i);
     }
 
-    if req_args.is_some() {
-        loc_info.args = req_args.of(all_args);
-    }
+    loc_info.configure_stack_reqs(req_args, all_args, req_results, all_results);
 
     loc_info.is_prog_exit = is_prog_exit_call(instr, app_wasm);
     if loc_info.has_match() || loc_info.is_prog_exit {
@@ -2001,410 +2014,494 @@ pub fn get_ty_info_for_instr(
     app_wasm: &Module,
     curr_fid: &FunctionID,
     instr: &Operator,
-) -> (Vec<Arg>, Option<u32>) {
+) -> (Vec<StackVal>, Vec<StackVal>, Option<u32>) {
     // TODO -- how to make this less manual?
-    let (ty_list, ty_id): (Vec<Option<WirmType>>, Option<u32>) = match instr {
-        Operator::Call {
-            function_index: fid,
-        } => {
-            let ty_id = match app_wasm.functions.get_kind(FunctionID(*fid)) {
-                FuncKind::Import(ImportedFunction { ty_id, .. }) => *ty_id,
-                FuncKind::Local(func) => func.ty_id,
-            };
-            if let Some(ty) = app_wasm.types.get(ty_id) {
-                let mut res = vec![];
-                for t in ty.params().iter().rev() {
-                    res.push(Some(*t));
-                }
-                (res, Some(*ty_id))
-            } else {
-                // no type info found!!
-                warn!("No type information found for import with FID {fid}");
-                (vec![], None)
+    let (arg_list, res_list, ty_id): (Vec<Option<WirmType>>, Vec<Option<WirmType>>, Option<u32>) =
+        match instr {
+            Operator::If { .. } | Operator::BrIf { .. } | Operator::BrTable { .. } => {
+                (vec![Some(WirmType::I32)], vec![], None)
             }
-        }
-        Operator::If { .. } | Operator::BrIf { .. } | Operator::BrTable { .. } => {
-            (vec![Some(WirmType::I32)], None)
-        }
-        Operator::Block {
-            blockty: BlockType::FuncType(ty_id),
-        }
-        | Operator::Loop {
-            blockty: BlockType::FuncType(ty_id),
-        } => {
-            if let Some(ty) = app_wasm.types.get(TypeID(*ty_id)) {
-                let mut res = vec![];
-                for t in ty.params().iter() {
-                    res.push(Some(*t));
-                }
-                (res, Some(*ty_id))
-            } else {
-                // no type info found!!
-                warn!("No type information found for opcode");
-                (vec![], None)
-            }
-        }
-        Operator::CallIndirect { type_index, .. } => {
-            if let Some(ty) = app_wasm.types.get(TypeID(*type_index)) {
-                let mut res = vec![];
-                for t in ty.params().iter().rev() {
-                    res.push(Some(*t));
-                }
-                (res, Some(*type_index))
-            } else {
-                // no type info found!!
-                warn!("No type information found for CallIndirect");
-                (vec![], None)
-            }
-        }
-        Operator::Drop => {
-            // TODO -- how to express an unknown type?
-            //     Lookup in the symbol table! We've placed type bounds in there during verification
-            //     HOWEVER, we will need to keep a virtual stack to check if this match site is in fact
-            //     a match based on the type bounds. (if they don't match up, not a match, don't emit)
-            // e.g. [unknown]
-            (vec![None], None)
-        }
-        Operator::Select => {
-            // TODO -- how to express an unknown type?
-            //     Lookup in the symbol table! We've placed type bounds in there during verification
-            //     HOWEVER, we will need to keep a virtual stack to check if this match site is in fact
-            //     a match based on the type bounds. (if they don't match up, not a match, don't emit)
-            // e.g. [unknown, unknown, i32]
-            (vec![None, None, Some(WirmType::I32)], None)
-        }
-        Operator::LocalSet { local_index } | Operator::LocalTee { local_index } => {
-            if let FuncKind::Local(func) = app_wasm.functions.get_kind(*curr_fid) {
-                if let Some((_, ty)) = func.body.locals.get(*local_index as usize) {
-                    (vec![Some(*ty)], None)
+            Operator::Call {
+                function_index: fid,
+            } => {
+                let ty_id = match app_wasm.functions.get_kind(FunctionID(*fid)) {
+                    FuncKind::Import(ImportedFunction { ty_id, .. }) => *ty_id,
+                    FuncKind::Local(func) => func.ty_id,
+                };
+                if let Some(ty) = app_wasm.types.get(ty_id) {
+                    let mut args = vec![];
+                    for t in ty.params().iter().rev() {
+                        args.push(Some(*t));
+                    }
+                    let mut results = vec![];
+                    for t in ty.results().iter().rev() {
+                        results.push(Some(*t));
+                    }
+                    (args, results, Some(*ty_id))
                 } else {
-                    (vec![], None) // ignore
+                    // no type info found!!
+                    warn!("No type information found for import with FID {fid}");
+                    (vec![], vec![], None)
                 }
-            } else {
-                (vec![], None) // ignore
             }
-        }
-        Operator::GlobalSet { global_index } => {
-            let ty = match app_wasm.globals.get_kind(GlobalID(*global_index)) {
-                GlobalKind::Import(ImportedGlobal {
-                    ty: GlobalType { content_type, .. },
-                    ..
-                })
-                | GlobalKind::Local(LocalGlobal {
-                    ty: GlobalType { content_type, .. },
-                    ..
-                }) => WirmType::from(*content_type),
-            };
-            (vec![Some(ty)], None)
-        }
-        Operator::I32Load { .. }
-        | Operator::I64Load { .. }
-        | Operator::F32Load { .. }
-        | Operator::F64Load { .. }
-        | Operator::I32Load8S { .. }
-        | Operator::I32Load8U { .. }
-        | Operator::I32Load16S { .. }
-        | Operator::I32Load16U { .. }
-        | Operator::I64Load8S { .. }
-        | Operator::I64Load8U { .. }
-        | Operator::I64Load16S { .. }
-        | Operator::I64Load16U { .. }
-        | Operator::I64Load32S { .. }
-        | Operator::I64Load32U { .. } => (vec![Some(WirmType::I32)], None),
+            Operator::Block {
+                blockty: BlockType::FuncType(ty_id),
+            }
+            | Operator::Loop {
+                blockty: BlockType::FuncType(ty_id),
+            }
+            | Operator::CallIndirect {
+                type_index: ty_id, ..
+            } => {
+                if let Some(ty) = app_wasm.types.get(TypeID(*ty_id)) {
+                    let mut args = vec![];
+                    for t in ty.params().iter().rev() {
+                        args.push(Some(*t));
+                    }
+                    let mut results = vec![];
+                    for t in ty.results().iter().rev() {
+                        results.push(Some(*t));
+                    }
+                    (args, results, Some(*ty_id))
+                } else {
+                    // no type info found!!
+                    warn!("No type information found for opcode");
+                    (vec![], vec![], None)
+                }
+            }
+            Operator::Drop => {
+                // TODO -- how to express an unknown type?
+                //     Lookup in the symbol table! We've placed type bounds in there during verification
+                //     HOWEVER, we will need to keep a virtual stack to check if this match site is in fact
+                //     a match based on the type bounds. (if they don't match up, not a match, don't emit)
+                // e.g. [unknown]
+                (vec![None], vec![], None)
+            }
+            Operator::Select => {
+                // TODO -- how to express an unknown type?
+                //     Lookup in the symbol table! We've placed type bounds in there during verification
+                //     HOWEVER, we will need to keep a virtual stack to check if this match site is in fact
+                //     a match based on the type bounds. (if they don't match up, not a match, don't emit)
+                // e.g. [unknown, unknown, i32]
+                (vec![None, None, Some(WirmType::I32)], vec![None], None)
+            }
+            Operator::LocalSet { local_index } | Operator::LocalTee { local_index } => {
+                if let FuncKind::Local(func) = app_wasm.functions.get_kind(*curr_fid) {
+                    if let Some((_, ty)) = func.body.locals.get(*local_index as usize) {
+                        (vec![Some(*ty)], vec![], None)
+                    } else {
+                        (vec![], vec![], None) // ignore
+                    }
+                } else {
+                    (vec![], vec![], None) // ignore
+                }
+            }
+            Operator::GlobalSet { global_index } => {
+                let ty = match app_wasm.globals.get_kind(GlobalID(*global_index)) {
+                    GlobalKind::Import(ImportedGlobal {
+                        ty: GlobalType { content_type, .. },
+                        ..
+                    })
+                    | GlobalKind::Local(LocalGlobal {
+                        ty: GlobalType { content_type, .. },
+                        ..
+                    }) => WirmType::from(*content_type),
+                };
+                (vec![Some(ty)], vec![], None)
+            }
 
-        Operator::I32Store { .. } | Operator::I32Store8 { .. } | Operator::I32Store16 { .. } => {
-            (vec![Some(WirmType::I32), Some(WirmType::I32)], None)
-        }
-        Operator::I64Store { .. }
-        | Operator::I64Store8 { .. }
-        | Operator::I64Store16 { .. }
-        | Operator::I64Store32 { .. } => (vec![Some(WirmType::I64), Some(WirmType::I32)], None),
-        Operator::F32Store { .. } => (vec![Some(WirmType::F32), Some(WirmType::I32)], None),
-        Operator::F64Store { .. } => (vec![Some(WirmType::F64), Some(WirmType::I32)], None),
-        Operator::MemoryGrow { .. } => (vec![Some(WirmType::I32)], None),
+            Operator::I32Load { .. }
+            | Operator::I32Load8S { .. }
+            | Operator::I32Load8U { .. }
+            | Operator::I32Load16S { .. }
+            | Operator::I32Load16U { .. } => {
+                (vec![Some(WirmType::I32)], vec![Some(WirmType::I32)], None)
+            }
+            Operator::I64Load { .. }
+            | Operator::I64Load8S { .. }
+            | Operator::I64Load8U { .. }
+            | Operator::I64Load16S { .. }
+            | Operator::I64Load16U { .. }
+            | Operator::I64Load32S { .. }
+            | Operator::I64Load32U { .. } => {
+                (vec![Some(WirmType::I32)], vec![Some(WirmType::I64)], None)
+            }
+            Operator::F32Load { .. } => {
+                (vec![Some(WirmType::I32)], vec![Some(WirmType::F32)], None)
+            }
+            Operator::F64Load { .. } => {
+                (vec![Some(WirmType::I32)], vec![Some(WirmType::F64)], None)
+            }
 
-        Operator::I32Eqz => (vec![Some(WirmType::I32)], None),
-        Operator::I32Ne
-        | Operator::I32Eq
-        | Operator::I32LtS
-        | Operator::I32LtU
-        | Operator::I32GtS
-        | Operator::I32GtU
-        | Operator::I32LeS
-        | Operator::I32LeU
-        | Operator::I32GeS
-        | Operator::I32GeU => (vec![Some(WirmType::I32), Some(WirmType::I32)], None),
+            Operator::I32Store { .. }
+            | Operator::I32Store8 { .. }
+            | Operator::I32Store16 { .. } => {
+                (vec![Some(WirmType::I32), Some(WirmType::I32)], vec![], None)
+            }
+            Operator::I64Store { .. }
+            | Operator::I64Store8 { .. }
+            | Operator::I64Store16 { .. }
+            | Operator::I64Store32 { .. } => {
+                (vec![Some(WirmType::I64), Some(WirmType::I32)], vec![], None)
+            }
+            Operator::F32Store { .. } => {
+                (vec![Some(WirmType::F32), Some(WirmType::I32)], vec![], None)
+            }
+            Operator::F64Store { .. } => {
+                (vec![Some(WirmType::F64), Some(WirmType::I32)], vec![], None)
+            }
+            Operator::MemoryGrow { .. } => {
+                (vec![Some(WirmType::I32)], vec![Some(WirmType::I32)], None)
+            }
 
-        Operator::I32Clz | Operator::I32Ctz | Operator::I32Popcnt => {
-            (vec![Some(WirmType::I32)], None)
-        }
+            Operator::I32Eqz => (vec![Some(WirmType::I32)], vec![Some(WirmType::I32)], None),
+            Operator::I32Ne
+            | Operator::I32Eq
+            | Operator::I32LtS
+            | Operator::I32LtU
+            | Operator::I32GtS
+            | Operator::I32GtU
+            | Operator::I32LeS
+            | Operator::I32LeU
+            | Operator::I32GeS
+            | Operator::I32GeU => (
+                vec![Some(WirmType::I32), Some(WirmType::I32)],
+                vec![Some(WirmType::I32)],
+                None,
+            ),
 
-        Operator::I32Add
-        | Operator::I32Sub
-        | Operator::I32Mul
-        | Operator::I32DivS
-        | Operator::I32DivU
-        | Operator::I32RemS
-        | Operator::I32RemU
-        | Operator::I32And
-        | Operator::I32Or
-        | Operator::I32Xor
-        | Operator::I32Shl
-        | Operator::I32ShrS
-        | Operator::I32ShrU
-        | Operator::I32Rotl
-        | Operator::I32Rotr => (vec![Some(WirmType::I32), Some(WirmType::I32)], None),
+            Operator::I32Clz | Operator::I32Ctz | Operator::I32Popcnt => {
+                (vec![Some(WirmType::I32)], vec![Some(WirmType::I32)], None)
+            }
 
-        Operator::I64Eqz => (vec![Some(WirmType::I64)], None),
-        Operator::I64Eq
-        | Operator::I64Ne
-        | Operator::I64LtS
-        | Operator::I64LtU
-        | Operator::I64GtS
-        | Operator::I64GtU
-        | Operator::I64LeS
-        | Operator::I64LeU
-        | Operator::I64GeS
-        | Operator::I64GeU => (vec![Some(WirmType::I64), Some(WirmType::I64)], None),
+            Operator::I32Add
+            | Operator::I32Sub
+            | Operator::I32Mul
+            | Operator::I32DivS
+            | Operator::I32DivU
+            | Operator::I32RemS
+            | Operator::I32RemU
+            | Operator::I32And
+            | Operator::I32Or
+            | Operator::I32Xor
+            | Operator::I32Shl
+            | Operator::I32ShrS
+            | Operator::I32ShrU
+            | Operator::I32Rotl
+            | Operator::I32Rotr => (
+                vec![Some(WirmType::I32), Some(WirmType::I32)],
+                vec![Some(WirmType::I32)],
+                None,
+            ),
 
-        Operator::I64Clz | Operator::I64Ctz | Operator::I64Popcnt => {
-            (vec![Some(WirmType::I64)], None)
-        }
-        Operator::I64Add
-        | Operator::I64Sub
-        | Operator::I64Mul
-        | Operator::I64DivS
-        | Operator::I64DivU
-        | Operator::I64RemS
-        | Operator::I64RemU
-        | Operator::I64And
-        | Operator::I64Or
-        | Operator::I64Xor
-        | Operator::I64Shl
-        | Operator::I64ShrS
-        | Operator::I64ShrU
-        | Operator::I64Rotl
-        | Operator::I64Rotr => (vec![Some(WirmType::I64), Some(WirmType::I64)], None),
+            Operator::I64Eqz => (vec![Some(WirmType::I64)], vec![Some(WirmType::I32)], None),
+            Operator::I64Eq
+            | Operator::I64Ne
+            | Operator::I64LtS
+            | Operator::I64LtU
+            | Operator::I64GtS
+            | Operator::I64GtU
+            | Operator::I64LeS
+            | Operator::I64LeU
+            | Operator::I64GeS
+            | Operator::I64GeU => (
+                vec![Some(WirmType::I64), Some(WirmType::I64)],
+                vec![Some(WirmType::I32)],
+                None,
+            ),
 
-        Operator::F32Eq
-        | Operator::F32Ne
-        | Operator::F32Lt
-        | Operator::F32Gt
-        | Operator::F32Le
-        | Operator::F32Ge => (vec![Some(WirmType::F32), Some(WirmType::F32)], None),
+            Operator::I64Clz | Operator::I64Ctz | Operator::I64Popcnt => {
+                (vec![Some(WirmType::I64)], vec![Some(WirmType::I64)], None)
+            }
+            Operator::I64Add
+            | Operator::I64Sub
+            | Operator::I64Mul
+            | Operator::I64DivS
+            | Operator::I64DivU
+            | Operator::I64RemS
+            | Operator::I64RemU
+            | Operator::I64And
+            | Operator::I64Or
+            | Operator::I64Xor
+            | Operator::I64Shl
+            | Operator::I64ShrS
+            | Operator::I64ShrU
+            | Operator::I64Rotl
+            | Operator::I64Rotr => (
+                vec![Some(WirmType::I64), Some(WirmType::I64)],
+                vec![Some(WirmType::I64)],
+                None,
+            ),
 
-        Operator::F32Abs
-        | Operator::F32Neg
-        | Operator::F32Ceil
-        | Operator::F32Floor
-        | Operator::F32Trunc
-        | Operator::F32Nearest
-        | Operator::F32Sqrt => (vec![Some(WirmType::F32)], None),
-        Operator::F32Add
-        | Operator::F32Sub
-        | Operator::F32Mul
-        | Operator::F32Div
-        | Operator::F32Min
-        | Operator::F32Max
-        | Operator::F32Copysign => (vec![Some(WirmType::F32), Some(WirmType::F32)], None),
+            Operator::F32Eq
+            | Operator::F32Ne
+            | Operator::F32Lt
+            | Operator::F32Gt
+            | Operator::F32Le
+            | Operator::F32Ge => (
+                vec![Some(WirmType::F32), Some(WirmType::F32)],
+                vec![Some(WirmType::I32)],
+                None,
+            ),
 
-        Operator::F64Eq
-        | Operator::F64Ne
-        | Operator::F64Lt
-        | Operator::F64Gt
-        | Operator::F64Le
-        | Operator::F64Ge => (vec![Some(WirmType::F64), Some(WirmType::F64)], None),
+            Operator::F32Abs
+            | Operator::F32Neg
+            | Operator::F32Ceil
+            | Operator::F32Floor
+            | Operator::F32Trunc
+            | Operator::F32Nearest
+            | Operator::F32Sqrt => (vec![Some(WirmType::F32)], vec![Some(WirmType::F32)], None),
+            Operator::F32Add
+            | Operator::F32Sub
+            | Operator::F32Mul
+            | Operator::F32Div
+            | Operator::F32Min
+            | Operator::F32Max
+            | Operator::F32Copysign => (
+                vec![Some(WirmType::F32), Some(WirmType::F32)],
+                vec![Some(WirmType::F32)],
+                None,
+            ),
 
-        Operator::F64Abs
-        | Operator::F64Neg
-        | Operator::F64Ceil
-        | Operator::F64Floor
-        | Operator::F64Trunc
-        | Operator::F64Nearest
-        | Operator::F64Sqrt => (vec![Some(WirmType::F32)], None),
-        Operator::F64Add
-        | Operator::F64Sub
-        | Operator::F64Mul
-        | Operator::F64Div
-        | Operator::F64Min
-        | Operator::F64Max
-        | Operator::F64Copysign => (vec![Some(WirmType::F64), Some(WirmType::F64)], None),
+            Operator::F64Eq
+            | Operator::F64Ne
+            | Operator::F64Lt
+            | Operator::F64Gt
+            | Operator::F64Le
+            | Operator::F64Ge => (
+                vec![Some(WirmType::F64), Some(WirmType::F64)],
+                vec![Some(WirmType::I32)],
+                None,
+            ),
 
-        Operator::I32WrapI64
-        | Operator::F32ConvertI64S
-        | Operator::F32ConvertI64U
-        | Operator::F64ConvertI64S
-        | Operator::F64ConvertI64U
-        | Operator::F64ReinterpretI64
-        | Operator::I64Extend8S
-        | Operator::I64Extend16S
-        | Operator::I64Extend32S => (vec![Some(WirmType::I64)], None),
-        Operator::I32TruncF32S | Operator::I32TruncF32U => (vec![Some(WirmType::F32)], None),
-        Operator::I32TruncF64S
-        | Operator::I32TruncF64U
-        | Operator::I64TruncF64S
-        | Operator::I64TruncF64U
-        | Operator::F32DemoteF64
-        | Operator::I64ReinterpretF64
-        | Operator::I32TruncSatF64S
-        | Operator::I32TruncSatF64U
-        | Operator::I64TruncSatF64S
-        | Operator::I64TruncSatF64U => (vec![Some(WirmType::F64)], None),
-        Operator::I64ExtendI32S
-        | Operator::I64ExtendI32U
-        | Operator::F32ConvertI32S
-        | Operator::F32ConvertI32U
-        | Operator::F64ConvertI32S
-        | Operator::F64ConvertI32U
-        | Operator::F32ReinterpretI32
-        | Operator::I32Extend8S
-        | Operator::I32Extend16S => (vec![Some(WirmType::I32)], None),
-        Operator::I64TruncF32S
-        | Operator::I64TruncF32U
-        | Operator::F64PromoteF32
-        | Operator::I32ReinterpretF32
-        | Operator::I32TruncSatF32S
-        | Operator::I32TruncSatF32U
-        | Operator::I64TruncSatF32S
-        | Operator::I64TruncSatF32U => (vec![Some(WirmType::F32)], None),
+            Operator::F64Abs
+            | Operator::F64Neg
+            | Operator::F64Ceil
+            | Operator::F64Floor
+            | Operator::F64Trunc
+            | Operator::F64Nearest
+            | Operator::F64Sqrt => (vec![Some(WirmType::F32)], vec![Some(WirmType::F64)], None),
+            Operator::F64Add
+            | Operator::F64Sub
+            | Operator::F64Mul
+            | Operator::F64Div
+            | Operator::F64Min
+            | Operator::F64Max
+            | Operator::F64Copysign => (
+                vec![Some(WirmType::F64), Some(WirmType::F64)],
+                vec![Some(WirmType::F64)],
+                None,
+            ),
 
-        Operator::MemoryCopy { .. }
-        | Operator::MemoryFill { .. }
-        | Operator::TableInit { .. }
-        | Operator::TableCopy { .. } => (
-            vec![
-                Some(WirmType::I32),
-                Some(WirmType::I32),
-                Some(WirmType::I32),
-            ],
-            None,
-        ),
+            Operator::I32WrapI64 => (vec![Some(WirmType::I64)], vec![Some(WirmType::I32)], None),
+            Operator::F32ConvertI64S | Operator::F32ConvertI64U => {
+                (vec![Some(WirmType::I64)], vec![Some(WirmType::F32)], None)
+            }
+            Operator::F64ConvertI64S | Operator::F64ConvertI64U | Operator::F64ReinterpretI64 => {
+                (vec![Some(WirmType::I64)], vec![Some(WirmType::F64)], None)
+            }
+            Operator::I64Extend8S | Operator::I64Extend16S | Operator::I64Extend32S => {
+                (vec![Some(WirmType::I32)], vec![Some(WirmType::I64)], None)
+            }
+            Operator::I32TruncF32S | Operator::I32TruncF32U => {
+                (vec![Some(WirmType::F32)], vec![Some(WirmType::I32)], None)
+            }
+            Operator::I32TruncF64S
+            | Operator::I32TruncF64U
+            | Operator::I32TruncSatF64S
+            | Operator::I32TruncSatF64U => {
+                (vec![Some(WirmType::F64)], vec![Some(WirmType::I32)], None)
+            }
+            Operator::I64TruncF64S
+            | Operator::I64TruncF64U
+            | Operator::I64ReinterpretF64
+            | Operator::I64TruncSatF64S
+            | Operator::I64TruncSatF64U => {
+                (vec![Some(WirmType::F64)], vec![Some(WirmType::I64)], None)
+            }
+            Operator::F32DemoteF64 => (vec![Some(WirmType::F64)], vec![Some(WirmType::F32)], None),
+            Operator::I32Extend8S | Operator::I32Extend16S => {
+                (vec![Some(WirmType::I32)], vec![Some(WirmType::I32)], None)
+            }
+            Operator::I64ExtendI32S | Operator::I64ExtendI32U => {
+                (vec![Some(WirmType::I32)], vec![Some(WirmType::I64)], None)
+            }
+            Operator::F32ConvertI32S | Operator::F32ConvertI32U | Operator::F32ReinterpretI32 => {
+                (vec![Some(WirmType::I32)], vec![Some(WirmType::F32)], None)
+            }
+            Operator::F64ConvertI32S | Operator::F64ConvertI32U => {
+                (vec![Some(WirmType::I32)], vec![Some(WirmType::F64)], None)
+            }
+            Operator::I32ReinterpretF32 | Operator::I32TruncSatF32S | Operator::I32TruncSatF32U => {
+                (vec![Some(WirmType::F32)], vec![Some(WirmType::I32)], None)
+            }
+            Operator::I64TruncF32S
+            | Operator::I64TruncF32U
+            | Operator::I64TruncSatF32S
+            | Operator::I64TruncSatF32U => {
+                (vec![Some(WirmType::F32)], vec![Some(WirmType::I64)], None)
+            }
+            Operator::F64PromoteF32 => (vec![Some(WirmType::F32)], vec![Some(WirmType::F64)], None),
 
-        Operator::TableGet { .. } => (vec![Some(WirmType::I32)], None),
+            Operator::MemoryCopy { .. }
+            | Operator::MemoryFill { .. }
+            | Operator::MemoryInit { .. }
+            | Operator::TableInit { .. }
+            | Operator::TableCopy { .. } => (
+                vec![
+                    Some(WirmType::I32),
+                    Some(WirmType::I32),
+                    Some(WirmType::I32),
+                ],
+                vec![],
+                None,
+            ),
 
-        Operator::MemoryAtomicNotify { .. } => {
-            (vec![Some(WirmType::I32), Some(WirmType::I32)], None)
-        }
-        Operator::MemoryAtomicWait32 { .. } => (
-            vec![
-                Some(WirmType::I32),
-                Some(WirmType::I32),
-                Some(WirmType::I64),
-            ],
-            None,
-        ),
-        Operator::MemoryAtomicWait64 { .. } => (
-            vec![
-                Some(WirmType::I32),
-                Some(WirmType::I64),
-                Some(WirmType::I64),
-            ],
-            None,
-        ),
+            Operator::TableGet { .. } => (vec![Some(WirmType::I32)], vec![None], None),
 
-        Operator::I32AtomicLoad { .. }
-        | Operator::I64AtomicLoad { .. }
-        | Operator::I32AtomicLoad8U { .. }
-        | Operator::I32AtomicLoad16U { .. }
-        | Operator::I64AtomicLoad8U { .. }
-        | Operator::I64AtomicLoad16U { .. }
-        | Operator::I64AtomicLoad32U { .. } => (vec![Some(WirmType::I32)], None),
+            Operator::MemoryAtomicNotify { .. } => (
+                vec![Some(WirmType::I32), Some(WirmType::I32)],
+                vec![Some(WirmType::I32)],
+                None,
+            ),
+            Operator::MemoryAtomicWait32 { .. } => (
+                vec![
+                    Some(WirmType::I32),
+                    Some(WirmType::I32),
+                    Some(WirmType::I64),
+                ],
+                vec![Some(WirmType::I32)],
+                None,
+            ),
+            Operator::MemoryAtomicWait64 { .. } => (
+                vec![
+                    Some(WirmType::I32),
+                    Some(WirmType::I64),
+                    Some(WirmType::I64),
+                ],
+                vec![Some(WirmType::I32)],
+                None,
+            ),
 
-        Operator::I32AtomicStore { .. }
-        | Operator::I32AtomicStore8 { .. }
-        | Operator::I32AtomicStore16 { .. } => (vec![Some(WirmType::I32)], None),
+            Operator::I32AtomicLoad { .. }
+            | Operator::I32AtomicLoad8U { .. }
+            | Operator::I32AtomicLoad16U { .. } => {
+                (vec![Some(WirmType::I32)], vec![Some(WirmType::I32)], None)
+            }
+            Operator::I64AtomicLoad { .. }
+            | Operator::I64AtomicLoad8U { .. }
+            | Operator::I64AtomicLoad16U { .. }
+            | Operator::I64AtomicLoad32U { .. } => {
+                (vec![Some(WirmType::I32)], vec![Some(WirmType::I64)], None)
+            }
 
-        Operator::I64AtomicStore { .. }
-        | Operator::I64AtomicStore8 { .. }
-        | Operator::I64AtomicStore16 { .. }
-        | Operator::I64AtomicStore32 { .. } => (vec![Some(WirmType::I32)], None),
+            Operator::I32AtomicStore { .. }
+            | Operator::I32AtomicStore8 { .. }
+            | Operator::I32AtomicStore16 { .. } => {
+                (vec![Some(WirmType::I32), Some(WirmType::I32)], vec![], None)
+            }
 
-        Operator::I32AtomicRmwAdd { .. }
-        | Operator::I32AtomicRmw8AddU { .. }
-        | Operator::I32AtomicRmw16AddU { .. }
-        | Operator::I32AtomicRmwSub { .. }
-        | Operator::I32AtomicRmw8SubU { .. }
-        | Operator::I32AtomicRmw16SubU { .. }
-        | Operator::I32AtomicRmwAnd { .. }
-        | Operator::I32AtomicRmw8AndU { .. }
-        | Operator::I32AtomicRmw16AndU { .. }
-        | Operator::I32AtomicRmwOr { .. }
-        | Operator::I32AtomicRmw8OrU { .. }
-        | Operator::I32AtomicRmw16OrU { .. }
-        | Operator::I32AtomicRmwXor { .. }
-        | Operator::I32AtomicRmw8XorU { .. }
-        | Operator::I32AtomicRmw16XorU { .. }
-        | Operator::I32AtomicRmwXchg { .. }
-        | Operator::I32AtomicRmw8XchgU { .. }
-        | Operator::I32AtomicRmw16XchgU { .. }
-        | Operator::I32AtomicRmwCmpxchg { .. }
-        | Operator::I32AtomicRmw8CmpxchgU { .. }
-        | Operator::I32AtomicRmw16CmpxchgU { .. } => {
-            (vec![Some(WirmType::I32), Some(WirmType::I32)], None)
-        }
+            Operator::I64AtomicStore { .. }
+            | Operator::I64AtomicStore8 { .. }
+            | Operator::I64AtomicStore16 { .. }
+            | Operator::I64AtomicStore32 { .. } => {
+                (vec![Some(WirmType::I64), Some(WirmType::I32)], vec![], None)
+            }
 
-        Operator::I64AtomicRmwAdd { .. }
-        | Operator::I64AtomicRmw8AddU { .. }
-        | Operator::I64AtomicRmw16AddU { .. }
-        | Operator::I64AtomicRmw32AddU { .. }
-        | Operator::I64AtomicRmwSub { .. }
-        | Operator::I64AtomicRmw8SubU { .. }
-        | Operator::I64AtomicRmw16SubU { .. }
-        | Operator::I64AtomicRmw32SubU { .. }
-        | Operator::I64AtomicRmwAnd { .. }
-        | Operator::I64AtomicRmw8AndU { .. }
-        | Operator::I64AtomicRmw16AndU { .. }
-        | Operator::I64AtomicRmw32AndU { .. }
-        | Operator::I64AtomicRmwOr { .. }
-        | Operator::I64AtomicRmw8OrU { .. }
-        | Operator::I64AtomicRmw16OrU { .. }
-        | Operator::I64AtomicRmw32OrU { .. }
-        | Operator::I64AtomicRmwXor { .. }
-        | Operator::I64AtomicRmw8XorU { .. }
-        | Operator::I64AtomicRmw16XorU { .. }
-        | Operator::I64AtomicRmw32XorU { .. }
-        | Operator::I64AtomicRmwXchg { .. }
-        | Operator::I64AtomicRmw8XchgU { .. }
-        | Operator::I64AtomicRmw16XchgU { .. }
-        | Operator::I64AtomicRmw32XchgU { .. }
-        | Operator::I64AtomicRmwCmpxchg { .. }
-        | Operator::I64AtomicRmw8CmpxchgU { .. }
-        | Operator::I64AtomicRmw16CmpxchgU { .. }
-        | Operator::I64AtomicRmw32CmpxchgU { .. } => {
-            (vec![Some(WirmType::I32), Some(WirmType::I32)], None)
-        }
+            Operator::I32AtomicRmwAdd { .. }
+            | Operator::I32AtomicRmw8AddU { .. }
+            | Operator::I32AtomicRmw16AddU { .. }
+            | Operator::I32AtomicRmwSub { .. }
+            | Operator::I32AtomicRmw8SubU { .. }
+            | Operator::I32AtomicRmw16SubU { .. }
+            | Operator::I32AtomicRmwAnd { .. }
+            | Operator::I32AtomicRmw8AndU { .. }
+            | Operator::I32AtomicRmw16AndU { .. }
+            | Operator::I32AtomicRmwOr { .. }
+            | Operator::I32AtomicRmw8OrU { .. }
+            | Operator::I32AtomicRmw16OrU { .. }
+            | Operator::I32AtomicRmwXor { .. }
+            | Operator::I32AtomicRmw8XorU { .. }
+            | Operator::I32AtomicRmw16XorU { .. }
+            | Operator::I32AtomicRmwXchg { .. }
+            | Operator::I32AtomicRmw8XchgU { .. }
+            | Operator::I32AtomicRmw16XchgU { .. }
+            | Operator::I32AtomicRmwCmpxchg { .. }
+            | Operator::I32AtomicRmw8CmpxchgU { .. }
+            | Operator::I32AtomicRmw16CmpxchgU { .. } => (
+                vec![Some(WirmType::I32), Some(WirmType::I32)],
+                vec![Some(WirmType::I32)],
+                None,
+            ),
 
-        Operator::Unreachable
-        | Operator::Nop
-        | Operator::Else
-        | Operator::End
-        | Operator::Br { .. }
-        | Operator::Return
-        | Operator::LocalGet { .. }
-        | Operator::GlobalGet { .. }
-        | Operator::MemorySize { .. }
-        | Operator::I32Const { .. }
-        | Operator::I64Const { .. }
-        | Operator::F32Const { .. }
-        | Operator::F64Const { .. }
-        | Operator::StructNewDefault { .. }
-        | Operator::MemoryInit { .. }
-        | Operator::DataDrop { .. }
-        | Operator::ElemDrop { .. }
-        | Operator::RefNull { .. }
-        | Operator::RefFunc { .. }
-        | Operator::TableSize { .. }
-        | Operator::AtomicFence => (vec![], None),
+            Operator::I64AtomicRmwAdd { .. }
+            | Operator::I64AtomicRmw8AddU { .. }
+            | Operator::I64AtomicRmw16AddU { .. }
+            | Operator::I64AtomicRmw32AddU { .. }
+            | Operator::I64AtomicRmwSub { .. }
+            | Operator::I64AtomicRmw8SubU { .. }
+            | Operator::I64AtomicRmw16SubU { .. }
+            | Operator::I64AtomicRmw32SubU { .. }
+            | Operator::I64AtomicRmwAnd { .. }
+            | Operator::I64AtomicRmw8AndU { .. }
+            | Operator::I64AtomicRmw16AndU { .. }
+            | Operator::I64AtomicRmw32AndU { .. }
+            | Operator::I64AtomicRmwOr { .. }
+            | Operator::I64AtomicRmw8OrU { .. }
+            | Operator::I64AtomicRmw16OrU { .. }
+            | Operator::I64AtomicRmw32OrU { .. }
+            | Operator::I64AtomicRmwXor { .. }
+            | Operator::I64AtomicRmw8XorU { .. }
+            | Operator::I64AtomicRmw16XorU { .. }
+            | Operator::I64AtomicRmw32XorU { .. }
+            | Operator::I64AtomicRmwXchg { .. }
+            | Operator::I64AtomicRmw8XchgU { .. }
+            | Operator::I64AtomicRmw16XchgU { .. }
+            | Operator::I64AtomicRmw32XchgU { .. }
+            | Operator::I64AtomicRmwCmpxchg { .. }
+            | Operator::I64AtomicRmw8CmpxchgU { .. }
+            | Operator::I64AtomicRmw16CmpxchgU { .. }
+            | Operator::I64AtomicRmw32CmpxchgU { .. } => (
+                vec![Some(WirmType::I32), Some(WirmType::I64)],
+                vec![Some(WirmType::I64)],
+                None,
+            ),
 
-        _ => (vec![], None), // ignore other opcodes
-    };
+            Operator::Unreachable
+            | Operator::Nop
+            | Operator::End
+            | Operator::Br { .. }
+            | Operator::Else
+            | Operator::DataDrop { .. }
+            | Operator::ElemDrop { .. }
+            | Operator::Return
+            | Operator::AtomicFence => (vec![], vec![], None),
+            Operator::LocalGet { .. } | Operator::GlobalGet { .. } => (vec![], vec![None], None),
+            Operator::I32Const { .. }
+            | Operator::MemorySize { .. }
+            | Operator::TableSize { .. } => (vec![], vec![Some(WirmType::I32)], None),
+            Operator::I64Const { .. } => (vec![], vec![Some(WirmType::I64)], None),
+            Operator::F32Const { .. } => (vec![], vec![Some(WirmType::F32)], None),
+            Operator::F64Const { .. } => (vec![], vec![Some(WirmType::F64)], None),
+
+            // TODO -- support all opcodes!
+            // Primarily what's left is v128 and GC opcodes
+            _ => (vec![], vec![], None),
+        };
 
     let mut args = vec![];
-    for (idx, ty) in ty_list.iter().enumerate() {
-        args.push(Arg::new(format!("arg{}", idx), ty.to_owned()));
-    }
+    let mut results = vec![];
+    let push_val = |prefix: &str, idx: usize, ty: &Option<WirmType>, vals: &mut Vec<StackVal>| {
+        vals.push(StackVal::new(format!("{prefix}{idx}"), ty.to_owned()));
+    };
+    arg_list.iter().enumerate().for_each(|(idx, ty)| {
+        push_val("arg", idx, ty, &mut args);
+    });
+    res_list.iter().enumerate().for_each(|(idx, ty)| {
+        push_val("res", idx, ty, &mut results);
+    });
 
-    (args, ty_id)
+    (args, results, ty_id)
 }
 
 fn handle_block(
@@ -2696,11 +2793,11 @@ pub fn is_prog_exit_call(opcode: &Operator, wasm: &Module) -> bool {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Arg {
+pub struct StackVal {
     pub name: String,
     pub ty: Option<WirmType>,
 }
-impl Arg {
+impl StackVal {
     fn new(name: String, ty: Option<WirmType>) -> Self {
         Self { name, ty }
     }
@@ -2748,8 +2845,12 @@ pub struct LocInfo {
     /// dynamic information to be defined at the probe location
     pub dynamic_data: HashMap<String, Block>,
     pub(crate) dynamic_alias: HashMap<String, (WirmType, VarAddr)>,
+
     /// dynamic information corresponding to the operands of this location
-    pub(crate) args: Vec<Arg>,
+    pub(crate) args: Vec<StackVal>,
+    /// dynamic information corresponding to the results of this location
+    pub(crate) results: Vec<StackVal>,
+
     pub num_alt_probes: usize,
     /// the probes that were matched for this instruction
     /// note the Script ID is contained in Probe
@@ -2761,6 +2862,20 @@ impl LocInfo {
     }
     fn has_match(&self) -> bool {
         !self.probes.is_empty()
+    }
+    fn configure_stack_reqs(
+        &mut self,
+        req_args: StackReq,
+        all_args: Vec<StackVal>,
+        req_res: StackReq,
+        all_res: Vec<StackVal>,
+    ) {
+        if req_args.is_some() {
+            self.args = req_args.of(all_args);
+        }
+        if req_res.is_some() {
+            self.results = req_res.of(all_res);
+        }
     }
     fn add_probes(
         &mut self,
@@ -3011,6 +3126,20 @@ impl LocInfo {
         } else {
             // just set to the other's args
             self.args = other.args.to_owned()
+        }
+        // TODO -- factor logic
+        // handle results
+        if !self.results.is_empty() {
+            if !other.results.is_empty() {
+                // assert that results are equivalent
+                if !self.results.iter().all(|item| other.results.contains(item)) {
+                    panic!("Emitter rules found different values for instruction results, please report this bug!");
+                }
+            }
+            // just keep self results the way it is (other clearly doesn't populate them)
+        } else {
+            // just set to the other's results
+            self.results = other.results.to_owned()
         }
 
         // handle num_alt_probes
