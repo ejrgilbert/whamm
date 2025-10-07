@@ -42,6 +42,7 @@ pub struct MetadataCollector<'a, 'b, 'c> {
     curr_script: Script,
     script_num: u8,
     curr_probe: Probe,
+    curr_mode: ModeKind,
 
     pub err: &'b mut ErrorGen,
     pub config: &'c Config,
@@ -67,6 +68,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             curr_script: Script::default(),
             script_num: 0,
             curr_probe: Probe::default(),
+            curr_mode: ModeKind::Null,
             err,
             config,
         }
@@ -112,14 +114,18 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
     fn push_metadata(&mut self, name: &str, ty: &DataType) {
         match self.visiting {
             Visiting::Predicate => {
-                self.curr_probe
-                    .metadata
-                    .push_pred_req(name.to_string(), ty.clone());
+                self.curr_probe.metadata.push_pred_req(
+                    name.to_string(),
+                    ty.clone(),
+                    &self.curr_mode,
+                );
             }
             Visiting::Body => {
-                self.curr_probe
-                    .metadata
-                    .push_body_req(name.to_string(), ty.clone());
+                self.curr_probe.metadata.push_body_req(
+                    name.to_string(),
+                    ty.clone(),
+                    &self.curr_mode,
+                );
             }
             Visiting::None => {
                 // error
@@ -213,6 +219,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                     self.curr_script.id,
                     probe.loc.clone(),
                 );
+                self.curr_mode = probe.kind.clone();
                 self.visit_probe(probe);
 
                 // copy over data from original probe

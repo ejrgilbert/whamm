@@ -1,9 +1,12 @@
 use crate::emitter::rewriting::rules::StackVal;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
+use crate::parser::provider_handler::ModeKind;
 use crate::parser::types::{Block, DataType, Expr, Global, Location, RulePart, Statement};
 use itertools::Itertools;
+use log::error;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
+use std::process::exit;
 
 #[derive(Clone, Default)]
 pub struct Script {
@@ -130,17 +133,23 @@ pub struct Metadata {
     pub body_args: WhammParams,
 }
 impl Metadata {
-    pub fn push_pred_req(&mut self, var_name: String, var_type: DataType) {
-        self.pred_args.push(WhammParam {
-            name: var_name,
-            ty: var_type,
-        });
+    pub fn push_pred_req(&mut self, var_name: String, var_type: DataType, mode: &ModeKind) {
+        self.pred_args.push(
+            WhammParam {
+                name: var_name,
+                ty: var_type,
+            },
+            mode,
+        );
     }
-    pub fn push_body_req(&mut self, var_name: String, var_type: DataType) {
-        self.body_args.push(WhammParam {
-            name: var_name,
-            ty: var_type,
-        });
+    pub fn push_body_req(&mut self, var_name: String, var_type: DataType, mode: &ModeKind) {
+        self.body_args.push(
+            WhammParam {
+                name: var_name,
+                ty: var_type,
+            },
+            mode,
+        );
     }
 }
 
@@ -223,11 +232,15 @@ pub struct WhammParams {
     requested_results: Vec<u32>,
 }
 impl WhammParams {
-    pub fn push(&mut self, param: WhammParam) {
+    pub fn push(&mut self, param: WhammParam, mode: &ModeKind) {
         if let Some(n) = param.n_for("arg") {
             self.requested_args.push(n);
         }
         if let Some(n) = param.n_for("res") {
+            if !matches!(mode, ModeKind::After) {
+                error!("we haven't supported bound resN variables in non-after probes yet!");
+                exit(1)
+            }
             self.requested_results.push(n);
         }
         self.params.insert(param);
