@@ -1,6 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::rules::{
-    get_loc_info_for_active_probes, get_ty_info_for_instr, StackVal, LocInfo, MatchState, ProbeRule,
+    get_loc_info_for_active_probes, get_ty_info_for_instr, LocInfo, MatchState, ProbeRule, StackVal,
 };
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
@@ -299,7 +299,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
 
     pub(crate) fn save_results(&mut self, results: &[StackVal]) -> bool {
         // TODO -- factor this
-        
+
         // No opcodes should have been emitted in the module yet!
         // So, we can just save off the first * items in the stack as the args
         // to the call.
@@ -363,7 +363,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
 
     pub(crate) fn emit_results(&mut self, err: &mut ErrorGen) -> bool {
         // TODO -- factor this
-        
+
         if self.in_init {
             err.add_instr_error("Cannot re-emit results as a variable initialization.".to_string());
             return false;
@@ -371,8 +371,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
         for (_param_name, param_rec_id) in self.instr_created_results.iter() {
             let param_rec = self.table.get_record_mut(*param_rec_id);
             if let Some(Record::Var {
-                            addr: Some(addrs), ..
-                        }) = param_rec
+                addr: Some(addrs), ..
+            }) = param_rec
             {
                 let VarAddr::Local { addr } = addrs.first().unwrap() else {
                     assert_eq!(addrs.len(), 1);
@@ -802,11 +802,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
         }
     }
 
-    pub fn init_probe_state(
-        &mut self,
-        init_logic: &mut [Statement],
-        err: &mut ErrorGen,
-    ) {
+    pub fn init_probe_state(&mut self, init_logic: &mut [Statement], err: &mut ErrorGen) {
         // Create the variable pointing to the start of the allocated memory block
         let offset_info = if !self.curr_unshared.is_empty() {
             // Create the required globals for this probe
@@ -942,11 +938,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
         is_success
     }
 
-    fn emit_stmt(
-        &mut self,
-        stmt: &mut Statement,
-        err: &mut ErrorGen,
-    ) -> bool {
+    fn emit_stmt(&mut self, stmt: &mut Statement, err: &mut ErrorGen) -> bool {
         // Check if this is calling a bound, static function!
         if let Statement::Expr {
             expr: Expr::Call {

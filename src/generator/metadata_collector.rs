@@ -1,6 +1,6 @@
 use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
-use crate::generator::ast::{Probe, StackReq, Script, WhammParams};
+use crate::generator::ast::{Probe, Script, StackReq, WhammParams};
 use crate::lang_features::report_vars::{BytecodeLoc, Metadata as ReportMetadata};
 use crate::parser::provider_handler::{Event, ModeKind, Package, Probe as ParserProbe, Provider};
 use crate::parser::types::{
@@ -98,16 +98,8 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
     }
     fn get_curr_params(&mut self) -> &mut WhammParams {
         match self.visiting {
-            Visiting::Predicate => {
-                &mut self.curr_probe
-                    .metadata
-                    .pred_args
-            }
-            Visiting::Body => {
-                &mut self.curr_probe
-                    .metadata
-                    .body_args
-            }
+            Visiting::Predicate => &mut self.curr_probe.metadata.pred_args,
+            Visiting::Body => &mut self.curr_probe.metadata.body_args,
             Visiting::None => {
                 // error
                 unreachable!("Expected a set variant of 'Visiting', but found 'None'");
@@ -115,14 +107,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
         }
     }
     fn combine_req_args(&mut self, req_args: StackReq) {
-        self.get_curr_params()
-            .req_args
-            .combine(&req_args);
-    }
-    fn combine_req_results(&mut self, req_results: StackReq) {
-        self.get_curr_params()
-            .req_results
-            .combine(&req_results);
+        self.get_curr_params().req_args.combine(&req_args);
     }
     fn push_metadata(&mut self, name: &str, ty: &DataType) {
         match self.visiting {

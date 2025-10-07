@@ -208,7 +208,7 @@ fn instrument_with_res0_scripts() {
     let processed_scripts = setup_tests("core_suite/res0");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("localN", processed_scripts, true, true)
+    run_core_suite("res0", processed_scripts, true, false)
 }
 
 #[test]

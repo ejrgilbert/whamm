@@ -240,7 +240,7 @@ impl WhammParams {
         Self::process_stack_req(&mut self.requested_args, &mut self.req_args);
         Self::process_stack_req(&mut self.requested_results, &mut self.req_results);
     }
-    
+
     fn process_stack_req(requested: &mut [u32], stack_req: &mut StackReq) {
         if requested.is_empty() {
             // not requesting any stack vals, but could have been set externally!
