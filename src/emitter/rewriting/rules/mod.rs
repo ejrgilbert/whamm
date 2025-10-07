@@ -1744,50 +1744,39 @@ fn handle_opcode_events(
     // (we don't have a match if the requested argument or result is beyond the
     // length of what's possible)
     let mut probes_to_remove = vec![];
+    let max_arg_req = all_args.len();
+    let max_res_req = all_results.len();
     for (i, (_, probe, _)) in loc_info.probes.iter_mut().enumerate() {
-        // handle requested arguments
-        if probe.metadata.body_args.req_args.matches(all_args.len()) {
-            req_args.combine(&probe.metadata.body_args.req_args);
-        } else {
-            // remove probe!
-            probes_to_remove.push(i);
+        let body_args = &probe.metadata.body_args;
+        let pred_params = &probe.metadata.pred_args;
+        if !check_match(&body_args.req_args, max_arg_req, &mut req_args, i, &mut probes_to_remove) {
             continue;
         }
-        if probe.metadata.pred_args.req_args.matches(all_args.len()) {
-            req_args.combine(&probe.metadata.pred_args.req_args);
-        } else {
-            // remove probe!
-            probes_to_remove.push(i);
+        if !check_match(&body_args.req_results, max_res_req, &mut req_results, i, &mut probes_to_remove) {
             continue;
         }
-
-        // handle requested results
-        if probe.metadata.body_args.req_results.matches(all_results.len()) {
-            req_results.combine(&probe.metadata.body_args.req_results);
-        } else {
-            // remove probe!
-            probes_to_remove.push(i);
+        if !check_match(&pred_params.req_args, max_arg_req, &mut req_args, i, &mut probes_to_remove) {
             continue;
         }
-        if probe.metadata.pred_args.req_results.matches(all_results.len()) {
-            req_results.combine(&probe.metadata.pred_args.req_results);
-        } else {
-            // remove probe!
-            probes_to_remove.push(i);
+        if !check_match(&pred_params.req_results, max_res_req, &mut req_results, i, &mut probes_to_remove) {
             continue;
+        }
+        fn check_match(to_check: &StackReq, max_req: usize, all_reqs: &mut StackReq, curr_probe: usize, to_remove: &mut Vec<usize>) -> bool {
+            if to_check.matches(max_req) {
+                all_reqs.combine(to_check);
+                true
+            } else {
+                // remove probe!
+                to_remove.push(curr_probe);
+                false
+            }
         }
     }
     for i in probes_to_remove.iter() {
         loc_info.probes.remove(*i);
     }
 
-    if req_args.is_some() {
-        loc_info.args = req_args.of(all_args);
-    }
-    println!("req_results: {req_results:?}");
-    if req_results.is_some() {
-        loc_info.results = req_results.of(all_results);
-    }
+    loc_info.configure_stack_reqs(req_args, all_args, req_results, all_results);
 
     loc_info.is_prog_exit = is_prog_exit_call(instr, app_wasm);
     if loc_info.has_match() || loc_info.is_prog_exit {
@@ -2501,13 +2490,16 @@ pub fn get_ty_info_for_instr(
         };
 
     let mut args = vec![];
-    for (idx, ty) in arg_list.iter().enumerate() {
-        args.push(StackVal::new(format!("arg{}", idx), ty.to_owned()));
-    }
     let mut results = vec![];
-    for (idx, ty) in res_list.iter().enumerate() {
-        results.push(StackVal::new(format!("res{}", idx), ty.to_owned()));
-    }
+    let push_val = |prefix: &str, idx: usize, ty: &Option<WirmType>, vals: &mut Vec<StackVal>| {
+        vals.push(StackVal::new(format!("{prefix}{idx}"), ty.to_owned()));
+    };
+    arg_list.iter().enumerate().for_each(|(idx, ty)| {
+        push_val("arg", idx, ty, &mut args);
+    });
+    res_list.iter().enumerate().for_each(|(idx, ty)| {
+        push_val("res", idx, ty, &mut results);
+    });
 
     (args, results, ty_id)
 }
@@ -2871,6 +2863,20 @@ impl LocInfo {
     fn has_match(&self) -> bool {
         !self.probes.is_empty()
     }
+    fn configure_stack_reqs(
+        &mut self,
+        req_args: StackReq,
+        all_args: Vec<StackVal>,
+        req_res: StackReq,
+        all_res: Vec<StackVal>,
+    ) {
+        if req_args.is_some() {
+            self.args = req_args.of(all_args);
+        }
+        if req_res.is_some() {
+            self.results = req_res.of(all_res);
+        }
+    }
     fn add_probes(
         &mut self,
         base_rule: ProbeRule,
@@ -3121,6 +3127,7 @@ impl LocInfo {
             // just set to the other's args
             self.args = other.args.to_owned()
         }
+        // TODO -- factor logic
         // handle results
         if !self.results.is_empty() {
             if !other.results.is_empty() {

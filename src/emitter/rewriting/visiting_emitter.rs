@@ -9,7 +9,9 @@ use wirm::ir::types::DataType as WirmType;
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
-use crate::emitter::utils::{block_type_to_wasm, emit_expr, emit_probes, emit_stmt, EmitCtx};
+use crate::emitter::utils::{
+    block_type_to_wasm, emit_expr, emit_probes, emit_stack_vals, emit_stmt, EmitCtx,
+};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::ast::UnsharedVar;
 use crate::generator::folding::ExprFolder;
@@ -207,111 +209,49 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
     }
 
     pub(crate) fn save_args(&mut self, args: &[StackVal]) -> bool {
-        // No opcodes should have been emitted in the module yet!
-        // So, we can just save off the first * items in the stack as the args
-        // to the call.
-        let mut arg_recs: Vec<(String, usize)> = vec![]; // vec to retain order!
-
-        let mut arg_locals: Vec<(String, u32)> = vec![];
-        args.iter().for_each(
-            |StackVal {
-                 name: arg_name,
-                 ty: arg_ty,
-             }| {
-                let ty = if let Some(ty) = arg_ty {
-                    *ty
-                } else {
-                    warn!("The current way that probes with polymorphic argument types is supported for the bytecode rewriting target is incomplete.\
-                           In a future version, we need to have a virtual stack on the side to compute the actual argument type and compare with the \
-                           argument bounds of the probe to see if the location is a map. For now, it may generate invalid instrumented modules!");
-                    let Some(Record::Var {
-                                 ty,
-                                 ..
-                             }) = self.table.lookup_var(arg_name, true)
-                    else {
-                        unreachable!("unexpected type");
-                    };
-                    let wasm_ty = if ty.to_wasm_type().len() > 1 {
-                        unimplemented!()
-                    } else {
-                        *ty.to_wasm_type().first().unwrap()
-                    };
-                    wasm_ty
-                };
-                // create local for the param in the module
-                let arg_local_id = LocalID(self.locals_tracker.use_local(ty, &mut self.app_iter));
-                arg_locals.push((arg_name.to_string(), *arg_local_id));
-            },
-        );
-
-        // Save args in reverse order (the leftmost arg is at the bottom of the stack)
-        arg_locals.iter().for_each(|(arg_name, arg_local_id)| {
-            // emit an opcode in the event to assign the ToS to this new local
-            self.app_iter.local_set(LocalID(*arg_local_id));
-
-            // place in symbol table with var addr for future reference
-            let id = self.table.put(
-                arg_name.to_string(),
-                Record::Var {
-                    ty: DataType::I32, // we only support integers right now.
-                    value: None,
-                    def: Definition::User,
-                    addr: Some(vec![VarAddr::Local {
-                        addr: *arg_local_id,
-                    }]),
-                    loc: None,
-                },
-            );
-            arg_recs.insert(0, (arg_name.to_string(), id));
-        });
-        self.instr_created_args = arg_recs;
+        self.instr_created_args = self.save_stack_vals(args);
         true
     }
 
     pub(crate) fn emit_args(&mut self, err: &mut ErrorGen) -> bool {
         if self.in_init {
-            err.add_instr_error("Cannot re-emit args as a variable initialization.".to_string());
+            err.add_instr_error(
+                "Cannot re-emit stack values as a variable initialization.".to_string(),
+            );
             return false;
         }
-        for (_param_name, param_rec_id) in self.instr_created_args.iter() {
-            let param_rec = self.table.get_record_mut(*param_rec_id);
-            if let Some(Record::Var {
-                addr: Some(addrs), ..
-            }) = param_rec
-            {
-                let VarAddr::Local { addr } = addrs.first().unwrap() else {
-                    assert_eq!(addrs.len(), 1);
-                    panic!("arg address should be represented with a single address")
-                };
-                // Inject at tracker.orig_instr_idx to make sure that this actually emits the args
-                // for the instrumented instruction right before that instruction is called!
-                self.app_iter.local_get(LocalID(*addr));
-            } else {
-                unreachable!(
-                    "{} \
-                Could not emit parameters, something went wrong...",
-                    UNEXPECTED_ERR_MSG
-                );
-            }
-        }
+        emit_stack_vals(
+            &self.instr_created_args,
+            &mut self.app_iter,
+            &mut EmitCtx::new(
+                self.table,
+                self.mem_allocator,
+                &mut self.locals_tracker,
+                self.map_lib_adapter,
+                UNEXPECTED_ERR_MSG,
+                err,
+            ),
+        );
         true
     }
 
     pub(crate) fn save_results(&mut self, results: &[StackVal]) -> bool {
-        // TODO -- factor this
+        self.instr_created_results = self.save_stack_vals(results);
+        true
+    }
 
+    fn save_stack_vals(&mut self, vals: &[StackVal]) -> Vec<(String, usize)> {
         // No opcodes should have been emitted in the module yet!
         // So, we can just save off the first * items in the stack as the args
         // to the call.
-        let mut res_recs: Vec<(String, usize)> = vec![]; // vec to retain order!
-
-        let mut res_locals: Vec<(String, u32)> = vec![];
-        results.iter().for_each(
+        let mut recs: Vec<(String, usize)> = vec![]; // vec to retain order!
+        let mut locals: Vec<(String, u32)> = vec![];
+        vals.iter().for_each(
             |StackVal {
-                 name: res_name,
-                 ty: res_ty,
+                 name,
+                 ty: val_ty,
              }| {
-                let ty = if let Some(ty) = res_ty {
+                let ty = if let Some(ty) = val_ty {
                     *ty
                 } else {
                     warn!("The current way that probes with polymorphic result types is supported for the bytecode rewriting target is incomplete.\
@@ -320,7 +260,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
                     let Some(Record::Var {
                                  ty,
                                  ..
-                             }) = self.table.lookup_var(res_name, true)
+                             }) = self.table.lookup_var(name, true)
                     else {
                         unreachable!("unexpected type");
                     };
@@ -332,63 +272,52 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
                     wasm_ty
                 };
                 // create local for the result in the module
-                let res_local_id = LocalID(self.locals_tracker.use_local(ty, &mut self.app_iter));
-                res_locals.push((res_name.to_string(), *res_local_id));
+                let local_id = LocalID(self.locals_tracker.use_local(ty, &mut self.app_iter));
+                locals.push((name.to_string(), *local_id));
             },
         );
 
-        // Save args in reverse order (the leftmost arg is at the bottom of the stack)
-        res_locals.iter().for_each(|(res_name, res_local_id)| {
+        // Save vals in reverse order (the leftmost val is at the bottom of the stack)
+        locals.iter().for_each(|(name, local_id)| {
             // emit an opcode in the event to assign the ToS to this new local
-            self.app_iter.local_set(LocalID(*res_local_id));
+            self.app_iter.local_set(LocalID(*local_id));
 
             // place in symbol table with var addr for future reference
             let id = self.table.put(
-                res_name.to_string(),
+                name.to_string(),
                 Record::Var {
                     ty: DataType::I32, // TODO we only support integers right now.
                     value: None,
                     def: Definition::User,
-                    addr: Some(vec![VarAddr::Local {
-                        addr: *res_local_id,
-                    }]),
+                    addr: Some(vec![VarAddr::Local { addr: *local_id }]),
                     loc: None,
                 },
             );
-            res_recs.insert(0, (res_name.to_string(), id));
+            recs.insert(0, (name.to_string(), id));
         });
-        self.instr_created_results = res_recs;
-        true
+
+        recs
     }
 
     pub(crate) fn emit_results(&mut self, err: &mut ErrorGen) -> bool {
-        // TODO -- factor this
-
         if self.in_init {
-            err.add_instr_error("Cannot re-emit results as a variable initialization.".to_string());
+            err.add_instr_error(
+                "Cannot re-emit stack values as a variable initialization.".to_string(),
+            );
             return false;
         }
-        for (_param_name, param_rec_id) in self.instr_created_results.iter() {
-            let param_rec = self.table.get_record_mut(*param_rec_id);
-            if let Some(Record::Var {
-                addr: Some(addrs), ..
-            }) = param_rec
-            {
-                let VarAddr::Local { addr } = addrs.first().unwrap() else {
-                    assert_eq!(addrs.len(), 1);
-                    panic!("arg address should be represented with a single address")
-                };
-                // Inject at tracker.orig_instr_idx to make sure that this actually emits the args
-                // for the instrumented instruction right before that instruction is called!
-                self.app_iter.local_get(LocalID(*addr));
-            } else {
-                unreachable!(
-                    "{} \
-                Could not emit parameters, something went wrong...",
-                    UNEXPECTED_ERR_MSG
-                );
-            }
-        }
+        emit_stack_vals(
+            &self.instr_created_results,
+            &mut self.app_iter,
+            &mut EmitCtx::new(
+                self.table,
+                self.mem_allocator,
+                &mut self.locals_tracker,
+                self.map_lib_adapter,
+                UNEXPECTED_ERR_MSG,
+                err,
+            ),
+        );
         true
     }
 
@@ -441,17 +370,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
             });
 
         // reset dynamic_data
+        let mut override_val = |name: &str| {
+            self.table.override_record_val(name, None, false);
+        };
         loc_info.dynamic_data.iter().for_each(|(symbol_name, ..)| {
-            self.table.override_record_val(symbol_name, None, false);
+            override_val(symbol_name);
         });
-
         for i in 0..loc_info.args.len() {
-            let arg_name = format!("arg{}", i);
-            self.table.override_record_val(&arg_name, None, false);
+            override_val(&format!("arg{i}"));
         }
         for i in 0..loc_info.results.len() {
-            let res_name = format!("res{}", i);
-            self.table.override_record_val(&res_name, None, false);
+            override_val(&format!("res{i}"));
         }
         self.instr_created_args.clear();
     }
