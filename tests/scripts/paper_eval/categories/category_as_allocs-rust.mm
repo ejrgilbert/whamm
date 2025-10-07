@@ -19,69 +19,37 @@ report var atomic: u32;
 wasm:opcode:*:before {
     if (category_name == "const") {
         const++;
-    } else {
-        if (category_name == "misc") {
-            misc++;
-        } else {
-            if (category_name == "control") {
-                control++;
-            } else {
-                if (category_name == "local") {
-                    local++;
-                } else {
-                    if (category_name == "global") {
-                        global++;
-                    } else {
-                        if (category_name == "table") {
-                            table++;
-                        } else {
-                             if (category_name == "load") {
-                                 load++;
-                             } else {
-                                   if (category_name == "store") {
-                                       store++;
-                                   } else {
-                                       if (category_name == "mem") {
-                                           mem++;
-                                       } else {
-                                           if (category_name == "arith") {
-                                               arith++;
-                                           } else {
-                                               if (category_name == "compare") {
-                                                   compare++;
-                                               } else {
-                                                   if (category_name == "convert") {
-                                                       convert++;
-                                                   } else {
-                                                       if (category_name == "exn") {
-                                                           exn++;
-                                                       } else {
-                                                           if (category_name == "simd") {
-                                                               simd++;
-                                                           } else {
-                                                               if (category_name == "ref") {
-                                                                   ref++;
-                                                               } else {
-                                                                   if (category_name == "gc") {
-                                                                       gc++;
-                                                                   } else {
-                                                                       if (category_name == "atomic") {
-                                                                           atomic++;
-                                                                       }
-                                                                  }
-                                                              }
-                                                          }
-                                                      }
-                                                  }
-                                              }
-                                          }
-                                      }
-                                  }
-                              }
-                        }
-                    }
-                }
-            }
-        }
+    } elif (category_name == "misc") {
+        misc++;
+    } elif (category_name == "control") {
+        control++;
+    } elif (category_name == "local") {
+        local++;
+    } elif (category_name == "global") {
+        global++;
+    } elif (category_name == "table") {
+        table++;
+    } elif (category_name == "load") {
+        load++;
+    } elif (category_name == "store") {
+        store++;
+    } elif (category_name == "mem") {
+        mem++;
+    } elif (category_name == "arith") {
+        arith++;
+    } elif (category_name == "compare") {
+        compare++;
+    } elif (category_name == "convert") {
+        convert++;
+    } elif (category_name == "exn") {
+        exn++;
+    } elif (category_name == "simd") {
+        simd++;
+    } elif (category_name == "ref") {
+        ref++;
+    } elif (category_name == "gc") {
+        gc++;
+    } elif (category_name == "atomic") {
+        atomic++;
     }
 }

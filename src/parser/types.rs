@@ -1124,6 +1124,21 @@ impl Block {
     pub fn loc(&self) -> &Option<Location> {
         &self.loc
     }
+    pub fn extend(&mut self, other: Block) {
+        self.stmts.extend(other.stmts);
+        assert_eq!(self.results, other.results);
+        if self.loc.is_none() {
+            self.loc = other.loc.clone();
+        }
+    }
+}
+impl From<&Statement> for Block {
+    fn from(stmt: &Statement) -> Self {
+        Self {
+            stmts: vec![stmt.clone()],
+            ..Default::default()
+        }
+    }
 }
 
 // Statements

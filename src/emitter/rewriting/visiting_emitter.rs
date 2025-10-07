@@ -14,7 +14,7 @@ use crate::emitter::utils::{
 };
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::ast::UnsharedVar;
-use crate::generator::folding::ExprFolder;
+use crate::generator::folding::expr::ExprFolder;
 use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
