@@ -1,4 +1,0 @@
-wasm:opcode:i32.load:before {
-    report var val: i32;
-    val = res0;
-}
