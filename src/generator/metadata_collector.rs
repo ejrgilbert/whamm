@@ -1,6 +1,6 @@
 use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
-use crate::generator::ast::{Probe, Script, StackReq, WhammParams};
+use crate::generator::ast::{Probe, Script, StackReq, WhammParam, WhammParams};
 use crate::lang_features::report_vars::{BytecodeLoc, Metadata as ReportMetadata};
 use crate::parser::provider_handler::{Event, ModeKind, Package, Probe as ParserProbe, Provider};
 use crate::parser::types::{
@@ -14,10 +14,11 @@ use std::collections::HashSet;
 const UNEXPECTED_ERR_MSG: &str =
     "MetadataCollector: Looks like you've found a bug...please report this behavior!";
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 enum Visiting {
     Predicate,
     Body,
+    StaticLibCall,
     #[default]
     None,
 }
@@ -32,7 +33,6 @@ pub struct MetadataCollector<'a, 'b, 'c> {
 
     // misc. trackers
     pub used_user_library_fns: HashSet<(String, String)>,
-    pub static_lib_calls: Vec<Expr>,
     curr_user_lib: Option<String>,
     pub used_bound_fns: HashSet<(String, String)>,
     pub used_report_var_dts: HashSet<DataType>,
@@ -46,6 +46,7 @@ pub struct MetadataCollector<'a, 'b, 'c> {
     script_num: u8,
     curr_probe: Probe,
     curr_mode: ModeKind,
+    curr_lib_call_args: WhammParams,
 
     pub err: &'b mut ErrorGen,
     pub config: &'c Config,
@@ -62,7 +63,6 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             config,
             ast: Default::default(),
             used_user_library_fns: Default::default(),
-            static_lib_calls: Default::default(),
             curr_user_lib: Default::default(),
             used_bound_fns: Default::default(),
             used_report_var_dts: Default::default(),
@@ -74,14 +74,18 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             curr_script: Default::default(),
             script_num: Default::default(),
             curr_probe: Default::default(),
-            curr_mode: Default::default()
+            curr_mode: Default::default(),
+            curr_lib_call_args: Default::default(),
         }
     }
 
-    fn visit_stmts(&mut self, stmts: &[Statement]) {
+    fn visit_stmts(&mut self, stmts: &[Statement]) -> Vec<Statement> {
+        let mut new_stmts = Vec::with_capacity(stmts.len());
         stmts.iter().for_each(|stmt| {
-            self.visit_stmt(stmt);
-        })
+            new_stmts.push(self.visit_stmt_inner(stmt));
+        });
+
+        new_stmts
     }
 
     fn set_curr_rule(&mut self, val: String) {
@@ -106,8 +110,8 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
         match self.visiting {
             Visiting::Predicate => &mut self.curr_probe.metadata.pred_args,
             Visiting::Body => &mut self.curr_probe.metadata.body_args,
+            Visiting::StaticLibCall => &mut self.curr_lib_call_args,
             Visiting::None => {
-                // error
                 unreachable!("Expected a set variant of 'Visiting', but found 'None'");
             }
         }
@@ -131,283 +135,119 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                     &self.curr_mode,
                 );
             }
+            Visiting::StaticLibCall => {
+                self.curr_lib_call_args.push(
+                    WhammParam {
+                        name: name.to_string(),
+                        ty: ty.clone(),
+                    },
+                    &self.curr_mode,
+                );
+            }
             Visiting::None => {
-                // error
                 unreachable!("Expected a set variant of 'Visiting', but found 'None'");
             }
         }
     }
-}
-impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
-    fn visit_whamm(&mut self, whamm: &Whamm) {
-        trace!("Entering: CodeGenerator::visit_whamm");
-
-        // visit scripts
-        whamm.scripts.iter().for_each(|script| {
-            self.curr_script = Script::default();
-            self.visit_script(script);
-
-            // copy over state from original script
-            self.curr_script.id = script.id;
-            self.curr_script.fns = script.fns.to_owned();
-            self.curr_script.globals = script.globals.to_owned();
-            self.curr_script.global_stmts = script.global_stmts.to_owned();
-            self.ast.push(self.curr_script.clone());
-
-            self.script_num += 1;
-        });
-
-        trace!("Exiting: CodeGenerator::visit_whamm");
-    }
-
-    fn visit_script(&mut self, script: &ParserScript) {
-        trace!("Entering: CodeGenerator::visit_script");
-        self.table.enter_named_scope(&script.id.to_string());
-
-        self.visit_stmts(&script.global_stmts);
-
-        // visit providers
-        script.providers.iter().for_each(|(_name, provider)| {
-            self.visit_provider(provider);
-        });
-
-        trace!("Exiting: CodeGenerator::visit_script");
-        self.table.exit_scope();
-    }
-
-    fn visit_provider(&mut self, provider: &Provider) {
-        trace!("Entering: CodeGenerator::visit_provider");
-        self.table.enter_named_scope(&provider.def.name);
-        self.set_curr_rule(provider.def.name.clone());
-
-        // visit the packages
-        provider.packages.values().for_each(|package| {
-            self.visit_package(package);
-        });
-
-        trace!("Exiting: CodeGenerator::visit_provider");
-        self.table.exit_scope();
-    }
-
-    fn visit_package(&mut self, package: &Package) {
-        trace!("Entering: CodeGenerator::visit_package");
-        self.table.enter_named_scope(&package.def.name);
-        self.append_curr_rule(format!(":{}", package.def.name));
-
-        // visit the events
-        package.events.values().for_each(|event| {
-            self.visit_event(event);
-        });
-
-        trace!("Exiting: CodeGenerator::visit_package");
-        self.table.exit_scope();
-        // Remove this package from `curr_rule`
-        let curr_rule = self.get_curr_rule();
-        self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
-    }
-
-    fn visit_event(&mut self, event: &Event) {
-        trace!("Entering: CodeGenerator::visit_event");
-        self.table.enter_named_scope(&event.def.name);
-        self.append_curr_rule(format!(":{}", event.def.name));
-
-        event.probes.iter().for_each(|(_ty, probes)| {
-            probes.iter().for_each(|probe| {
-                if !self.config.as_monitor_module {
-                    // add the mode when not on the wei target
-                    self.append_curr_rule(format!(":{}", probe.kind.name()));
-                }
-                self.curr_probe = Probe::new(
-                    self.get_curr_rule().clone(),
-                    probe.id,
-                    self.curr_script.id,
-                    probe.loc.clone(),
-                );
-                self.curr_mode = probe.kind.clone();
-                self.visit_probe(probe);
-
-                // copy over data from original probe
-                self.curr_probe.predicate = probe.predicate.to_owned();
-                self.curr_probe.body = probe.body.to_owned();
-                self.curr_script.probes.push(self.curr_probe.clone());
-
-                if !self.config.as_monitor_module {
-                    // remove mode
-                    let curr_rule = self.get_curr_rule();
-                    let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
-                    self.set_curr_rule(new_rule);
-                }
-            });
-        });
-
-        trace!("Exiting: CodeGenerator::visit_event");
-        self.table.exit_scope();
-        let curr_rule = self.get_curr_rule();
-        let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
-        self.set_curr_rule(new_rule);
-    }
-
-    fn visit_probe(&mut self, probe: &ParserProbe) {
-        trace!("Entering: CodeGenerator::visit_probe");
-        self.table.enter_named_scope(&probe.kind.name());
-        self.append_curr_rule(format!(":{}", probe.kind.name()));
-        if let Some(pred) = &probe.predicate {
-            self.visiting = Visiting::Predicate;
-            self.visit_expr(pred);
-        }
-        // compile which args have been requested
-        self.curr_probe.metadata.pred_args.process_stack_reqs();
-        if let Some(body) = &probe.body {
-            self.visiting = Visiting::Body;
-            self.visit_block(body);
-            if probe.kind == ModeKind::Alt {
-                // XXX: this is bad
-                // always save all args for an alt probe
-                self.combine_req_args(StackReq::All);
-            }
-        }
-        // compile which args have been requested
-        self.curr_probe.metadata.body_args.process_stack_reqs();
-        self.visiting = Visiting::None;
-
-        trace!("Exiting: CodeGenerator::visit_probe");
-        self.table.exit_scope();
-        let curr_rule = self.get_curr_rule();
-        self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
-    }
-
-    fn visit_block(&mut self, block: &Block) {
-        self.visit_stmts(&block.stmts)
-    }
-
-    fn visit_stmt(&mut self, stmt: &Statement) {
-        match stmt {
-            Statement::LibImport { .. } => {
-                // Nothing to do, we just want to track the libraries/functions that are **used**
-            }
-            Statement::Decl { .. } => {
-                // ignore
-            }
-            Statement::UnsharedDeclInit { decl, init, .. } => {
-                self.visit_stmt(decl);
-                self.visit_stmt(init);
-                self.has_probe_state_init = true;
-                self.curr_probe.add_init_logic(*init.clone());
-            }
-            Statement::UnsharedDecl {
-                is_report, decl, ..
-            } => {
-                if let Statement::Decl {
-                    ty,
-                    var_id: Expr::VarId { name, loc, .. },
-                    ..
-                } = decl.as_ref()
-                {
-                    let report_metadata = if *is_report {
-                        // keep track of the used report var datatypes across the whole AST
-                        self.used_report_var_dts.insert(ty.clone());
-                        // this needs to also add report_var_metadata (if is_report)!
-                        let wasm_ty = if ty.to_wasm_type().len() > 1 {
-                            unimplemented!()
-                        } else {
-                            *ty.to_wasm_type().first().unwrap()
-                        };
-                        Some(ReportMetadata::Local {
-                            name: name.clone(),
-                            whamm_ty: ty.clone(),
-                            wasm_ty,
-                            script_id: self.script_num,
-                            bytecode_loc: BytecodeLoc::new(0, 0), // (unused)
-                            probe_id: self.curr_probe.to_string(),
-                        })
-                    } else {
-                        None
-                    };
-                    // change this to save off data to allocate
-                    self.curr_probe.add_unshared(
-                        name.clone(),
-                        ty.clone(),
-                        *is_report,
-                        report_metadata,
-                        loc,
-                    );
-                } else {
-                    unreachable!(
-                        "{} Incorrect type for a UnsharedDecl's contents!",
-                        UNEXPECTED_ERR_MSG
-                    )
-                }
-            }
-            Statement::Assign { var_id, expr, .. } => {
-                if let Expr::VarId { name, .. } = var_id {
-                    let (def, _ty, loc) = get_def(name, self.table);
-                    if def.is_comp_defined()
-                        && self.config.as_monitor_module
-                        && !self.config.enable_wei_alt
-                    {
-                        self.err.wei_error(
-                            "Assigning to compiler-defined variables is not supported on wei target"
-                                .to_string(),
-                            &loc,
-                        );
-                    }
-                }
-
-                self.visit_expr(var_id);
-                self.visit_expr(expr);
-            }
-            Statement::Expr { expr, .. } | Statement::Return { expr, .. } => self.visit_expr(expr),
-            Statement::If {
-                cond, conseq, alt, ..
-            } => {
-                self.visit_expr(cond);
-                self.visit_block(conseq);
-                self.visit_block(alt);
-            }
-            Statement::SetMap { map, key, val, .. } => {
-                self.visit_expr(map);
-                self.visit_expr(key);
-                self.visit_expr(val);
-            }
-        }
-    }
-
-    fn visit_expr(&mut self, expr: &Expr) {
+    /// Visits and rewrites expressions (if necessary)
+    /// rewriting it only for @static lib calls right now
+    fn visit_expr_inner(&mut self, expr: &Expr) -> Expr {
         match expr {
-            Expr::UnOp { expr, .. } => self.visit_expr(expr),
+            Expr::UnOp { expr, .. } => self.visit_expr_inner(expr),
             Expr::Ternary {
-                cond, conseq, alt, ..
+                cond,
+                conseq,
+                alt,
+                ty,
+                loc,
+            } => Expr::Ternary {
+                cond: Box::new(self.visit_expr_inner(cond)),
+                conseq: Box::new(self.visit_expr_inner(conseq)),
+                alt: Box::new(self.visit_expr_inner(alt)),
+                ty: ty.clone(),
+                loc: loc.clone(),
+            },
+            Expr::BinOp {
+                lhs,
+                rhs,
+                op,
+                done_on,
+                loc,
             } => {
-                self.visit_expr(cond);
-                self.visit_expr(conseq);
-                self.visit_expr(alt);
-            }
-            Expr::BinOp { lhs, rhs, op, .. } => {
                 self.check_strcmp = matches!(op, BinOp::EQ | BinOp::NE);
-                self.visit_expr(lhs);
-                self.visit_expr(rhs);
+                let lhs = self.visit_expr_inner(lhs);
+                let rhs = self.visit_expr_inner(rhs);
                 if self.check_strcmp {
                     // if this flag is still true, we need the strcmp function!
                     self.used_bound_fns
                         .insert(("whamm".to_string(), "strcmp".to_string()));
                 }
                 self.check_strcmp = false;
+                Expr::BinOp {
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                    op: op.clone(),
+                    done_on: done_on.clone(),
+                    loc: loc.clone(),
+                }
             }
             Expr::LibCall {
                 annotation,
                 lib_name,
                 call,
-                ..
+                loc,
             } => {
+                let is_static_lib_call = matches!(annotation, Some(Annotation::Static));
                 self.curr_user_lib = Some(lib_name.to_string());
-                if !matches!(annotation, Some(Annotation::Static)) {
-                    self.mark_expr_as_dynamic();
+                let orig_visiting = self.visiting.clone();
+                if is_static_lib_call {
+                    self.visiting = Visiting::StaticLibCall;
                 }
-                self.visit_expr(call);
+                let new_call = Expr::LibCall {
+                    annotation: annotation.clone(),
+                    lib_name: lib_name.clone(),
+                    call: Box::new(self.visit_expr_inner(call)),
+                    loc: loc.clone(),
+                };
+                self.visiting = orig_visiting;
                 self.curr_user_lib = None;
+                if !is_static_lib_call {
+                    self.mark_expr_as_dynamic();
+                } else {
+                    // this is a static library call, translate this into an optimize-able expression
+                    // BUT ONLY IF we're not in a predicate that's targeting an engine, we want to rewrite this expression
+                    if !(matches!(self.visiting, Visiting::Predicate)
+                        && self.config.as_monitor_module)
+                    {
+                        // change this expression to something that I can use to pull the result of
+                        // what I do to optimize this case.
+                        // Definition will be put into symbol table by the strategy generator!
+                        // (won't be a problem since we've already done type checking)
+                        let new_expr = self.curr_probe.add_static_lib_call(
+                            self.curr_lib_call_args.to_owned(),
+                            new_call.clone(),
+                        );
+                        self.curr_lib_call_args = WhammParams::default();
+                        return new_expr;
+                    }
+                }
+
+                if matches!(self.visiting, Visiting::Predicate) && self.config.as_monitor_module {
+                    // If I'm in the predicate and targeting an engine, I don't care about the lib call args
+                    // Just merge these with the general requests for the entire predicate.
+                    self.curr_probe
+                        .metadata
+                        .pred_args
+                        .extend(self.curr_lib_call_args.clone());
+                    self.curr_lib_call_args = WhammParams::default();
+                }
+                self.curr_lib_call_args = WhammParams::default();
+                new_call
             }
             Expr::Call {
-                args, fn_target, ..
+                args,
+                fn_target,
+                loc,
             } => {
                 // is this a bound function?
                 let fn_name = match &**fn_target {
@@ -473,22 +313,39 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                     }
                 }
 
+                let mut new_args = vec![];
                 args.iter().for_each(|arg| {
-                    self.visit_expr(arg);
+                    new_args.push(self.visit_expr_inner(arg));
                 });
-            }
-            Expr::Primitive { val, .. } => {
-                match val {
-                    Value::Str { val, .. } => {
-                        self.strings_to_emit.push(val.clone());
-                        return;
-                    }
-                    Value::Tuple { vals, .. } => vals.iter().for_each(|val| {
-                        self.visit_expr(val);
-                    }),
-                    _ => {} // nothing to do
+                Expr::Call {
+                    fn_target: fn_target.clone(),
+                    args: new_args,
+                    loc: loc.clone(),
                 }
+            }
+            Expr::Primitive { val, loc } => {
+                let val = match val {
+                    Value::Str { val: v, .. } => {
+                        self.strings_to_emit.push(v.clone());
+                        val.clone()
+                    }
+                    Value::Tuple { ty, vals } => {
+                        let mut new_vals = vec![];
+                        vals.iter().for_each(|val| {
+                            new_vals.push(self.visit_expr_inner(val));
+                        });
+                        Value::Tuple {
+                            vals: new_vals,
+                            ty: ty.clone(),
+                        }
+                    }
+                    _ => val.clone(), // nothing to do
+                };
                 self.check_strcmp = false;
+                Expr::Primitive {
+                    val,
+                    loc: loc.clone(),
+                }
             }
             Expr::VarId { name, .. } => {
                 let (def, ty, ..) = get_def(name, self.table);
@@ -504,11 +361,303 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                     // For B.R.: Only request dynamic data
                     self.push_metadata(name, &ty);
                 }
+                expr.clone()
             }
-            Expr::MapGet { map, key, .. } => {
-                self.visit_expr(map);
-                self.visit_expr(key);
+            Expr::MapGet { map, key, loc } => {
+                let map = self.visit_expr_inner(map);
+                let key = self.visit_expr_inner(key);
+
+                Expr::MapGet {
+                    map: Box::new(map),
+                    key: Box::new(key),
+                    loc: loc.clone(),
+                }
             }
+        }
+    }
+
+    fn visit_stmt_inner(&mut self, stmt: &Statement) -> Statement {
+        match stmt {
+            Statement::UnsharedDeclInit { decl, init, loc } => {
+                let decl = self.visit_stmt_inner(decl);
+                let init = self.visit_stmt_inner(init);
+                self.has_probe_state_init = true;
+                self.curr_probe.add_init_logic(init.clone());
+                Statement::UnsharedDeclInit {
+                    decl: Box::new(decl),
+                    init: Box::new(init),
+                    loc: loc.clone(),
+                }
+            }
+            Statement::UnsharedDecl {
+                is_report, decl, ..
+            } => {
+                if let Statement::Decl {
+                    ty,
+                    var_id: Expr::VarId { name, loc, .. },
+                    ..
+                } = decl.as_ref()
+                {
+                    let report_metadata = if *is_report {
+                        // keep track of the used report var datatypes across the whole AST
+                        self.used_report_var_dts.insert(ty.clone());
+                        // this needs to also add report_var_metadata (if is_report)!
+                        let wasm_ty = if ty.to_wasm_type().len() > 1 {
+                            unimplemented!()
+                        } else {
+                            *ty.to_wasm_type().first().unwrap()
+                        };
+                        Some(ReportMetadata::Local {
+                            name: name.clone(),
+                            whamm_ty: ty.clone(),
+                            wasm_ty,
+                            script_id: self.script_num,
+                            bytecode_loc: BytecodeLoc::new(0, 0), // (unused)
+                            probe_id: self.curr_probe.to_string(),
+                        })
+                    } else {
+                        None
+                    };
+                    // change this to save off data to allocate
+                    self.curr_probe.add_unshared(
+                        name.clone(),
+                        ty.clone(),
+                        *is_report,
+                        report_metadata,
+                        loc,
+                    );
+                } else {
+                    unreachable!(
+                        "{} Incorrect type for a UnsharedDecl's contents!",
+                        UNEXPECTED_ERR_MSG
+                    )
+                }
+                stmt.clone()
+            }
+            Statement::Assign { var_id, expr, loc } => {
+                if let Expr::VarId { name, .. } = var_id {
+                    let (def, _ty, loc) = get_def(name, self.table);
+                    if def.is_comp_defined()
+                        && self.config.as_monitor_module
+                        && !self.config.enable_wei_alt
+                    {
+                        self.err.wei_error(
+                            "Assigning to compiler-defined variables is not supported on Wizard target"
+                                .to_string(),
+                            &loc,
+                        );
+                    }
+                }
+
+                let var_id = self.visit_expr_inner(var_id);
+                let expr = self.visit_expr_inner(expr);
+
+                Statement::Assign {
+                    var_id,
+                    expr,
+                    loc: loc.clone(),
+                }
+            }
+            Statement::Expr { expr, loc } => Statement::Expr {
+                expr: self.visit_expr_inner(expr),
+                loc: loc.clone(),
+            },
+            Statement::Return { expr, loc } => Statement::Return {
+                expr: self.visit_expr_inner(expr),
+                loc: loc.clone(),
+            },
+            Statement::If {
+                cond,
+                conseq:
+                    Block {
+                        stmts: conseq_stmts,
+                        results: conseq_results,
+                        loc: conseq_loc,
+                    },
+                alt:
+                    Block {
+                        stmts: alt_stmts,
+                        results: alt_results,
+                        loc: alt_loc,
+                    },
+                loc,
+            } => Statement::If {
+                cond: self.visit_expr_inner(cond),
+                conseq: Block {
+                    stmts: self.visit_stmts(conseq_stmts),
+                    results: conseq_results.clone(),
+                    loc: conseq_loc.clone(),
+                },
+                alt: Block {
+                    stmts: self.visit_stmts(alt_stmts),
+                    results: alt_results.clone(),
+                    loc: alt_loc.clone(),
+                },
+                loc: loc.clone(),
+            },
+            Statement::SetMap { map, key, val, loc } => Statement::SetMap {
+                map: self.visit_expr_inner(map),
+                key: self.visit_expr_inner(key),
+                val: self.visit_expr_inner(val),
+                loc: loc.clone(),
+            },
+            _ => stmt.clone(),
+        }
+    }
+}
+impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
+    fn visit_whamm(&mut self, whamm: &Whamm) {
+        trace!("Entering: CodeGenerator::visit_whamm");
+
+        // visit scripts
+        whamm.scripts.iter().for_each(|script| {
+            self.curr_script = Script::default();
+            self.visit_script(script);
+
+            // copy over state from original script
+            self.curr_script.id = script.id;
+            self.curr_script.fns = script.fns.to_owned();
+            self.curr_script.globals = script.globals.to_owned();
+            self.curr_script.global_stmts = script.global_stmts.to_owned();
+            self.ast.push(self.curr_script.clone());
+
+            self.script_num += 1;
+        });
+
+        trace!("Exiting: CodeGenerator::visit_whamm");
+    }
+
+    fn visit_script(&mut self, script: &ParserScript) {
+        trace!("Entering: CodeGenerator::visit_script");
+        self.table.enter_named_scope(&script.id.to_string());
+
+        // TODO also need to have global static calls
+        self.visit_stmts(&script.global_stmts);
+
+        // visit providers
+        script.providers.iter().for_each(|(_name, provider)| {
+            self.visit_provider(provider);
+        });
+
+        trace!("Exiting: CodeGenerator::visit_script");
+        self.table.exit_scope();
+    }
+
+    fn visit_provider(&mut self, provider: &Provider) {
+        trace!("Entering: CodeGenerator::visit_provider");
+        self.table.enter_named_scope(&provider.def.name);
+        self.set_curr_rule(provider.def.name.clone());
+
+        // visit the packages
+        provider.packages.values().for_each(|package| {
+            self.visit_package(package);
+        });
+
+        trace!("Exiting: CodeGenerator::visit_provider");
+        self.table.exit_scope();
+    }
+
+    fn visit_package(&mut self, package: &Package) {
+        trace!("Entering: CodeGenerator::visit_package");
+        self.table.enter_named_scope(&package.def.name);
+        self.append_curr_rule(format!(":{}", package.def.name));
+
+        // visit the events
+        package.events.values().for_each(|event| {
+            self.visit_event(event);
+        });
+
+        trace!("Exiting: CodeGenerator::visit_package");
+        self.table.exit_scope();
+        // Remove this package from `curr_rule`
+        let curr_rule = self.get_curr_rule();
+        self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
+    }
+
+    fn visit_event(&mut self, event: &Event) {
+        trace!("Entering: CodeGenerator::visit_event");
+        self.table.enter_named_scope(&event.def.name);
+        self.append_curr_rule(format!(":{}", event.def.name));
+
+        event.probes.iter().for_each(|(_ty, probes)| {
+            probes.iter().for_each(|probe| {
+                if !self.config.as_monitor_module {
+                    // add the mode when not on the wizard target
+                    self.append_curr_rule(format!(":{}", probe.kind.name()));
+                }
+                self.curr_probe = Probe::new(
+                    self.get_curr_rule().clone(),
+                    probe.id,
+                    self.curr_script.id,
+                    probe.loc.clone(),
+                );
+                self.curr_mode = probe.kind.clone();
+                self.visit_probe(probe);
+
+                // copy over data from original probe
+                self.curr_script.probes.push(self.curr_probe.clone());
+
+                // reset per-probe track data
+                if !self.config.as_monitor_module {
+                    // remove mode
+                    let curr_rule = self.get_curr_rule();
+                    let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
+                    self.set_curr_rule(new_rule);
+                }
+            });
+        });
+
+        trace!("Exiting: CodeGenerator::visit_event");
+        self.table.exit_scope();
+        let curr_rule = self.get_curr_rule();
+        let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
+        self.set_curr_rule(new_rule);
+    }
+
+    fn visit_probe(&mut self, probe: &ParserProbe) {
+        trace!("Entering: CodeGenerator::visit_probe");
+        self.table.enter_named_scope(&probe.kind.name());
+        self.append_curr_rule(format!(":{}", probe.kind.name()));
+        if let Some(pred) = &probe.predicate {
+            self.visiting = Visiting::Predicate;
+            self.visit_expr(pred);
+        }
+        // compile which args have been requested
+        self.curr_probe.metadata.pred_args.process_stack_reqs();
+        if let Some(body) = &probe.body {
+            self.visiting = Visiting::Body;
+            self.visit_block(body);
+            if probe.kind == ModeKind::Alt {
+                // XXX: this is bad
+                // always save all args for an alt probe
+                self.combine_req_args(StackReq::All);
+            }
+            // TODO -- assign self.curr_probe.extend_body()
+        }
+        // compile which args have been requested
+        self.curr_probe.metadata.body_args.process_stack_reqs();
+        self.visiting = Visiting::None;
+
+        trace!("Exiting: CodeGenerator::visit_probe");
+        self.table.exit_scope();
+        let curr_rule = self.get_curr_rule();
+        self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
+    }
+
+    fn visit_block(&mut self, block: &Block) {
+        let new_stmts = self.visit_stmts(&block.stmts);
+        if matches!(self.visiting, Visiting::Body) {
+            self.curr_probe.set_body(Some(Block {
+                stmts: new_stmts,
+                ..block.clone()
+            }))
+        }
+    }
+
+    fn visit_expr(&mut self, expr: &Expr) {
+        let new_expr = self.visit_expr_inner(expr);
+        if matches!(self.visiting, Visiting::Predicate) {
+            self.curr_probe.set_pred(Some(new_expr))
         }
     }
 }

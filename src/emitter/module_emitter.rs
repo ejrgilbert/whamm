@@ -7,7 +7,7 @@ use crate::emitter::utils::{
     EmitCtx,
 };
 use crate::emitter::{Emitter, InjectStrategy};
-use crate::generator::ast::{Script, WhammParams};
+use crate::generator::ast::{Probe, Script, WhammParams};
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::{Metadata, ReportVars};
@@ -128,6 +128,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         &mut self,
         // the base memory offset for this function's var block
         alloc_base: Option<LocalID>,
+        lib_calls: &[(Option<u32>, String, WirmType)],
         whamm_params: &WhammParams,
         dynamic_pred: Option<&mut Expr>,
         results: &[WirmType],
@@ -151,6 +152,22 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![VarAddr::Local { addr: *alloc }]),
+                    loc: None,
+                },
+            );
+        }
+
+        // handle static library evaluation parameters
+        for (i, (_, _, ty)) in lib_calls.iter().enumerate() {
+            let local_id = params.len() as u32;
+            params.push(*ty);
+            self.table.put(
+                Probe::get_call_alias_for(i),
+                Record::Var {
+                    ty: DataType::from_wasm_type(ty),
+                    value: None,
+                    def: Definition::CompilerStatic,
+                    addr: Some(vec![VarAddr::Local { addr: local_id }]),
                     loc: None,
                 },
             );
