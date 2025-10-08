@@ -8,18 +8,13 @@ use std::fmt::{Display, Formatter};
 const UNEXPECTED_ERR_MSG: &str =
     "SymbolTable: Looks like you've found a bug...please report this behavior!";
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SymbolTable {
     pub scopes: Vec<Scope>,
     curr_scope: usize, // indexes into this::scopes
 
     pub records: Vec<Record>,
     pub curr_rec: usize, // indexes into this::records
-}
-impl Default for SymbolTable {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 impl SymbolTable {
     pub fn new() -> Self {
