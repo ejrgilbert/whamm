@@ -14,20 +14,6 @@ pub struct ExprFolder {
 impl ExprFolder {
     pub fn fold_expr(expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         let mut instance = Self { curr_loc: None };
-        if let Expr::LibCall {
-            annotation,
-            call,
-            lib_name,
-            loc,
-        } = expr
-        {
-            return Expr::LibCall {
-                annotation: annotation.clone(),
-                lib_name: lib_name.clone(),
-                loc: loc.clone(),
-                call: Box::new(Self::fold_expr(call, table, err)),
-            };
-        }
         instance.fold_expr_inner(expr, table, err)
     }
     pub fn get_single_bool(expr: &Expr) -> Option<bool> {
@@ -45,8 +31,27 @@ impl ExprFolder {
             Expr::VarId { .. } => self.fold_var_id(expr, table),
             Expr::Primitive { .. } => self.fold_primitive(expr, table, err),
             Expr::MapGet { .. } => self.fold_map_get(expr, table, err),
-            Expr::LibCall { .. } => unreachable!("Should be handled in Self::fold_expr"),
+            Expr::LibCall { .. } => self.fold_lib_call(expr, table, err),
         }
+    }
+
+    fn fold_lib_call(&mut self, lib_call: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        self.curr_loc = lib_call.loc().clone();
+
+        if let Expr::LibCall {
+            annotation,
+            call,
+            lib_name,
+            loc
+        } = lib_call {
+            return Expr::LibCall {
+                annotation: annotation.clone(),
+                lib_name: lib_name.clone(),
+                loc: loc.clone(),
+                call: Box::new(self.fold_expr_inner(call, table, err)),
+            };
+        }
+        lib_call.clone()
     }
 
     fn fold_binop(&mut self, binop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {

@@ -171,7 +171,16 @@ fn instrument_with_res0_scripts() {
     let processed_scripts = setup_tests("core_suite/res0");
     assert!(!processed_scripts.is_empty());
 
+    // TODO -- make this work with Wizard!
     run_core_suite("res0", processed_scripts, true, false)
+}
+#[test]
+fn instrument_with_at_static_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/@static");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("at_static", processed_scripts, false, true)
 }
 
 #[test]
