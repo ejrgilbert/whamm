@@ -4,9 +4,9 @@ use crate::parser::provider_handler::{get_matches, yml_to_providers, PrintInfo, 
 use crate::parser::types;
 use crate::parser::types::Statement::LibImport;
 use crate::parser::types::{
-    print_bound_vars, print_fns, BinOp, Block, DataType, Definition, Expr, FnId, Location, NumFmt,
-    NumLit, ProbeRule, Rule, RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser,
-    PRATT_PARSER,
+    print_bound_vars, print_fns, Annotation, BinOp, Block, DataType, Definition, Expr, FnId,
+    Location, NumFmt, NumLit, ProbeRule, Rule, RulePart, Script, Statement, UnOp, Value, Whamm,
+    WhammParser, PRATT_PARSER,
 };
 use log::trace;
 use pest::error::{Error, LineColLocation};
@@ -163,9 +163,7 @@ fn to_ast(
             );
         }
     }
-    // let mut visitor = AsStrVisitor { indent: 0 };
-    // let s = visitor.visit_whamm(&whamm);
-    // println!("{}", s);
+
     Ok(whamm)
 }
 
@@ -1015,20 +1013,42 @@ fn handle_lib_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     let loc = LineColLocation::from(pair.as_span());
     let mut pairs = pair.into_inner();
 
-    let lib_name_rule = pairs.next().unwrap();
-    let lib_name = lib_name_rule.as_str().parse().unwrap();
+    // check if we have an annotation on this library call
+    let s = pairs.next().unwrap();
+    let (annotation, lib_name) = if s.as_str().starts_with("@") {
+        let annotation = handle_annotation(s)?;
+        let lib_name_rule = pairs.next().unwrap();
+        (Some(annotation), lib_name_rule.as_str().to_string())
+    } else {
+        (None, s.as_str().to_string())
+    };
 
     // handle lib func call
-    let lib_func_call = handle_fn_call(pairs.next().unwrap());
-    assert!(lib_func_call.is_ok());
+    let lib_func_call = handle_fn_call(pairs.next().unwrap())?;
 
     Ok(Expr::LibCall {
+        annotation,
         lib_name,
-        call: Box::new(lib_func_call.unwrap()),
+        call: Box::new(lib_func_call),
         loc: Some(Location {
             line_col: loc,
             path: None,
         }),
+    })
+}
+
+fn handle_annotation(pair: Pair<Rule>) -> Result<Annotation, Vec<WhammError>> {
+    let mut pairs = pair.into_inner();
+    let annotation_pair = pairs.next().unwrap();
+    let annotation_string = annotation_pair.as_str();
+
+    Annotation::try_from(annotation_string).map_err(|err| {
+        vec![ErrorGen::get_parse_error(
+            Some(err),
+            Some(LineColLocation::from(annotation_pair.as_span())),
+            vec![],
+            vec![],
+        )]
     })
 }
 

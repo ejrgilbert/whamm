@@ -1213,6 +1213,20 @@ impl Statement {
 }
 
 #[derive(Clone, Debug)]
+pub enum Annotation {
+    Static,
+}
+impl TryFrom<&str> for Annotation {
+    type Error = String;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "static" => Ok(Self::Static),
+            _ => Err(format!("`@{}` is not a valid annotation", value)),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum Expr {
     UnOp {
         // Type is based on the outermost `op`
@@ -1245,6 +1259,7 @@ pub enum Expr {
         loc: Option<Location>,
     },
     LibCall {
+        annotation: Option<Annotation>,
         lib_name: String,
         call: Box<Expr>, // should be Expr::Call
         loc: Option<Location>,

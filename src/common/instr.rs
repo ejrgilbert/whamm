@@ -251,6 +251,10 @@ pub fn run(
         Ok(whamm) => whamm,
         Err(_) => return Err(Box::new(err)),
     };
+    // If there were any errors encountered during parsing, report and exit!
+    if err.has_errors {
+        return Err(Box::new(err));
+    }
     let (mut symbol_table, has_reports) =
         match get_symbol_table(&mut whamm, &user_lib_modules, &mut err) {
             Ok(r) => r,
