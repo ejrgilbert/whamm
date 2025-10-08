@@ -3,10 +3,7 @@ use crate::common::error::ErrorGen;
 use crate::generator::ast::{Probe, Script, StackReq, WhammParams};
 use crate::lang_features::report_vars::{BytecodeLoc, Metadata as ReportMetadata};
 use crate::parser::provider_handler::{Event, ModeKind, Package, Probe as ParserProbe, Provider};
-use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, Location, Script as ParserScript, Statement, Value,
-    Whamm, WhammVisitor,
-};
+use crate::parser::types::{Annotation, BinOp, Block, DataType, Definition, Expr, Location, Script as ParserScript, Statement, Value, Whamm, WhammVisitor};
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
 use std::collections::HashSet;
@@ -390,8 +387,11 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 }
                 self.check_strcmp = false;
             }
-            Expr::LibCall { lib_name, call, .. } => {
+            Expr::LibCall { annotation, lib_name, call, .. } => {
                 self.curr_user_lib = Some(lib_name.to_string());
+                if !matches!(annotation, Some(Annotation::Static)) {
+                    self.mark_expr_as_dynamic();
+                }
                 self.visit_expr(call);
                 self.curr_user_lib = None;
             }
