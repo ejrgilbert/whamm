@@ -42,8 +42,9 @@ impl ExprFolder {
             annotation,
             call,
             lib_name,
-            loc
-        } = lib_call {
+            loc,
+        } = lib_call
+        {
             return Expr::LibCall {
                 annotation: annotation.clone(),
                 lib_name: lib_name.clone(),
