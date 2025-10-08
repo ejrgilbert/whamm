@@ -10,6 +10,24 @@ use log::{error, info, warn};
 
 const DEFS_PATH: &str = "./";
 const VALID_SCRIPTS: &[&str] = &[
+    // call annotations
+    r#"
+use lib;
+
+@static lib.call();
+wasm:opcode:call(arg0: i32):before {
+    @static lib.other_call(1, 2);
+}
+@static lib.blah();
+wasm:opcode:call(arg0: i32):before {
+    if (@static lib.other_call()) {
+        @static lib.other_call(1, 2);
+    } else {
+        @static lib.other_call();
+    }
+}
+    "#,
+    // <4 parts
     r#"
 wasm:func:entry {}
     "#,
@@ -398,6 +416,23 @@ wasm:opcode:br:before {
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[
+    // call annotations (should parse, but not recognize the annotations)
+    r#"
+use lib;
+
+@static lib.call();
+wasm:opcode:call(arg0: i32):before {
+    @blah lib.other_call(1, 2);
+}
+@something lib.blah();
+wasm:opcode:call(arg0: i32):before {
+    if (@fsdf_re3 lib.other_call()) {
+        @blah lib.other_call(1, 2);
+    } else {
+        @sdf lib.other_call();
+    }
+}
+    "#,
     // globals
     r#"
 var count: map<i32, i32>;

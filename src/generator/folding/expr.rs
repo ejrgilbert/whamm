@@ -15,12 +15,14 @@ impl ExprFolder {
     pub fn fold_expr(expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         let mut instance = Self { curr_loc: None };
         if let Expr::LibCall {
+            annotation,
             call,
             lib_name,
             loc,
         } = expr
         {
             return Expr::LibCall {
+                annotation: annotation.clone(),
                 lib_name: lib_name.clone(),
                 loc: loc.clone(),
                 call: Box::new(Self::fold_expr(call, table, err)),
