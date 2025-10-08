@@ -201,6 +201,7 @@ fn handle_dry_run_response(
 }
 
 /// The instrumentation configuration
+#[derive(Default)]
 pub struct Config {
     /// Whether to emit a monitor module that can be used to dynamically instrument a program
     pub as_monitor_module: bool,
@@ -284,19 +285,15 @@ impl Config {
 }
 
 /// Options for handling instrumentation libraries.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum LibraryLinkStrategy {
     /// Merge the library with the `app.wasm` **target VM must support multi-memory**.
     /// Will create a new memory in the `app.wasm` to be targeted by the instrumentation.
     Merged,
     /// Link the library through Wasm imports into `app.wasm` (target VM must support dynamic linking).
     /// Naturally, the instrumentation memory will reside in its own module instantiation.
+    #[default]
     Imported,
-}
-impl Default for LibraryLinkStrategy {
-    fn default() -> Self {
-        Self::Imported
-    }
 }
 
 #[derive(Debug)]

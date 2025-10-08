@@ -14,9 +14,11 @@ use std::collections::HashSet;
 const UNEXPECTED_ERR_MSG: &str =
     "MetadataCollector: Looks like you've found a bug...please report this behavior!";
 
+#[derive(Default)]
 enum Visiting {
     Predicate,
     Body,
+    #[default]
     None,
 }
 
@@ -30,6 +32,7 @@ pub struct MetadataCollector<'a, 'b, 'c> {
 
     // misc. trackers
     pub used_user_library_fns: HashSet<(String, String)>,
+    pub static_lib_calls: Vec<Expr>,
     curr_user_lib: Option<String>,
     pub used_bound_fns: HashSet<(String, String)>,
     pub used_report_var_dts: HashSet<DataType>,
@@ -55,22 +58,23 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
     ) -> Self {
         Self {
             table,
-            ast: Vec::default(),
-            used_user_library_fns: HashSet::default(),
-            curr_user_lib: None,
-            used_bound_fns: HashSet::default(),
-            used_report_var_dts: HashSet::default(),
-            check_strcmp: false,
-            strings_to_emit: Vec::default(),
-            has_probe_state_init: false,
-            visiting: Visiting::None,
-            curr_rule: "".to_string(),
-            curr_script: Script::default(),
-            script_num: 0,
-            curr_probe: Probe::default(),
-            curr_mode: ModeKind::Null,
             err,
             config,
+            ast: Default::default(),
+            used_user_library_fns: Default::default(),
+            static_lib_calls: Default::default(),
+            curr_user_lib: Default::default(),
+            used_bound_fns: Default::default(),
+            used_report_var_dts: Default::default(),
+            check_strcmp: Default::default(),
+            strings_to_emit: Default::default(),
+            has_probe_state_init: Default::default(),
+            visiting: Default::default(),
+            curr_rule: Default::default(),
+            curr_script: Default::default(),
+            script_num: Default::default(),
+            curr_probe: Default::default(),
+            curr_mode: Default::default()
         }
     }
 
@@ -225,7 +229,6 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 // copy over data from original probe
                 self.curr_probe.predicate = probe.predicate.to_owned();
                 self.curr_probe.body = probe.body.to_owned();
-                self.curr_probe.body = probe.body.to_owned();
                 self.curr_script.probes.push(self.curr_probe.clone());
 
                 if !self.config.as_monitor_module {
@@ -256,7 +259,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         self.curr_probe.metadata.pred_args.process_stack_reqs();
         if let Some(body) = &probe.body {
             self.visiting = Visiting::Body;
-            self.visit_stmts(body.stmts.as_slice());
+            self.visit_block(body);
             if probe.kind == ModeKind::Alt {
                 // XXX: this is bad
                 // always save all args for an alt probe
