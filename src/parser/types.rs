@@ -1140,6 +1140,14 @@ impl From<&Statement> for Block {
         }
     }
 }
+impl From<Vec<Statement>> for Block {
+    fn from(stmts: Vec<Statement>) -> Self {
+        Self {
+            stmts,
+            ..Default::default()
+        }
+    }
+}
 
 // Statements
 #[derive(Clone, Debug)]
@@ -1970,7 +1978,6 @@ pub trait WhammVisitor<T> {
     fn visit_event(&mut self, event: &Event) -> T;
     fn visit_probe(&mut self, probe: &Probe) -> T;
     fn visit_block(&mut self, block: &Block) -> T;
-    fn visit_stmt(&mut self, stmt: &Statement) -> T;
     fn visit_expr(&mut self, expr: &Expr) -> T;
 }
 
