@@ -3,7 +3,7 @@
 // =================
 
 use crate::common::error::ErrorGen;
-use crate::generator::folding::ExprFolder;
+use crate::generator::folding::expr::ExprFolder;
 use crate::parser::provider_handler::ModeKind;
 use crate::parser::tests;
 use crate::parser::types::Expr::{BinOp as ExprBinOp, VarId};

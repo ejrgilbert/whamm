@@ -5,7 +5,8 @@ use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::emitter::InjectStrategy;
 use crate::generator::ast::Probe;
-use crate::generator::folding::ExprFolder;
+use crate::generator::folding::expr::ExprFolder;
+use crate::generator::folding::stmt::StmtFolder;
 use crate::lang_features::libraries::core::maps::map_adapter::{MapLibAdapter, MAP_LIB_MEM_OFFSET};
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
@@ -67,9 +68,7 @@ pub fn emit_probes<'h, T: Opcode<'h> + MacroOpcode<'h> + AddLocal>(
 ) {
     for probe in probes.iter_mut() {
         if let Some(body) = &mut probe.body {
-            for stmt in body.stmts.iter_mut() {
-                emit_stmt(stmt, strategy, injector, ctx);
-            }
+            emit_body(body, strategy, injector, ctx);
         }
     }
 }
@@ -88,6 +87,21 @@ pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 }
 
 pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    stmt: &mut Statement,
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) -> bool {
+    let mut is_success = true;
+    let mut folded_stmt = StmtFolder::fold_stmt(stmt, ctx.table, ctx.err);
+    for s in folded_stmt.stmts.iter_mut() {
+        is_success &= emit_stmt_inner(s, strategy, injector, ctx);
+    }
+
+    is_success
+}
+
+fn emit_stmt_inner<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     stmt: &mut Statement,
     strategy: InjectStrategy,
     injector: &mut T,
