@@ -1049,9 +1049,15 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     Some(DataType::AssumeGood)
                 }
             }
-            Expr::LibCall { lib_name, call, .. } => {
+            Expr::LibCall {
+                lib_name,
+                call,
+                results,
+                ..
+            } => {
                 self.lib_name = Some(lib_name.clone());
                 let res = self.visit_expr(call);
+                *results = res.clone();
                 self.lib_name = None;
 
                 res

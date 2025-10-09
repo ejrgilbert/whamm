@@ -42,12 +42,14 @@ impl ExprFolder {
             annotation,
             call,
             lib_name,
+            results,
             loc,
         } = lib_call
         {
             return Expr::LibCall {
                 annotation: annotation.clone(),
                 lib_name: lib_name.clone(),
+                results: results.clone(),
                 loc: loc.clone(),
                 call: Box::new(self.fold_expr_inner(call, table, err)),
             };

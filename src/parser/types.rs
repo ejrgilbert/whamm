@@ -1269,7 +1269,8 @@ pub enum Expr {
     LibCall {
         annotation: Option<Annotation>,
         lib_name: String,
-        call: Box<Expr>, // should be Expr::Call
+        call: Box<Expr>,           // should be Expr::Call
+        results: Option<DataType>, // set by the type checker!
         loc: Option<Location>,
     },
     VarId {
