@@ -189,6 +189,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 let rhs = self.visit_expr_inner(rhs);
                 if self.check_strcmp {
                     // if this flag is still true, we need the strcmp function!
+                    println!("HERE");
                     self.used_bound_fns
                         .insert(("whamm".to_string(), "strcmp".to_string()));
                 }
@@ -315,7 +316,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                     (def, ret_ty.clone(), req_args.clone(), Some(context))
                 };
 
-                self.check_strcmp = matches!(ret_ty, DataType::Str);
+                self.check_strcmp &= matches!(ret_ty, DataType::Str);
                 if matches!(def, Definition::CompilerDynamic) {
                     if let Some(context) = context {
                         // will need to emit this function!
@@ -336,24 +337,27 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 }
             }
             Expr::Primitive { val, loc } => {
-                let val = match val {
+                let (val, strcmp) = match val {
                     Value::Str { val: v, .. } => {
                         self.strings_to_emit.push(v.clone());
-                        val.clone()
+                        (val.clone(), true)
                     }
                     Value::Tuple { ty, vals } => {
                         let mut new_vals = vec![];
                         vals.iter().for_each(|val| {
                             new_vals.push(self.visit_expr_inner(val));
                         });
-                        Value::Tuple {
-                            vals: new_vals,
-                            ty: ty.clone(),
-                        }
+                        (
+                            Value::Tuple {
+                                vals: new_vals,
+                                ty: ty.clone(),
+                            },
+                            false,
+                        )
                     }
-                    _ => val.clone(), // nothing to do
+                    _ => (val.clone(), false), // nothing to do
                 };
-                self.check_strcmp = false;
+                self.check_strcmp = strcmp;
                 Expr::Primitive {
                     val,
                     loc: loc.clone(),
@@ -366,7 +370,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 }
 
                 // check if bound, remember in metadata!
-                self.check_strcmp = matches!(ty, DataType::Str);
+                self.check_strcmp &= matches!(ty, DataType::Str);
 
                 if def.is_comp_defined() {
                     // For wei: Request all!
