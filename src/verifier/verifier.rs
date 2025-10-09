@@ -108,7 +108,7 @@ struct TypeChecker<'a> {
     curr_match_rule: Option<String>,
 
     // If a lib function call, use this for lookup
-    lib_name: Option<String>,
+    lib_name: Vec<String>,
 
     // bookkeeping for casting
     curr_loc: Option<Location>,
@@ -126,7 +126,7 @@ impl<'a> TypeChecker<'a> {
             in_function: false,
             has_reports: false,
             curr_match_rule: None,
-            lib_name: None,
+            lib_name: vec![],
             curr_loc: None,
             outer_cast_fixes_assign: false,
             assign_ty: None,
@@ -1055,10 +1055,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 results,
                 ..
             } => {
-                self.lib_name = Some(lib_name.clone());
+                self.lib_name.push(lib_name.clone());
                 let res = self.visit_expr(call);
                 *results = res.clone();
-                self.lib_name = None;
+                self.lib_name.pop();
 
                 res
             }
@@ -1095,7 +1095,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 };
 
-                let rec = if let Some(lib_name) = &self.lib_name {
+                let rec = if let Some(lib_name) = &self.lib_name.first() {
                     if let Some(id) = self.table.lookup_lib_fn(lib_name, fn_name) {
                         id
                     } else {
@@ -1136,7 +1136,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         let ret_ty = if results.len() > 1 {
                             panic!(
                                 "We don't support functions with multiple return types: {}.{}",
-                                &self.lib_name.as_ref().unwrap(),
+                                &self.lib_name.first().unwrap(),
                                 name
                             );
                         } else if results.is_empty() {

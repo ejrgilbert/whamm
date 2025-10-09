@@ -18,7 +18,6 @@ const UNEXPECTED_ERR_MSG: &str =
 enum Visiting {
     Predicate,
     Body,
-    StaticLibCall,
     #[default]
     None,
 }
@@ -33,7 +32,8 @@ pub struct MetadataCollector<'a, 'b, 'c> {
 
     // misc. trackers
     pub used_user_library_fns: HashSet<(String, String)>,
-    curr_user_lib: Option<String>,
+    curr_user_lib: Vec<String>,
+    curr_user_lib_is_static: bool,
     pub used_bound_fns: HashSet<(String, String)>,
     pub used_report_var_dts: HashSet<DataType>,
     pub check_strcmp: bool,
@@ -64,6 +64,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             ast: Default::default(),
             used_user_library_fns: Default::default(),
             curr_user_lib: Default::default(),
+            curr_user_lib_is_static: Default::default(),
             used_bound_fns: Default::default(),
             used_report_var_dts: Default::default(),
             check_strcmp: Default::default(),
@@ -104,13 +105,19 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
         // we only care about predicate expressions that are dynamic
         if matches!(self.visiting, Visiting::Predicate) {
             self.curr_probe.metadata.pred_is_dynamic = true;
+            if self.curr_user_lib_is_static {
+                self.err
+                    .add_instr_error("Cannot use dynamic data in a static predicate".to_string());
+            }
         }
     }
     fn get_curr_params(&mut self) -> &mut WhammParams {
+        if !self.curr_user_lib.is_empty() {
+            return &mut self.curr_lib_call_args;
+        }
         match self.visiting {
             Visiting::Predicate => &mut self.curr_probe.metadata.pred_args,
             Visiting::Body => &mut self.curr_probe.metadata.body_args,
-            Visiting::StaticLibCall => &mut self.curr_lib_call_args,
             Visiting::None => {
                 unreachable!("Expected a set variant of 'Visiting', but found 'None'");
             }
@@ -120,6 +127,15 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
         self.get_curr_params().req_args.combine(&req_args);
     }
     fn push_metadata(&mut self, name: &str, ty: &DataType) {
+        if !self.curr_user_lib.is_empty() {
+            self.curr_lib_call_args.push(
+                WhammParam {
+                    name: name.to_string(),
+                    ty: ty.clone(),
+                },
+                &self.curr_mode,
+            );
+        }
         match self.visiting {
             Visiting::Predicate => {
                 self.curr_probe.metadata.push_pred_req(
@@ -132,15 +148,6 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 self.curr_probe.metadata.push_body_req(
                     name.to_string(),
                     ty.clone(),
-                    &self.curr_mode,
-                );
-            }
-            Visiting::StaticLibCall => {
-                self.curr_lib_call_args.push(
-                    WhammParam {
-                        name: name.to_string(),
-                        ty: ty.clone(),
-                    },
                     &self.curr_mode,
                 );
             }
@@ -209,12 +216,8 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 results,
                 loc,
             } => {
-                let is_static_lib_call = matches!(annotation, Some(Annotation::Static));
-                self.curr_user_lib = Some(lib_name.to_string());
-                let orig_visiting = self.visiting.clone();
-                if is_static_lib_call {
-                    self.visiting = Visiting::StaticLibCall;
-                }
+                self.curr_user_lib_is_static = matches!(annotation, Some(Annotation::Static));
+                self.curr_user_lib.push(lib_name.to_string());
                 let new_call = Expr::LibCall {
                     annotation: annotation.clone(),
                     lib_name: lib_name.clone(),
@@ -222,9 +225,8 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                     results: results.clone(),
                     loc: loc.clone(),
                 };
-                self.visiting = orig_visiting;
-                self.curr_user_lib = None;
-                if !is_static_lib_call {
+                self.curr_user_lib.pop();
+                if !self.curr_user_lib_is_static {
                     self.mark_expr_as_dynamic();
                 } else {
                     // this is a static library call, translate this into an optimize-able expression
@@ -254,6 +256,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                         .extend(self.curr_lib_call_args.clone());
                     self.curr_lib_call_args = WhammParams::default();
                 }
+                self.curr_user_lib_is_static = false;
                 self.curr_lib_call_args = WhammParams::default();
                 new_call
             }
@@ -270,51 +273,52 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                     }
                 };
 
-                let (def, ret_ty, req_args, context) = if let Some(lib_name) = &self.curr_user_lib {
-                    let Some(Record::LibFn {
-                        name, results, def, ..
-                    }) = self.table.lookup_lib_fn(lib_name, &fn_name)
-                    else {
-                        panic!(
-                            "Could not find library function for {}.{}",
-                            lib_name, fn_name
-                        )
-                    };
+                let (def, ret_ty, req_args, context) =
+                    if let Some(lib_name) = &self.curr_user_lib.first() {
+                        let Some(Record::LibFn {
+                            name, results, def, ..
+                        }) = self.table.lookup_lib_fn(lib_name, &fn_name)
+                        else {
+                            panic!(
+                                "Could not find library function for {}.{}",
+                                lib_name, fn_name
+                            )
+                        };
 
-                    // Track user library that's being used
-                    let Some(exp_lib_name) = &self.curr_user_lib else {
-                        panic!("Current user library is not set!")
-                    };
-                    assert_eq!(exp_lib_name, lib_name, "Library names should be equal!!");
-                    self.used_user_library_fns
-                        .insert((lib_name.clone(), fn_name.clone()));
-                    let ret_ty = if results.len() > 1 {
-                        panic!(
-                            "We don't support functions with multiple return types: {}.{}",
-                            lib_name, name
-                        );
-                    } else if results.is_empty() {
-                        DataType::Tuple { ty_info: vec![] }
+                        // Track user library that's being used
+                        let Some(exp_lib_name) = &self.curr_user_lib.first() else {
+                            panic!("Current user library is not set!")
+                        };
+                        assert_eq!(exp_lib_name, lib_name, "Library names should be equal!!");
+                        self.used_user_library_fns
+                            .insert((lib_name.to_string(), fn_name.clone()));
+                        let ret_ty = if results.len() > 1 {
+                            panic!(
+                                "We don't support functions with multiple return types: {}.{}",
+                                lib_name, name
+                            );
+                        } else if results.is_empty() {
+                            DataType::Tuple { ty_info: vec![] }
+                        } else {
+                            results.first().unwrap().clone()
+                        };
+
+                        (def, ret_ty, StackReq::None, None)
                     } else {
-                        results.first().unwrap().clone()
+                        let (
+                            Some(Record::Fn {
+                                def,
+                                ret_ty,
+                                req_args,
+                                ..
+                            }),
+                            context,
+                        ) = self.table.lookup_fn_with_context(&fn_name)
+                        else {
+                            unreachable!("unexpected type");
+                        };
+                        (def, ret_ty.clone(), req_args.clone(), Some(context))
                     };
-
-                    (def, ret_ty, StackReq::None, None)
-                } else {
-                    let (
-                        Some(Record::Fn {
-                            def,
-                            ret_ty,
-                            req_args,
-                            ..
-                        }),
-                        context,
-                    ) = self.table.lookup_fn_with_context(&fn_name)
-                    else {
-                        unreachable!("unexpected type");
-                    };
-                    (def, ret_ty.clone(), req_args.clone(), Some(context))
-                };
 
                 self.check_strcmp &= matches!(ret_ty, DataType::Str);
                 if matches!(def, Definition::CompilerDynamic) {

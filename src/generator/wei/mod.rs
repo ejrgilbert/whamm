@@ -95,6 +95,9 @@ impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             if probe.metadata.pred_is_dynamic {
                 // dynamic analysis of the predicate will go here!
                 // See: https://github.com/ejrgilbert/whamm/issues/163
+
+                // for now, we push the dynamic predicate down into the probe body
+
                 (None, "".to_string(), Some(pred))
             } else {
                 let mut block = Block {
@@ -192,7 +195,12 @@ impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 assert!(pred.is_none());
                 assert!(body_block.stmts.is_empty());
             }
-            let def_params = WhammParams::default();
+            let no_params = WhammParams::default();
+            let mut params = probe.metadata.body_args.clone();
+            if pred.is_some() {
+                // need to request predicate params now that we're pushing down into the body
+                params.extend(probe.metadata.pred_args.clone());
+            }
 
             self.emitter.emit_special_func(
                 if self.config.no_bundle {
@@ -202,9 +210,9 @@ impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 },
                 &all_lib_calls,
                 if self.config.no_bundle {
-                    &def_params
+                    &no_params
                 } else {
-                    &probe.metadata.body_args
+                    &params
                 },
                 pred,
                 &[],
