@@ -21,7 +21,9 @@ param = { ID ~ ":" ~ TYPE }
 // ===================
 
 lib_import = { "use" ~ ID ~ ";" }
-lib_call = { ID ~ "." ~ fn_call }
+
+annotation = { "@" ~ ID }
+lib_call = { annotation? ~ ID ~ "." ~ fn_call }
 
 // =====================
 // ---- Identifiers ----

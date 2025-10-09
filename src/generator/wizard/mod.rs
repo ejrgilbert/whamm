@@ -7,7 +7,7 @@ use crate::generator::{create_curr_loc, emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::LocationData;
-use crate::parser::types::{Block, DataType, Location, Statement, Value, WhammVisitorMut};
+use crate::parser::types::{Block, DataType, Expr, Location, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::Record;
 use log::trace;
 use std::collections::{HashMap, HashSet};
@@ -95,6 +95,9 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             if probe.metadata.pred_is_dynamic {
                 // dynamic analysis of the predicate will go here!
                 // See: https://github.com/ejrgilbert/whamm/issues/163
+
+                // for now, we push the dynamic predicate down into the probe body
+
                 (None, "".to_string(), Some(pred))
             } else {
                 let mut block = Block {
@@ -107,6 +110,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 };
                 let (fid, str) = self.emitter.emit_special_func(
                     None,
+                    &[],
                     &probe.metadata.pred_args,
                     None,
                     &[WirmType::I32],
@@ -128,6 +132,43 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             &mut self.emitter,
             self.err,
         );
+
+        // create any @static evaluation functions
+        let mut all_lib_calls = vec![];
+        probe
+            .static_lib_calls
+            .iter()
+            .for_each(|(params, lib_call)| {
+                let mut block = Block {
+                    stmts: vec![Statement::Expr {
+                        expr: lib_call.clone(),
+                        loc: None,
+                    }],
+                    results: None,
+                    loc: None,
+                };
+
+                let ty = if let Expr::LibCall { results, .. } = lib_call {
+                    results.as_ref().unwrap().clone()
+                } else {
+                    unreachable!(
+                        "Results of a library call should have been set by the type checker!"
+                    )
+                };
+                let wirm_ty = ty.to_wasm_type().first().unwrap().to_owned();
+                let (fid, s) = self.emitter.emit_special_func(
+                    None,
+                    &[],
+                    params,
+                    None,
+                    std::slice::from_ref(&wirm_ty),
+                    &mut block,
+                    true,
+                    &probe.loc,
+                    self.err,
+                );
+                all_lib_calls.push((fid, s, wirm_ty));
+            });
 
         // create the probe body function
         let (body_fid, body_param_str) = if let Some(body) = &mut probe.body {
@@ -154,7 +195,12 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 assert!(pred.is_none());
                 assert!(body_block.stmts.is_empty());
             }
-            let def_params = WhammParams::default();
+            let no_params = WhammParams::default();
+            let mut params = probe.metadata.body_args.clone();
+            if pred.is_some() {
+                // need to request predicate params now that we're pushing down into the body
+                params.extend(probe.metadata.pred_args.clone());
+            }
 
             self.emitter.emit_special_func(
                 if self.config.no_bundle {
@@ -162,10 +208,11 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 } else {
                     alloc_local
                 },
+                &all_lib_calls,
                 if self.config.no_bundle {
-                    &def_params
+                    &no_params
                 } else {
-                    &probe.metadata.body_args
+                    &params
                 },
                 pred,
                 &[],
@@ -180,10 +227,9 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
         let match_rule = self.create_wizard_match_rule(
             &probe.rule.to_string(),
-            pred_fid,
-            &pred_param_str,
-            alloc_fid,
-            &alloc_param_str,
+            (pred_fid, &pred_param_str),
+            (alloc_fid, &alloc_param_str),
+            &all_lib_calls,
             &body_param_str,
         );
         if let Some(fid) = body_fid {
@@ -200,23 +246,31 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn create_wizard_match_rule(
         &self,
         probe_name: &str,
-        pred_fid: Option<u32>,
-        pred_params: &str,
-        alloc_fid: Option<u32>,
-        alloc_params: &str,
+        pred_fid: (Option<u32>, &str),
+        alloc: (Option<u32>, &str),
+        all_lib_calls: &[(Option<u32>, String, WirmType)],
         body_params: &str,
     ) -> String {
-        let pred_part = if let Some(pred_fid) = pred_fid {
-            format!("/ ${pred_fid}({pred_params}) /")
+        let pred_part = if let (Some(pred_fid), pred_params) = pred_fid {
+            format!("/ {} /", call(pred_fid, pred_params))
         } else {
             "".to_string()
         };
-
-        let body_part = if let Some(alloc_fid) = alloc_fid {
-            &format!("${alloc_fid}({alloc_params}), {body_params}")
+        let alloc_part = if let (Some(alloc_fid), alloc_params) = alloc {
+            call(alloc_fid, alloc_params) + ", "
         } else {
-            body_params
+            "".to_string()
         };
+        let mut lib_calls_part = String::new();
+        all_lib_calls
+            .iter()
+            .for_each(|(fid, params, _)| lib_calls_part += &(call(fid.unwrap(), params) + ", "));
+
+        let body_part = alloc_part + &lib_calls_part + body_params;
+
+        fn call(fid: u32, params: &str) -> String {
+            format!("${fid}({params})")
+        }
 
         format!("{probe_name} {pred_part} ({body_part})")
     }
