@@ -1030,6 +1030,7 @@ fn handle_lib_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         annotation,
         lib_name,
         call: Box::new(lib_func_call),
+        results: None,
         loc: Some(Location {
             line_col: loc,
             path: None,

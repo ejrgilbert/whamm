@@ -7,7 +7,7 @@ use crate::generator::{create_curr_loc, emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::alloc_vars::wei::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::LocationData;
-use crate::parser::types::{Block, DataType, Location, Statement, Value, WhammVisitorMut};
+use crate::parser::types::{Block, DataType, Expr, Location, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::Record;
 use log::trace;
 use std::collections::{HashMap, HashSet};
@@ -145,20 +145,26 @@ impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                     loc: None,
                 };
 
-                // TODO -- what's the type?
-                let ty = WirmType::I32;
+                let ty = if let Expr::LibCall { results, .. } = lib_call {
+                    results.as_ref().unwrap().clone()
+                } else {
+                    unreachable!(
+                        "Results of a library call should have been set by the type checker!"
+                    )
+                };
+                let wirm_ty = ty.to_wasm_type().first().unwrap().to_owned();
                 let (fid, s) = self.emitter.emit_special_func(
                     None,
                     &[],
                     params,
                     None,
-                    std::slice::from_ref(&ty),
+                    std::slice::from_ref(&wirm_ty),
                     &mut block,
                     true,
                     &probe.loc,
                     self.err,
                 );
-                all_lib_calls.push((fid, s, ty));
+                all_lib_calls.push((fid, s, wirm_ty));
             });
 
         // create the probe body function

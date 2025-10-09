@@ -153,7 +153,17 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
     /// rewriting it only for @static lib calls right now
     fn visit_expr_inner(&mut self, expr: &Expr) -> Expr {
         match expr {
-            Expr::UnOp { expr, .. } => self.visit_expr_inner(expr),
+            Expr::UnOp {
+                op,
+                expr,
+                done_on,
+                loc,
+            } => Expr::UnOp {
+                op: op.clone(),
+                expr: Box::new(self.visit_expr_inner(expr)),
+                done_on: done_on.clone(),
+                loc: loc.clone(),
+            },
             Expr::Ternary {
                 cond,
                 conseq,
@@ -195,6 +205,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 annotation,
                 lib_name,
                 call,
+                results,
                 loc,
             } => {
                 let is_static_lib_call = matches!(annotation, Some(Annotation::Static));
@@ -207,6 +218,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                     annotation: annotation.clone(),
                     lib_name: lib_name.clone(),
                     call: Box::new(self.visit_expr_inner(call)),
+                    results: results.clone(),
                     loc: loc.clone(),
                 };
                 self.visiting = orig_visiting;
