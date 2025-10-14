@@ -32,8 +32,7 @@ pub struct MetadataCollector<'a, 'b, 'c> {
 
     // misc. trackers
     pub used_user_library_fns: HashSet<(String, String)>,
-    curr_user_lib: Vec<String>,
-    curr_user_lib_is_static: bool,
+    curr_user_lib: Vec<(String, bool)>,
     pub used_bound_fns: HashSet<(String, String)>,
     pub used_report_var_dts: HashSet<DataType>,
     pub check_strcmp: bool,
@@ -64,7 +63,6 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             ast: Default::default(),
             used_user_library_fns: Default::default(),
             curr_user_lib: Default::default(),
-            curr_user_lib_is_static: Default::default(),
             used_bound_fns: Default::default(),
             used_report_var_dts: Default::default(),
             check_strcmp: Default::default(),
@@ -105,9 +103,11 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
         // we only care about predicate expressions that are dynamic
         if matches!(self.visiting, Visiting::Predicate) {
             self.curr_probe.metadata.pred_is_dynamic = true;
-            if self.curr_user_lib_is_static {
-                self.err
-                    .add_instr_error("Cannot use dynamic data in a static predicate".to_string());
+            if let Some((_, is_static)) = self.curr_user_lib.first() {
+                if *is_static {
+                    self.err
+                        .add_instr_error("Cannot use dynamic data in a static predicate".to_string());
+                }
             }
         }
     }
@@ -216,8 +216,23 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 results,
                 loc,
             } => {
-                self.curr_user_lib_is_static = matches!(annotation, Some(Annotation::Static));
-                self.curr_user_lib.push(lib_name.to_string());
+                let (_, curr_is_static) = if let Some(c) = self.curr_user_lib.first() {
+                    c
+                } else {
+                    &("".to_string(), false)
+                };
+                if *curr_is_static && matches!(self.visiting, Visiting::Body) && self.config.as_monitor_module {
+                    // if this `curr_user_lib_is_static` value is already true...that means we have a nested static lib call
+                    // when on wizard, this is okay in the predicate...but not for the body since
+                    // that would require nesting calls in the export name.
+                    // TODO: To work around this: summarize this into a single generated function where
+                    //       that generated function contains the nested call!
+                    self.err.add_instr_error("Cannot perform a nested @static library call in a probe body on the engine target (yet).".to_string())
+                }
+
+                let is_static = matches!(annotation, Some(Annotation::Static));
+
+                self.curr_user_lib.push((lib_name.to_string(), is_static));
                 let new_call = Expr::LibCall {
                     annotation: annotation.clone(),
                     lib_name: lib_name.clone(),
@@ -226,7 +241,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                     loc: loc.clone(),
                 };
                 self.curr_user_lib.pop();
-                if !self.curr_user_lib_is_static {
+                if !is_static {
                     self.mark_expr_as_dynamic();
                 } else {
                     // this is a static library call, translate this into an optimize-able expression
@@ -256,7 +271,6 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                         .extend(self.curr_lib_call_args.clone());
                     self.curr_lib_call_args = WhammParams::default();
                 }
-                self.curr_user_lib_is_static = false;
                 self.curr_lib_call_args = WhammParams::default();
                 new_call
             }
@@ -274,7 +288,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 };
 
                 let (def, ret_ty, req_args, context) =
-                    if let Some(lib_name) = &self.curr_user_lib.first() {
+                    if let Some((lib_name, _)) = &self.curr_user_lib.first() {
                         let Some(Record::LibFn {
                             name, results, def, ..
                         }) = self.table.lookup_lib_fn(lib_name, &fn_name)
@@ -286,7 +300,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                         };
 
                         // Track user library that's being used
-                        let Some(exp_lib_name) = &self.curr_user_lib.first() else {
+                        let Some((exp_lib_name, _)) = &self.curr_user_lib.first() else {
                             panic!("Current user library is not set!")
                         };
                         assert_eq!(exp_lib_name, lib_name, "Library names should be equal!!");

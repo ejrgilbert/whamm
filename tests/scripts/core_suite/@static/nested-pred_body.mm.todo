@@ -1,5 +1,4 @@
 use toggle;
-report var g: i32 = @static toggle.should_inject(fid as i32, @static toggle.get_value());
 
 wasm:opcode:*:before / @static toggle.should_inject(fid as i32, @static toggle.get_value()) as bool / {
     report var val: i32 = @static toggle.should_inject(fid as i32, @static toggle.get_value());
