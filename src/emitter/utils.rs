@@ -702,9 +702,12 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 injector.call(FunctionID(f_id));
             } else {
                 unreachable!(
-                    "{} \
-                                fn_target address not in symbol table for '{}', not emitted yet...",
-                    ctx.err_msg, fn_name
+                    "{}\n\tfn_target address not in symbol table for '{}{}', not emitted yet...",
+                    ctx.err_msg, if let Some(lib_name) = &ctx.in_lib_call_to {
+                        format!("{lib_name}.")
+                    } else {
+                        "".to_string()
+                    }, fn_name
                 );
             }
             is_success

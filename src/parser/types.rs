@@ -1224,6 +1224,11 @@ impl Statement {
 pub enum Annotation {
     Static,
 }
+impl Annotation {
+    pub fn is_static(&self) -> bool {
+        matches!(self, Self::Static)
+    }
+}
 impl TryFrom<&str> for Annotation {
     type Error = String;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -1994,6 +1999,7 @@ pub trait WhammVisitorMut<T> {
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
     fn visit_block(&mut self, block: &mut Block) -> T;
     fn visit_stmt(&mut self, stmt: &mut Statement) -> T;
+    fn visit_stmt_global(&mut self, stmt: &mut Statement) -> T;
     fn visit_expr(&mut self, expr: &mut Expr) -> T;
     fn visit_value(&mut self, val: &mut Value) -> T;
 }

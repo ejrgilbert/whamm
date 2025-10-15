@@ -628,6 +628,14 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                     is_report_var = *is_report;
                     &mut **decl
                 }
+                Statement::UnsharedDeclInit {decl, .. } => {
+                    if let Statement::UnsharedDecl {decl: d, is_report, ..} = decl.as_mut() {
+                        is_report_var = *is_report;
+                        &mut **d
+                    } else {
+                        todo!()
+                    }
+                }
                 _ => stmt,
             };
             if let Statement::Decl { ty, var_id, .. } = stmt {
@@ -645,11 +653,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                 } else {
                     panic!(
                         "{} \
-                Variable declaration var_id is not the correct Expr variant!!",
+            Variable declaration var_id is not the correct Expr variant!!",
                         UNEXPECTED_ERR_MSG
                     );
                 }
-            };
+            }
             self.visit_stmt(stmt)
         });
 
@@ -903,9 +911,16 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                 }
                 Statement::UnsharedDeclInit { .. }
                 | Statement::UnsharedDecl { .. }
-                | Statement::LibImport { .. }
                 | Statement::Decl { .. } => {}
+                _ => panic!("Internal error. Should already be handled: {:?}", stmt)
             }
+        }
+    }
+
+    fn visit_stmt_global(&mut self, stmt: &mut Statement) -> () {
+        match stmt {
+            Statement::LibImport { .. } => {}
+            _ => self.visit_stmt(stmt),
         }
     }
 

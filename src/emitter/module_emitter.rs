@@ -609,40 +609,29 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // ==== EMIT `global` Statements LOGIC ====
     // ========================================
 
-    pub fn emit_global_stmts(&mut self, stmts: &mut [Statement], _err: &mut ErrorGen) -> bool {
+    pub fn emit_global_stmt(&mut self, stmt: &mut Statement, err: &mut ErrorGen) -> bool {
         // NOTE: This should be done in the Module entrypoint
         //       https://docs.rs/walrus/latest/walrus/struct.Module.html
 
-        if let Some(_start_fid) = self.app_wasm.start {
-            // 1. create the emitting_func var, assign in self
-            // 2. iterate over stmts and emit them! (will be different for Decl stmts)
-            for stmt in stmts.iter() {
-                match stmt {
-                    Statement::Decl { .. }
-                    | Statement::UnsharedDecl { .. }
-                    | Statement::LibImport { .. } => {} // already handled
-                    _ => todo!(),
-                }
-            }
+        if let Some(start_fid) = self.app_wasm.start {
+            let mut start = self.app_wasm.functions.get_fn_modifier(start_fid).unwrap();
+            emit_stmt(
+                stmt,
+                self.strategy,
+                &mut start,
+                &mut EmitCtx::new(
+                    self.table,
+                    self.mem_allocator,
+                    &mut self.locals_tracker,
+                    self.map_lib_adapter,
+                    UNEXPECTED_ERR_MSG,
+                    err,
+                ),
+            )
         } else {
-            // TODO -- try to create our own start fn (for dfinity case)
-            for stmt in stmts.iter_mut() {
-                match stmt {
-                    Statement::Decl { .. }
-                    | Statement::UnsharedDecl { .. }
-                    | Statement::LibImport { .. } => {} // already handled
-                    _ => {
-                        // Cannot emit this at the moment since there's no entrypoint for our module to emit initialization instructions into
-                        panic!(
-                            "This module has no configured entrypoint, \
-                                unable to emit a `script` with initialized global state"
-                        );
-                    }
-                }
-            }
+            let _ = ModuleEmitter::get_or_create_start_func(self.app_wasm);
+            self.emit_global_stmt(stmt, err)
         }
-
-        true
     }
 
     // =============================
@@ -657,6 +646,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         err: &mut ErrorGen,
     ) -> Option<FunctionID> {
         self.emit_global_inner(name, ty, val, true, err)
+    }
+
+    pub(crate) fn get_or_create_start_func(wasm: &mut Module) -> u32 {
+        *wasm.start.unwrap_or_else(|| {
+            let start_func = FunctionBuilder::new(&[], &[]);
+            let start_fid = start_func.finish_module_with_tag(wasm, get_tag_for(&None));
+            wasm.start = Some(start_fid);
+            start_fid
+        })
     }
 }
 impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
