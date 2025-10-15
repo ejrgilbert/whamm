@@ -531,21 +531,13 @@ fn call_instr_init_at_start(state_init_id: Option<FunctionID>, module: &mut Modu
         }
 
         // now call `instr_init` in the module's start function
-        if let Some(start_fid) = module.start {
-            if let Some(mut start_func) = module.functions.get_fn_modifier(start_fid) {
-                start_func.func_entry();
-                start_func.call(instr_init_fid);
-                start_func.finish_instr();
-            } else {
-                unreachable!("Should have found the function in the module.")
-            }
-        } else {
-            // create the start function and call the `instr_init` function
-            let mut start_func = FunctionBuilder::new(&[], &[]);
+        let start_fid = ModuleEmitter::get_or_create_start_func(module);
+        if let Some(mut start_func) = module.functions.get_fn_modifier(FunctionID(start_fid)) {
+            start_func.func_entry();
             start_func.call(instr_init_fid);
-
-            let start_fid = start_func.finish_module_with_tag(module, get_tag_for(&None));
-            module.start = Some(start_fid);
+            start_func.finish_instr();
+        } else {
+            unreachable!("Should have found the function in the module.")
         }
     } else if state_init_id.is_some() {
         unreachable!("If there's a state init function, there should be an instr_init function!")

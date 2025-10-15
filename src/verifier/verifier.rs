@@ -2,10 +2,7 @@ use crate::common::error::ErrorGen;
 use crate::generator::ast::StackReq;
 use crate::parser::provider_handler::{Event, Package, Probe, Provider};
 use crate::parser::types::Definition::{CompilerDynamic, CompilerStatic};
-use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
-    WhammVisitorMut,
-};
+use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm, WhammVisitorMut};
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
 use pest::error::LineColLocation;
@@ -108,7 +105,7 @@ struct TypeChecker<'a> {
     curr_match_rule: Option<String>,
 
     // If a lib function call, use this for lookup
-    lib_name: Vec<String>,
+    curr_lib: Vec<(String, bool)>,
 
     // bookkeeping for casting
     curr_loc: Option<Location>,
@@ -126,7 +123,7 @@ impl<'a> TypeChecker<'a> {
             in_function: false,
             has_reports: false,
             curr_match_rule: None,
-            lib_name: vec![],
+            curr_lib: vec![],
             curr_loc: None,
             outer_cast_fixes_assign: false,
             assign_ty: None,
@@ -242,7 +239,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         self.table.enter_named_scope(&script.id.to_string());
         self.in_script_global = true;
         script.global_stmts.iter_mut().for_each(|stmt| {
-            self.visit_stmt(stmt);
+            self.visit_stmt_global(stmt);
         });
         self.in_script_global = false;
         self.in_function = true;
@@ -420,10 +417,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         self.has_reports = true;
                     }
                 }
+                Statement::UnsharedDeclInit { decl, .. }=> {
+                    if let Statement::UnsharedDecl { is_report, .. } = **decl {
+                        if is_report {
+                            self.has_reports = true;
+                        }
+                    }
+                }
                 _ => {
                     self.err.type_check_error(
-                        "Only variable declarations and assignment are allowed in the global scope"
-                            .to_owned(),
+                        format!("Only variable declarations, user lib imports, and assignment are allowed in the global scope, found: {:?}", stmt),
                         &stmt.loc().clone().map(|l| l.line_col),
                     );
                     return None;
@@ -431,7 +434,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             }
         }
         match stmt {
-            Statement::LibImport { .. } => None,
             Statement::Assign { var_id, expr, .. } => {
                 // change type in symbol table?
                 let (full_loc, rhs_loc) = match (var_id.loc(), expr.loc()) {
@@ -652,6 +654,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
                 None
             }
+            _ => panic!("Internal error. Should already be handled: {:?}", stmt)
+        }
+    }
+
+    fn visit_stmt_global(&mut self, stmt: &mut Statement) -> Option<DataType> {
+        match stmt {
+            Statement::LibImport { .. } => None,
+            _ => self.visit_stmt(stmt),
         }
     }
 
@@ -1053,16 +1063,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 lib_name,
                 call,
                 results,
+                annotation,
                 ..
             } => {
-                self.lib_name.push(lib_name.clone());
+                self.curr_lib.push((lib_name.clone(), annotation.as_ref().map_or_else(|| false, |a| a.is_static())));
                 let res = self.visit_expr(call);
                 *results = res.clone();
-                self.lib_name.pop();
+                self.curr_lib.pop();
 
                 res
             }
-            //disallow calls when the in the global state of the script
             Expr::Call {
                 fn_target,
                 args,
@@ -1095,7 +1105,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 };
 
-                let rec = if let Some(lib_name) = &self.lib_name.first() {
+                let curr_lib = self.curr_lib.first();
+                let rec = if let Some((lib_name, _)) = &curr_lib {
                     if let Some(id) = self.table.lookup_lib_fn(lib_name, fn_name) {
                         id
                     } else {
@@ -1136,7 +1147,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         let ret_ty = if results.len() > 1 {
                             panic!(
                                 "We don't support functions with multiple return types: {}.{}",
-                                &self.lib_name.first().unwrap(),
+                                curr_lib.unwrap().0,
                                 name
                             );
                         } else if results.is_empty() {
@@ -1155,8 +1166,17 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 };
 
-                //check if in global state and if is_comp_defined is false --> not allowed if both are the case
-                if self.in_script_global && !(*def == CompilerDynamic || *def == CompilerStatic) {
+                if let Some((_, is_static)) = curr_lib {
+                    //disallow (non-static) user-function calls when the in the global state of the script
+                    if self.in_script_global && !is_static {
+                        self.err.type_check_error(
+                            "Non-static calls to libraries are not allowed in the global state of the script"
+                                .to_owned(),
+                            &loc.clone().map(|l| l.line_col),
+                        );
+                    }
+                } else if self.in_script_global && !(*def == CompilerDynamic || *def == CompilerStatic) {
+                    //check if in global state and if is_comp_defined is false --> not allowed if both are the case
                     self.err.type_check_error(
                         "Function calls to user def functions are not allowed in the global state of the script"
                             .to_owned(),
@@ -1343,21 +1363,21 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         };
 
                         let val_ty = val.ty();
-                        if *exp_ty == val_ty {
-                            return Some(val_ty);
+                        return if *exp_ty == val_ty {
+                            Some(val_ty)
                         } else if exp_ty.can_implicitly_cast() && val_ty.can_implicitly_cast() {
                             match val.implicit_cast(exp_ty) {
-                                Ok(_) => return Some(val.ty()),
+                                Ok(_) => Some(val.ty()),
                                 Err(msg) => {
                                     let loc =
                                         self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
                                     self.err.type_check_error(format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."),
                                                               &loc);
-                                    return Some(DataType::AssumeGood);
+                                    Some(DataType::AssumeGood)
                                 }
                             }
                         } else {
-                            return Some(DataType::Unknown);
+                            Some(DataType::Unknown)
                         }
                     }
                 }

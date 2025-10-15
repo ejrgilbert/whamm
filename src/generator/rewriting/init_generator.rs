@@ -127,6 +127,9 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn visit_global_stmts(&mut self, stmts: &mut [Statement]) -> bool {
         self.visit_stmts(stmts);
-        self.emitter.emit_global_stmts(stmts, self.err)
+        for stmt in stmts.iter_mut() {
+            self.emitter.emit_global_stmt(stmt, self.err);
+        }
+        true
     }
 }

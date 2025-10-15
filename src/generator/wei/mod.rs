@@ -9,7 +9,7 @@ use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::LocationData;
 use crate::parser::types::{Block, DataType, Expr, Location, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::Record;
-use log::trace;
+use log::{trace, warn};
 use std::collections::{HashMap, HashSet};
 use wirm::ir::id::{FunctionID, LocalID};
 use wirm::ir::types::DataType as WirmType;
@@ -78,7 +78,8 @@ impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         // inject globals
         self.visit_globals(&script.globals);
         // visit global statements
-        self.visit_stmts(&mut script.global_stmts);
+        // self.visit_stmts(&mut script.global_stmts);
+        self.visit_global_stmts(&mut script.global_stmts);
         // visit probes
         script.probes.iter_mut().for_each(|probe| {
             self.visit_probe(probe);
@@ -239,7 +240,7 @@ impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 get_tag_for(&None),
             );
         } else {
-            unreachable!()
+            warn!("Are you sure you meant to emit a probe with no body?");
         }
     }
 
@@ -357,6 +358,25 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, 
     }
 
     fn visit_global_stmts(&mut self, stmts: &mut [Statement]) -> bool {
-        self.emitter.emit_global_stmts(stmts, self.err)
+        // 1. create the emitting_func var, assign in self
+        // 2. iterate over stmts and emit them! (will be different for Decl stmts)
+        for stmt in stmts.iter_mut() {
+            match stmt {
+                Statement::Decl { .. }
+                | Statement::UnsharedDecl { .. } => {} // already handled
+                Statement::LibImport { lib_name, loc, .. } => {
+                    self.link_user_lib(lib_name, loc);
+                }
+                Statement::Assign {..} | Statement::Expr {..} => {
+                    // assume this is a valid AST node since we've gone through validation
+                    self.emitter.emit_global_stmt(stmt, self.err);
+                }
+                Statement::UnsharedDeclInit {init, ..} => {
+                    self.emitter.emit_global_stmt(init, self.err);
+                }
+                _ => todo!("{:?}", stmt),
+            }
+        }
+        true
     }
 }
