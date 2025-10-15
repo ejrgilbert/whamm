@@ -29,4 +29,14 @@
 
         local.get $was
     )
+
+    ;; Just pull a non-zero value to make sure that the call worked
+    (func $get_nonzero (export "get_nonzero") (result i32)
+        i32.const 42
+    )
+
+    ;; Just pull a non-zero value to make sure that the call worked
+    (func $get_nonzero_nested (export "get_nonzero_nested") (param i32 i32) (result i32)
+        i32.const 42
+    )
 )
