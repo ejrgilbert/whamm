@@ -674,7 +674,7 @@ fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> Resu
     if !passed {
         error!("AST failed verification!");
     }
-    if err.too_many {
+    if err.too_many | !passed {
         return Err(());
     }
 
