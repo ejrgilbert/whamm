@@ -216,19 +216,19 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 results,
                 loc,
             } => {
-                let (_, curr_is_static) = if let Some(c) = self.curr_user_lib.first() {
-                    c
+                let (is_nested, curr_is_static) = if let Some(c) = self.curr_user_lib.first() {
+                    (true, c.1)
                 } else {
-                    &("".to_string(), false)
+                    (false, false)
                 };
-                if *curr_is_static && matches!(self.visiting, Visiting::Body) && self.config.as_monitor_module {
-                    // if this `curr_user_lib_is_static` value is already true...that means we have a nested static lib call
-                    // when on wizard, this is okay in the predicate...but not for the body since
-                    // that would require nesting calls in the export name.
-                    // TODO: To work around this: summarize this into a single generated function where
-                    //       that generated function contains the nested call!
-                    self.err.add_instr_error("Cannot perform a nested @static library call in a probe body on the engine target (yet).".to_string())
-                }
+                // if *curr_is_static && matches!(self.visiting, Visiting::Body) && self.config.as_monitor_module {
+                //     // if this `curr_user_lib_is_static` value is already true...that means we have a nested static lib call
+                //     // when on wizard, this is okay in the predicate...but not for the body since
+                //     // that would require nesting calls in the export name.
+                //     // TODO: To work around this: summarize this into a single generated function where
+                //     //       that generated function contains the nested call!
+                //     self.err.add_instr_error("Cannot perform a nested @static library call in a probe body on the engine target (yet).".to_string())
+                // }
 
                 let is_static = matches!(annotation, Some(Annotation::Static));
 
@@ -246,19 +246,28 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 } else {
                     // this is a static library call, translate this into an optimize-able expression
                     // BUT ONLY IF we're not in a predicate that's targeting an engine, we want to rewrite this expression
-                    if !(matches!(self.visiting, Visiting::Predicate)
-                        && self.config.as_monitor_module)
+                    if matches!(self.visiting, Visiting::Body)
+                        && self.config.as_monitor_module
                     {
-                        // change this expression to something that I can use to pull the result of
-                        // what I do to optimize this case.
-                        // Definition will be put into symbol table by the strategy generator!
-                        // (won't be a problem since we've already done type checking)
-                        let new_expr = self.curr_probe.add_static_lib_call(
-                            self.curr_lib_call_args.to_owned(),
-                            new_call.clone(),
-                        );
-                        self.curr_lib_call_args = WhammParams::default();
-                        return new_expr;
+                        return if !is_nested {
+                            // change this expression to something that I can use to pull the result of
+                            // what I do to optimize this case.
+                            // Definition will be put into symbol table by the strategy generator!
+                            // (won't be a problem since we've already done type checking)
+                            let new_expr = self.curr_probe.add_static_lib_call(
+                                self.curr_lib_call_args.to_owned(),
+                                new_call.clone(),
+                            );
+                            self.curr_lib_call_args = WhammParams::default();
+                            new_expr
+                            // } else {
+                            //     // this is a nested library call in the body, let's just remember the new whammparams
+                            //     self.curr_lib_call_args.
+                            // }
+                        } else {
+                            // we want to just evaluate nested body lib calls inside a single function
+                            new_call
+                        }
                     }
                 }
 
