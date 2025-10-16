@@ -651,7 +651,10 @@ wasm:opcode:*:before / toggle.should_inject(fid as i32, @static toggle.get_value
             TOGGLE_PATH
         )
     });
-    let toggle_lib: HashMap<String, (Option<String>, Module)> = HashMap::from([("toggle".to_string(), (None, Module::parse(&toggle_bytes, true).unwrap()))]);
+    let toggle_lib: HashMap<String, (Option<String>, Module)> = HashMap::from([(
+        "toggle".to_string(),
+        (None, Module::parse(&toggle_bytes, true).unwrap()),
+    )]);
 
     let mut table = verifier::build_symbol_table(&mut ast, &toggle_lib, &mut err);
     verifier::type_check(&mut ast, &mut table, &mut err);
