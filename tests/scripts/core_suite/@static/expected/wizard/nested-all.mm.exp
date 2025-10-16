@@ -1,6 +1,10 @@
 ================================= REPORT CSV FLUSH ====================================
 id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
 4, memaddr, val, i32, i32, script0, main, 0, 3, 52_wasm:opcode:i64.const, 0
-36, memaddr, val, i32, i32, script0, main, 0, 8, 51_wasm:opcode:i32.const, 0
-68, memaddr, val, i32, i32, script0, main, 0, 13, 26_wasm:opcode:i32.load, 0
-100, memaddr, val, i32, i32, script0, main, 0, 17, 9_wasm:opcode:end, 0
+36, memaddr, val, i32, i32, script0, main, 0, 5, 41_wasm:opcode:i64.store, 0
+68, memaddr, val, i32, i32, script0, main, 0, 8, 51_wasm:opcode:i32.const, 0
+100, memaddr, val, i32, i32, script0, main, 0, 10, 26_wasm:opcode:i32.load, 0
+132, memaddr, val, i32, i32, script0, main, 0, 13, 26_wasm:opcode:i32.load, 0
+164, memaddr, val, i32, i32, script0, main, 0, 16, 18_wasm:opcode:drop, 0
+196, memaddr, val, i32, i32, script0, main, 0, 17, 9_wasm:opcode:end, 0
+6, global_id, g, i32, i32, script0, , , , , 42
