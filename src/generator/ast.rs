@@ -1,7 +1,9 @@
 use crate::emitter::rewriting::rules::StackVal;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::parser::provider_handler::ModeKind;
-use crate::parser::types::{Block, DataType, Expr, Global, Location, RulePart, Statement};
+use crate::parser::types::{
+    Block, DataType, Definition, Expr, Global, Location, RulePart, Statement,
+};
 use itertools::Itertools;
 use log::error;
 use std::collections::{HashMap, HashSet};
@@ -34,6 +36,7 @@ pub struct Probe {
     pub body: Option<Block>,
     pub metadata: Metadata,
     pub unshared_to_alloc: Vec<UnsharedVar>,
+    pub static_lib_calls: Vec<(WhammParams, Expr)>,
     pub init_logic: Vec<Statement>,
     pub probe_number: u32,
     pub script_id: u8,
@@ -48,15 +51,32 @@ impl Probe {
     pub(crate) fn new(rule_str: String, probe_number: u32, script_id: u8, loc: Location) -> Self {
         Self {
             rule: ProbeRule::from(rule_str),
-            predicate: None,
-            body: None,
-            metadata: Metadata::default(),
-            unshared_to_alloc: Vec::default(),
-            init_logic: Vec::default(),
             probe_number,
             script_id,
             loc: Some(loc),
+            ..Default::default()
         }
+    }
+    pub(crate) fn set_pred(&mut self, pred: Option<Expr>) {
+        self.predicate = pred;
+    }
+    pub(crate) fn set_body(&mut self, body: Option<Block>) {
+        self.body = body;
+    }
+    /// Adds a new static library call and returns what can be used
+    /// to refer to the lib call result
+    pub(crate) fn add_static_lib_call(&mut self, params: WhammParams, call: Expr) -> Expr {
+        let i = self.static_lib_calls.len();
+        self.static_lib_calls.push((params, call));
+
+        Expr::VarId {
+            definition: Definition::CompilerStatic,
+            name: Self::get_call_alias_for(i),
+            loc: None,
+        }
+    }
+    pub(crate) fn get_call_alias_for(i: usize) -> String {
+        format!("@static{i}")
     }
     pub(crate) fn add_unshared(
         &mut self,
@@ -232,6 +252,13 @@ pub struct WhammParams {
     requested_results: Vec<u32>,
 }
 impl WhammParams {
+    pub fn extend(&mut self, other: WhammParams) {
+        self.params.extend(other.params);
+        self.req_args.combine(&other.req_args);
+        self.req_results.combine(&other.req_results);
+        self.requested_args.extend(&other.requested_args);
+        self.requested_results.extend(&other.requested_results);
+    }
     pub fn push(&mut self, param: WhammParam, mode: &ModeKind) {
         if let Some(n) = param.n_for("arg") {
             self.requested_args.push(n);

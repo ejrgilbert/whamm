@@ -1140,6 +1140,14 @@ impl From<&Statement> for Block {
         }
     }
 }
+impl From<Vec<Statement>> for Block {
+    fn from(stmts: Vec<Statement>) -> Self {
+        Self {
+            stmts,
+            ..Default::default()
+        }
+    }
+}
 
 // Statements
 #[derive(Clone, Debug)]
@@ -1213,6 +1221,25 @@ impl Statement {
 }
 
 #[derive(Clone, Debug)]
+pub enum Annotation {
+    Static,
+}
+impl Annotation {
+    pub fn is_static(&self) -> bool {
+        matches!(self, Self::Static)
+    }
+}
+impl TryFrom<&str> for Annotation {
+    type Error = String;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "static" => Ok(Self::Static),
+            _ => Err(format!("`@{}` is not a valid annotation", value)),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum Expr {
     UnOp {
         // Type is based on the outermost `op`
@@ -1245,8 +1272,10 @@ pub enum Expr {
         loc: Option<Location>,
     },
     LibCall {
+        annotation: Option<Annotation>,
         lib_name: String,
-        call: Box<Expr>, // should be Expr::Call
+        call: Box<Expr>,           // should be Expr::Call
+        results: Option<DataType>, // set by the type checker!
         loc: Option<Location>,
     },
     VarId {
@@ -1955,7 +1984,6 @@ pub trait WhammVisitor<T> {
     fn visit_event(&mut self, event: &Event) -> T;
     fn visit_probe(&mut self, probe: &Probe) -> T;
     fn visit_block(&mut self, block: &Block) -> T;
-    fn visit_stmt(&mut self, stmt: &Statement) -> T;
     fn visit_expr(&mut self, expr: &Expr) -> T;
 }
 
@@ -1971,6 +1999,7 @@ pub trait WhammVisitorMut<T> {
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
     fn visit_block(&mut self, block: &mut Block) -> T;
     fn visit_stmt(&mut self, stmt: &mut Statement) -> T;
+    fn visit_stmt_global(&mut self, stmt: &mut Statement) -> T;
     fn visit_expr(&mut self, expr: &mut Expr) -> T;
     fn visit_value(&mut self, val: &mut Value) -> T;
 }

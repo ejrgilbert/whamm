@@ -1,13 +1,13 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
-use crate::emitter::tag_handler::get_tag_for;
+use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::utils::{
     emit_body, emit_expr, emit_global_getter, emit_probes, emit_stmt, whamm_type_to_wasm_global,
     EmitCtx,
 };
 use crate::emitter::{Emitter, InjectStrategy};
-use crate::generator::ast::{Script, WhammParams};
+use crate::generator::ast::{Probe, Script, WhammParams};
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::report_vars::{Metadata, ReportVars};
@@ -22,7 +22,7 @@ use wirm::ir::types::{
     BlockType as WirmBlockType, DataType as WirmType, InitExpr, Value as WirmValue,
 };
 use wirm::module_builder::AddLocal;
-use wirm::opcode::Opcode;
+use wirm::opcode::{Instrumenter, Opcode};
 use wirm::wasmparser::MemArg;
 use wirm::InitInstr;
 
@@ -128,6 +128,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         &mut self,
         // the base memory offset for this function's var block
         alloc_base: Option<LocalID>,
+        lib_calls: &[(Option<u32>, String, WirmType)],
         whamm_params: &WhammParams,
         dynamic_pred: Option<&mut Expr>,
         results: &[WirmType],
@@ -151,6 +152,22 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![VarAddr::Local { addr: *alloc }]),
+                    loc: None,
+                },
+            );
+        }
+
+        // handle static library evaluation parameters
+        for (i, (_, _, ty)) in lib_calls.iter().enumerate() {
+            let local_id = params.len() as u32;
+            params.push(*ty);
+            self.table.put(
+                Probe::get_call_alias_for(i),
+                Record::Var {
+                    ty: DataType::from_wasm_type(ty),
+                    value: None,
+                    def: Definition::CompilerStatic,
+                    addr: Some(vec![VarAddr::Local { addr: local_id }]),
                     loc: None,
                 },
             );
@@ -592,40 +609,43 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // ==== EMIT `global` Statements LOGIC ====
     // ========================================
 
-    pub fn emit_global_stmts(&mut self, stmts: &mut [Statement], _err: &mut ErrorGen) -> bool {
+    pub fn emit_global_stmt(&mut self, stmt: &mut Statement, err: &mut ErrorGen) -> bool {
         // NOTE: This should be done in the Module entrypoint
         //       https://docs.rs/walrus/latest/walrus/struct.Module.html
 
-        if let Some(_start_fid) = self.app_wasm.start {
-            // 1. create the emitting_func var, assign in self
-            // 2. iterate over stmts and emit them! (will be different for Decl stmts)
-            for stmt in stmts.iter() {
-                match stmt {
-                    Statement::Decl { .. }
-                    | Statement::UnsharedDecl { .. }
-                    | Statement::LibImport { .. } => {} // already handled
-                    _ => todo!(),
-                }
-            }
-        } else {
-            // TODO -- try to create our own start fn (for dfinity case)
-            for stmt in stmts.iter_mut() {
-                match stmt {
-                    Statement::Decl { .. }
-                    | Statement::UnsharedDecl { .. }
-                    | Statement::LibImport { .. } => {} // already handled
-                    _ => {
-                        // Cannot emit this at the moment since there's no entrypoint for our module to emit initialization instructions into
-                        panic!(
-                            "This module has no configured entrypoint, \
-                                unable to emit a `script` with initialized global state"
-                        );
-                    }
-                }
-            }
-        }
+        if let Some(start_fid) = self.app_wasm.start {
+            let mut start = self.app_wasm.functions.get_fn_modifier(start_fid).unwrap();
+            start.func_entry();
+            let res = emit_stmt(
+                stmt,
+                self.strategy,
+                &mut start,
+                &mut EmitCtx::new(
+                    self.table,
+                    self.mem_allocator,
+                    &mut self.locals_tracker,
+                    self.map_lib_adapter,
+                    UNEXPECTED_ERR_MSG,
+                    err,
+                ),
+            );
 
-        true
+            let op_idx = start.curr_instr_len() as u32;
+            start.append_tag_at(
+                get_probe_tag_data(stmt.loc(), op_idx),
+                // location is unused
+                wirm::Location::Module {
+                    func_idx: FunctionID(0),
+                    instr_idx: 0,
+                },
+            );
+            start.finish_instr();
+
+            res
+        } else {
+            let _ = ModuleEmitter::get_or_create_start_func(self.app_wasm);
+            self.emit_global_stmt(stmt, err)
+        }
     }
 
     // =============================
@@ -640,6 +660,15 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         err: &mut ErrorGen,
     ) -> Option<FunctionID> {
         self.emit_global_inner(name, ty, val, true, err)
+    }
+
+    pub(crate) fn get_or_create_start_func(wasm: &mut Module) -> u32 {
+        *wasm.start.unwrap_or_else(|| {
+            let start_func = FunctionBuilder::new(&[], &[]);
+            let start_fid = start_func.finish_module_with_tag(wasm, get_tag_for(&None));
+            wasm.start = Some(start_fid);
+            start_fid
+        })
     }
 }
 impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {

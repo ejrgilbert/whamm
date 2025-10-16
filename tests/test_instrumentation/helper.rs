@@ -3,7 +3,7 @@ use glob::{glob, glob_with};
 use log::{error, warn};
 use std::fs;
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use whamm::api::instrument::{instrument_as_dry_run_rewriting, WhammError};
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
@@ -386,7 +386,7 @@ pub(crate) fn try_path(path: &String) {
 }
 
 pub(crate) fn run_script(
-    script_path: &PathBuf,
+    script_path: &Path,
     wasm_path: &str,
     target_wasm: &mut Module,
     user_libs: Vec<String>,
@@ -430,7 +430,7 @@ pub(crate) fn run_script(
 }
 
 fn run_testcase_rewriting(
-    script: &PathBuf,
+    script: &Path,
     app_path_str: &str,
     user_libs: Vec<String>,
     exp_output: ExpectedOutput,
@@ -441,7 +441,7 @@ fn run_testcase_rewriting(
     let wasm = fs::read(app_path_str).unwrap();
     let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
     if let Err(errs) = run_script(
-        &script,
+        script,
         app_path_str,
         &mut module_to_instrument,
         user_libs.clone(),
@@ -468,7 +468,7 @@ fn run_testcase_rewriting(
     cmd.arg("run").arg("--env").arg("TO_CONSOLE=true");
 
     for lib in user_libs.iter() {
-        cmd.arg("--preload").arg(format!("{lib}"));
+        cmd.arg("--preload").arg(lib);
     }
 
     let res = cmd
@@ -483,7 +483,7 @@ fn run_testcase_rewriting(
             String::from_utf8(res.stdout).unwrap(),
             String::from_utf8(res.stderr).unwrap()
         );
-        assert!(false);
+        panic!();
     } else {
         assert!(
             res.stderr.is_empty(),
@@ -504,14 +504,14 @@ fn run_testcase_rewriting(
 }
 
 fn run_testcase_wizard(
-    script: &PathBuf,
+    script: &Path,
     app_path_str: &str,
     user_libs: Vec<String>,
     exp_output: ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
 ) {
-    let engine_libs = vec!["whamm:dyninstr"];
+    let engine_libs = ["whamm:dyninstr"];
     let mut libs_to_link = "".to_string();
     for path in user_libs.iter() {
         let parts = path.split('=').collect::<Vec<&str>>();
@@ -521,17 +521,17 @@ fn run_testcase_wizard(
         if engine_libs.contains(&&*lib_name) {
             continue;
         }
-        if name_parts.len() > 1 {
-            if engine_libs.contains(
+        if name_parts.len() > 1
+            && engine_libs.contains(
                 &&*name_parts
                     .get(1)
                     .unwrap()
                     .strip_suffix(')')
                     .unwrap()
                     .to_string(),
-            ) {
-                continue;
-            }
+            )
+        {
+            continue;
         }
         assert_eq!(2, parts.len(), "A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm");
         libs_to_link += &format!("+{}", parts.get(1).unwrap());
@@ -540,7 +540,7 @@ fn run_testcase_wizard(
     // run the script on configured application
     let mut module_to_instrument = Module::default();
     if let Err(errs) = run_script(
-        &script,
+        script,
         app_path_str,
         &mut module_to_instrument,
         user_libs,
@@ -551,6 +551,7 @@ fn run_testcase_wizard(
         for e in errs.iter() {
             println!("- {}", e.msg)
         }
+        panic!()
     }
 
     // run the instrumented application on wizard
@@ -578,14 +579,14 @@ fn run_testcase_wizard(
         .arg(format!("--monitors={}+{}{}", instr_app_path, whamm_core_lib_path, libs_to_link))
         .arg(app_path_str)
         .output()
-        .expect(&format!("Failed to run wizard command, please make sure the wizeng executable is available at the path: {}", wizeng_path));
+        .unwrap_or_else(|_| panic!("Failed to run wizard command, please make sure the wizeng executable is available at the path: {}", wizeng_path));
     if !res.status.success() {
         println!(
             "[ERROR] Failed to run wizard monitor:\n{}\n{}",
             String::from_utf8(res.stdout).unwrap(),
             String::from_utf8(res.stderr).unwrap()
         );
-        assert!(false);
+        panic!()
     } else {
         match exp_output {
             ExpectedOutput::Str(exp_str) => {

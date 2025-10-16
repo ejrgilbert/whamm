@@ -384,10 +384,6 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
     fn visit_stmt(&mut self, stmt: &mut Statement) -> bool {
         match stmt {
-            Statement::LibImport { lib_name, loc, .. } => {
-                self.link_user_lib(lib_name, loc);
-                true
-            }
             Statement::Decl { .. } => {
                 // ignore, this stmt type will not have a string in it!
                 true
@@ -420,6 +416,17 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
                 is_success
             }
+            _ => panic!("Internal error. Should already be handled: {:?}", stmt),
+        }
+    }
+
+    fn visit_stmt_global(&mut self, stmt: &mut Statement) -> bool {
+        match stmt {
+            Statement::LibImport { lib_name, loc, .. } => {
+                self.link_user_lib(lib_name, loc);
+                true
+            }
+            _ => self.visit_stmt(stmt),
         }
     }
 

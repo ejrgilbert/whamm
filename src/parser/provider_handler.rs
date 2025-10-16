@@ -592,7 +592,7 @@ impl PrintInfo for EventDef {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub enum ModeKind {
     Before,
     After,
@@ -603,6 +603,7 @@ pub enum ModeKind {
     Exit,
 
     // For skipping the mode
+    #[default]
     Null,
 }
 impl From<String> for ModeKind {

@@ -5,7 +5,7 @@ use crate::common::metrics::Metrics;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
-use crate::emitter::tag_handler::get_tag_for;
+use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::InjectStrategy;
 use crate::generator::metadata_collector::MetadataCollector;
 use crate::generator::rewriting::init_generator::InitGenerator;
@@ -251,6 +251,10 @@ pub fn run(
         Ok(whamm) => whamm,
         Err(_) => return Err(Box::new(err)),
     };
+    // If there were any errors encountered during parsing, report and exit!
+    if err.has_errors {
+        return Err(Box::new(err));
+    }
     let (mut symbol_table, has_reports) =
         match get_symbol_table(&mut whamm, &user_lib_modules, &mut err) {
             Ok(r) => r,
@@ -527,21 +531,23 @@ fn call_instr_init_at_start(state_init_id: Option<FunctionID>, module: &mut Modu
         }
 
         // now call `instr_init` in the module's start function
-        if let Some(start_fid) = module.start {
-            if let Some(mut start_func) = module.functions.get_fn_modifier(start_fid) {
-                start_func.func_entry();
-                start_func.call(instr_init_fid);
-                start_func.finish_instr();
-            } else {
-                unreachable!("Should have found the function in the module.")
-            }
-        } else {
-            // create the start function and call the `instr_init` function
-            let mut start_func = FunctionBuilder::new(&[], &[]);
+        let start_fid = ModuleEmitter::get_or_create_start_func(module);
+        if let Some(mut start_func) = module.functions.get_fn_modifier(FunctionID(start_fid)) {
+            start_func.func_entry();
             start_func.call(instr_init_fid);
 
-            let start_fid = start_func.finish_module_with_tag(module, get_tag_for(&None));
-            module.start = Some(start_fid);
+            let op_idx = start_func.curr_instr_len() as u32;
+            start_func.append_tag_at(
+                get_probe_tag_data(&None, op_idx),
+                // location is unused
+                wirm::Location::Module {
+                    func_idx: FunctionID(0),
+                    instr_idx: 0,
+                },
+            );
+            start_func.finish_instr();
+        } else {
+            unreachable!("Should have found the function in the module.")
         }
     } else if state_init_id.is_some() {
         unreachable!("If there's a state init function, there should be an instr_init function!")
@@ -670,7 +676,7 @@ fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> Resu
     if !passed {
         error!("AST failed verification!");
     }
-    if err.too_many {
+    if err.too_many | !passed {
         return Err(());
     }
 

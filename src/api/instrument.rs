@@ -201,6 +201,7 @@ fn handle_dry_run_response(
 }
 
 /// The instrumentation configuration
+#[derive(Default)]
 pub struct Config {
     /// Whether to emit a monitor module that can be used to dynamically instrument a program
     pub as_monitor_module: bool,
@@ -223,22 +224,6 @@ pub struct Config {
 
     /// The strategy to take when handling the injecting references to the `whamm!` library.
     pub library_strategy: LibraryLinkStrategy,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            as_monitor_module: false,
-            enable_wizard_alt: false,
-            metrics: false,
-            no_bundle: false,
-            no_body: false,
-            no_pred: false,
-            no_report: false,
-            testing: false,
-            library_strategy: LibraryLinkStrategy::Imported,
-        }
-    }
 }
 impl Config {
     pub fn default_rewriting() -> Self {
@@ -284,19 +269,15 @@ impl Config {
 }
 
 /// Options for handling instrumentation libraries.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum LibraryLinkStrategy {
     /// Merge the library with the `app.wasm` **target VM must support multi-memory**.
     /// Will create a new memory in the `app.wasm` to be targeted by the instrumentation.
     Merged,
     /// Link the library through Wasm imports into `app.wasm` (target VM must support dynamic linking).
     /// Naturally, the instrumentation memory will reside in its own module instantiation.
+    #[default]
     Imported,
-}
-impl Default for LibraryLinkStrategy {
-    fn default() -> Self {
-        Self::Imported
-    }
 }
 
 #[derive(Debug)]
@@ -464,6 +445,7 @@ impl Injection {
                 type_ref,
                 tag,
             } => {
+                println!("import");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 assert_eq!(1, reasons.len());
                 vec![Self::Import {
@@ -479,6 +461,7 @@ impl Injection {
                 index,
                 tag,
             } => {
+                println!("export");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Export {
                     name: name.to_owned(),
@@ -488,6 +471,7 @@ impl Injection {
                 }]
             }
             WirmInjection::Type { ty, tag, .. } => {
+                println!("type");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Type {
                     ty: ty.to_owned(),
@@ -500,6 +484,7 @@ impl Injection {
                 maximum,
                 tag,
             } => {
+                println!("memory");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Memory {
                     id: *id,
@@ -514,6 +499,7 @@ impl Injection {
                 data,
                 tag,
             } => {
+                println!("active_data");
                 let offset_expr_wat = format!("{:?}", offset_expr);
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::ActiveData {
@@ -524,6 +510,7 @@ impl Injection {
                 }]
             }
             WirmInjection::PassiveData { data, tag } => {
+                println!("passive_data");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::PassiveData {
                     data: data.to_owned(),
@@ -538,6 +525,7 @@ impl Injection {
                 init_expr,
                 tag,
             } => {
+                println!("global");
                 let init_expr_wat = format!("{:?}", init_expr);
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Global {
@@ -557,6 +545,7 @@ impl Injection {
                 body,
                 tag,
             } => {
+                println!("func");
                 let mut body_ops = vec![];
                 for op in body.iter() {
                     body_ops.push(format!("{:?}", op));
@@ -576,6 +565,7 @@ impl Injection {
                 ty,
                 tag,
             } => {
+                println!("local");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Local {
                     target_fid: *target_fid,
@@ -584,12 +574,14 @@ impl Injection {
                 }]
             }
             WirmInjection::Table { tag } => {
+                println!("table");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Table {
                     cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
             WirmInjection::Element { tag } => {
+                println!("element");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Element {
                     cause: Cause::from(reasons.first().unwrap()),
@@ -601,6 +593,7 @@ impl Injection {
                 body,
                 tag,
             } => {
+                println!("probe");
                 let mut injections = vec![];
                 let mut start_idx = 0;
                 let reasons = get_reasons_from_tag(tag.data_mut());
@@ -634,6 +627,7 @@ impl Injection {
                 body,
                 tag,
             } => {
+                println!("func_loc_probe");
                 let mut injections = vec![];
                 let mut start_idx = 0;
                 // println!("{:?}@{}:{} --> {:#?}", mode, target_fid, target_opcode_idx, body);

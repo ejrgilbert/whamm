@@ -126,7 +126,22 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn visit_global_stmts(&mut self, stmts: &mut [Statement]) -> bool {
-        self.visit_stmts(stmts);
-        self.emitter.emit_global_stmts(stmts, self.err)
+        for stmt in stmts.iter_mut() {
+            match stmt {
+                Statement::Decl { .. } | Statement::UnsharedDecl { .. } => {} // already handled
+                Statement::LibImport { lib_name, loc, .. } => {
+                    self.link_user_lib(lib_name, loc);
+                }
+                Statement::Assign { .. } | Statement::Expr { .. } => {
+                    // assume this is a valid AST node since we've gone through validation
+                    self.emitter.emit_global_stmt(stmt, self.err);
+                }
+                Statement::UnsharedDeclInit { init, .. } => {
+                    self.emitter.emit_global_stmt(init, self.err);
+                }
+                _ => todo!("{:?}", stmt),
+            }
+        }
+        true
     }
 }

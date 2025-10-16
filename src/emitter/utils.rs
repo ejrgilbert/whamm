@@ -673,11 +673,17 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 _ => return false,
             };
 
+            // first save of current context's state on whether we're in a lib call
+            let in_lib_call_to = ctx.in_lib_call_to.clone();
+
             // emit the arguments
             let mut is_success = true;
             for arg in args.iter_mut() {
                 is_success = emit_expr(arg, strategy, injector, ctx);
             }
+
+            // now that we've emitted the arguments, restore the original lib call tracking
+            ctx.in_lib_call_to = in_lib_call_to;
 
             let addr = if let Some(lib_name) = &ctx.in_lib_call_to {
                 let Some(Record::LibFn { addr, .. }) = ctx.table.lookup_lib_fn(lib_name, &fn_name)
@@ -696,9 +702,14 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 injector.call(FunctionID(f_id));
             } else {
                 unreachable!(
-                    "{} \
-                                fn_target address not in symbol table for '{}', not emitted yet...",
-                    ctx.err_msg, fn_name
+                    "{}\n\tfn_target address not in symbol table for '{}{}', not emitted yet...",
+                    ctx.err_msg,
+                    if let Some(lib_name) = &ctx.in_lib_call_to {
+                        format!("{lib_name}.")
+                    } else {
+                        "".to_string()
+                    },
+                    fn_name
                 );
             }
             is_success
