@@ -362,16 +362,15 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, 
         // 2. iterate over stmts and emit them! (will be different for Decl stmts)
         for stmt in stmts.iter_mut() {
             match stmt {
-                Statement::Decl { .. }
-                | Statement::UnsharedDecl { .. } => {} // already handled
+                Statement::Decl { .. } | Statement::UnsharedDecl { .. } => {} // already handled
                 Statement::LibImport { lib_name, loc, .. } => {
                     self.link_user_lib(lib_name, loc);
                 }
-                Statement::Assign {..} | Statement::Expr {..} => {
+                Statement::Assign { .. } | Statement::Expr { .. } => {
                     // assume this is a valid AST node since we've gone through validation
                     self.emitter.emit_global_stmt(stmt, self.err);
                 }
-                Statement::UnsharedDeclInit {init, ..} => {
+                Statement::UnsharedDeclInit { init, .. } => {
                     self.emitter.emit_global_stmt(init, self.err);
                 }
                 _ => todo!("{:?}", stmt),
