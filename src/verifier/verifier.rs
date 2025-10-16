@@ -2,7 +2,10 @@ use crate::common::error::ErrorGen;
 use crate::generator::ast::StackReq;
 use crate::parser::provider_handler::{Event, Package, Probe, Provider};
 use crate::parser::types::Definition::{CompilerDynamic, CompilerStatic};
-use crate::parser::types::{BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm, WhammVisitorMut};
+use crate::parser::types::{
+    BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
+    WhammVisitorMut,
+};
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
 use pest::error::LineColLocation;
@@ -417,7 +420,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         self.has_reports = true;
                     }
                 }
-                Statement::UnsharedDeclInit { decl, .. }=> {
+                Statement::UnsharedDeclInit { decl, .. } => {
                     if let Statement::UnsharedDecl { is_report, .. } = **decl {
                         if is_report {
                             self.has_reports = true;
@@ -654,7 +657,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
                 None
             }
-            _ => panic!("Internal error. Should already be handled: {:?}", stmt)
+            _ => panic!("Internal error. Should already be handled: {:?}", stmt),
         }
     }
 
@@ -1066,7 +1069,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 annotation,
                 ..
             } => {
-                self.curr_lib.push((lib_name.clone(), annotation.as_ref().map_or_else(|| false, |a| a.is_static())));
+                self.curr_lib.push((
+                    lib_name.clone(),
+                    annotation.as_ref().map_or_else(|| false, |a| a.is_static()),
+                ));
                 let res = self.visit_expr(call);
                 *results = res.clone();
                 self.curr_lib.pop();
@@ -1175,7 +1181,9 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             &loc.clone().map(|l| l.line_col),
                         );
                     }
-                } else if self.in_script_global && !(*def == CompilerDynamic || *def == CompilerStatic) {
+                } else if self.in_script_global
+                    && !(*def == CompilerDynamic || *def == CompilerStatic)
+                {
                     //check if in global state and if is_comp_defined is false --> not allowed if both are the case
                     self.err.type_check_error(
                         "Function calls to user def functions are not allowed in the global state of the script"
@@ -1378,7 +1386,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             }
                         } else {
                             Some(DataType::Unknown)
-                        }
+                        };
                     }
                 }
                 Some(val.ty())

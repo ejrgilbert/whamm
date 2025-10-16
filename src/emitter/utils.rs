@@ -703,11 +703,13 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             } else {
                 unreachable!(
                     "{}\n\tfn_target address not in symbol table for '{}{}', not emitted yet...",
-                    ctx.err_msg, if let Some(lib_name) = &ctx.in_lib_call_to {
+                    ctx.err_msg,
+                    if let Some(lib_name) = &ctx.in_lib_call_to {
                         format!("{lib_name}.")
                     } else {
                         "".to_string()
-                    }, fn_name
+                    },
+                    fn_name
                 );
             }
             is_success

@@ -105,8 +105,9 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             self.curr_probe.metadata.pred_is_dynamic = true;
             if let Some((_, is_static)) = self.curr_user_lib.first() {
                 if *is_static {
-                    self.err
-                        .add_instr_error("Cannot use dynamic data in a static predicate".to_string());
+                    self.err.add_instr_error(
+                        "Cannot use dynamic data in a static predicate".to_string(),
+                    );
                 }
             }
         }
@@ -196,7 +197,6 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 let rhs = self.visit_expr_inner(rhs);
                 if self.check_strcmp {
                     // if this flag is still true, we need the strcmp function!
-                    println!("HERE");
                     self.used_bound_fns
                         .insert(("whamm".to_string(), "strcmp".to_string()));
                 }
@@ -246,9 +246,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 } else {
                     // this is a static library call, translate this into an optimize-able expression
                     // BUT ONLY IF we're not in a predicate that's targeting an engine, we want to rewrite this expression
-                    if matches!(self.visiting, Visiting::Body)
-                        && self.config.as_monitor_module
-                    {
+                    if matches!(self.visiting, Visiting::Body) && self.config.as_monitor_module {
                         return if !is_nested {
                             // change this expression to something that I can use to pull the result of
                             // what I do to optimize this case.
@@ -267,7 +265,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                         } else {
                             // we want to just evaluate nested body lib calls inside a single function
                             new_call
-                        }
+                        };
                     }
                 }
 

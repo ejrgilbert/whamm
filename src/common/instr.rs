@@ -5,7 +5,7 @@ use crate::common::metrics::Metrics;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
-use crate::emitter::tag_handler::get_tag_for;
+use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::InjectStrategy;
 use crate::generator::metadata_collector::MetadataCollector;
 use crate::generator::rewriting::init_generator::InitGenerator;
@@ -535,6 +535,16 @@ fn call_instr_init_at_start(state_init_id: Option<FunctionID>, module: &mut Modu
         if let Some(mut start_func) = module.functions.get_fn_modifier(FunctionID(start_fid)) {
             start_func.func_entry();
             start_func.call(instr_init_fid);
+
+            let op_idx = start_func.curr_instr_len() as u32;
+            start_func.append_tag_at(
+                get_probe_tag_data(&None, op_idx),
+                // location is unused
+                wirm::Location::Module {
+                    func_idx: FunctionID(0),
+                    instr_idx: 0,
+                },
+            );
             start_func.finish_instr();
         } else {
             unreachable!("Should have found the function in the module.")

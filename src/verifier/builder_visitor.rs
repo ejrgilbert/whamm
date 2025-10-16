@@ -628,8 +628,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                     is_report_var = *is_report;
                     &mut **decl
                 }
-                Statement::UnsharedDeclInit {decl, .. } => {
-                    if let Statement::UnsharedDecl {decl: d, is_report, ..} = decl.as_mut() {
+                Statement::UnsharedDeclInit { decl, .. } => {
+                    if let Statement::UnsharedDecl {
+                        decl: d, is_report, ..
+                    } = decl.as_mut()
+                    {
                         is_report_var = *is_report;
                         &mut **d
                     } else {
@@ -912,12 +915,12 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                 Statement::UnsharedDeclInit { .. }
                 | Statement::UnsharedDecl { .. }
                 | Statement::Decl { .. } => {}
-                _ => panic!("Internal error. Should already be handled: {:?}", stmt)
+                _ => panic!("Internal error. Should already be handled: {:?}", stmt),
             }
         }
     }
 
-    fn visit_stmt_global(&mut self, stmt: &mut Statement) -> () {
+    fn visit_stmt_global(&mut self, stmt: &mut Statement) {
         match stmt {
             Statement::LibImport { .. } => {}
             _ => self.visit_stmt(stmt),

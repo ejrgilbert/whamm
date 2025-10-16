@@ -1,7 +1,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
-use crate::emitter::tag_handler::get_tag_for;
+use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::utils::{
     emit_body, emit_expr, emit_global_getter, emit_probes, emit_stmt, whamm_type_to_wasm_global,
     EmitCtx,
@@ -22,7 +22,7 @@ use wirm::ir::types::{
     BlockType as WirmBlockType, DataType as WirmType, InitExpr, Value as WirmValue,
 };
 use wirm::module_builder::AddLocal;
-use wirm::opcode::Opcode;
+use wirm::opcode::{Instrumenter, Opcode};
 use wirm::wasmparser::MemArg;
 use wirm::InitInstr;
 
@@ -615,7 +615,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
 
         if let Some(start_fid) = self.app_wasm.start {
             let mut start = self.app_wasm.functions.get_fn_modifier(start_fid).unwrap();
-            emit_stmt(
+            start.func_entry();
+            let res = emit_stmt(
                 stmt,
                 self.strategy,
                 &mut start,
@@ -627,7 +628,20 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                     UNEXPECTED_ERR_MSG,
                     err,
                 ),
-            )
+            );
+
+            let op_idx = start.curr_instr_len() as u32;
+            start.append_tag_at(
+                get_probe_tag_data(stmt.loc(), op_idx),
+                // location is unused
+                wirm::Location::Module {
+                    func_idx: FunctionID(0),
+                    instr_idx: 0,
+                },
+            );
+            start.finish_instr();
+
+            res
         } else {
             let _ = ModuleEmitter::get_or_create_start_func(self.app_wasm);
             self.emit_global_stmt(stmt, err)
