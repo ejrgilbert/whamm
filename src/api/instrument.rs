@@ -461,7 +461,6 @@ impl Injection {
                 type_ref,
                 tag,
             } => {
-                println!("import");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 assert_eq!(1, reasons.len());
                 vec![Self::Import {
@@ -477,7 +476,6 @@ impl Injection {
                 index,
                 tag,
             } => {
-                println!("export");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Export {
                     name: name.to_owned(),
@@ -487,7 +485,6 @@ impl Injection {
                 }]
             }
             WirmInjection::Type { ty, tag, .. } => {
-                println!("type");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Type {
                     ty: ty.to_owned(),
@@ -500,7 +497,6 @@ impl Injection {
                 maximum,
                 tag,
             } => {
-                println!("memory");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Memory {
                     id: *id,
@@ -515,7 +511,6 @@ impl Injection {
                 data,
                 tag,
             } => {
-                println!("active_data");
                 let offset_expr_wat = format!("{:?}", offset_expr);
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::ActiveData {
@@ -526,7 +521,6 @@ impl Injection {
                 }]
             }
             WirmInjection::PassiveData { data, tag } => {
-                println!("passive_data");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::PassiveData {
                     data: data.to_owned(),
@@ -541,7 +535,6 @@ impl Injection {
                 init_expr,
                 tag,
             } => {
-                println!("global");
                 let init_expr_wat = format!("{:?}", init_expr);
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Global {
@@ -561,7 +554,6 @@ impl Injection {
                 body,
                 tag,
             } => {
-                println!("func");
                 let mut body_ops = vec![];
                 for op in body.iter() {
                     body_ops.push(format!("{:?}", op));
@@ -581,7 +573,6 @@ impl Injection {
                 ty,
                 tag,
             } => {
-                println!("local");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Local {
                     target_fid: *target_fid,
@@ -590,14 +581,12 @@ impl Injection {
                 }]
             }
             WirmInjection::Table { tag } => {
-                println!("table");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Table {
                     cause: Cause::from(reasons.first().unwrap()),
                 }]
             }
             WirmInjection::Element { tag } => {
-                println!("element");
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Element {
                     cause: Cause::from(reasons.first().unwrap()),
@@ -609,7 +598,6 @@ impl Injection {
                 body,
                 tag,
             } => {
-                println!("probe");
                 let mut injections = vec![];
                 let mut start_idx = 0;
                 let reasons = get_reasons_from_tag(tag.data_mut());
@@ -643,7 +631,6 @@ impl Injection {
                 body,
                 tag,
             } => {
-                println!("func_loc_probe");
                 let mut injections = vec![];
                 let mut start_idx = 0;
                 // println!("{:?}@{}:{} --> {:#?}", mode, target_fid, target_opcode_idx, body);

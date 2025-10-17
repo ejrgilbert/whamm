@@ -174,7 +174,6 @@ fn read_le_u32(input: &mut Vec<u8>) -> u32 {
 }
 
 fn read_le_u8(input: &mut Vec<u8>) -> u8 {
-    println!("size of input: {}", input.len());
     let (int_bytes, rest) = input.split_at(size_of::<u8>());
     let res = u8::from_le_bytes(int_bytes.try_into().unwrap());
     *input = rest.to_vec();
