@@ -225,22 +225,6 @@ pub struct Config {
     /// The strategy to take when handling the injecting references to the `whamm!` library.
     pub library_strategy: LibraryLinkStrategy,
 }
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            as_monitor_module: false,
-            enable_wei_alt: false,
-            metrics: false,
-            no_bundle: false,
-            no_body: false,
-            no_pred: false,
-            no_report: false,
-            testing: false,
-            library_strategy: LibraryLinkStrategy::Imported,
-        }
-    }
-}
 impl Config {
     pub fn default_rewriting() -> Self {
         Self::default()

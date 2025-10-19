@@ -192,7 +192,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         (fid, param_str.to_string())
     }
 
-    pub(crate) fn handle_params(whamm_params: &WhammParams, params: &mut Vec<WirmType>, param_str: &mut String, table: &mut SymbolTable) {
+    pub(crate) fn handle_params(
+        whamm_params: &WhammParams,
+        params: &mut Vec<WirmType>,
+        param_str: &mut String,
+        table: &mut SymbolTable,
+    ) {
         for param in whamm_params.params.iter() {
             let wasm_tys = param.ty.to_wasm_type();
 

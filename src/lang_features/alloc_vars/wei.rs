@@ -110,13 +110,13 @@ impl UnsharedVarHandler {
             ty: WirmType::I32,
         };
         let addr_pc = VarAddr::Local { addr: *pc.id };
-        
+
         // BASE params: (fname_ptr, fname_len, fid, pc)
         let mut param_str = "fname, fid, pc".to_string();
         let mut alloc_params = vec![fname_ptr.ty, fname_len.ty, fid.ty, pc.ty];
         // results: mem_offset
         let alloc_results = vec![WirmType::I32];
-        
+
         // now extend params to account for any initialization logic that requires more data
         ModuleEmitter::handle_params(init_args, &mut alloc_params, &mut param_str, emitter.table);
 
