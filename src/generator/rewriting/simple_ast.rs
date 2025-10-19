@@ -54,7 +54,7 @@ use crate::parser::provider_handler::ModeKind;
 /// As a workaround, we know that the original AST isn't really needed at this point, so we have the new
 /// AST representation own the Probes instead!
 ///
-/// Note: This AST representation will only be used for bytecode rewriting, not when targeting Wizard.
+/// Note: This AST representation will only be used for bytecode rewriting, not when targeting wei.
 
 #[derive(Default)]
 pub struct SimpleAST {

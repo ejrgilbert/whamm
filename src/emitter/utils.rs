@@ -178,7 +178,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
             if let DataType::Map { .. } = ty {
                 ctx.in_map_op = true;
-                // TODO -- this behavior doesn't seem right for wizard
+                // TODO -- this behavior doesn't seem right for wei
                 //    The map_id would need to be dynamic...not statically known!
                 let map_id = ctx
                     .map_lib_adapter

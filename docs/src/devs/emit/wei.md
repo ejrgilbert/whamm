@@ -1,6 +1,6 @@
 # The Whamm Engine Interface (`wei`) #
 
-For `wei`, there is one `generator` named `WizardGenerator` in [`generator/mod.rs`].
+For `wei`, there is one `generator` named `WeiGenerator` in [`generator/mod.rs`].
 This `generator` visits the [`MetadataCollector`]'s AST and emits a self-contained, portable monitor against `wei`.
 
 This generators uses the `emitter` that emits Wasm code.
@@ -11,7 +11,7 @@ The `emitter` uses utilities that centralize the Wasm emitting logic found at [`
 [`utils.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/emitter/utils.rs
 
 
-## The `WizardGenerator` ##
+## The `WeiGenerator` ##
 
 The `generator` traverses the AST to emit functions and variables that need to exist before emitting probes.
 The `run` function is the entrypoint for this generator.

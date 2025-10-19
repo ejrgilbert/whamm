@@ -210,7 +210,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         event.probes.iter().for_each(|(_ty, probes)| {
             probes.iter().for_each(|probe| {
                 if !self.config.as_monitor_module {
-                    // add the mode when not on the wizard target
+                    // add the mode when not on the wei target
                     self.append_curr_rule(format!(":{}", probe.kind.name()));
                 }
                 self.curr_probe = Probe::new(
@@ -340,10 +340,10 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                     let (def, _ty, loc) = get_def(name, self.table);
                     if def.is_comp_defined()
                         && self.config.as_monitor_module
-                        && !self.config.enable_wizard_alt
+                        && !self.config.enable_wei_alt
                     {
-                        self.err.wizard_error(
-                            "Assigning to compiler-defined variables is not supported on Wizard target"
+                        self.err.wei_error(
+                            "Assigning to compiler-defined variables is not supported on wei target"
                                 .to_string(),
                             &loc,
                         );
@@ -489,7 +489,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
                 self.check_strcmp = matches!(ty, DataType::Str);
 
                 if def.is_comp_defined() {
-                    // For Wizard: Request all!
+                    // For wei: Request all!
                     // For B.R.: Only request dynamic data
                     self.push_metadata(name, &ty);
                 }

@@ -96,7 +96,7 @@ There are several conventions to follow when writing `.wast` test cases for `wha
    - If there are multiple `asserts` under a `Whamm` comment, they are all run against the instrumented variation of the `module` that results from that `Whamm` script.
 3. All asserts should _**fail**_ if they were to run without instrumentation.
 
-NOTE: For wizard, don't do manipulations that change arg* (that requires the frame accessor). Instead change global state for now?
+NOTE: For `wei`, don't do manipulations that change arg* (that requires the frame accessor). Instead change global state for now?
 
 
 ## The Harness Code ##

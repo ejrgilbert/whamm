@@ -27,7 +27,7 @@ Read more about the low-level details in the [developers documentation](../devs/
 
 The now-instrumented application is output as a new Wasm module, as shown above (`app.out.wasm`).
 
-## Direct Engine Support ##
+## Direct Engine Support (`wei`)##
 
 ![engine.png](../images/engine.png)
 

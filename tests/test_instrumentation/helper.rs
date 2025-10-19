@@ -170,10 +170,10 @@ pub(crate) fn run_core_suite(
     suite_name: &str,
     processed_scripts: Vec<(PathBuf, String)>,
     with_br: bool,
-    with_wizard: bool,
+    with_wei: bool,
 ) {
     let mut rewriting_tests = vec![];
-    let mut wizard_tests = vec![];
+    let mut wei_tests = vec![];
     for (script_path, ..) in processed_scripts.iter() {
         let fname = script_path.file_name().unwrap().to_str().unwrap();
         let path = script_path.parent().unwrap();
@@ -184,9 +184,9 @@ pub(crate) fn run_core_suite(
             .join("expected")
             .join("rewriting")
             .join(format!("{}.exp", fname));
-        let wizard_exp = path
+        let wei_exp = path
             .join("expected")
-            .join("wizard")
+            .join("wei")
             .join(format!("{}.exp", fname));
 
         rewriting_tests.push(TestCase {
@@ -195,11 +195,11 @@ pub(crate) fn run_core_suite(
             libs: libs.clone(),
             exp: rewriting_exp,
         });
-        wizard_tests.push(TestCase {
+        wei_tests.push(TestCase {
             script: script_path.clone(),
             app,
             libs,
-            exp: wizard_exp,
+            exp: wei_exp,
         });
     }
 
@@ -251,17 +251,17 @@ pub(crate) fn run_core_suite(
         }
     }
 
-    if with_wizard {
+    if with_wei {
         for TestCase {
             script,
             app,
             libs,
             exp,
             ..
-        } in wizard_tests.iter()
+        } in wei_tests.iter()
         {
             println!(
-                "[WIZARD] Running test case with monitor at the following path: {:#?}",
+                "[WEI] Running test case with monitor at the following path: {:#?}",
                 script
             );
             let app_path_str = fs::read_to_string(app)
@@ -284,7 +284,7 @@ pub(crate) fn run_core_suite(
                         .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp)),
                 )
             };
-            run_testcase_wizard(
+            run_testcase_wei(
                 script,
                 &app_path_str,
                 libs_path_str,
@@ -333,10 +333,10 @@ pub(crate) fn run_script(
     target_wasm: &mut Module,
     user_libs: Vec<String>,
     output_path: Option<String>,
-    target_wizard: bool,
+    target_wei: bool,
 ) -> Result<(), Vec<WhammError>> {
     let script_path_str = script_path.to_str().unwrap().replace("\"", "");
-    let wasm_result = if target_wizard {
+    let wasm_result = if target_wei {
         whamm::api::instrument::generate_monitor_module(
             script_path_str,
             user_libs.clone(),
@@ -352,7 +352,7 @@ pub(crate) fn run_script(
             Some("./".to_string()),
         )
     }?;
-    if TEST_DRY_RUN && !target_wizard {
+    if TEST_DRY_RUN && !target_wei {
         let _side_effects = instrument_as_dry_run_rewriting(
             wasm_path.to_string(),
             script_path.to_str().unwrap().to_string(),
@@ -445,7 +445,7 @@ fn run_testcase_rewriting(
     }
 }
 
-fn run_testcase_wizard(
+fn run_testcase_wei(
     script: &Path,
     app_path_str: &str,
     user_libs: Vec<String>,
@@ -523,7 +523,7 @@ fn run_testcase_wizard(
         .unwrap_or_else(|_| panic!("Failed to run wizard command, please make sure the wizeng executable is available at the path: {}", wizeng_path));
     if !res.status.success() {
         println!(
-            "[ERROR] Failed to run wizard monitor:\n{}\n{}",
+            "[ERROR] Failed to run wei monitor:\n{}\n{}",
             String::from_utf8(res.stdout).unwrap(),
             String::from_utf8(res.stderr).unwrap()
         );

@@ -61,9 +61,9 @@ pub struct InstrArgs {
     #[arg(short, long, value_parser, default_value = "./output.wasm")]
     pub output_path: String,
 
-    /// Whether to emit `mon.wasm` for instrumenting with Wizard Engine
+    /// Whether to emit `mon.wasm` for instrumenting with the Whamm Engine Interface (wei).
     #[arg(short, long, action, default_value = "false")]
-    pub wizard: bool,
+    pub wei: bool,
 
     /// Emits metrics on time to perform certain tasks if set.
     #[arg(short, long, action, default_value = "false")]

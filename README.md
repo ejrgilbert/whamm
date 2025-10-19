@@ -59,7 +59,7 @@ wasmtime run --env TO_CONSOLE=true --preload whamm_core=path/to/whamm_core.wasm 
 #### Instrument with an Engine Monitor Module ####
 To instrument an application with a whamm script (there are example Scripts in `tests/scripts` folder):
 ```shell
-cargo run -- instr --script <path_to_script.mm> --wizard -o path/to/output.wasm
+cargo run -- instr --script <path_to_script.mm> --wei -o path/to/output.wasm
 ```
 
 To run an instrumented application, do the following:
@@ -70,7 +70,7 @@ cargo build --target wasm32-wasip1 --release
 ls -al ./target/wasm32-wasip1/release/whamm_core.wasm
 cd ..
 
-whamm instr --script path/to/whamm/script.mm --wizard -o path/to/output.wasm
+whamm instr --script path/to/whamm/script.mm --wei -o path/to/output.wasm
 # (See above for the path to the whamm_core library)
 wizeng --env=TO_CONSOLE=true --expose=wizeng --monitors=path/to/output.wasm+path/to/whamm_core.wasm path/to/app.wasm
 ```

@@ -264,13 +264,13 @@ pub fn run(
     let mut mem_allocator = get_memory_allocator(target_wasm, true, config.as_monitor_module);
 
     // Collect the metadata for the AST and transform to different representation
-    // specifically used for targeting Wizard during compilation.
+    // specifically used for targeting wei during compilation.
     let mut metadata_collector = MetadataCollector::new(&mut symbol_table, &mut err, &config);
     metadata_collector.visit_whamm(&whamm);
 
     // Merge in the core library IF NEEDED
     let mut map_package = MapLibPackage::new(if config.as_monitor_module {
-        InjectStrategy::Wizard
+        InjectStrategy::Wei
     } else {
         InjectStrategy::Rewriting
     });
@@ -304,7 +304,7 @@ pub fn run(
     }
 
     if config.as_monitor_module {
-        run_instr_wizard(
+        run_instr_wei(
             metrics,
             metadata_collector,
             used_fns_per_lib,
@@ -367,7 +367,7 @@ pub fn run(
     }
 }
 
-fn run_instr_wizard(
+fn run_instr_wei(
     _metrics: &mut Metrics,
     metadata_collector: MetadataCollector,
     used_fns_per_lib: HashMap<String, HashSet<String>>,
@@ -388,12 +388,12 @@ fn run_instr_wizard(
     let has_probe_state_init = metadata_collector.has_probe_state_init;
 
     let mut injected_funcs = vec![];
-    let mut wizard_unshared_var_handler =
-        crate::lang_features::alloc_vars::wizard::UnsharedVarHandler::new(target_wasm);
+    let mut wei_unshared_var_handler =
+        crate::lang_features::alloc_vars::wei::UnsharedVarHandler::new(target_wasm);
 
-    let mut gen = crate::generator::wizard::WizardGenerator {
+    let mut gen = crate::generator::wei::WeiGenerator {
         emitter: ModuleEmitter::new(
-            InjectStrategy::Wizard,
+            InjectStrategy::Wei,
             target_wasm,
             table,
             mem_allocator,
@@ -408,7 +408,7 @@ fn run_instr_wizard(
         used_fns_per_lib,
         user_lib_modules,
         curr_script_id: u8::MAX,
-        unshared_var_handler: &mut wizard_unshared_var_handler,
+        unshared_var_handler: &mut wei_unshared_var_handler,
     };
     gen.run(
         wiz_ast,

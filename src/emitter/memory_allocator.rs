@@ -489,7 +489,7 @@ impl MemoryAllocator {
         let check_memsize_fid = match fid {
             Some(fid) => fid,
             None => {
-                err.wizard_error(
+                err.wei_error(
                     "Unexpected state while generating the memory allocation function. \
                     The memory size checker function has not been generated yet."
                         .to_string(),
