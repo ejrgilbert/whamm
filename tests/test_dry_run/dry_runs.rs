@@ -61,7 +61,7 @@ fn dry_run_errs() {
     print_side_effect_errs(&errs);
 }
 
-fn print_side_effect_errs(errs: &Vec<WhammError>) {
+fn print_side_effect_errs(errs: &[WhammError]) {
     println!("================");
     println!("==== ERRORS ====");
     println!("================");

@@ -3,19 +3,16 @@ use glob::{glob, glob_with};
 use log::{error, warn};
 use std::fs;
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use whamm::api::instrument::{instrument_as_dry_run_rewriting, WhammError};
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
 use wirm::Module;
 
 const TEST_DRY_RUN: bool = true;
-pub const DEFAULT_CORE_LIB_PATH: &str = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
+pub const DEFAULT_CORE_LIB_PATH: &str = "tests/libs/whamm_core.wasm";
 pub const DEFAULT_DEFS_PATH: &str = "./";
 const TEST_RSC_DIR: &str = "tests/scripts/";
-const WAT_PATTERN: &str = "*.wat";
-const DOT_WAT: &str = ".wat";
-const DOT_WASM: &str = ".wasm";
 const MM_PATTERN: &str = "*.mm";
 const TODO: &str = "*.TODO";
 
@@ -102,23 +99,6 @@ pub fn run_basic_instrumentation(
     wasm2wat_on_file(instrumented_wasm_path);
 }
 
-pub fn wat2wasm_on_dir(dir: &str) {
-    let mut wat_files = vec![];
-    for path in glob(&(dir.to_owned() + "/" + &*WAT_PATTERN.to_owned()))
-        .expect("Failed to read glob pattern")
-    {
-        let file_name = path.as_ref().unwrap();
-        wat_files.push(file_name.clone());
-    }
-
-    for file in wat_files.iter() {
-        let filename = file.to_str().unwrap();
-        if let Some(stripped_name) = filename.strip_suffix(DOT_WAT) {
-            wat2wasm_on_file(filename, &(stripped_name.to_owned() + DOT_WASM))
-        }
-    }
-}
-
 pub fn wat2wasm_on_file(original_wat_path: &str, original_wasm_path: &str) {
     let res = Command::new("wasm-tools")
         .arg("parse")
@@ -192,12 +172,6 @@ pub(crate) fn run_core_suite(
     with_br: bool,
     with_wizard: bool,
 ) {
-    build_whamm_core_lib();
-    build_user_libs();
-    // wat2wasm_on_dir("tests/apps/core_suite/rust");
-    // wat2wasm_on_dir("tests/apps/core_suite/handwritten");
-    // wat2wasm_on_dir("tests/apps/core_suite/clang");
-
     let mut rewriting_tests = vec![];
     let mut wizard_tests = vec![];
     for (script_path, ..) in processed_scripts.iter() {
@@ -346,38 +320,6 @@ fn file_hash(file: &PathBuf) -> String {
     }
 }
 
-fn build_lib(lib_path: &str) {
-    let res = Command::new("cargo")
-        .arg("build")
-        .arg("--target")
-        .arg("wasm32-wasip1")
-        .arg("--release")
-        .current_dir(lib_path)
-        .output()
-        .expect("failed to execute process");
-    if !res.status.success() {
-        println!(
-            "[ERROR] 'whamm_core' build project failed:\n{}\n{}",
-            String::from_utf8(res.stdout).unwrap(),
-            String::from_utf8(res.stderr).unwrap()
-        );
-    }
-    assert!(res.status.success());
-}
-
-pub(crate) fn build_whamm_core_lib() {
-    // Build the whamm_core library
-    build_lib("whamm_core");
-}
-
-pub(crate) fn build_user_libs() {
-    let lib_projects = fs::read_dir("./user_libs").unwrap();
-
-    for path in lib_projects {
-        build_lib(path.unwrap().path().display().to_string().as_str());
-    }
-}
-
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &String) {
     if !PathBuf::from(path).exists() {
@@ -386,7 +328,7 @@ pub(crate) fn try_path(path: &String) {
 }
 
 pub(crate) fn run_script(
-    script_path: &PathBuf,
+    script_path: &Path,
     wasm_path: &str,
     target_wasm: &mut Module,
     user_libs: Vec<String>,
@@ -430,7 +372,7 @@ pub(crate) fn run_script(
 }
 
 fn run_testcase_rewriting(
-    script: &PathBuf,
+    script: &Path,
     app_path_str: &str,
     user_libs: Vec<String>,
     exp_output: ExpectedOutput,
@@ -441,7 +383,7 @@ fn run_testcase_rewriting(
     let wasm = fs::read(app_path_str).unwrap();
     let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
     if let Err(errs) = run_script(
-        &script,
+        script,
         app_path_str,
         &mut module_to_instrument,
         user_libs.clone(),
@@ -457,7 +399,7 @@ fn run_testcase_rewriting(
     // run the instrumented application on wasmtime
     // let res = Command::new(format!("{home}/.cargo/bin/cargo"))
 
-    let whamm_core_lib_path = "whamm_core=whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
+    let whamm_core_lib_path = "whamm_core=tests/libs/whamm_core.wasm";
     let out_filename = "instr-flush.out";
     let out_file = format!("{outdir}/{out_filename}");
     let _ = fs::remove_file(out_file.clone());
@@ -468,7 +410,7 @@ fn run_testcase_rewriting(
     cmd.arg("run").arg("--env").arg("TO_CONSOLE=true");
 
     for lib in user_libs.iter() {
-        cmd.arg("--preload").arg(format!("{lib}"));
+        cmd.arg("--preload").arg(lib);
     }
 
     let res = cmd
@@ -483,7 +425,7 @@ fn run_testcase_rewriting(
             String::from_utf8(res.stdout).unwrap(),
             String::from_utf8(res.stderr).unwrap()
         );
-        assert!(false);
+        panic!();
     } else {
         assert!(
             res.stderr.is_empty(),
@@ -504,14 +446,14 @@ fn run_testcase_rewriting(
 }
 
 fn run_testcase_wizard(
-    script: &PathBuf,
+    script: &Path,
     app_path_str: &str,
     user_libs: Vec<String>,
     exp_output: ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
 ) {
-    let engine_libs = vec!["whamm:dyninstr"];
+    let engine_libs = ["whamm:dyninstr"];
     let mut libs_to_link = "".to_string();
     for path in user_libs.iter() {
         let parts = path.split('=').collect::<Vec<&str>>();
@@ -521,17 +463,17 @@ fn run_testcase_wizard(
         if engine_libs.contains(&&*lib_name) {
             continue;
         }
-        if name_parts.len() > 1 {
-            if engine_libs.contains(
+        if name_parts.len() > 1
+            && engine_libs.contains(
                 &&*name_parts
                     .get(1)
                     .unwrap()
                     .strip_suffix(')')
                     .unwrap()
                     .to_string(),
-            ) {
-                continue;
-            }
+            )
+        {
+            continue;
         }
         assert_eq!(2, parts.len(), "A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm");
         libs_to_link += &format!("+{}", parts.get(1).unwrap());
@@ -540,7 +482,7 @@ fn run_testcase_wizard(
     // run the script on configured application
     let mut module_to_instrument = Module::default();
     if let Err(errs) = run_script(
-        &script,
+        script,
         app_path_str,
         &mut module_to_instrument,
         user_libs,
@@ -554,7 +496,7 @@ fn run_testcase_wizard(
     }
 
     // run the instrumented application on wizard
-    let whamm_core_lib_path = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
+    let whamm_core_lib_path = "tests/libs/whamm_core.wasm";
     let wizeng_path = "output/tests/engines/wizeng";
 
     let out_filename = "instr-flush.out";
@@ -578,14 +520,14 @@ fn run_testcase_wizard(
         .arg(format!("--monitors={}+{}{}", instr_app_path, whamm_core_lib_path, libs_to_link))
         .arg(app_path_str)
         .output()
-        .expect(&format!("Failed to run wizard command, please make sure the wizeng executable is available at the path: {}", wizeng_path));
+        .unwrap_or_else(|_| panic!("Failed to run wizard command, please make sure the wizeng executable is available at the path: {}", wizeng_path));
     if !res.status.success() {
         println!(
             "[ERROR] Failed to run wizard monitor:\n{}\n{}",
             String::from_utf8(res.stdout).unwrap(),
             String::from_utf8(res.stderr).unwrap()
         );
-        assert!(false);
+        panic!();
     } else {
         match exp_output {
             ExpectedOutput::Str(exp_str) => {
