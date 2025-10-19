@@ -1,1 +1,0 @@
-tests/apps/core_suite/rust/cf.wasm

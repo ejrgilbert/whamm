@@ -1,3 +1,4 @@
 ================================= REPORT CSV FLUSH ====================================
 id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
-6, global_id, count, u32, i32, script0, , , , , 369834696
+4, memaddr, taken, i32, i32, script0, main, 1, 3, 0_wasm:opcode:if, 0
+36, memaddr, not_taken, i32, i32, script0, main, 1, 3, 0_wasm:opcode:if, 1

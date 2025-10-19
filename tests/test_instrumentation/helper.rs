@@ -13,9 +13,6 @@ const TEST_DRY_RUN: bool = true;
 pub const DEFAULT_CORE_LIB_PATH: &str = "tests/libs/whamm_core.wasm";
 pub const DEFAULT_DEFS_PATH: &str = "./";
 const TEST_RSC_DIR: &str = "tests/scripts/";
-const WAT_PATTERN: &str = "*.wat";
-const DOT_WAT: &str = ".wat";
-const DOT_WASM: &str = ".wasm";
 const MM_PATTERN: &str = "*.mm";
 const TODO: &str = "*.TODO";
 
@@ -466,14 +463,16 @@ fn run_testcase_wizard(
         if engine_libs.contains(&&*lib_name) {
             continue;
         }
-        if name_parts.len() > 1 && engine_libs.contains(
-            &&*name_parts
-                .get(1)
-                .unwrap()
-                .strip_suffix(')')
-                .unwrap()
-                .to_string(),
-        ) {
+        if name_parts.len() > 1
+            && engine_libs.contains(
+                &&*name_parts
+                    .get(1)
+                    .unwrap()
+                    .strip_suffix(')')
+                    .unwrap()
+                    .to_string(),
+            )
+        {
             continue;
         }
         assert_eq!(2, parts.len(), "A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm");

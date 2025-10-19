@@ -20,8 +20,7 @@ Cargo.lock
 
 # Ignore the huge test files
 tests/apps/**/*.wat
-tests/apps/core_suite/**/*.wasm
-!tests/apps/core_suite/**/*.wat
+!tests/apps/core_suite/**/*.wasm
 demo/**/*.wasm
 output/
 output.wasm
