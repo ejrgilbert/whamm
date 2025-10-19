@@ -34,7 +34,7 @@ pub trait LibAdapter {
             *fid
         } else {
             // Just return a fake value, the error generator will handle this
-            0
+            panic!("Function {fname} not found");
         }
     }
 

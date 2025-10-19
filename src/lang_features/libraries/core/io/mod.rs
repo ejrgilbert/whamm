@@ -136,10 +136,10 @@ impl AstVisitor<bool> for IOPackage {
     }
 
     fn visit_stmt(&mut self, stmt: &Statement) -> bool {
-        if let Statement::UnsharedDecl { is_report, .. } = stmt {
-            *is_report
-        } else {
-            false
+        match stmt {
+            Statement::UnsharedDeclInit { decl, .. } => self.visit_stmt(decl),
+            Statement::UnsharedDecl { is_report, .. } => *is_report,
+            _ => false,
         }
     }
 

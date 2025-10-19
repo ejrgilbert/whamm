@@ -174,38 +174,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         }
 
         // handle the parameters
-        for param in whamm_params.params.iter() {
-            let wasm_tys = param.ty.to_wasm_type();
-
-            // Iterate over the list to create the addresses for referencing
-            // (will support types that are represented with multiple wasm
-            // types this way, e.g. strings)
-            let mut addrs = vec![];
-            for ty in wasm_tys.iter() {
-                let local_id = params.len() as u32;
-                // handle param list
-                params.push(*ty);
-
-                addrs.push(VarAddr::Local { addr: local_id });
-            }
-            // add param definition to the symbol table
-            self.table.put(
-                param.name.clone(),
-                Record::Var {
-                    ty: param.ty.clone(),
-                    value: None,
-                    def: Definition::CompilerStatic,
-                    addr: Some(addrs),
-                    loc: None,
-                },
-            );
-
-            // handle the param string
-            if !param_str.is_empty() {
-                param_str += ", "
-            }
-            param_str += &param.name;
-        }
+        Self::handle_params(whamm_params, &mut params, &mut param_str, self.table);
 
         let fid = self.emit_special_fn_inner(
             None,
@@ -221,6 +190,41 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         self.reset_locals_for_function();
 
         (fid, param_str.to_string())
+    }
+
+    pub(crate) fn handle_params(whamm_params: &WhammParams, params: &mut Vec<WirmType>, param_str: &mut String, table: &mut SymbolTable) {
+        for param in whamm_params.params.iter() {
+            let wasm_tys = param.ty.to_wasm_type();
+
+            // Iterate over the list to create the addresses for referencing
+            // (will support types that are represented with multiple wasm
+            // types this way, e.g. strings)
+            let mut addrs = vec![];
+            for ty in wasm_tys.iter() {
+                let local_id = params.len() as u32;
+                // handle param list
+                params.push(*ty);
+
+                addrs.push(VarAddr::Local { addr: local_id });
+            }
+            // add param definition to the symbol table
+            table.put(
+                param.name.clone(),
+                Record::Var {
+                    ty: param.ty.clone(),
+                    value: None,
+                    def: Definition::CompilerStatic,
+                    addr: Some(addrs),
+                    loc: None,
+                },
+            );
+
+            // handle the param string
+            if !param_str.is_empty() {
+                param_str.push_str(", ")
+            }
+            param_str.push_str(&param.name);
+        }
     }
 
     fn emit_special_fn_inner(

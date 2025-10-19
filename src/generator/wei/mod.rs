@@ -129,6 +129,7 @@ impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         // create the probe's $alloc method
         let (alloc_fid, alloc_param_str) = self.unshared_var_handler.emit_alloc_func(
             &mut probe.unshared_to_alloc,
+            &probe.metadata.init_args,
             &mut probe.init_logic,
             &mut self.emitter,
             self.err,

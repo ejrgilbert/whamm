@@ -14,10 +14,11 @@ use std::collections::HashSet;
 const UNEXPECTED_ERR_MSG: &str =
     "MetadataCollector: Looks like you've found a bug...please report this behavior!";
 
-#[derive(Clone, Default)]
+#[derive(Clone, Copy, Default)]
 enum Visiting {
     Predicate,
     Body,
+    Init,
     #[default]
     None,
 }
@@ -119,6 +120,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
         match self.visiting {
             Visiting::Predicate => &mut self.curr_probe.metadata.pred_args,
             Visiting::Body => &mut self.curr_probe.metadata.body_args,
+            Visiting::Init => &mut self.curr_probe.metadata.init_args,
             Visiting::None => {
                 unreachable!("Expected a set variant of 'Visiting', but found 'None'");
             }
@@ -147,6 +149,13 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             }
             Visiting::Body => {
                 self.curr_probe.metadata.push_body_req(
+                    name.to_string(),
+                    ty.clone(),
+                    &self.curr_mode,
+                );
+            }
+            Visiting::Init => {
+                self.curr_probe.metadata.push_init_req(
                     name.to_string(),
                     ty.clone(),
                     &self.curr_mode,
@@ -241,12 +250,19 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                     loc: loc.clone(),
                 };
                 self.curr_user_lib.pop();
-                if !is_static {
-                    self.mark_expr_as_dynamic();
-                } else {
+
+                if is_static {
+                    if matches!(self.visiting, Visiting::Init) {
+                        // todo -- this should also be tied to generating a monitor module, correct?
+                        self.curr_lib_call_args = WhammParams::default();
+
+                        // just return the original expression for this!
+                        // it'll do the initialization statically in the var decl
+                        return expr.clone();
+                    }
                     // this is a static library call, translate this into an optimize-able expression
                     // BUT ONLY IF we're not in a predicate that's targeting an engine, we want to rewrite this expression
-                    if matches!(self.visiting, Visiting::Body) && self.config.as_monitor_module {
+                    if (matches!(self.visiting, Visiting::Body)) && self.config.as_monitor_module {
                         return if !is_nested {
                             // change this expression to something that I can use to pull the result of
                             // what I do to optimize this case.
@@ -267,6 +283,14 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                             new_call
                         };
                     }
+                } else {
+                    // now we know that the call is not annotated as static
+                    self.mark_expr_as_dynamic();
+                }
+
+                if matches!(self.visiting, Visiting::Init) {
+                    // todo -- better erroring
+                    panic!("cannot perform a non-static initialization for a statically-initialized variable.")
                 }
 
                 if matches!(self.visiting, Visiting::Predicate) && self.config.as_monitor_module {
@@ -420,8 +444,12 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
     fn visit_stmt_inner(&mut self, stmt: &Statement) -> Statement {
         match stmt {
             Statement::UnsharedDeclInit { decl, init, loc } => {
+                let v = self.visiting;
+                self.visiting = Visiting::Init;
                 let decl = self.visit_stmt_inner(decl);
                 let init = self.visit_stmt_inner(init);
+                self.visiting = v;
+
                 self.has_probe_state_init = true;
                 self.curr_probe.add_init_logic(init.clone());
                 Statement::UnsharedDeclInit {

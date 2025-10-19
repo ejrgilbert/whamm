@@ -150,20 +150,21 @@ pub struct Metadata {
     pub pred_is_dynamic: bool,
     // These are hashsets to avoid requesting duplicate data
     pub pred_args: WhammParams,
+    pub init_args: WhammParams,
     pub body_args: WhammParams,
 }
 impl Metadata {
     pub fn push_pred_req(&mut self, var_name: String, var_type: DataType, mode: &ModeKind) {
-        self.pred_args.push(
-            WhammParam {
-                name: var_name,
-                ty: var_type,
-            },
-            mode,
-        );
+        Self::push_req(&mut self.pred_args, var_name, var_type, mode);
     }
     pub fn push_body_req(&mut self, var_name: String, var_type: DataType, mode: &ModeKind) {
-        self.body_args.push(
+        Self::push_req(&mut self.body_args, var_name, var_type, mode);
+    }
+    pub fn push_init_req(&mut self, var_name: String, var_type: DataType, mode: &ModeKind) {
+        Self::push_req(&mut self.init_args, var_name, var_type, mode);
+    }
+    fn push_req(params: &mut WhammParams, var_name: String, var_type: DataType, mode: &ModeKind) {
+        params.push(
             WhammParam {
                 name: var_name,
                 ty: var_type,
