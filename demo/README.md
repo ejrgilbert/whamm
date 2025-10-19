@@ -26,7 +26,7 @@ whamm instr --script branch-monitor.mm --app app.wasm --core-lib $WHAMM_CORE -o 
 # Run the monitor (must be on wizard since it depends on the engine `puts` host function)
 ```
 
-## Wizard Target ##
+## `wei` Target ##
 
 Example running the `branch-monitor` script:
 ```shell
@@ -38,9 +38,9 @@ WHAMM_CORE=whamm_core/target/wasm32-wasip1/release/whamm_core.wasm
 cd demo/
 mkdir output/
 
-# Compile the monitor to a Wasm module that targets the Wizard engine extension
-whamm instr --script branch-monitor.mm --core-lib $WHAMM_CORE -o output/wiz-mon.wasm --wizard
+# Compile the monitor to a Wasm module that targets `wei`
+whamm instr --script branch-monitor.mm --core-lib $WHAMM_CORE -o output/wiz-mon.wasm --wei
 
-# Run the monitor (must be on wizard)
+# Run the monitor (must be on wizard for now)
 wizard --env=TO_CONSOLE=true --monitors=output/wiz-mon.wasm+$WHAMM_CORE app.wasm
 ```

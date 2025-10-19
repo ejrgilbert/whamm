@@ -250,7 +250,7 @@ fn generate_instrumented_bin_wast(
             &mut metrics,
             Config {
                 as_monitor_module: false,
-                enable_wizard_alt: false,
+                enable_wei_alt: false,
                 metrics: false,
                 no_bundle: false,
                 no_body: false,

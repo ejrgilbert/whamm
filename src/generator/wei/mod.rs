@@ -4,7 +4,7 @@ use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::generator::ast::{Probe, Script, WhammParams};
 use crate::generator::{create_curr_loc, emit_needed_funcs, GeneratingVisitor};
-use crate::lang_features::alloc_vars::wizard::UnsharedVarHandler;
+use crate::lang_features::alloc_vars::wei::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::LocationData;
 use crate::parser::types::{Block, DataType, Location, Statement, Value, WhammVisitorMut};
@@ -15,7 +15,7 @@ use wirm::ir::id::{FunctionID, LocalID};
 use wirm::ir::types::DataType as WirmType;
 use wirm::Module;
 
-pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l> {
+pub struct WeiGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l> {
     pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
     pub io_adapter: &'g mut IOAdapter,
     pub context_name: String,
@@ -30,7 +30,7 @@ pub struct WizardGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l> {
     pub unshared_var_handler: &'l mut UnsharedVarHandler,
 }
 
-impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         mut ast: Vec<Script>,
@@ -178,7 +178,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             (None, "".to_string())
         };
 
-        let match_rule = self.create_wizard_match_rule(
+        let match_rule = self.create_wei_match_rule(
             &probe.rule.to_string(),
             pred_fid,
             &pred_param_str,
@@ -197,7 +197,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         }
     }
 
-    fn create_wizard_match_rule(
+    fn create_wei_match_rule(
         &self,
         probe_name: &str,
         pred_fid: Option<u32>,
@@ -222,7 +222,7 @@ impl WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 }
 
-impl GeneratingVisitor for WizardGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl GeneratingVisitor for WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     // TODO -- these are all duplicates, try to factor out
     fn emit_string(&mut self, val: &mut Value) -> bool {
         self.emitter.emit_string(val)

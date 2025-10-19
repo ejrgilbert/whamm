@@ -13,7 +13,7 @@ use wirm::ir::id::FunctionID;
 
 pub mod folding;
 pub mod rewriting;
-pub mod wizard;
+pub mod wei;
 
 pub mod ast;
 pub mod metadata_collector;
@@ -26,7 +26,7 @@ fn create_curr_loc(curr_script_id: u8, probe: &ast::Probe) -> LocationData {
     //set the current location in bytecode and load some new globals for potential report vars
     LocationData::Local {
         script_id: curr_script_id,
-        bytecode_loc: BytecodeLoc::new(0, 0), // TODO -- request this from wizard
+        bytecode_loc: BytecodeLoc::new(0, 0), // TODO -- request this from engine
         probe_id,
     }
 }
@@ -293,7 +293,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         // do not inject globals into Wasm that are used/defined by the compiler
         // because they are statically-defined and folded away
 
-        // (this is where wizard implementation starts diverting)
+        // (this is where wei on wizard implementation starts diverting)
         // 1. visit the BEFORE probes
         self.visit_before_probes(event);
         // 2. visit the ALT probes

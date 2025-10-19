@@ -21,7 +21,7 @@ use wirm::Module;
 
 #[derive(Copy, Clone)]
 pub enum InjectStrategy {
-    Wizard,
+    Wei,
     Rewriting,
 }
 

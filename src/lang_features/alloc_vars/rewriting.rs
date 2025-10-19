@@ -123,7 +123,7 @@ impl UnsharedVarHandler {
         //     The order of the data will go in the order of declarations in the probe body.
 
         for var in vars.iter() {
-            // TODO -- duplicate code in wizard::UnsharedVarHandler::emit_alloc_func
+            // TODO -- duplicate code in wei::UnsharedVarHandler::emit_alloc_func
             // 0. Generate the strings necessary for the report variables
             if !var.is_report {
                 continue;
@@ -391,7 +391,7 @@ impl VarHeader {
             panic!("Report variable metadata string should be emitted, but it's not been.");
         };
         if *name_len as u32 > u8::MAX as u32 {
-            err.wizard_error(format!("Unable to encode report variable metadata for '{name}', string is too long, must be less than {} characters", u8::MAX), &None)
+            err.wei_error(format!("Unable to encode report variable metadata for '{name}', string is too long, must be less than {} characters", u8::MAX), &None)
         }
         let Some(StringAddr {
             mem_offset: probe_id_ptr,
@@ -402,7 +402,7 @@ impl VarHeader {
             panic!("Report variable metadata string should be emitted, but it's not been.");
         };
         if *probe_id_len as u32 > u8::MAX as u32 {
-            err.wizard_error(format!("Unable to encode report variable metadata for '{name}', string is too long, must be less than {} characters", u8::MAX), &None)
+            err.wei_error(format!("Unable to encode report variable metadata for '{name}', string is too long, must be less than {} characters", u8::MAX), &None)
         }
         Self {
             name_ptr: *name_ptr as u32,

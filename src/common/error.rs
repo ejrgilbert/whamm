@@ -269,7 +269,7 @@ impl ErrorGen {
         let err = Self::get_type_check_error(message, line_col);
         self.add_error(err);
     }
-    pub fn get_wizard_error(message: String, loc: &Option<LineColLocation>) -> WhammError {
+    pub fn get_wei_error(message: String, loc: &Option<LineColLocation>) -> WhammError {
         let loc = loc.as_ref().map(|loc| CodeLocation {
             is_err: false,
             message: Some(message.clone()),
@@ -280,7 +280,7 @@ impl ErrorGen {
 
         WhammError {
             match_rule: None,
-            ty: ErrorType::WizardError {
+            ty: ErrorType::WeiError {
                 message: message.clone(),
             },
             err_loc: loc,
@@ -288,13 +288,13 @@ impl ErrorGen {
         }
     }
 
-    pub fn get_wizard_error_from_loc(message: String, line_col: &Option<Location>) -> WhammError {
+    pub fn get_wei_error_from_loc(message: String, line_col: &Option<Location>) -> WhammError {
         let loc = line_col.as_ref().map(|loc| loc.line_col.clone());
-        Self::get_wizard_error(message, &loc)
+        Self::get_wei_error(message, &loc)
     }
 
-    pub fn wizard_error(&mut self, message: String, loc: &Option<Location>) {
-        let err = Self::get_wizard_error_from_loc(message, loc);
+    pub fn wei_error(&mut self, message: String, loc: &Option<Location>) {
+        let err = Self::get_wei_error_from_loc(message, loc);
         self.add_error(err);
     }
 
@@ -809,8 +809,8 @@ pub enum ErrorType {
     TypeCheckError {
         message: String,
     },
-    /// Error when compiling to Wizard target
-    WizardError {
+    /// Error when compiling to wei target
+    WeiError {
         message: String,
     },
     Error {
@@ -827,7 +827,7 @@ impl ErrorType {
             ErrorType::DuplicateIdentifierError { .. } => "DuplicateIdentifierError",
             ErrorType::ParsingError { .. } => "ParsingError",
             ErrorType::TypeCheckError { .. } => "TypeCheckError",
-            ErrorType::WizardError { .. } => "WizardError",
+            ErrorType::WeiError { .. } => "WeiError",
             ErrorType::Error { .. } => "GeneralError",
             ErrorType::ArithmeticError { .. } => "ArithmeticError",
         }
@@ -845,7 +845,7 @@ impl ErrorType {
                 negatives,
                 |r| format!("{:?}", r),
             )),
-            ErrorType::TypeCheckError { ref message } | ErrorType::WizardError { ref message } => {
+            ErrorType::TypeCheckError { ref message } | ErrorType::WeiError { ref message } => {
                 Cow::Borrowed(message)
             }
             ErrorType::DuplicateIdentifierError { ref duplicated_id } => {

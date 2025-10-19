@@ -1,2 +1,2 @@
 pub mod rewriting;
-pub mod wizard;
+pub mod wei;

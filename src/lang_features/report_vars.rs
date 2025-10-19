@@ -111,7 +111,7 @@ impl ReportVars {
 // ===========================
 impl ReportVars {
     // =========================
-    // ==== WIZARD-SPECIFIC ====
+    // ==== WEI-SPECIFIC ====
     // =========================
 
     // ==== Call flush functions at program exit ====

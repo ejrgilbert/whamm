@@ -154,13 +154,13 @@ pub fn instrument_as_dry_run_rewriting(
     handle_dry_run_response(response)
 }
 
-/// Using the passed Whamm script, perform a dry run of non-intrusive instrumentation via the wizard engine API
+/// Using the passed Whamm script, perform a dry run of non-intrusive instrumentation via the wei engine API
 ///
 /// * `script_path`: The path to the whamm script .mm file.
 /// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
 /// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
-pub fn instrument_as_dry_run_wizard(
+pub fn instrument_as_dry_run_wei(
     script_path: String,
     user_lib_paths: Vec<String>,
     core_lib_path: Option<String>,
@@ -204,8 +204,8 @@ fn handle_dry_run_response(
 pub struct Config {
     /// Whether to emit a monitor module that can be used to dynamically instrument a program
     pub as_monitor_module: bool,
-    /// Whether we allow probes that cause 'alternate' behavior in wizard
-    pub enable_wizard_alt: bool,
+    /// Whether we allow probes that cause 'alternate' behavior in wei
+    pub enable_wei_alt: bool,
 
     /// Whether to print metrics collected as whamm performs various actions.
     pub metrics: bool,
@@ -229,7 +229,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             as_monitor_module: false,
-            enable_wizard_alt: false,
+            enable_wei_alt: false,
             metrics: false,
             no_bundle: false,
             no_body: false,
@@ -252,7 +252,7 @@ impl Config {
     }
     pub fn new(
         as_monitor_module: bool,
-        enable_wizard_alt: bool,
+        enable_wei_alt: bool,
         metrics: bool,
         no_bundle: bool,
         no_body: bool,
@@ -271,7 +271,7 @@ impl Config {
         }
         Self {
             as_monitor_module,
-            enable_wizard_alt,
+            enable_wei_alt,
             metrics,
             no_bundle,
             no_body,

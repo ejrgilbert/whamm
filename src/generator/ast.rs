@@ -105,7 +105,7 @@ impl From<String> for ProbeRule {
                 mode: RulePart::new(parts[3].to_owned(), None),
             }
         } else {
-            panic!("ProbeRule should either have all four subparts, or be missing the probe mode (for wizard): {value}");
+            panic!("ProbeRule should either have all four subparts, or be missing the probe mode (for wei): {value}");
         }
     }
 }

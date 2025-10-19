@@ -581,7 +581,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
         ast: &mut SimpleAST,
     ) {
         // create the function to call at the end
-        // TODO -- this can be cleaned up to use the wizard logic instead!
+        // TODO -- this can be cleaned up to use the wei logic instead!
         // check if ast overrides report logic
         let report_probe = if let Some(wasm) = ast.provs.get_mut("wasm") {
             if let Some(report_probe) = wasm.pkgs.get_mut("report") {

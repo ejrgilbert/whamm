@@ -1,4 +1,4 @@
-# The Wizard Target ([#54](https://github.com/ejrgilbert/whamm/issues/54)) #
+# The `wei` Target ([#54](https://github.com/ejrgilbert/whamm/issues/54)) #
 
 Keeping track of the basic functionality to add.
 - [ ] split out dynamic and static parts of the predicate

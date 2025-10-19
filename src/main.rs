@@ -10,7 +10,7 @@ use std::process::exit;
 use whamm::api::instrument::{instrument_with_config, Config, LibraryLinkStrategy};
 use whamm::api::utils::{print_info, run_wast_tests_at, write_to_file};
 
-const ENABLE_WIZARD_ALT: bool = false;
+const ENABLE_WEI_ALT: bool = false;
 
 fn setup_logger() {
     env_logger::init();
@@ -51,8 +51,8 @@ fn try_main() -> Result<(), failure::Error> {
         Cmd::Instr(args) => {
             let app_path = if let Some(app_path) = args.app {
                 app_path
-            } else if !args.wizard {
-                panic!("When performing bytecode rewriting (not the wizard target), a path to the target application is required!\nSee `whamm instr --help`")
+            } else if !args.wei {
+                panic!("When performing bytecode rewriting (not the wei target), a path to the target application is required!\nSee `whamm instr --help`")
             } else {
                 "".to_string()
             };
@@ -61,8 +61,8 @@ fn try_main() -> Result<(), failure::Error> {
                 args.script,
                 args.user_libs,
                 Config::new(
-                    args.wizard,
-                    ENABLE_WIZARD_ALT,
+                    args.wei,
+                    ENABLE_WEI_ALT,
                     args.metrics,
                     args.no_bundle,
                     args.no_body,

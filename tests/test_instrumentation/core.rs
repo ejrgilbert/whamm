@@ -145,7 +145,7 @@ fn instrument_with_branch_monitor_scripts() {
     let processed_scripts = setup_tests("core_suite/branch-monitor");
     assert!(!processed_scripts.is_empty());
 
-    // TODO -- fix wizard side (THEN merge with below test)
+    // TODO -- fix wei side (THEN merge with below test)
     //   - pull `fname`, `targets`, `num_targets`, `default_target`
     run_core_suite("branch-monitor", processed_scripts, true, true)
 }
@@ -180,7 +180,7 @@ fn instrument_with_calls_monitor_scripts() {
     let processed_scripts = setup_tests("core_suite/calls-monitor");
     assert!(!processed_scripts.is_empty());
 
-    // TODO -- fix wizard side (THEN merge with below test)
+    // TODO -- fix wei side (THEN merge with below test)
     //   - pull `fname`
     run_core_suite("calls-monitor", processed_scripts, true, true)
 }
