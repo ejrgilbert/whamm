@@ -1,1 +1,1 @@
-tracer=user_libs/loop_tracer/tracer.wasm
+tracer=tests/libs/loop_tracer/tracer.wasm

@@ -1,12 +1,10 @@
 use crate::test_instrumentation::helper::{
-    build_whamm_core_lib, run_basic_instrumentation, run_core_suite, run_script, run_whamm_bin,
+    run_basic_instrumentation, run_core_suite, run_script, run_whamm_bin,
     setup_fault_injection, setup_numerics_monitors, setup_replay, setup_tests,
-    setup_wizard_monitors, wat2wasm_on_dir, DEFAULT_CORE_LIB_PATH, DEFAULT_DEFS_PATH,
+    setup_wizard_monitors, DEFAULT_CORE_LIB_PATH, DEFAULT_DEFS_PATH,
 };
 use crate::util::setup_logger;
-use log::error;
 use std::fs;
-use std::process::Command;
 use whamm::api::utils::wasm2wat_on_file;
 use wirm::Module;
 
@@ -19,7 +17,6 @@ fn instrument_dfinity_with_fault_injection() {
     setup_logger();
     let processed_scripts = setup_fault_injection("dfinity");
     assert!(!processed_scripts.is_empty());
-    wat2wasm_on_dir("tests/apps/core_suite/handwritten");
 
     let wasm_path = "tests/apps/dfinity/users.wasm";
     let wasm = fs::read(wasm_path).unwrap();
@@ -77,41 +74,9 @@ fn instrument_no_matches() {
 #[test]
 fn instrument_control_flow() {
     setup_logger();
-    // Add the target
-    let res = Command::new("rustup")
-        .arg("target")
-        .arg("add")
-        .arg("wasm32-wasip1")
-        .current_dir("wasm_playground/control_flow")
-        .output()
-        .expect("failed to execute process");
-    if !res.status.success() {
-        error!(
-            "'instrument_control_flow' add target failed:\n{}\n{}",
-            String::from_utf8(res.stdout).unwrap(),
-            String::from_utf8(res.stderr).unwrap()
-        );
-    }
-
-    // Build the control_flow Rust project
-    let res = Command::new("cargo")
-        .arg("build")
-        .arg("--target")
-        .arg("wasm32-wasip1")
-        .current_dir("wasm_playground/control_flow")
-        .output()
-        .expect("failed to execute process");
-    if !res.status.success() {
-        error!(
-            "'instrument_control_flow' build project failed:\n{}\n{}",
-            String::from_utf8(res.stdout).unwrap(),
-            String::from_utf8(res.stderr).unwrap()
-        );
-    }
-    assert!(res.status.success());
 
     let monitor_path = "tests/scripts/instr.mm";
-    let original_wasm_path = "wasm_playground/control_flow/target/wasm32-wasip1/debug/cf.wasm";
+    let original_wasm_path = "tests/apps/core_suite/rust/cf.wasm";
     let instrumented_wasm_path = "output/tests/integration-control_flow.wasm";
 
     run_whamm_bin(
@@ -138,8 +103,6 @@ fn instrument_with_wizard_monitors() {
     let processed_scripts = setup_wizard_monitors();
     assert!(!processed_scripts.is_empty());
 
-    build_whamm_core_lib();
-    wat2wasm_on_dir("tests/apps/core_suite/handwritten");
     let wasm = fs::read(APP_WASM_PATH).unwrap();
     for (script_path, ..) in processed_scripts {
         let mut module_to_instrument = Module::parse(&wasm, false).unwrap();

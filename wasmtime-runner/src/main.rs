@@ -5,7 +5,7 @@ use wasmtime::*;
 
 const WASM_MODULE: &str = "../output/output.wasm";
 const CORE_LIB_NAME: &str = "whamm_core";
-const CORE_LIB_MODULE: &str = "../whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
+const CORE_LIB_MODULE: &str = "../tests/libs/whamm_core.wasm";
 
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();

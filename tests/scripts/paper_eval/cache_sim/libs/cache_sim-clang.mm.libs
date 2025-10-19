@@ -1,1 +1,1 @@
-cache=user_libs/cache/target/wasm32-wasip1/release/cache.wasm
+cache=tests/libs/cache/cache.wasm
