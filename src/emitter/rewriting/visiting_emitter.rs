@@ -386,7 +386,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
     }
 
     pub(crate) fn fold_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {
-        *expr = ExprFolder::fold_expr(expr, self.table, err);
+        *expr = ExprFolder::fold_expr(expr, false, self.table, err);
         true
     }
 

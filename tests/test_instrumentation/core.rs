@@ -180,7 +180,7 @@ fn instrument_with_at_static_scripts() {
     let processed_scripts = setup_tests("core_suite/@static");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("at_static", processed_scripts, false, true)
+    run_core_suite("at_static", processed_scripts, true, true)
 }
 
 #[test]

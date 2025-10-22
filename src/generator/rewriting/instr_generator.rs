@@ -253,11 +253,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
                         probe.loc.clone(),
                     );
                     if let Some(pred) = &mut pred_clone {
+                        // TODO: Handle @static calls here
+                        
+                        
                         // Fold predicate
                         is_success = self.emitter.fold_expr(pred, self.err);
 
                         // If the predicate evaluates to false, short-circuit!
-                        if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
+                        if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred, false) {
                             if !pred_as_bool {
                                 // predicate is reduced to false, short-circuit!
                                 continue;
@@ -441,7 +444,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn pred_is_true(&mut self) -> bool {
         if let Some((.., pred)) = &self.curr_probe {
             if let Some(pred) = pred {
-                if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
+                if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred, false) {
                     // predicate has been reduced to a boolean value
                     return pred_as_bool;
                 }

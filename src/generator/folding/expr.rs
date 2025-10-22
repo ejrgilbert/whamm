@@ -9,15 +9,16 @@ use std::ops::{Add, Div, Mul, Rem, Sub};
 // =======================================
 
 pub struct ExprFolder {
+    as_monitor_module: bool,
     curr_loc: Option<Location>,
 }
 impl ExprFolder {
-    pub fn fold_expr(expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
-        let mut instance = Self { curr_loc: None };
+    pub fn fold_expr(expr: &Expr, as_monitor_module: bool, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        let mut instance = Self { as_monitor_module, curr_loc: None };
         instance.fold_expr_inner(expr, table, err)
     }
-    pub fn get_single_bool(expr: &Expr) -> Option<bool> {
-        let mut instance = Self { curr_loc: None };
+    pub fn get_single_bool(expr: &Expr, as_monitor_module: bool) -> Option<bool> {
+        let mut instance = Self { as_monitor_module, curr_loc: None };
         instance.get_single_bool_inner(expr)
     }
     fn fold_expr_inner(&mut self, expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
@@ -46,6 +47,12 @@ impl ExprFolder {
             loc,
         } = lib_call
         {
+            if let Some(ann) = annotation {
+                if ann.is_static() && !self.as_monitor_module {
+                    // we're doing bytecode rewriting, so we should statically evaluate this lib call!
+                    return self.fold_static_lib_call(lib_call, table, err);
+                }
+            }
             return Expr::LibCall {
                 annotation: annotation.clone(),
                 lib_name: lib_name.clone(),
@@ -55,6 +62,10 @@ impl ExprFolder {
             };
         }
         lib_call.clone()
+    }
+
+    fn fold_static_lib_call(&mut self, lib_call: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        todo!()
     }
 
     fn fold_binop(&mut self, binop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {

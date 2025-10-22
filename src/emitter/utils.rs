@@ -93,7 +93,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     let mut is_success = true;
-    let mut folded_stmt = StmtFolder::fold_stmt(stmt, ctx.table, ctx.err);
+    let mut folded_stmt = StmtFolder::fold_stmt(stmt, strategy.as_monitor_module(), ctx.table, ctx.err);
     for s in folded_stmt.stmts.iter_mut() {
         is_success &= emit_stmt_inner(s, strategy, injector, ctx);
     }
@@ -601,7 +601,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     // fold it first!
-    let mut folded_expr = ExprFolder::fold_expr(expr, ctx.table, ctx.err);
+    let mut folded_expr = ExprFolder::fold_expr(expr, strategy.as_monitor_module(), ctx.table, ctx.err);
     match &mut folded_expr {
         Expr::UnOp {
             op, expr, done_on, ..
