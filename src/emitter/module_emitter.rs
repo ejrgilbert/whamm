@@ -25,11 +25,12 @@ use wirm::module_builder::AddLocal;
 use wirm::opcode::{Instrumenter, Opcode};
 use wirm::wasmparser::MemArg;
 use wirm::InitInstr;
+use crate::lang_features::libraries::registry::WasmRegistry;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
+pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub strategy: InjectStrategy,
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
@@ -38,10 +39,11 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub locals_tracker: LocalsTracker,
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub report_vars: &'f mut ReportVars,
+    pub registry: &'g mut WasmRegistry,
     fn_providing_contexts: Vec<String>,
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // note: only used in integration test
     pub fn new(
         strategy: InjectStrategy,
@@ -50,6 +52,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         mem_allocator: &'d mut MemoryAllocator,
         map_lib_adapter: &'e mut MapLibAdapter,
         report_vars: &'f mut ReportVars,
+        registry: &'g mut WasmRegistry
     ) -> Self {
         Self {
             strategy,
@@ -60,6 +63,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             map_lib_adapter,
             report_vars,
             table,
+            registry,
             fn_providing_contexts: vec!["whamm".to_string()],
         }
     }
@@ -332,6 +336,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         self.strategy,
                         &mut on_exit,
                         &mut EmitCtx::new(
+                            self.registry,
                             self.table,
                             self.mem_allocator,
                             &mut self.locals_tracker,
@@ -633,6 +638,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             self.strategy,
             &mut start,
             &mut EmitCtx::new(
+                self.registry,
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,
@@ -679,7 +685,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         })
     }
 }
-impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
+impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn reset_locals_for_probe(&mut self) {
         if let Some(func) = &mut self.emitting_func {
             self.locals_tracker.reset_probe(func);
@@ -696,6 +702,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
                 self.strategy,
                 emitting_func,
                 &mut EmitCtx::new(
+                    self.registry,
                     self.table,
                     self.mem_allocator,
                     &mut self.locals_tracker,
@@ -716,6 +723,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
                 self.strategy,
                 emitting_func,
                 &mut EmitCtx::new(
+                    self.registry,
                     self.table,
                     self.mem_allocator,
                     &mut self.locals_tracker,
@@ -736,6 +744,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
                 self.strategy,
                 emitting_func,
                 &mut EmitCtx::new(
+                    self.registry,
                     self.table,
                     self.mem_allocator,
                     &mut self.locals_tracker,

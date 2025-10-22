@@ -19,15 +19,15 @@ use wirm::Module;
 /// emit some compiler-defined functions and user-defined globals.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the Emitter field.
-pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
-    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
+pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
+    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
     pub context_name: String,
-    pub err: &'g mut ErrorGen,
-    pub injected_funcs: &'h mut Vec<FunctionID>,
+    pub err: &'h mut ErrorGen,
+    pub injected_funcs: &'i mut Vec<FunctionID>,
     pub used_fns_per_lib: HashMap<String, HashSet<String>>,
-    pub user_lib_modules: HashMap<String, (Option<String>, Module<'i>)>,
+    pub user_lib_modules: HashMap<String, (Option<String>, Module<'j>)>,
 }
-impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         whamm: &mut Whamm,
@@ -46,7 +46,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 }
 
-impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn emit_string(&mut self, val: &mut Value) -> bool {
         self.emitter.emit_string(val)
     }

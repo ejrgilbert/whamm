@@ -18,6 +18,8 @@ use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmVa
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{MacroOpcode, Opcode};
 use wirm::{InitInstr, Module};
+use crate::lang_features::libraries::registry::WasmRegistry;
+
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -28,26 +30,29 @@ use wirm::{InitInstr, Module};
 // ==================================================================
 // ==================================================================
 
-pub struct EmitCtx<'a, 'b, 'c, 'd, 'e> {
-    table: &'a mut SymbolTable,
-    mem_allocator: &'b MemoryAllocator,
-    locals_tracker: &'c mut LocalsTracker,
+pub struct EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
+    registry: &'a mut WasmRegistry,
+    table: &'b mut SymbolTable,
+    mem_allocator: &'c MemoryAllocator,
+    locals_tracker: &'d mut LocalsTracker,
     in_map_op: bool,
     in_lib_call_to: Option<String>,
-    map_lib_adapter: &'d mut MapLibAdapter,
+    map_lib_adapter: &'e mut MapLibAdapter,
     err_msg: String,
-    err: &'e mut ErrorGen,
+    err: &'f mut ErrorGen,
 }
-impl<'a, 'b, 'c, 'd, 'e> EmitCtx<'a, 'b, 'c, 'd, 'e> {
+impl<'a, 'b, 'c, 'd, 'e, 'f> EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
     pub fn new(
-        table: &'a mut SymbolTable,
-        mem_allocator: &'b MemoryAllocator,
-        locals_tracker: &'c mut LocalsTracker,
-        map_lib_adapter: &'d mut MapLibAdapter,
+        registry: &'a mut WasmRegistry,
+        table: &'b mut SymbolTable,
+        mem_allocator: &'c MemoryAllocator,
+        locals_tracker: &'d mut LocalsTracker,
+        map_lib_adapter: &'e mut MapLibAdapter,
         err_msg: &str,
-        err: &'e mut ErrorGen,
+        err: &'f mut ErrorGen,
     ) -> Self {
         Self {
+            registry,
             table,
             mem_allocator,
             locals_tracker,
@@ -601,7 +606,8 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     // fold it first!
-    let mut folded_expr = ExprFolder::fold_expr(expr, strategy.as_monitor_module(), ctx.table, ctx.err);
+    // todo -- create actual registry here!
+    let mut folded_expr = ExprFolder::fold_expr(expr, ctx.registry, strategy.as_monitor_module(), ctx.table, ctx.err);
     match &mut folded_expr {
         Expr::UnOp {
             op, expr, done_on, ..

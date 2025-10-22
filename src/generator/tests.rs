@@ -12,6 +12,7 @@ use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier;
 use log::{debug, error};
 use std::collections::HashMap;
+use crate::lang_features::libraries::registry::WasmRegistry;
 
 pub fn setup_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -144,7 +145,7 @@ fn basic_run(script: &str, err: &mut ErrorGen) {
     let pred = get_pred(&whamm);
     hardcode_compiler_constants(&mut table);
 
-    let folded_expr = ExprFolder::fold_expr(pred, &table, err);
+    let folded_expr = ExprFolder::fold_expr(pred, &mut WasmRegistry::default(), false, &table, err);
     assert_simplified_predicate(&folded_expr);
 }
 
@@ -158,7 +159,7 @@ pub fn basic_test() {
 fn fatal_fold(expr: &Expr) {
     let result = std::panic::catch_unwind(|| {
         let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-        ExprFolder::fold_expr(expr, &SymbolTable::new(), &mut err);
+        ExprFolder::fold_expr(expr, &mut WasmRegistry::default(), false, &SymbolTable::new(), &mut err);
     });
     match result {
         Ok(_) => {
@@ -285,7 +286,7 @@ wasm::call:alt /
     let pred = get_pred(&whamm);
     hardcode_compiler_constants(&mut table);
 
-    let folded_expr = ExprFolder::fold_expr(pred, &table, &mut err);
+    let folded_expr = ExprFolder::fold_expr(pred, &mut WasmRegistry::default(), false, &table, &mut err);
     debug!("{:#?}", folded_expr);
 
     // ExprFolder should not be able to simplify the Call expressions at all.

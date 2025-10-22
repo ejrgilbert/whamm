@@ -1,6 +1,6 @@
 use toggle;
 
-// In wizard: This probe still gets inserted since we evaluate the
+// In wizard (not rewriting): This probe still gets inserted since we evaluate the
 // static check at runtime. (Pushed down because of the use of `addr`)
 wasm:opcode:i32.load:before /
     addr == 0

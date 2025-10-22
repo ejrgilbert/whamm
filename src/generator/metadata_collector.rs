@@ -9,7 +9,7 @@ use crate::parser::types::{
 };
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 const UNEXPECTED_ERR_MSG: &str =
     "MetadataCollector: Looks like you've found a bug...please report this behavior!";
@@ -23,6 +23,21 @@ enum Visiting {
     None,
 }
 
+
+#[derive(Default)]
+pub(crate) struct UserLibs {
+    pub(crate) funcs: HashMap<(String, String), bool>
+}
+impl UserLibs {
+    pub fn add(&mut self, lib_name: String, func_name: String, at_static: bool) {
+        self.funcs.entry((lib_name, func_name)).and_modify(|orig| {
+                // if there's any point that we use this library statically, remember!
+                *orig = *orig || at_static
+            })
+            .or_insert(at_static);
+    }
+}
+
 // Performs a pass on the AST to generate probe "metadata" that will be used
 // while emitting. It will collect the required variables to pass to a probe
 // (argN, localN, etc.) and can be extended to compute the memory space that
@@ -32,13 +47,15 @@ pub struct MetadataCollector<'a, 'b, 'c> {
     pub ast: Vec<Script>,
 
     // misc. trackers
-    pub used_user_library_fns: HashSet<(String, String)>,
-    curr_user_lib: Vec<(String, bool)>,
+    pub used_user_library_fns: UserLibs,
     pub used_bound_fns: HashSet<(String, String)>,
     pub used_report_var_dts: HashSet<DataType>,
     pub check_strcmp: bool,
     pub strings_to_emit: Vec<String>,
     pub has_probe_state_init: bool,
+
+    pub err: &'b mut ErrorGen,
+    pub config: &'c Config,
 
     visiting: Visiting,
     curr_rule: String,
@@ -46,10 +63,8 @@ pub struct MetadataCollector<'a, 'b, 'c> {
     script_num: u8,
     curr_probe: Probe,
     curr_mode: ModeKind,
+    curr_user_lib: Vec<(String, bool)>,
     curr_lib_call_args: WhammParams,
-
-    pub err: &'b mut ErrorGen,
-    pub config: &'c Config,
 }
 impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
     pub(crate) fn new(
@@ -319,7 +334,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 };
 
                 let (def, ret_ty, req_args, context) =
-                    if let Some((lib_name, _)) = &self.curr_user_lib.first() {
+                    if let Some((lib_name, is_static)) = &self.curr_user_lib.first() {
                         let Some(Record::LibFn {
                             name, results, def, ..
                         }) = self.table.lookup_lib_fn(lib_name, &fn_name)
@@ -335,8 +350,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                             panic!("Current user library is not set!")
                         };
                         assert_eq!(exp_lib_name, lib_name, "Library names should be equal!!");
-                        self.used_user_library_fns
-                            .insert((lib_name.to_string(), fn_name.clone()));
+                        self.used_user_library_fns.add(lib_name.to_string(), fn_name.to_string(), *is_static);
                         let ret_ty = if results.len() > 1 {
                             panic!(
                                 "We don't support functions with multiple return types: {}.{}",

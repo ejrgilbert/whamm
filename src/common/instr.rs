@@ -32,6 +32,7 @@ use wirm::ir::types::{DataType as WirmType, InitExpr, Value as WirmValue};
 use wirm::opcode::Instrumenter;
 use wirm::wasmparser::MemoryType;
 use wirm::{InitInstr, Module, Opcode};
+use crate::lang_features::libraries::registry::WasmRegistry;
 
 const ENGINE_BUFFER_NAME: &str = "whamm_buffer";
 const ENGINE_BUFFER_START_NAME: &str = "whamm_buffer:start";
@@ -230,8 +231,9 @@ pub fn run(
     let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
 
     // Parse user libraries to Wasm modules
+    let mut user_lib_paths: HashMap<String, String> = HashMap::new();
     let mut user_lib_modules: HashMap<String, (Option<String>, Module)> = HashMap::default();
-    for (lib_name, lib_name_import_override, _, lib_buff) in user_libs.iter() {
+    for (lib_name, lib_name_import_override, path, lib_buff) in user_libs.iter() {
         user_lib_modules.insert(
             lib_name.clone(),
             (
@@ -239,6 +241,7 @@ pub fn run(
                 Module::parse(lib_buff, false).unwrap(),
             ),
         );
+        user_lib_paths.insert(lib_name.clone(), path.clone());
     }
     // add the core library just in case the script needs it
     user_lib_modules.insert(
@@ -291,13 +294,17 @@ pub fn run(
 
     // make the used user library functions the correct form
     let mut used_fns_per_lib: HashMap<String, HashSet<String>> = HashMap::default();
-    for (used_lib, used_fn) in metadata_collector.used_user_library_fns.iter() {
+    let mut static_libs: HashSet<String> = HashSet::default();
+    for ((used_lib, used_fn), is_static) in metadata_collector.used_user_library_fns.funcs.iter() {
         used_fns_per_lib
             .entry(used_lib.clone())
             .and_modify(|set| {
                 set.insert(used_fn.clone());
             })
             .or_insert(HashSet::from_iter([used_fn.clone()].iter().cloned()));
+        if *is_static {
+            static_libs.insert(used_lib.clone());
+        }
     }
     let mut map_lib_adapter = map_package.adapter;
     let mut io_adapter = io_package.adapter;
@@ -337,6 +344,8 @@ pub fn run(
             &mut whamm,
             metadata_collector,
             used_fns_per_lib,
+            static_libs,
+            user_lib_paths,
             user_lib_modules,
             target_wasm,
             has_reports,
@@ -394,6 +403,7 @@ fn run_instr_wei(
     let mut injected_funcs = vec![];
     let mut wei_unshared_var_handler =
         crate::lang_features::alloc_vars::wei::UnsharedVarHandler::new(target_wasm);
+    let mut registry = WasmRegistry::default();
 
     let mut gen = crate::generator::wei::WeiGenerator {
         emitter: ModuleEmitter::new(
@@ -403,6 +413,8 @@ fn run_instr_wei(
             mem_allocator,
             map_lib_adapter,
             report_vars,
+            // shouldn't need this for `wei`!
+            &mut registry
         ),
         io_adapter,
         context_name: "".to_string(),
@@ -429,6 +441,8 @@ fn run_instr_rewrite(
     whamm: &mut Whamm,
     metadata_collector: MetadataCollector,
     used_fns_per_lib: HashMap<String, HashSet<String>>,
+    static_libs: HashSet<String>,
+    user_lib_paths: HashMap<String, String>,
     user_lib_modules: HashMap<String, (Option<String>, Module)>,
     target_wasm: &mut Module,
     has_reports: bool,
@@ -447,6 +461,8 @@ fn run_instr_rewrite(
     let has_probe_state_init = metadata_collector.has_probe_state_init;
     let config = metadata_collector.config;
 
+    let mut registry = WasmRegistry::new(&static_libs, &user_lib_paths);
+
     // Phase 0 of instrumentation (emit bound variables and fns)
     let mut init = InitGenerator {
         emitter: ModuleEmitter::new(
@@ -456,6 +472,7 @@ fn run_instr_rewrite(
             mem_allocator,
             map_lib_adapter,
             report_vars,
+            &mut registry
         ),
         context_name: "".to_string(),
         err,
@@ -485,6 +502,7 @@ fn run_instr_rewrite(
             io_adapter,
             report_vars,
             unshared_var_handler,
+            &mut registry
         ),
         simple_ast,
         err,

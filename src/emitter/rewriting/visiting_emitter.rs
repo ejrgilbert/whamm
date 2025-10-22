@@ -35,11 +35,12 @@ use wirm::iterator::module_iterator::ModuleIterator;
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{Instrumenter, MacroOpcode, Opcode};
 use wirm::Location;
+use crate::lang_features::libraries::registry::WasmRegistry;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
+pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
     pub strategy: InjectStrategy,
     pub app_iter: ModuleIterator<'a, 'b>,
     pub init_func: &'c mut FunctionBuilder<'d>,
@@ -55,9 +56,11 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     instr_created_args: Vec<(String, usize)>,
     instr_created_results: Vec<(String, usize)>,
     pub curr_unshared: Vec<UnsharedVar>,
+    
+    pub registry: &'j mut WasmRegistry,
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
     // note: only used in integration test
     pub fn new(
         strategy: InjectStrategy,
@@ -70,6 +73,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
         io_adapter: &'h mut IOAdapter,
         report_vars: &'i mut ReportVars,
         unshared_var_handler: &'i mut UnsharedVarHandler,
+        registry: &'j mut WasmRegistry,
     ) -> Self {
         Self {
             strategy,
@@ -86,6 +90,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
             instr_created_args: vec![],
             instr_created_results: vec![],
             curr_unshared: vec![],
+            registry
         }
     }
 
@@ -195,6 +200,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
                     self.strategy,
                     &mut self.app_iter,
                     &mut EmitCtx::new(
+                        self.registry,
                         self.table,
                         self.mem_allocator,
                         &mut self.locals_tracker,
@@ -224,6 +230,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
             &self.instr_created_args,
             &mut self.app_iter,
             &mut EmitCtx::new(
+                self.registry,
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,
@@ -310,6 +317,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
             &self.instr_created_results,
             &mut self.app_iter,
             &mut EmitCtx::new(
+                self.registry,
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,
@@ -386,7 +394,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
     }
 
     pub(crate) fn fold_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {
-        *expr = ExprFolder::fold_expr(expr, false, self.table, err);
+        // todo -- create actual registry
+        *expr = ExprFolder::fold_expr(expr, self.registry, false, self.table, err);
         true
     }
 
@@ -634,6 +643,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
                         self.strategy,
                         &mut on_exit,
                         &mut EmitCtx::new(
+                            self.registry,
                             self.table,
                             self.mem_allocator,
                             &mut self.locals_tracker,
@@ -667,6 +677,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
                         self.strategy,
                         &mut on_exit,
                         &mut EmitCtx::new(
+                            self.registry,
                             self.table,
                             self.mem_allocator,
                             &mut self.locals_tracker,
@@ -849,7 +860,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
         }
     }
 }
-impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn reset_locals_for_probe(&mut self) {
         self.locals_tracker.reset_probe(&mut self.app_iter);
     }
@@ -891,6 +902,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
         // everything else can be emitted as normal!
         let mut ctx = EmitCtx::new(
+            self.registry,
             self.table,
             self.mem_allocator,
             &mut self.locals_tracker,
@@ -911,6 +923,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
             self.strategy,
             &mut self.app_iter,
             &mut EmitCtx::new(
+                self.registry,
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,

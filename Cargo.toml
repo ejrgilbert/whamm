@@ -15,6 +15,7 @@ lazy_static = "1.4.0"
 itertools = "0.14.0"
 #wirm = { path = "../wirm" }
 wirm = "=2.0.0"
+wasmtime = "38.0.2"
 
 # Logging
 env_logger = "0.10.2"

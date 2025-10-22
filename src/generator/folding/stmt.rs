@@ -1,5 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::generator::folding::expr::ExprFolder;
+use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::parser::types::{Block, Location, Statement};
 use crate::verifier::types::SymbolTable;
 
@@ -41,8 +42,9 @@ impl StmtFolder {
             // -- true: conseq
             // -- false: alt
             // -- other: orig
-            let folded_expr = ExprFolder::fold_expr(cond, self.as_monitor_module, table, err);
-            if let Some(b) = ExprFolder::get_single_bool(&folded_expr, self.as_monitor_module) {
+            // todo -- create actual registry here
+            let folded_expr = ExprFolder::fold_expr(cond, &mut WasmRegistry::default(), self.as_monitor_module, table, err);
+            if let Some(b) = ExprFolder::get_single_bool(&folded_expr, &mut WasmRegistry::default(), self.as_monitor_module) {
                 let mut new_block = Block::default();
                 let to_fold = if b {
                     // fold to conseq block

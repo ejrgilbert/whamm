@@ -293,6 +293,7 @@ impl UnsharedVarHandler {
                     emitter.strategy,
                     &mut alloc,
                     &mut EmitCtx::new(
+                        emitter.registry,
                         emitter.table,
                         emitter.mem_allocator,
                         &mut emitter.locals_tracker,

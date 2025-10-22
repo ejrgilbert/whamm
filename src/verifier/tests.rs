@@ -17,7 +17,7 @@ pub fn setup_logger() {
 // = Helper Functions =
 // ====================
 
-const TOGGLE_PATH: &str = "./user_libs/static_analyses/toggle/toggle.wasm";
+const TOGGLE_PATH: &str = "./tests/libs/toggle/toggle.wasm";
 const VALID_SCRIPTS: &[&str] = &[
     "wasm:opcode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
     r#"
