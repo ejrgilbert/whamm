@@ -78,7 +78,6 @@ impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
         // inject globals
         self.visit_globals(&script.globals);
         // visit global statements
-        // self.visit_stmts(&mut script.global_stmts);
         self.visit_global_stmts(&mut script.global_stmts);
         // visit probes
         script.probes.iter_mut().for_each(|probe| {

@@ -618,43 +618,42 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // ==== EMIT `global` Statements LOGIC ====
     // ========================================
 
+    /// It is assumed that the statement passed here is a VALID global statement!
+    /// (we've gone through several checks before this)
     pub fn emit_global_stmt(&mut self, stmt: &mut Statement, err: &mut ErrorGen) -> bool {
-        // NOTE: This should be done in the Module entrypoint
-        //       https://docs.rs/walrus/latest/walrus/struct.Module.html
+        let start_fid = ModuleEmitter::get_or_create_start_func(self.app_wasm);
+        let mut start = self
+            .app_wasm
+            .functions
+            .get_fn_modifier(FunctionID(start_fid))
+            .unwrap();
+        start.func_entry();
+        let res = emit_stmt(
+            stmt,
+            self.strategy,
+            &mut start,
+            &mut EmitCtx::new(
+                self.table,
+                self.mem_allocator,
+                &mut self.locals_tracker,
+                self.map_lib_adapter,
+                UNEXPECTED_ERR_MSG,
+                err,
+            ),
+        );
 
-        if let Some(start_fid) = self.app_wasm.start {
-            let mut start = self.app_wasm.functions.get_fn_modifier(start_fid).unwrap();
-            start.func_entry();
-            let res = emit_stmt(
-                stmt,
-                self.strategy,
-                &mut start,
-                &mut EmitCtx::new(
-                    self.table,
-                    self.mem_allocator,
-                    &mut self.locals_tracker,
-                    self.map_lib_adapter,
-                    UNEXPECTED_ERR_MSG,
-                    err,
-                ),
-            );
+        let op_idx = start.curr_instr_len() as u32;
+        start.append_tag_at(
+            get_probe_tag_data(stmt.loc(), op_idx),
+            // location is unused
+            wirm::Location::Module {
+                func_idx: FunctionID(0),
+                instr_idx: 0,
+            },
+        );
+        start.finish_instr();
 
-            let op_idx = start.curr_instr_len() as u32;
-            start.append_tag_at(
-                get_probe_tag_data(stmt.loc(), op_idx),
-                // location is unused
-                wirm::Location::Module {
-                    func_idx: FunctionID(0),
-                    instr_idx: 0,
-                },
-            );
-            start.finish_instr();
-
-            res
-        } else {
-            let _ = ModuleEmitter::get_or_create_start_func(self.app_wasm);
-            self.emit_global_stmt(stmt, err)
-        }
+        res
     }
 
     // =============================

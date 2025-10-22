@@ -673,7 +673,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 _ => return false,
             };
 
-            // first save of current context's state on whether we're in a lib call
+            // first save off current context's state on whether we're in a lib call
             let in_lib_call_to = ctx.in_lib_call_to.clone();
 
             // emit the arguments

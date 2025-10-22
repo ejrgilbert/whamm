@@ -600,7 +600,6 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         trace!("Entering: CodeGenerator::visit_script");
         self.table.enter_named_scope(&script.id.to_string());
 
-        // TODO also need to have global static calls
         self.visit_stmts(&script.global_stmts);
 
         // visit providers

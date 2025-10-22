@@ -17,6 +17,7 @@ pub fn setup_logger() {
 // = Helper Functions =
 // ====================
 
+const TOGGLE_PATH: &str = "./user_libs/static_analyses/toggle/toggle.wasm";
 const VALID_SCRIPTS: &[&str] = &[
     "wasm:opcode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
     r#"
@@ -644,7 +645,6 @@ wasm:opcode:*:before / toggle.should_inject(fid as i32, @static toggle.get_value
     "#;
     let mut ast = tests::get_ast(script, &mut err);
 
-    let TOGGLE_PATH = "./user_libs/static_analyses/toggle/toggle.wasm";
     let toggle_bytes = std::fs::read(TOGGLE_PATH).unwrap_or_else(|_| {
         panic!(
             "Could not read the core wasm module expected to be at location: {}",
