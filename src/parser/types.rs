@@ -988,7 +988,12 @@ impl Value {
             }
         }
     }
-    pub fn gen_empty_tuple() -> Self { Self::Tuple { ty: DataType::Tuple { ty_info: vec![] }, vals: Vec::new() } }
+    pub fn gen_empty_tuple() -> Self {
+        Self::Tuple {
+            ty: DataType::Tuple { ty_info: vec![] },
+            vals: Vec::new(),
+        }
+    }
     pub fn gen_u8(val: u8) -> Self {
         Self::gen_num(NumLit::u8(val), DataType::U8)
     }
@@ -1146,31 +1151,29 @@ impl From<&Val> for Value {
             Val::I64(val) => Self::gen_i64(*val),
             Val::F32(val) => Self::gen_f32(f32::from_bits(*val)),
             Val::F64(val) => Self::gen_f64(f64::from_bits(*val)),
-            Val::V128(_) |
-            Val::FuncRef(_) |
-            Val::ExternRef(_) |
-            Val::AnyRef(_) |
-            Val::ExnRef(_) |
-            Val::ContRef(_) => todo!()
+            Val::V128(_)
+            | Val::FuncRef(_)
+            | Val::ExternRef(_)
+            | Val::AnyRef(_)
+            | Val::ExnRef(_)
+            | Val::ContRef(_) => todo!(),
         }
     }
 }
 pub(crate) fn whamm_value_to_wasm_val(v: &Value) -> Option<Val> {
     match v {
-        Value::Number { val, .. } => {
-            match val {
-                NumLit::I8 { val } => Some(Val::I32(*val as i32)),
-                NumLit::U8 { val } => Some(Val::I32(*val as i32)),
-                NumLit::I16 { val } => Some(Val::I32(*val as i32)),
-                NumLit::U16 { val } => Some(Val::I32(*val as i32)),
-                NumLit::I32 { val } => Some(Val::I32(*val)),
-                NumLit::U32 { val } => Some(Val::I32(*val as i32)),
-                NumLit::I64 { val } => Some(Val::I64(*val)),
-                NumLit::U64 { val } => Some(Val::I64(*val as i64)),
-                NumLit::F32 { val } => Some(Val::F32(val.to_bits())),
-                NumLit::F64 { val } => Some(Val::F64(val.to_bits())),
-            }
-        }
+        Value::Number { val, .. } => match val {
+            NumLit::I8 { val } => Some(Val::I32(*val as i32)),
+            NumLit::U8 { val } => Some(Val::I32(*val as i32)),
+            NumLit::I16 { val } => Some(Val::I32(*val as i32)),
+            NumLit::U16 { val } => Some(Val::I32(*val as i32)),
+            NumLit::I32 { val } => Some(Val::I32(*val)),
+            NumLit::U32 { val } => Some(Val::I32(*val as i32)),
+            NumLit::I64 { val } => Some(Val::I64(*val)),
+            NumLit::U64 { val } => Some(Val::I64(*val as i64)),
+            NumLit::F32 { val } => Some(Val::F32(val.to_bits())),
+            NumLit::F64 { val } => Some(Val::F64(val.to_bits())),
+        },
         Value::Boolean { val } => {
             if *val {
                 Some(Val::I32(1))
@@ -1178,9 +1181,7 @@ pub(crate) fn whamm_value_to_wasm_val(v: &Value) -> Option<Val> {
                 Some(Val::I32(0))
             }
         }
-        Value::Str { .. } |
-        Value::Tuple { .. } |
-        Value::U32U32Map { .. } => None
+        Value::Str { .. } | Value::Tuple { .. } | Value::U32U32Map { .. } => None,
     }
 }
 
@@ -1371,7 +1372,7 @@ impl Expr {
     pub fn empty_tuple(loc: &Option<Location>) -> Self {
         Expr::Primitive {
             val: Value::gen_empty_tuple(),
-            loc: loc.clone()
+            loc: loc.clone(),
         }
     }
     pub fn one(line_col: LineColLocation) -> Self {
@@ -1463,7 +1464,7 @@ impl Display for Expr {
 pub(crate) fn expr_to_val(expr: &Expr) -> Option<Val> {
     match expr {
         Expr::Primitive { val, .. } => whamm_value_to_wasm_val(val),
-        _ => None
+        _ => None,
     }
 }
 

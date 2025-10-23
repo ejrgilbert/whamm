@@ -17,6 +17,7 @@ use crate::lang_features::libraries::core::io::IOPackage;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::libraries::core::maps::MapLibPackage;
 use crate::lang_features::libraries::core::{LibPackage, WHAMM_CORE_LIB_NAME};
+use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{Whamm, WhammVisitor};
 use crate::parser::whamm_parser::parse_script;
@@ -32,7 +33,6 @@ use wirm::ir::types::{DataType as WirmType, InitExpr, Value as WirmValue};
 use wirm::opcode::Instrumenter;
 use wirm::wasmparser::MemoryType;
 use wirm::{InitInstr, Module, Opcode};
-use crate::lang_features::libraries::registry::WasmRegistry;
 
 const ENGINE_BUFFER_NAME: &str = "whamm_buffer";
 const ENGINE_BUFFER_START_NAME: &str = "whamm_buffer:start";
@@ -414,7 +414,7 @@ fn run_instr_wei(
             map_lib_adapter,
             report_vars,
             // shouldn't need this for `wei`!
-            &mut registry
+            &mut registry,
         ),
         io_adapter,
         context_name: "".to_string(),
@@ -472,7 +472,7 @@ fn run_instr_rewrite(
             mem_allocator,
             map_lib_adapter,
             report_vars,
-            &mut registry
+            &mut registry,
         ),
         context_name: "".to_string(),
         err,
@@ -502,7 +502,7 @@ fn run_instr_rewrite(
             io_adapter,
             report_vars,
             unshared_var_handler,
-            &mut registry
+            &mut registry,
         ),
         simple_ast,
         err,
@@ -549,7 +549,7 @@ fn call_instr_init_at_start(state_init_id: Option<FunctionID>, module: &mut Modu
         }
 
         // now call `instr_init` in the module's start function
-        let start_fid = ModuleEmitter::get_or_create_start_func(module);
+        let (start_fid, _was_created) = ModuleEmitter::get_or_create_start_func(module);
         if let Some(mut start_func) = module.functions.get_fn_modifier(FunctionID(start_fid)) {
             start_func.func_entry();
             start_func.call(instr_init_fid);

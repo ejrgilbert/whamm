@@ -25,7 +25,9 @@ pub enum InjectStrategy {
     Rewriting,
 }
 impl InjectStrategy {
-    pub fn as_monitor_module(&self) -> bool { matches!(self, InjectStrategy::Wei) }
+    pub fn as_monitor_module(&self) -> bool {
+        matches!(self, InjectStrategy::Wei)
+    }
 }
 
 // =================================================

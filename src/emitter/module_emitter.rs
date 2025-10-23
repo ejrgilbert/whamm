@@ -10,6 +10,7 @@ use crate::emitter::{Emitter, InjectStrategy};
 use crate::generator::ast::{Probe, Script, WhammParams};
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Location, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
@@ -25,7 +26,6 @@ use wirm::module_builder::AddLocal;
 use wirm::opcode::{Instrumenter, Opcode};
 use wirm::wasmparser::MemArg;
 use wirm::InitInstr;
-use crate::lang_features::libraries::registry::WasmRegistry;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -52,7 +52,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         mem_allocator: &'d mut MemoryAllocator,
         map_lib_adapter: &'e mut MapLibAdapter,
         report_vars: &'f mut ReportVars,
-        registry: &'g mut WasmRegistry
+        registry: &'g mut WasmRegistry,
     ) -> Self {
         Self {
             strategy,
@@ -625,15 +625,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
 
     /// It is assumed that the statement passed here is a VALID global statement!
     /// (we've gone through several checks before this)
-    pub fn emit_global_stmt(&mut self, stmt: &mut Statement, err: &mut ErrorGen) -> bool {
-        let start_fid = ModuleEmitter::get_or_create_start_func(self.app_wasm);
+    /// Returns the start_fid (if it was created)
+    pub fn emit_global_stmt(&mut self, stmt: &mut Statement, err: &mut ErrorGen) -> Option<u32> {
+        let (start_fid, was_created) = ModuleEmitter::get_or_create_start_func(self.app_wasm);
         let mut start = self
             .app_wasm
             .functions
             .get_fn_modifier(FunctionID(start_fid))
             .unwrap();
         start.func_entry();
-        let res = emit_stmt(
+        let _res = emit_stmt(
             stmt,
             self.strategy,
             &mut start,
@@ -659,7 +660,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         );
         start.finish_instr();
 
-        res
+        if was_created {
+            Some(start_fid)
+        } else {
+            None
+        }
     }
 
     // =============================
@@ -676,13 +681,16 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         self.emit_global_inner(name, ty, val, true, err)
     }
 
-    pub(crate) fn get_or_create_start_func(wasm: &mut Module) -> u32 {
-        *wasm.start.unwrap_or_else(|| {
+    pub(crate) fn get_or_create_start_func(wasm: &mut Module) -> (u32, bool) {
+        let was_created = wasm.start.is_none();
+        let fid = *wasm.start.unwrap_or_else(|| {
             let start_func = FunctionBuilder::new(&[], &[]);
             let start_fid = start_func.finish_module_with_tag(wasm, get_tag_for(&None));
             wasm.start = Some(start_fid);
             start_fid
-        })
+        });
+
+        (fid, was_created)
     }
 }
 impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {

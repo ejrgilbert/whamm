@@ -134,12 +134,23 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_>
                 }
                 Statement::Assign { .. } | Statement::Expr { .. } => {
                     // assume this is a valid AST node since we've gone through validation
-                    self.emitter.emit_global_stmt(stmt, self.err);
+                    maybe_add_start_fn(
+                        self.injected_funcs,
+                        self.emitter.emit_global_stmt(stmt, self.err),
+                    )
                 }
-                Statement::UnsharedDeclInit { init, .. } => {
-                    self.emitter.emit_global_stmt(init, self.err);
-                }
+                Statement::UnsharedDeclInit { init, .. } => maybe_add_start_fn(
+                    self.injected_funcs,
+                    self.emitter.emit_global_stmt(init, self.err),
+                ),
                 _ => todo!("{:?}", stmt),
+            }
+        }
+
+        fn maybe_add_start_fn(injected_funcs: &mut Vec<FunctionID>, fid: Option<u32>) {
+            if let Some(fid) = fid {
+                // the start function was created, add this
+                injected_funcs.push(FunctionID(fid));
             }
         }
         true

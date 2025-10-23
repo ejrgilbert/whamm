@@ -23,14 +23,15 @@ enum Visiting {
     None,
 }
 
-
 #[derive(Default)]
 pub(crate) struct UserLibs {
-    pub(crate) funcs: HashMap<(String, String), bool>
+    pub(crate) funcs: HashMap<(String, String), bool>,
 }
 impl UserLibs {
     pub fn add(&mut self, lib_name: String, func_name: String, at_static: bool) {
-        self.funcs.entry((lib_name, func_name)).and_modify(|orig| {
+        self.funcs
+            .entry((lib_name, func_name))
+            .and_modify(|orig| {
                 // if there's any point that we use this library statically, remember!
                 *orig = *orig || at_static
             })
@@ -119,10 +120,10 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
         // we only care about predicate expressions that are dynamic
         if matches!(self.visiting, Visiting::Predicate) {
             self.curr_probe.metadata.pred_is_dynamic = true;
-            if let Some((_, is_static)) = self.curr_user_lib.first() {
+            if let Some((_, is_static)) = self.curr_user_lib.last() {
                 if *is_static {
                     self.err.add_instr_error(
-                        "Cannot use dynamic data in a static predicate".to_string(),
+                        "Cannot use dynamic data in a static library call".to_string(),
                     );
                 }
             }
@@ -240,7 +241,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 results,
                 loc,
             } => {
-                let (is_nested, curr_is_static) = if let Some(c) = self.curr_user_lib.first() {
+                let (is_nested, _curr_is_static) = if let Some(c) = self.curr_user_lib.first() {
                     (true, c.1)
                 } else {
                     (false, false)
@@ -303,11 +304,6 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                     self.mark_expr_as_dynamic();
                 }
 
-                if matches!(self.visiting, Visiting::Init) {
-                    // todo -- better erroring
-                    panic!("cannot perform a non-static initialization for a statically-initialized variable.")
-                }
-
                 if matches!(self.visiting, Visiting::Predicate) && self.config.as_monitor_module {
                     // If I'm in the predicate and targeting an engine, I don't care about the lib call args
                     // Just merge these with the general requests for the entire predicate.
@@ -334,7 +330,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 };
 
                 let (def, ret_ty, req_args, context) =
-                    if let Some((lib_name, is_static)) = &self.curr_user_lib.first() {
+                    if let Some((lib_name, is_static)) = &self.curr_user_lib.last() {
                         let Some(Record::LibFn {
                             name, results, def, ..
                         }) = self.table.lookup_lib_fn(lib_name, &fn_name)
@@ -346,11 +342,11 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                         };
 
                         // Track user library that's being used
-                        let Some((exp_lib_name, _)) = &self.curr_user_lib.first() else {
-                            panic!("Current user library is not set!")
-                        };
-                        assert_eq!(exp_lib_name, lib_name, "Library names should be equal!!");
-                        self.used_user_library_fns.add(lib_name.to_string(), fn_name.to_string(), *is_static);
+                        self.used_user_library_fns.add(
+                            lib_name.to_string(),
+                            fn_name.to_string(),
+                            *is_static,
+                        );
                         let ret_ty = if results.len() > 1 {
                             panic!(
                                 "We don't support functions with multiple return types: {}.{}",

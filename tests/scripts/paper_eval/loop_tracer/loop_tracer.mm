@@ -2,11 +2,15 @@ use tracer;
 
 // anchors
 wasm:func:entry {
-    unshared var anchor_id: i32 = @static tracer.init_anchor(fid as i32, pc as i32);
+    // cannot place @static on init_anchor since we depend on state initialized
+    // during this call to the tracer library.
+    unshared var anchor_id: i32 = tracer.init_anchor(fid as i32, pc as i32);
     tracer.on_anchor(anchor_id);
 }
 wasm:opcode:loop:before {
-    unshared var anchor_id: i32 = @static tracer.init_anchor(fid as i32, pc as i32);
+    // cannot place @static on init_anchor since we depend on state initialized
+    // during this call to the tracer library.
+    unshared var anchor_id: i32 = tracer.init_anchor(fid as i32, pc as i32);
     tracer.on_anchor(anchor_id);
 }
 

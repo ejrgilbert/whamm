@@ -8,6 +8,7 @@ use crate::generator::ast::Probe;
 use crate::generator::folding::expr::ExprFolder;
 use crate::generator::folding::stmt::StmtFolder;
 use crate::lang_features::libraries::core::maps::map_adapter::{MapLibAdapter, MAP_LIB_MEM_OFFSET};
+use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
 };
@@ -18,7 +19,6 @@ use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmVa
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{MacroOpcode, Opcode};
 use wirm::{InitInstr, Module};
-use crate::lang_features::libraries::registry::WasmRegistry;
 
 // ==================================================================
 // ================ Emitter Helper Functions ========================
@@ -98,7 +98,8 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     let mut is_success = true;
-    let mut folded_stmt = StmtFolder::fold_stmt(stmt, strategy.as_monitor_module(), ctx.table, ctx.err);
+    let mut folded_stmt =
+        StmtFolder::fold_stmt(stmt, strategy.as_monitor_module(), ctx.table, ctx.err);
     for s in folded_stmt.stmts.iter_mut() {
         is_success &= emit_stmt_inner(s, strategy, injector, ctx);
     }
@@ -607,7 +608,13 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 ) -> bool {
     // fold it first!
     // todo -- create actual registry here!
-    let mut folded_expr = ExprFolder::fold_expr(expr, ctx.registry, strategy.as_monitor_module(), ctx.table, ctx.err);
+    let mut folded_expr = ExprFolder::fold_expr(
+        expr,
+        ctx.registry,
+        strategy.as_monitor_module(),
+        ctx.table,
+        ctx.err,
+    );
     match &mut folded_expr {
         Expr::UnOp {
             op, expr, done_on, ..
