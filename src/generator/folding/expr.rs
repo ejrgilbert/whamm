@@ -115,21 +115,16 @@ impl<'a> ExprFolder<'a> {
                         if let Some(new_arg) = expr_to_val(&new_arg) {
                             arg_vals.push(new_arg);
                         } else {
-                            // todo -- make this an internal error
-                            panic!(
-                                "[internal error] couldn't convert to a Wasm value: {:?}",
-                                new_arg
-                            )
+                            err.add_internal_error(format!("couldn't convert to a Wasm value: {:?}",
+                                                           new_arg), lib_call_loc);
                         }
                     }
                     // todo -- assumes results is set
                     let mut results = results.as_ref().unwrap().to_default_values();
                     if let Some(svc) = self.registry.get_mut(lib_name) {
-                        svc.call(lib_name, func_name, &arg_vals, &mut results);
+                        svc.call(lib_name, func_name, &arg_vals, &mut results, err);
                     } else {
-                        panic!(
-                            "[internal error] could not find the wasm service for lib: {lib_name}"
-                        )
+                        err.add_internal_error(format!("could not find the wasm service for lib: {lib_name}"), lib_call_loc);
                     }
 
                     if results.len() > 1 {
@@ -145,19 +140,18 @@ impl<'a> ExprFolder<'a> {
                         Expr::empty_tuple(lib_call_loc)
                     }
                 } else {
-                    panic!(
-                        "[internal error] Expected a name expression, got: {:?}",
-                        fn_target
-                    );
+                    err.add_internal_error(format!( "Expected a name expression, got: {:?}",
+                                                    fn_target), lib_call_loc);
+                    lib_call.clone()
                 }
             } else {
-                panic!("[internal error] Expected call expression, got: {:?}", call);
+                err.add_internal_error(format!( "Expected call expression, got: {:?}", call), lib_call_loc);
+                lib_call.clone()
             }
         } else {
-            panic!(
-                "[internal error] Expected library call expression, got: {:?}",
-                lib_call
-            );
+            err.add_internal_error(format!( "Expected library call expression, got: {:?}",
+                                            lib_call), &None);
+            lib_call.clone()
         }
     }
 

@@ -279,6 +279,9 @@ impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
 impl GeneratingVisitor for WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     // TODO -- these are all duplicates, try to factor out
+    fn add_internal_error(&mut self, message: String, loc: &Option<Location>) {
+        self.err.add_internal_error(message, loc);
+    }
     fn emit_string(&mut self, val: &mut Value) -> bool {
         self.emitter.emit_string(val)
     }

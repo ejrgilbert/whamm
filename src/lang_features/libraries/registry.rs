@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use wasi_common::sync::{add_to_linker, WasiCtxBuilder};
 use wasi_common::WasiCtx;
 use wasmtime::*;
+use crate::common::error::ErrorGen;
 
 pub(crate) struct WasmService {
     store: Store<WasiCtx>,
@@ -32,17 +33,14 @@ impl WasmService {
         Ok(Self { store, instance })
     }
 
-    pub fn call(&mut self, lib_name: &str, func_name: &str, args: &[Val], results: &mut [Val]) {
+    pub fn call(&mut self, lib_name: &str, func_name: &str, args: &[Val], results: &mut [Val], err: &mut ErrorGen) {
         if let Some(func) = self.instance.get_func(&mut self.store, func_name) {
             if let Err(e) = func.call(&mut self.store, args, results) {
-                // TODO -- make this an internal error
-                panic!(
-                    "[internal error] Failed to call function {lib_name}.{func_name}: {}",
-                    e
-                );
+                err.add_internal_error(format!("Failed to call function {lib_name}.{func_name}: {}",
+                                               e), &None);
             }
         } else {
-            panic!("[internal error] Could not find function for {lib_name}.{func_name}")
+            err.add_internal_error(format!("Could not find function for {lib_name}.{func_name}"), &None);
         }
     }
 }
@@ -56,6 +54,7 @@ impl WasmRegistry {
     pub(crate) fn new(
         static_libs: &HashSet<String>,
         user_libs: &HashMap<String, String>, // name -> path
+        err: &mut ErrorGen
     ) -> Self {
         let engine = Engine::default();
 
@@ -66,7 +65,7 @@ impl WasmRegistry {
                 let service = WasmService::new(&engine, &module).unwrap();
                 services.insert(static_lib.clone(), Box::new(service));
             } else {
-                panic!("[internal error] Could not find user library for static lib: {static_lib}");
+                err.add_internal_error(format!("Could not find user library for static lib: {static_lib}"), &None);
             }
         }
 

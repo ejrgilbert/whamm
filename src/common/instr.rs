@@ -461,7 +461,7 @@ fn run_instr_rewrite(
     let has_probe_state_init = metadata_collector.has_probe_state_init;
     let config = metadata_collector.config;
 
-    let mut registry = WasmRegistry::new(&static_libs, &user_lib_paths);
+    let mut registry = WasmRegistry::new(&static_libs, &user_lib_paths, err);
 
     // Phase 0 of instrumentation (emit bound variables and fns)
     let mut init = InitGenerator {

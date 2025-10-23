@@ -82,6 +82,28 @@ impl ErrorGen {
     // == Error Generators ==
     // ======================
 
+    fn get_error_loc(message: &str, loc: &Option<Location>) -> Option<CodeLocation> {
+        loc.as_ref().map(|err_loc| CodeLocation {
+            is_err: true,
+            message: Some(message.to_string()),
+            line_col: err_loc.line_col.clone(),
+            line_str: None,
+            line2_str: None,
+        })
+    }
+
+    pub fn get_internal_error(message: String, loc: &Option<Location>) -> WhammError {
+        WhammError {
+            match_rule: None,
+            err_loc: Self::get_error_loc(&message, loc),
+            ty: ErrorType::InternalError { message },
+            info_loc: None
+        }
+    }
+    pub fn add_internal_error(&mut self, msg: String, loc: &Option<Location>) {
+        self.add_error(Self::get_internal_error(msg, loc));
+    }
+
     pub fn get_instrumentation_error(message: String) -> WhammError {
         WhammError {
             match_rule: None,
@@ -103,17 +125,10 @@ impl ErrorGen {
     }
 
     pub fn get_arithmetic_error(message: String, loc: Option<Location>) -> WhammError {
-        let err_loc = loc.as_ref().map(|err_loc| CodeLocation {
-            is_err: true,
-            message: Some(message.clone()),
-            line_col: err_loc.line_col.clone(),
-            line_str: None,
-            line2_str: None,
-        });
         WhammError {
             match_rule: None,
+            err_loc: Self::get_error_loc(&message, &loc),
             ty: ErrorType::ArithmeticError { message },
-            err_loc,
             info_loc: None,
         }
     }
@@ -791,6 +806,9 @@ impl WarnType {
 }
 #[derive(Clone, Debug)]
 pub enum ErrorType {
+    InternalError {
+        message: String,
+    },
     InstrumentationError {
         message: String,
     },
@@ -823,6 +841,7 @@ pub enum ErrorType {
 impl ErrorType {
     pub fn name(&self) -> &str {
         match self {
+            ErrorType::InternalError { .. } => "InternalError",
             ErrorType::InstrumentationError { .. } => "InstrumentationError",
             ErrorType::DuplicateIdentifierError { .. } => "DuplicateIdentifierError",
             ErrorType::ParsingError { .. } => "ParsingError",
@@ -834,6 +853,7 @@ impl ErrorType {
     }
     pub fn message(&self) -> Cow<'_, str> {
         match self {
+            ErrorType::InternalError { ref message } => Cow::Borrowed(message),
             ErrorType::InstrumentationError { ref message } => Cow::Borrowed(message),
             ErrorType::ParsingError {
                 ref positives,

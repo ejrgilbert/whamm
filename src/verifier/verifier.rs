@@ -657,8 +657,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
                 None
             }
-            _ => panic!("Internal error. Should already be handled: {:?}", stmt),
+            _ => { self.err.add_internal_error(format!("Should already be handled: {stmt:?}"), &None);
+                None
+            }
         }
+
     }
 
     fn visit_stmt_global(&mut self, stmt: &mut Statement) -> Option<DataType> {
