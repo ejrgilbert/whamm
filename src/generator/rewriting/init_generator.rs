@@ -147,7 +147,9 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_>
                     self.injected_funcs,
                     self.emitter.emit_global_stmt(init, self.err),
                 ),
-                _ => todo!("{:?}", stmt),
+                _ => {
+                    self.err.add_unimplemented_error(&format!("We don't support this statement type yet in global script scope: {stmt:?}"), stmt.loc());
+                }
             }
         }
 

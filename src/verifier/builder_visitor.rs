@@ -636,7 +636,8 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                         is_report_var = *is_report;
                         &mut **d
                     } else {
-                        todo!()
+                        self.err.add_internal_error(&format!("An unshared decl initialization statement should always contain an unshared declaration, but this was: {decl:?}"), decl.loc());
+                        return;
                     }
                 }
                 _ => stmt,
@@ -654,11 +655,10 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                         },
                     );
                 } else {
-                    panic!(
-                        "{} \
+                    self.err.add_internal_error(&format!(
+                        "{UNEXPECTED_ERR_MSG} \
             Variable declaration var_id is not the correct Expr variant!!",
-                        UNEXPECTED_ERR_MSG
-                    );
+                    ), var_id.loc());
                 }
             }
             self.visit_stmt(stmt)

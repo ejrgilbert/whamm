@@ -122,7 +122,15 @@ impl<'a> ExprFolder<'a> {
                         }
                     }
                     // todo -- assumes results is set
-                    let mut results = results.as_ref().unwrap().to_default_values();
+                    let mut results = if let Some(res) = results.as_ref() {
+                        res.to_default_values()
+                    } else {
+                        err.add_unimplemented_error(
+                            "Results should be set at this point!",
+                            lib_call_loc,
+                        );
+                        return lib_call.clone();
+                    };
                     if let Some(svc) = self.registry.get_mut(lib_name) {
                         svc.call(lib_name, func_name, &arg_vals, &mut results, err);
                     } else {

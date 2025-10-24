@@ -607,7 +607,6 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     // fold it first!
-    // todo -- create actual registry here!
     let mut folded_expr = ExprFolder::fold_expr(
         expr,
         ctx.registry,
@@ -714,16 +713,14 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             if let Some(f_id) = addr {
                 injector.call(FunctionID(f_id));
             } else {
-                unreachable!(
-                    "{}\n\tfn_target address not in symbol table for '{}{}', not emitted yet...",
-                    ctx.err_msg,
-                    if let Some(lib_name) = &ctx.in_lib_call_to {
-                        format!("{lib_name}.")
-                    } else {
-                        "".to_string()
-                    },
-                    fn_name
-                );
+                ctx.err.add_internal_error(&format!("{}\n\tfn_target address not in symbol table for '{}{}', not emitted yet...",
+                                                    ctx.err_msg,
+                                                    if let Some(lib_name) = &ctx.in_lib_call_to {
+                                                        format!("{lib_name}.")
+                                                    } else {
+                                                        "".to_string()
+                                                    },
+                                                    fn_name), expr.loc());
             }
             is_success
         }

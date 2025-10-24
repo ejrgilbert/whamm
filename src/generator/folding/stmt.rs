@@ -50,7 +50,6 @@ impl StmtFolder {
             // -- true: conseq
             // -- false: alt
             // -- other: orig
-            // todo -- create actual registry here
             let folded_expr = ExprFolder::fold_expr(
                 cond,
                 &mut WasmRegistry::default(),

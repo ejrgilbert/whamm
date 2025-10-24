@@ -257,7 +257,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l>
                         is_success = self.emitter.fold_expr(pred, self.err);
 
                         // If the predicate evaluates to false, short-circuit!
-                        // todo -- create actual registry
                         if let Some(pred_as_bool) =
                             ExprFolder::get_single_bool(pred, self.emitter.registry, false)
                         {
@@ -444,7 +443,6 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn pred_is_true(&mut self) -> bool {
         if let Some((.., pred)) = &self.curr_probe {
             if let Some(pred) = pred {
-                // todo -- create actual registry
                 if let Some(pred_as_bool) =
                     ExprFolder::get_single_bool(pred, self.emitter.registry, false)
                 {

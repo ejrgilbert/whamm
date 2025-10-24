@@ -137,7 +137,11 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             Visiting::Body => &mut self.curr_probe.metadata.body_args,
             Visiting::Init => &mut self.curr_probe.metadata.init_args,
             Visiting::None => {
-                unreachable!("Expected a set variant of 'Visiting', but found 'None'");
+                self.err.add_internal_error(
+                    "Expected a set variant of 'Visiting', but found 'None'",
+                    &None,
+                );
+                &mut self.curr_probe.metadata.pred_args
             }
         }
     }
@@ -303,55 +307,60 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 let fn_name = match &**fn_target {
                     Expr::VarId { name, .. } => name.clone(),
                     _ => {
-                        unreachable!("{} Can only call functions.", UNEXPECTED_ERR_MSG);
+                        self.err.add_internal_error(
+                            &format!("{} Can only call functions.", UNEXPECTED_ERR_MSG),
+                            fn_target.loc(),
+                        );
+                        "".to_string()
                     }
                 };
 
-                let (def, ret_ty, req_args, context) =
-                    if let Some((lib_name, is_static)) = &self.curr_user_lib.last() {
-                        let Some(Record::LibFn {
-                            name, results, def, ..
-                        }) = self.table.lookup_lib_fn(lib_name, &fn_name)
-                        else {
-                            panic!(
-                                "Could not find library function for {}.{}",
-                                lib_name, fn_name
-                            )
-                        };
-
-                        // Track user library that's being used
-                        self.used_user_library_fns.add(
-                            lib_name.to_string(),
-                            fn_name.to_string(),
-                            *is_static,
+                let (def, ret_ty, req_args, context) = if let Some((lib_name, is_static)) =
+                    &self.curr_user_lib.last()
+                {
+                    let Some(Record::LibFn { results, def, .. }) =
+                        self.table.lookup_lib_fn(lib_name, &fn_name)
+                    else {
+                        self.err.add_internal_error(
+                            &format!("Could not find library function for {lib_name}.{fn_name}"),
+                            expr.loc(),
                         );
-                        let ret_ty = if results.len() > 1 {
-                            panic!(
-                                "We don't support functions with multiple return types: {}.{}",
-                                lib_name, name
-                            );
-                        } else if results.is_empty() {
-                            DataType::Tuple { ty_info: vec![] }
-                        } else {
-                            results.first().unwrap().clone()
-                        };
-
-                        (def, ret_ty, StackReq::None, None)
-                    } else {
-                        let (
-                            Some(Record::Fn {
-                                def,
-                                ret_ty,
-                                req_args,
-                                ..
-                            }),
-                            context,
-                        ) = self.table.lookup_fn_with_context(&fn_name)
-                        else {
-                            unreachable!("unexpected type");
-                        };
-                        (def, ret_ty.clone(), req_args.clone(), Some(context))
+                        return expr.clone();
                     };
+
+                    // Track user library that's being used
+                    self.used_user_library_fns.add(
+                        lib_name.to_string(),
+                        fn_name.to_string(),
+                        *is_static,
+                    );
+                    let ret_ty = if results.len() > 1 {
+                        self.err.add_unimplemented_error(&format!("We don't support functions with multiple return types: {lib_name}.{fn_name}"), expr.loc());
+                        return expr.clone();
+                    } else if results.is_empty() {
+                        DataType::Tuple { ty_info: vec![] }
+                    } else {
+                        results.first().unwrap().clone()
+                    };
+
+                    (def, ret_ty, StackReq::None, None)
+                } else {
+                    let (
+                        Some(Record::Fn {
+                            def,
+                            ret_ty,
+                            req_args,
+                            ..
+                        }),
+                        context,
+                    ) = self.table.lookup_fn_with_context(&fn_name)
+                    else {
+                        self.err
+                            .add_unimplemented_error("unexpected type", expr.loc());
+                        return expr.clone();
+                    };
+                    (def, ret_ty.clone(), req_args.clone(), Some(context))
+                };
 
                 self.check_strcmp &= matches!(ret_ty, DataType::Str);
                 if matches!(def, Definition::CompilerDynamic) {
@@ -460,7 +469,11 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                         self.used_report_var_dts.insert(ty.clone());
                         // this needs to also add report_var_metadata (if is_report)!
                         let wasm_ty = if ty.to_wasm_type().len() > 1 {
-                            unimplemented!()
+                            self.err.add_unimplemented_error(
+                                "We don't support multiple wasm types for an unshared var",
+                                loc,
+                            );
+                            return stmt.clone();
                         } else {
                             *ty.to_wasm_type().first().unwrap()
                         };

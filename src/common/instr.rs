@@ -443,7 +443,7 @@ fn run_instr_wei(
         used_strings,
         has_probe_state_init,
     );
-    call_instr_init_at_start(None, target_wasm);
+    call_instr_init_at_start(None, target_wasm, err);
 }
 
 fn run_instr_rewrite(
@@ -525,7 +525,7 @@ fn run_instr_rewrite(
         metrics.start(&match_time);
     }
     instr.run();
-    configure_init_func(init_func, target_wasm);
+    configure_init_func(init_func, target_wasm, err);
     if config.metrics {
         metrics.end(&match_time);
     }
@@ -536,7 +536,11 @@ fn run_instr_rewrite(
         Ok(())
     }
 }
-pub fn configure_init_func<'a>(init_func: FunctionBuilder<'a>, module: &mut Module<'a>) {
+pub fn configure_init_func<'a>(
+    init_func: FunctionBuilder<'a>,
+    module: &mut Module<'a>,
+    err: &mut ErrorGen,
+) {
     let state_init_id = if init_func.body.num_instructions > 0 {
         // Call the probe init state function in the instr_init body
         let state_init_id = init_func.finish_module_with_tag(module, get_tag_for(&None));
@@ -545,10 +549,14 @@ pub fn configure_init_func<'a>(init_func: FunctionBuilder<'a>, module: &mut Modu
     } else {
         None
     };
-    call_instr_init_at_start(state_init_id, module);
+    call_instr_init_at_start(state_init_id, module, err);
 }
 
-fn call_instr_init_at_start(state_init_id: Option<FunctionID>, module: &mut Module) {
+fn call_instr_init_at_start(
+    state_init_id: Option<FunctionID>,
+    module: &mut Module,
+    err: &mut ErrorGen,
+) {
     if let Some(instr_init_fid) = module.functions.get_local_fid_by_name("instr_init") {
         if let Some(state_init_id) = state_init_id {
             if let Some(mut instr_init) = module.functions.get_fn_modifier(instr_init_fid) {
@@ -575,10 +583,13 @@ fn call_instr_init_at_start(state_init_id: Option<FunctionID>, module: &mut Modu
             );
             start_func.finish_instr();
         } else {
-            unreachable!("Should have found the function in the module.")
+            err.add_internal_error("Should have found the function in the module.", &None);
         }
     } else if state_init_id.is_some() {
-        unreachable!("If there's a state init function, there should be an instr_init function!")
+        err.add_internal_error(
+            "If there's a state init function, there should be an instr_init function!",
+            &None,
+        );
     }
 }
 
