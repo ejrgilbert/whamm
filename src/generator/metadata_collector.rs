@@ -122,9 +122,8 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             self.curr_probe.metadata.pred_is_dynamic = true;
             if let Some((_, is_static)) = self.curr_user_lib.last() {
                 if *is_static {
-                    self.err.add_instr_error(
-                        "Cannot use dynamic data in a static library call".to_string(),
-                    );
+                    self.err
+                        .add_instr_error("Cannot use dynamic data in a static library call");
                 }
             }
         }

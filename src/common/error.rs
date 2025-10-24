@@ -67,10 +67,15 @@ impl ErrorGen {
         self.script_text = script_text;
     }
 
-    pub fn report(&mut self) {
+    pub fn report_warnings(&mut self) {
         self.warnings.iter_mut().for_each(|warning| {
             warning.report(&self.script_text, &self.script_path);
         });
+        self.warnings.clear();
+    }
+
+    pub fn report(&mut self) {
+        self.report_warnings();
         // Report the most-recent error first
         self.errors.iter_mut().for_each(|error| {
             error.report(&self.script_text, &self.script_path);
@@ -84,7 +89,7 @@ impl ErrorGen {
 
     fn get_error_loc(message: &str, loc: &Option<Location>) -> Option<CodeLocation> {
         loc.as_ref().map(|err_loc| CodeLocation {
-            is_err: true,
+            ty: LocType::Err,
             message: Some(message.to_string()),
             line_col: err_loc.line_col.clone(),
             line_str: None,
@@ -92,49 +97,79 @@ impl ErrorGen {
         })
     }
 
-    pub fn get_internal_error(message: String, loc: &Option<Location>) -> WhammError {
+    fn get_warn_loc(message: &str, loc: &Option<Location>) -> Option<CodeLocation> {
+        loc.as_ref().map(|err_loc| CodeLocation {
+            ty: LocType::Warn,
+            message: Some(message.to_string()),
+            line_col: err_loc.line_col.clone(),
+            line_str: None,
+            line2_str: None,
+        })
+    }
+
+    pub fn get_unimplemented_error(message: &str, loc: &Option<Location>) -> WhammError {
         WhammError {
             match_rule: None,
-            err_loc: Self::get_error_loc(&message, loc),
-            ty: ErrorType::InternalError { message },
-            info_loc: None
+            err_loc: Self::get_error_loc(message, loc),
+            ty: ErrorType::UnimplementedError {
+                message: message.to_string(),
+            },
+            info_loc: None,
         }
     }
-    pub fn add_internal_error(&mut self, msg: String, loc: &Option<Location>) {
+    pub fn add_unimplemented_error(&mut self, msg: &str, loc: &Option<Location>) {
+        self.add_error(Self::get_unimplemented_error(msg, loc));
+    }
+
+    pub fn get_internal_error(message: &str, loc: &Option<Location>) -> WhammError {
+        WhammError {
+            match_rule: None,
+            err_loc: Self::get_error_loc(message, loc),
+            ty: ErrorType::InternalError {
+                message: message.to_string(),
+            },
+            info_loc: None,
+        }
+    }
+    pub fn add_internal_error(&mut self, msg: &str, loc: &Option<Location>) {
         self.add_error(Self::get_internal_error(msg, loc));
     }
 
-    pub fn get_instrumentation_error(message: String) -> WhammError {
+    pub fn get_instrumentation_error(message: &str) -> WhammError {
         WhammError {
             match_rule: None,
-            ty: ErrorType::InstrumentationError { message },
+            ty: ErrorType::InstrumentationError {
+                message: message.to_string(),
+            },
             err_loc: None,
             info_loc: None,
         }
     }
-    pub fn add_instr_error(&mut self, msg: String) {
+    pub fn add_instr_error(&mut self, msg: &str) {
         self.add_error(Self::get_instrumentation_error(msg));
     }
 
     pub fn multiple_alt_matches(&mut self, instr_name: &str) {
-        let msg = format!(
+        let msg = &format!(
             "Multiple `alt` probes matched same bytecode location for instr_name: {}",
             instr_name
         );
         self.add_error(Self::get_instrumentation_error(msg));
     }
 
-    pub fn get_arithmetic_error(message: String, loc: Option<Location>) -> WhammError {
+    pub fn get_arithmetic_error(message: &str, loc: Option<Location>) -> WhammError {
         WhammError {
             match_rule: None,
-            err_loc: Self::get_error_loc(&message, &loc),
-            ty: ErrorType::ArithmeticError { message },
+            err_loc: Self::get_error_loc(message, &loc),
+            ty: ErrorType::ArithmeticError {
+                message: message.to_string(),
+            },
             info_loc: None,
         }
     }
 
     pub fn div_by_zero(&mut self, loc: Option<Location>) {
-        let err = Self::get_arithmetic_error("attempt to divide by zero".to_string(), loc);
+        let err = Self::get_arithmetic_error("attempt to divide by zero", loc);
         self.add_error(err);
     }
 
@@ -153,7 +188,7 @@ impl ErrorGen {
                     message: message.clone(),
                 },
                 err_loc: Some(CodeLocation {
-                    is_err: true,
+                    ty: LocType::Err,
                     message,
                     line_col,
                     line_str: None,
@@ -197,14 +232,14 @@ impl ErrorGen {
         info_line_col: Option<LineColLocation>,
     ) -> WhammError {
         let err_loc = err_line_col.map(|err_line_col| CodeLocation {
-            is_err: true,
+            ty: LocType::Err,
             message: Some(format!("duplicate definitions for `{}`", duplicated_id)),
             line_col: err_line_col,
             line_str: None,
             line2_str: None,
         });
         let info_loc = info_line_col.map(|info_line_col| CodeLocation {
-            is_err: false,
+            ty: LocType::Info,
             message: Some(format!("other definition for `{}`", duplicated_id)),
             line_col: info_line_col,
             line_str: None,
@@ -225,7 +260,7 @@ impl ErrorGen {
         loc: Option<LineColLocation>,
     ) -> WhammError {
         let err_loc = loc.map(|err_line_col| CodeLocation {
-            is_err: true,
+            ty: LocType::Err,
             message: Some(format!(
                 "`{}` is an identifier used by compiler. Neither overloading nor overriding is supported",
                 duplicated_id
@@ -263,7 +298,7 @@ impl ErrorGen {
     }
     pub fn get_type_check_error(message: String, loc: &Option<LineColLocation>) -> WhammError {
         let loc = loc.as_ref().map(|loc| CodeLocation {
-            is_err: false,
+            ty: LocType::Err,
             message: Some(message.clone()),
             line_col: loc.clone(),
             line_str: None,
@@ -286,7 +321,7 @@ impl ErrorGen {
     }
     pub fn get_wei_error(message: String, loc: &Option<LineColLocation>) -> WhammError {
         let loc = loc.as_ref().map(|loc| CodeLocation {
-            is_err: false,
+            ty: LocType::Err,
             message: Some(message.clone()),
             line_col: loc.clone(),
             line_str: None,
@@ -344,7 +379,7 @@ impl ErrorGen {
                     message: None,
                 },
                 err_loc: Some(CodeLocation {
-                    is_err: true,
+                    ty: LocType::Err,
                     message: None,
                     line_col: e.line_col.clone(),
                     line_str: Some(line),
@@ -357,7 +392,7 @@ impl ErrorGen {
                 match_rule: self.curr_match_rule.clone(),
                 ty: ErrorType::Error { message: None },
                 err_loc: Some(CodeLocation {
-                    is_err: true,
+                    ty: LocType::Err,
                     message: None,
                     line_col: e.line_col.clone(),
                     line_str: Some(line),
@@ -385,9 +420,22 @@ impl ErrorGen {
         self.warnings.push(warn);
         self.has_warnings = true;
     }
+    pub fn get_probe_warning(message: &str, loc: &Option<Location>) -> WhammWarning {
+        WhammWarning {
+            match_rule: None,
+            ty: WarnType::ProbeWarning {
+                message: message.to_string(),
+            },
+            warn_loc: Self::get_warn_loc(message, loc),
+            info_loc: None,
+        }
+    }
+    pub fn add_probe_warn(&mut self, message: &str, loc: &Option<Location>) {
+        self.add_warn(Self::get_probe_warning(message, loc));
+    }
     pub fn add_typecheck_warn(&mut self, message: String, loc: Option<LineColLocation>) {
         let loc = loc.as_ref().map(|loc| CodeLocation {
-            is_err: false,
+            ty: LocType::Warn,
             message: Some(message.clone()),
             line_col: loc.clone(),
             line_str: None,
@@ -402,10 +450,19 @@ impl ErrorGen {
         self.add_warn(warn);
     }
 }
+
+#[derive(Clone, Debug)]
+enum LocType {
+    /// Is an error-causing code location
+    Err,
+    /// Is a warning-causing code location
+    Warn,
+    /// Is just informational
+    Info,
+}
 #[derive(Clone, Debug)]
 pub struct CodeLocation {
-    // True if this is an error-causing code location, false if not (just informational)
-    pub is_err: bool,
+    ty: LocType,
     // The message associated with this location in the source code
     pub message: Option<String>,
     // The line/column in the source code
@@ -424,20 +481,14 @@ impl CodeLocation {
     }
 
     // report this error to the console, including color highlighting
-    pub fn print(&mut self, script: &str, spacing: &String, buffer: &mut Buffer) {
+    pub fn print(&mut self, script: &str, spacing: &str, buffer: &mut Buffer) {
         if !self.lines_are_defined() {
             self.define_lines(script);
         }
 
         if let Some(line) = &self.line_str {
             // define common vars for printing
-            let (ls, col) = self.start();
-            let underline = self.underline(col);
-            let message = if let Some(msg) = &self.message {
-                msg.clone()
-            } else {
-                "".to_string()
-            };
+            let (ls, _) = self.start();
             if let (LineColLocation::Span(_, (le, _)), Some(ref line2)) =
                 (&self.line_col, &self.line2_str)
             {
@@ -455,11 +506,7 @@ impl CodeLocation {
                 self.print_numbered_line(ls, line, spacing, buffer);
             };
 
-            if self.is_err {
-                self.print_err(&format!("{underline} {message}"), spacing, buffer);
-            } else {
-                self.print_info(&format!("{underline} {message}"), spacing, buffer);
-            }
+            self.print_underline(spacing, buffer);
         }
     }
 
@@ -489,21 +536,29 @@ impl CodeLocation {
         white(false, format!("{line}\n"), buffer);
     }
 
-    fn print_line_start(&self, s: &String, buffer: &mut Buffer) {
+    fn print_line_start(&self, s: &str, buffer: &mut Buffer) {
         blue(false, format!("{s} | "), buffer);
     }
 
-    fn print_err(&self, line: &str, s: &String, buffer: &mut Buffer) {
+    fn print_underline(&self, s: &str, buffer: &mut Buffer) {
+        let (_, col) = self.start();
+        let underline = self.underline(col);
+        let message = if let Some(msg) = &self.message {
+            msg.clone()
+        } else {
+            "".to_string()
+        };
+
         self.print_line_start(s, buffer);
-        red(false, format!("{line}\n"), buffer);
+        let color = match self.ty {
+            LocType::Err => red,
+            LocType::Warn => yellow,
+            LocType::Info => blue,
+        };
+        color(false, format!("{underline} {message}\n"), buffer);
     }
 
-    fn print_info(&self, line: &str, s: &String, buffer: &mut Buffer) {
-        self.print_line_start(s, buffer);
-        blue(false, format!("{line}\n"), buffer);
-    }
-
-    fn print_norm(&self, line: &str, s: &String, buffer: &mut Buffer) {
+    fn print_norm(&self, line: &str, s: &str, buffer: &mut Buffer) {
         self.print_line_start(s, buffer);
         white(false, format!("{line}\n"), buffer);
     }
@@ -539,10 +594,9 @@ impl CodeLocation {
         }
 
         if let Some(end) = end {
-            let u_char = if self.is_err {
-                ERR_UNDERLINE_CHAR
-            } else {
-                INFO_UNDERLINE_CHAR
+            let u_char = match self.ty {
+                LocType::Err => ERR_UNDERLINE_CHAR,
+                LocType::Warn | LocType::Info => INFO_UNDERLINE_CHAR,
             };
 
             underline.push(u_char);
@@ -790,22 +844,29 @@ impl WhammError {
     }
 }
 pub enum WarnType {
+    ProbeWarning { message: String },
     TypeCheckWarning { message: String },
 }
 impl WarnType {
     pub fn name(&self) -> &str {
         match self {
+            WarnType::ProbeWarning { .. } => "ProbeWarning",
             WarnType::TypeCheckWarning { .. } => "TypeCheckWarning",
         }
     }
     pub fn message(&self) -> Cow<'_, str> {
         match self {
-            WarnType::TypeCheckWarning { ref message } => Cow::Borrowed(message),
+            WarnType::ProbeWarning { ref message } | WarnType::TypeCheckWarning { ref message } => {
+                Cow::Borrowed(message)
+            }
         }
     }
 }
 #[derive(Clone, Debug)]
 pub enum ErrorType {
+    UnimplementedError {
+        message: String,
+    },
     InternalError {
         message: String,
     },
@@ -841,6 +902,7 @@ pub enum ErrorType {
 impl ErrorType {
     pub fn name(&self) -> &str {
         match self {
+            ErrorType::UnimplementedError { .. } => "Unimplemented",
             ErrorType::InternalError { .. } => "InternalError",
             ErrorType::InstrumentationError { .. } => "InstrumentationError",
             ErrorType::DuplicateIdentifierError { .. } => "DuplicateIdentifierError",
@@ -853,8 +915,10 @@ impl ErrorType {
     }
     pub fn message(&self) -> Cow<'_, str> {
         match self {
-            ErrorType::InternalError { ref message } => Cow::Borrowed(message),
-            ErrorType::InstrumentationError { ref message } => Cow::Borrowed(message),
+            ErrorType::UnimplementedError { ref message }
+            | ErrorType::InternalError { ref message }
+            | ErrorType::ArithmeticError { ref message }
+            | ErrorType::InstrumentationError { ref message } => Cow::Borrowed(message),
             ErrorType::ParsingError {
                 ref positives,
                 ref negatives,
@@ -878,7 +942,6 @@ impl ErrorType {
                     Cow::Borrowed("An error occurred.")
                 }
             }
-            ErrorType::ArithmeticError { ref message } => Cow::Borrowed(message),
         }
     }
 

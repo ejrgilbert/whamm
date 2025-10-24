@@ -9,7 +9,7 @@ use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::LocationData;
 use crate::parser::types::{Block, DataType, Expr, Location, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::Record;
-use log::{trace, warn};
+use log::trace;
 use std::collections::{HashMap, HashSet};
 use wirm::ir::id::{FunctionID, LocalID};
 use wirm::ir::types::DataType as WirmType;
@@ -152,11 +152,25 @@ impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 let ty = if let Expr::LibCall { results, .. } = lib_call {
                     results.as_ref().unwrap().clone()
                 } else {
-                    unreachable!(
-                        "Results of a library call should have been set by the type checker!"
-                    )
+                    self.err.add_internal_error(
+                        "Results of a library call should have been set by the type checker!",
+                        lib_call.loc(),
+                    );
+                    DataType::AssumeGood
                 };
-                let wirm_ty = ty.to_wasm_type().first().unwrap().to_owned();
+                let wirm_ty = match ty.to_wasm_type().first() {
+                    Some(ty) => *ty,
+                    None => {
+                        self.err.add_internal_error(
+                            &format!(
+                                "Should have been able to convert the type to a Wasm type: {ty}"
+                            ),
+                            lib_call.loc(),
+                        );
+                        return;
+                    }
+                };
+
                 let (fid, s) = self.emitter.emit_special_func(
                     None,
                     &[],
@@ -240,7 +254,10 @@ impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 get_tag_for(&None),
             );
         } else {
-            warn!("Are you sure you meant to emit a probe with no body?");
+            self.err.add_probe_warn(
+                "Are you sure you meant to emit a probe with no body?",
+                &probe.loc.clone(),
+            );
         }
     }
 
@@ -279,7 +296,7 @@ impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
 impl GeneratingVisitor for WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     // TODO -- these are all duplicates, try to factor out
-    fn add_internal_error(&mut self, message: String, loc: &Option<Location>) {
+    fn add_internal_error(&mut self, message: &str, loc: &Option<Location>) {
         self.err.add_internal_error(message, loc);
     }
     fn emit_string(&mut self, val: &mut Value) -> bool {
@@ -376,7 +393,10 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, 
                 Statement::UnsharedDeclInit { init, .. } => {
                     self.emitter.emit_global_stmt(init, self.err);
                 }
-                _ => todo!("{:?}", stmt),
+                _ => {
+                    self.err.add_unimplemented_error(&format!("We have not added support for this statement type in the script global scope: {stmt:?}"), stmt.loc());
+                    return false;
+                }
             }
         }
         true

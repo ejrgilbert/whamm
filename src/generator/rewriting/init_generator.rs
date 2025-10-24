@@ -47,7 +47,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
 }
 
 impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
-    fn add_internal_error(&mut self, message: String, loc: &Option<Location>) {
+    fn add_internal_error(&mut self, message: &str, loc: &Option<Location>) {
         self.err.add_internal_error(message, loc);
     }
 

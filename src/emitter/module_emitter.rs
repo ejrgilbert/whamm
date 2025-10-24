@@ -371,6 +371,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                         self.mem_allocator.mem_id
                     },
                     self.app_wasm,
+                    err,
                 );
             }
 

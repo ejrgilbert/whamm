@@ -223,9 +223,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
 
     pub(crate) fn emit_args(&mut self, err: &mut ErrorGen) -> bool {
         if self.in_init {
-            err.add_instr_error(
-                "Cannot re-emit stack values as a variable initialization.".to_string(),
-            );
+            err.add_instr_error("Cannot re-emit stack values as a variable initialization.");
             return false;
         }
         emit_stack_vals(
@@ -310,9 +308,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
 
     pub(crate) fn emit_results(&mut self, err: &mut ErrorGen) -> bool {
         if self.in_init {
-            err.add_instr_error(
-                "Cannot re-emit stack values as a variable initialization.".to_string(),
-            );
+            err.add_instr_error("Cannot re-emit stack values as a variable initialization.");
             return false;
         }
         emit_stack_vals(
@@ -484,9 +480,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
 
     fn handle_alt_call_by_name(&mut self, args: &mut [Expr], err: &mut ErrorGen) -> bool {
         if self.in_init {
-            err.add_instr_error(
-                "Cannot call `alt_call_by_name` as a variable initialization.".to_string(),
-            );
+            err.add_instr_error("Cannot call `alt_call_by_name` as a variable initialization.");
             return false;
         }
         // args: vec![func_name: String]
@@ -518,9 +512,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
 
     fn handle_alt_call_by_id(&mut self, args: &mut [Expr], err: &mut ErrorGen) -> bool {
         if self.in_init {
-            err.add_instr_error(
-                "Cannot call `alt_call_by_name` as a variable initialization.".to_string(),
-            );
+            err.add_instr_error("Cannot call `alt_call_by_name` as a variable initialization.");
             return false;
         }
         // args: vec![func_id: i32]
@@ -544,9 +536,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
 
     fn handle_drop_args(&mut self, err: &mut ErrorGen) -> bool {
         if self.in_init {
-            err.add_instr_error(
-                "Cannot call `drop_args` as a variable initialization.".to_string(),
-            );
+            err.add_instr_error("Cannot call `drop_args` as a variable initialization.");
             return false;
         }
         // Generate drops for all args to this opcode!
@@ -621,6 +611,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
                     self.map_lib_adapter,
                     self.mem_allocator,
                     self.io_adapter,
+                    err,
                 )
             } else {
                 None

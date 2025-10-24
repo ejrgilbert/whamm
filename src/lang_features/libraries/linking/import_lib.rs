@@ -1,5 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 
+use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::generator::ast::Script;
@@ -32,6 +33,7 @@ pub fn link_core_lib(
     core_lib: &[u8],
     mem_allocator: &mut MemoryAllocator,
     packages: &mut [&mut dyn LibPackage],
+    err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
     let mut injected_funcs = vec![];
     for package in packages.iter_mut() {
@@ -53,6 +55,7 @@ pub fn link_core_lib(
                 &None,
                 &core_lib,
                 *package,
+                err,
             ));
         }
     }
@@ -107,6 +110,7 @@ fn import_lib_package(
     lib_name_import_override: &Option<String>,
     lib_wasm: &Module,
     package: &mut dyn LibPackage,
+    err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
     trace!("Enter import_lib");
 
@@ -127,7 +131,7 @@ fn import_lib_package(
     }
 
     // enable the library to define in-module helper functions
-    let injected_funcs = package.define_helper_funcs(app_wasm);
+    let injected_funcs = package.define_helper_funcs(app_wasm, err);
 
     trace!("Exit import_lib");
     injected_funcs

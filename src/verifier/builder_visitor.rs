@@ -916,7 +916,9 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                 | Statement::UnsharedDecl { .. }
                 | Statement::Decl { .. } => {}
                 _ => self.err.add_internal_error(
-                    format!("Should already be handled: {stmt:?}"),&None)
+                    &format!("Should already be handled: {stmt:?}"),
+                    stmt.loc(),
+                ),
             }
         }
     }

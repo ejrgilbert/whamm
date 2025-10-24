@@ -185,7 +185,7 @@ pub fn run_on_module(
         Ok(unparsed_str) => unparsed_str,
         Err(error) => {
             let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
-            err.add_instr_error(format!(
+            err.add_instr_error(&format!(
                 "Cannot read specified file {}: {}",
                 script_path, error
             ));
@@ -290,7 +290,12 @@ pub fn run(
         core_lib,
         &mut mem_allocator,
         &mut core_packages,
+        metadata_collector.err,
     );
+    // If there were any errors encountered, report and exit!
+    if metadata_collector.err.has_errors {
+        return Err(Box::new(err));
+    }
 
     // make the used user library functions the correct form
     let mut used_fns_per_lib: HashMap<String, HashSet<String>> = HashMap::default();
@@ -372,6 +377,11 @@ pub fn run(
 
     // for debugging
     report_vars.print_metadata();
+
+    // report any warnings
+    if err.has_warnings {
+        err.report_warnings()
+    }
 
     if err.has_errors {
         Err(Box::new(err))

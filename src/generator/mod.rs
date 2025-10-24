@@ -55,7 +55,7 @@ fn emit_needed_funcs(
 }
 
 pub trait GeneratingVisitor: WhammVisitorMut<bool> {
-    fn add_internal_error(&mut self, message: String, loc: &Option<Location>);
+    fn add_internal_error(&mut self, message: &str, loc: &Option<Location>);
     fn emit_string(&mut self, val: &mut Value) -> bool;
     fn emit_func(&mut self, f: &mut Fn) -> Option<FunctionID>;
     fn emit_global(
@@ -418,7 +418,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
                 is_success
             }
             _ => {
-                self.add_internal_error(format!("Should already be handled: {stmt:?}"), &None);
+                self.add_internal_error(&format!("Should already be handled: {stmt:?}"), &None);
                 false
             }
         }
