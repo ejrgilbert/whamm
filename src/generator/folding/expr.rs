@@ -1,5 +1,8 @@
 use crate::common::error::ErrorGen;
-use crate::parser::types::{BinOp, DataType, Definition, Expr, Location, NumLit, UnOp, Value};
+use crate::lang_features::libraries::registry::WasmRegistry;
+use crate::parser::types::{
+    expr_to_val, BinOp, DataType, Definition, Expr, Location, NumLit, UnOp, Value,
+};
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::{Record, SymbolTable};
 use std::ops::{Add, Div, Mul, Rem, Sub};
@@ -8,28 +11,36 @@ use std::ops::{Add, Div, Mul, Rem, Sub};
 // = Constant Propagation via ExprFolder =
 // =======================================
 
-pub struct ExprFolder {
+pub struct ExprFolder<'a> {
+    registry: &'a mut WasmRegistry,
+    as_monitor_module: bool,
     curr_loc: Option<Location>,
 }
-impl ExprFolder {
-    pub fn fold_expr(expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
-        let mut instance = Self { curr_loc: None };
-        if let Expr::LibCall {
-            call,
-            lib_name,
-            loc,
-        } = expr
-        {
-            return Expr::LibCall {
-                lib_name: lib_name.clone(),
-                loc: loc.clone(),
-                call: Box::new(Self::fold_expr(call, table, err)),
-            };
-        }
+impl<'a> ExprFolder<'a> {
+    pub fn fold_expr(
+        expr: &Expr,
+        registry: &'a mut WasmRegistry,
+        as_monitor_module: bool,
+        table: &SymbolTable,
+        err: &mut ErrorGen,
+    ) -> Expr {
+        let mut instance = Self {
+            registry,
+            as_monitor_module,
+            curr_loc: None,
+        };
         instance.fold_expr_inner(expr, table, err)
     }
-    pub fn get_single_bool(expr: &Expr) -> Option<bool> {
-        let mut instance = Self { curr_loc: None };
+    pub fn get_single_bool(
+        expr: &Expr,
+        registry: &'a mut WasmRegistry,
+        as_monitor_module: bool,
+    ) -> Option<bool> {
+        let mut instance = Self {
+            registry,
+            as_monitor_module,
+            curr_loc: None,
+        };
         instance.get_single_bool_inner(expr)
     }
     fn fold_expr_inner(&mut self, expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
@@ -43,7 +54,124 @@ impl ExprFolder {
             Expr::VarId { .. } => self.fold_var_id(expr, table),
             Expr::Primitive { .. } => self.fold_primitive(expr, table, err),
             Expr::MapGet { .. } => self.fold_map_get(expr, table, err),
-            Expr::LibCall { .. } => unreachable!("Should be handled in Self::fold_expr"),
+            Expr::LibCall { .. } => self.fold_lib_call(expr, table, err),
+        }
+    }
+
+    fn fold_lib_call(&mut self, lib_call: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        self.curr_loc = lib_call.loc().clone();
+
+        if let Expr::LibCall {
+            annotation,
+            call,
+            lib_name,
+            results,
+            loc,
+        } = lib_call
+        {
+            if let Some(ann) = annotation {
+                if ann.is_static() && !self.as_monitor_module {
+                    // we're doing bytecode rewriting, so we should statically evaluate this lib call!
+                    return self.fold_static_lib_call(lib_call, table, err);
+                }
+            }
+            return Expr::LibCall {
+                annotation: annotation.clone(),
+                lib_name: lib_name.clone(),
+                results: results.clone(),
+                loc: loc.clone(),
+                call: Box::new(self.fold_expr_inner(call, table, err)),
+            };
+        }
+        lib_call.clone()
+    }
+
+    fn fold_static_lib_call(
+        &mut self,
+        lib_call: &Expr,
+        table: &SymbolTable,
+        err: &mut ErrorGen,
+    ) -> Expr {
+        if let Expr::LibCall {
+            lib_name,
+            call,
+            results,
+            loc: lib_call_loc,
+            ..
+        } = lib_call
+        {
+            if let Expr::Call {
+                fn_target, args, ..
+            } = call.as_ref()
+            {
+                if let Expr::VarId {
+                    name: func_name, ..
+                } = fn_target.as_ref()
+                {
+                    let mut arg_vals = vec![];
+                    for arg in args.iter() {
+                        // fold each of these expressions and add to the arg_vals vector
+                        let new_arg = self.fold_expr_inner(arg, table, err);
+                        if let Some(new_arg) = expr_to_val(&new_arg) {
+                            arg_vals.push(new_arg);
+                        } else {
+                            err.add_internal_error(
+                                &format!("couldn't convert to a Wasm value: {:?}", new_arg),
+                                lib_call_loc,
+                            );
+                        }
+                    }
+                    // todo -- assumes results is set
+                    let mut results = if let Some(res) = results.as_ref() {
+                        res.to_default_values()
+                    } else {
+                        err.add_unimplemented_error(
+                            "Results should be set at this point!",
+                            lib_call_loc,
+                        );
+                        return lib_call.clone();
+                    };
+                    if let Some(svc) = self.registry.get_mut(lib_name) {
+                        svc.call(lib_name, func_name, &arg_vals, &mut results, err);
+                    } else {
+                        err.add_internal_error(
+                            &format!("could not find the wasm service for lib: {lib_name}"),
+                            lib_call_loc,
+                        );
+                    }
+
+                    if results.len() > 1 {
+                        todo!("we don't support multiple return values yet!")
+                    }
+
+                    if let Some(res) = results.first() {
+                        Expr::Primitive {
+                            val: Value::from(res),
+                            loc: lib_call_loc.clone(),
+                        }
+                    } else {
+                        Expr::empty_tuple(lib_call_loc)
+                    }
+                } else {
+                    err.add_internal_error(
+                        &format!("Expected a name expression, got: {:?}", fn_target),
+                        lib_call_loc,
+                    );
+                    lib_call.clone()
+                }
+            } else {
+                err.add_internal_error(
+                    &format!("Expected call expression, got: {:?}", call),
+                    lib_call_loc,
+                );
+                lib_call.clone()
+            }
+        } else {
+            err.add_internal_error(
+                &format!("Expected library call expression, got: {:?}", lib_call),
+                lib_call.loc(),
+            );
+            lib_call.clone()
         }
     }
 

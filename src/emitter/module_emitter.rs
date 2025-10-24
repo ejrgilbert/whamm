@@ -1,15 +1,16 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
-use crate::emitter::tag_handler::get_tag_for;
+use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::utils::{
     emit_body, emit_expr, emit_global_getter, emit_probes, emit_stmt, whamm_type_to_wasm_global,
     EmitCtx,
 };
 use crate::emitter::{Emitter, InjectStrategy};
-use crate::generator::ast::{Script, WhammParams};
+use crate::generator::ast::{Probe, Script, WhammParams};
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Location, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
@@ -22,14 +23,14 @@ use wirm::ir::types::{
     BlockType as WirmBlockType, DataType as WirmType, InitExpr, Value as WirmValue,
 };
 use wirm::module_builder::AddLocal;
-use wirm::opcode::Opcode;
+use wirm::opcode::{Instrumenter, Opcode};
 use wirm::wasmparser::MemArg;
 use wirm::InitInstr;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
+pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub strategy: InjectStrategy,
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
@@ -38,10 +39,11 @@ pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     pub locals_tracker: LocalsTracker,
     pub map_lib_adapter: &'e mut MapLibAdapter,
     pub report_vars: &'f mut ReportVars,
+    pub registry: &'g mut WasmRegistry,
     fn_providing_contexts: Vec<String>,
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     // note: only used in integration test
     pub fn new(
         strategy: InjectStrategy,
@@ -50,6 +52,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         mem_allocator: &'d mut MemoryAllocator,
         map_lib_adapter: &'e mut MapLibAdapter,
         report_vars: &'f mut ReportVars,
+        registry: &'g mut WasmRegistry,
     ) -> Self {
         Self {
             strategy,
@@ -60,6 +63,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             map_lib_adapter,
             report_vars,
             table,
+            registry,
             fn_providing_contexts: vec!["whamm".to_string()],
         }
     }
@@ -128,6 +132,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         &mut self,
         // the base memory offset for this function's var block
         alloc_base: Option<LocalID>,
+        lib_calls: &[(Option<u32>, String, WirmType)],
         whamm_params: &WhammParams,
         dynamic_pred: Option<&mut Expr>,
         results: &[WirmType],
@@ -156,39 +161,24 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
             );
         }
 
-        // handle the parameters
-        for param in whamm_params.params.iter() {
-            let wasm_tys = param.ty.to_wasm_type();
-
-            // Iterate over the list to create the addresses for referencing
-            // (will support types that are represented with multiple wasm
-            // types this way, e.g. strings)
-            let mut addrs = vec![];
-            for ty in wasm_tys.iter() {
-                let local_id = params.len() as u32;
-                // handle param list
-                params.push(*ty);
-
-                addrs.push(VarAddr::Local { addr: local_id });
-            }
-            // add param definition to the symbol table
+        // handle static library evaluation parameters
+        for (i, (_, _, ty)) in lib_calls.iter().enumerate() {
+            let local_id = params.len() as u32;
+            params.push(*ty);
             self.table.put(
-                param.name.clone(),
+                Probe::get_call_alias_for(i),
                 Record::Var {
-                    ty: param.ty.clone(),
+                    ty: DataType::from_wasm_type(ty),
                     value: None,
                     def: Definition::CompilerStatic,
-                    addr: Some(addrs),
+                    addr: Some(vec![VarAddr::Local { addr: local_id }]),
                     loc: None,
                 },
             );
-
-            // handle the param string
-            if !param_str.is_empty() {
-                param_str += ", "
-            }
-            param_str += &param.name;
         }
+
+        // handle the parameters
+        Self::handle_params(whamm_params, &mut params, &mut param_str, self.table);
 
         let fid = self.emit_special_fn_inner(
             None,
@@ -204,6 +194,46 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
         self.reset_locals_for_function();
 
         (fid, param_str.to_string())
+    }
+
+    pub(crate) fn handle_params(
+        whamm_params: &WhammParams,
+        params: &mut Vec<WirmType>,
+        param_str: &mut String,
+        table: &mut SymbolTable,
+    ) {
+        for param in whamm_params.params.iter() {
+            let wasm_tys = param.ty.to_wasm_type();
+
+            // Iterate over the list to create the addresses for referencing
+            // (will support types that are represented with multiple wasm
+            // types this way, e.g. strings)
+            let mut addrs = vec![];
+            for ty in wasm_tys.iter() {
+                let local_id = params.len() as u32;
+                // handle param list
+                params.push(*ty);
+
+                addrs.push(VarAddr::Local { addr: local_id });
+            }
+            // add param definition to the symbol table
+            table.put(
+                param.name.clone(),
+                Record::Var {
+                    ty: param.ty.clone(),
+                    value: None,
+                    def: Definition::CompilerStatic,
+                    addr: Some(addrs),
+                    loc: None,
+                },
+            );
+
+            // handle the param string
+            if !param_str.is_empty() {
+                param_str.push_str(", ")
+            }
+            param_str.push_str(&param.name);
+        }
     }
 
     fn emit_special_fn_inner(
@@ -306,6 +336,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         self.strategy,
                         &mut on_exit,
                         &mut EmitCtx::new(
+                            self.registry,
                             self.table,
                             self.mem_allocator,
                             &mut self.locals_tracker,
@@ -340,6 +371,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
                         self.mem_allocator.mem_id
                     },
                     self.app_wasm,
+                    err,
                 );
             }
 
@@ -592,40 +624,48 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     // ==== EMIT `global` Statements LOGIC ====
     // ========================================
 
-    pub fn emit_global_stmts(&mut self, stmts: &mut [Statement], _err: &mut ErrorGen) -> bool {
-        // NOTE: This should be done in the Module entrypoint
-        //       https://docs.rs/walrus/latest/walrus/struct.Module.html
+    /// It is assumed that the statement passed here is a VALID global statement!
+    /// (we've gone through several checks before this)
+    /// Returns the start_fid (if it was created)
+    pub fn emit_global_stmt(&mut self, stmt: &mut Statement, err: &mut ErrorGen) -> Option<u32> {
+        let (start_fid, was_created) = ModuleEmitter::get_or_create_start_func(self.app_wasm);
+        let mut start = self
+            .app_wasm
+            .functions
+            .get_fn_modifier(FunctionID(start_fid))
+            .unwrap();
+        start.func_entry();
+        let _res = emit_stmt(
+            stmt,
+            self.strategy,
+            &mut start,
+            &mut EmitCtx::new(
+                self.registry,
+                self.table,
+                self.mem_allocator,
+                &mut self.locals_tracker,
+                self.map_lib_adapter,
+                UNEXPECTED_ERR_MSG,
+                err,
+            ),
+        );
 
-        if let Some(_start_fid) = self.app_wasm.start {
-            // 1. create the emitting_func var, assign in self
-            // 2. iterate over stmts and emit them! (will be different for Decl stmts)
-            for stmt in stmts.iter() {
-                match stmt {
-                    Statement::Decl { .. }
-                    | Statement::UnsharedDecl { .. }
-                    | Statement::LibImport { .. } => {} // already handled
-                    _ => todo!(),
-                }
-            }
+        let op_idx = start.curr_instr_len() as u32;
+        start.append_tag_at(
+            get_probe_tag_data(stmt.loc(), op_idx),
+            // location is unused
+            wirm::Location::Module {
+                func_idx: FunctionID(0),
+                instr_idx: 0,
+            },
+        );
+        start.finish_instr();
+
+        if was_created {
+            Some(start_fid)
         } else {
-            // TODO -- try to create our own start fn (for dfinity case)
-            for stmt in stmts.iter_mut() {
-                match stmt {
-                    Statement::Decl { .. }
-                    | Statement::UnsharedDecl { .. }
-                    | Statement::LibImport { .. } => {} // already handled
-                    _ => {
-                        // Cannot emit this at the moment since there's no entrypoint for our module to emit initialization instructions into
-                        panic!(
-                            "This module has no configured entrypoint, \
-                                unable to emit a `script` with initialized global state"
-                        );
-                    }
-                }
-            }
+            None
         }
-
-        true
     }
 
     // =============================
@@ -641,8 +681,20 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f> {
     ) -> Option<FunctionID> {
         self.emit_global_inner(name, ty, val, true, err)
     }
+
+    pub(crate) fn get_or_create_start_func(wasm: &mut Module) -> (u32, bool) {
+        let was_created = wasm.start.is_none();
+        let fid = *wasm.start.unwrap_or_else(|| {
+            let start_func = FunctionBuilder::new(&[], &[]);
+            let start_fid = start_func.finish_module_with_tag(wasm, get_tag_for(&None));
+            wasm.start = Some(start_fid);
+            start_fid
+        });
+
+        (fid, was_created)
+    }
 }
-impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
+impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
     fn reset_locals_for_probe(&mut self) {
         if let Some(func) = &mut self.emitting_func {
             self.locals_tracker.reset_probe(func);
@@ -659,6 +711,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
                 self.strategy,
                 emitting_func,
                 &mut EmitCtx::new(
+                    self.registry,
                     self.table,
                     self.mem_allocator,
                     &mut self.locals_tracker,
@@ -679,6 +732,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
                 self.strategy,
                 emitting_func,
                 &mut EmitCtx::new(
+                    self.registry,
                     self.table,
                     self.mem_allocator,
                     &mut self.locals_tracker,
@@ -699,6 +753,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_> {
                 self.strategy,
                 emitting_func,
                 &mut EmitCtx::new(
+                    self.registry,
                     self.table,
                     self.mem_allocator,
                     &mut self.locals_tracker,

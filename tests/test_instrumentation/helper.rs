@@ -275,7 +275,9 @@ pub(crate) fn run_core_suite(
             } else {
                 vec![]
             };
-            let metadata = fs::metadata(exp).expect("Failed to load expected output file metadata");
+            let metadata = fs::metadata(exp).unwrap_or_else(|_| {
+                panic!("Failed to load expected output file metadata at: {:?}", exp)
+            });
             let exp_out = if metadata.len() > MAX_EXP_OUT_SIZE {
                 ExpectedOutput::hash(exp)
             } else {
@@ -493,6 +495,7 @@ fn run_testcase_wei(
         for e in errs.iter() {
             println!("- {}", e.msg)
         }
+        panic!()
     }
 
     // run the instrumented application on wizard

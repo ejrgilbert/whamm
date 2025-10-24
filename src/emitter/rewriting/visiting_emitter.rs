@@ -18,6 +18,7 @@ use crate::generator::folding::expr::ExprFolder;
 use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
+use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser;
 use crate::parser::provider_handler::ModeKind;
@@ -39,7 +40,7 @@ use wirm::Location;
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
+pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
     pub strategy: InjectStrategy,
     pub app_iter: ModuleIterator<'a, 'b>,
     pub init_func: &'c mut FunctionBuilder<'d>,
@@ -55,9 +56,13 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
     instr_created_args: Vec<(String, usize)>,
     instr_created_results: Vec<(String, usize)>,
     pub curr_unshared: Vec<UnsharedVar>,
+
+    pub registry: &'j mut WasmRegistry,
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
+    VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
+{
     // note: only used in integration test
     pub fn new(
         strategy: InjectStrategy,
@@ -70,6 +75,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
         io_adapter: &'h mut IOAdapter,
         report_vars: &'i mut ReportVars,
         unshared_var_handler: &'i mut UnsharedVarHandler,
+        registry: &'j mut WasmRegistry,
     ) -> Self {
         Self {
             strategy,
@@ -86,6 +92,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
             instr_created_args: vec![],
             instr_created_results: vec![],
             curr_unshared: vec![],
+            registry,
         }
     }
 
@@ -195,6 +202,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
                     self.strategy,
                     &mut self.app_iter,
                     &mut EmitCtx::new(
+                        self.registry,
                         self.table,
                         self.mem_allocator,
                         &mut self.locals_tracker,
@@ -215,15 +223,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
 
     pub(crate) fn emit_args(&mut self, err: &mut ErrorGen) -> bool {
         if self.in_init {
-            err.add_instr_error(
-                "Cannot re-emit stack values as a variable initialization.".to_string(),
-            );
+            err.add_instr_error("Cannot re-emit stack values as a variable initialization.");
             return false;
         }
         emit_stack_vals(
             &self.instr_created_args,
             &mut self.app_iter,
             &mut EmitCtx::new(
+                self.registry,
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,
@@ -301,15 +308,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
 
     pub(crate) fn emit_results(&mut self, err: &mut ErrorGen) -> bool {
         if self.in_init {
-            err.add_instr_error(
-                "Cannot re-emit stack values as a variable initialization.".to_string(),
-            );
+            err.add_instr_error("Cannot re-emit stack values as a variable initialization.");
             return false;
         }
         emit_stack_vals(
             &self.instr_created_results,
             &mut self.app_iter,
             &mut EmitCtx::new(
+                self.registry,
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,
@@ -386,7 +392,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
     }
 
     pub(crate) fn fold_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {
-        *expr = ExprFolder::fold_expr(expr, self.table, err);
+        // todo -- create actual registry
+        *expr = ExprFolder::fold_expr(expr, self.registry, false, self.table, err);
         true
     }
 
@@ -473,9 +480,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
 
     fn handle_alt_call_by_name(&mut self, args: &mut [Expr], err: &mut ErrorGen) -> bool {
         if self.in_init {
-            err.add_instr_error(
-                "Cannot call `alt_call_by_name` as a variable initialization.".to_string(),
-            );
+            err.add_instr_error("Cannot call `alt_call_by_name` as a variable initialization.");
             return false;
         }
         // args: vec![func_name: String]
@@ -507,9 +512,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
 
     fn handle_alt_call_by_id(&mut self, args: &mut [Expr], err: &mut ErrorGen) -> bool {
         if self.in_init {
-            err.add_instr_error(
-                "Cannot call `alt_call_by_name` as a variable initialization.".to_string(),
-            );
+            err.add_instr_error("Cannot call `alt_call_by_name` as a variable initialization.");
             return false;
         }
         // args: vec![func_id: i32]
@@ -533,9 +536,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
 
     fn handle_drop_args(&mut self, err: &mut ErrorGen) -> bool {
         if self.in_init {
-            err.add_instr_error(
-                "Cannot call `drop_args` as a variable initialization.".to_string(),
-            );
+            err.add_instr_error("Cannot call `drop_args` as a variable initialization.");
             return false;
         }
         // Generate drops for all args to this opcode!
@@ -610,6 +611,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
                     self.map_lib_adapter,
                     self.mem_allocator,
                     self.io_adapter,
+                    err,
                 )
             } else {
                 None
@@ -634,6 +636,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
                         self.strategy,
                         &mut on_exit,
                         &mut EmitCtx::new(
+                            self.registry,
                             self.table,
                             self.mem_allocator,
                             &mut self.locals_tracker,
@@ -667,6 +670,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
                         self.strategy,
                         &mut on_exit,
                         &mut EmitCtx::new(
+                            self.registry,
                             self.table,
                             self.mem_allocator,
                             &mut self.locals_tracker,
@@ -849,7 +853,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f,
         }
     }
 }
-impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn reset_locals_for_probe(&mut self) {
         self.locals_tracker.reset_probe(&mut self.app_iter);
     }
@@ -891,6 +895,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
         // everything else can be emitted as normal!
         let mut ctx = EmitCtx::new(
+            self.registry,
             self.table,
             self.mem_allocator,
             &mut self.locals_tracker,
@@ -911,6 +916,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
             self.strategy,
             &mut self.app_iter,
             &mut EmitCtx::new(
+                self.registry,
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,

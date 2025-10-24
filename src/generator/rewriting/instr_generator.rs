@@ -52,10 +52,10 @@ fn add_to_table(info: &LocInfo, emitter: &mut VisitingEmitter) {
 /// passed emitter to emit instrumentation code.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the passed Emitter type.
-pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k> {
-    pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i>,
+pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l> {
+    pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>,
     pub ast: SimpleAST,
-    pub err: &'j mut ErrorGen,
+    pub err: &'k mut ErrorGen,
     curr_instr_args: Vec<StackVal>,
     curr_instr_results: Vec<StackVal>,
     curr_probe_rule: ProbeRule,
@@ -67,16 +67,16 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k> {
     /// Whether there are reports to flush at the end of execution
     has_reports: bool,
     on_exit_fid: Option<u32>,
-    config: &'k Config,
+    config: &'l Config,
 }
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
-    InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l>
+    InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l>
 {
     pub fn new(
-        emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i>,
+        emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>,
         ast: SimpleAST,
-        err: &'j mut ErrorGen,
-        config: &'k Config,
+        err: &'k mut ErrorGen,
+        config: &'l Config,
         has_reports: bool,
     ) -> Self {
         Self {
@@ -257,7 +257,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
                         is_success = self.emitter.fold_expr(pred, self.err);
 
                         // If the predicate evaluates to false, short-circuit!
-                        if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
+                        if let Some(pred_as_bool) =
+                            ExprFolder::get_single_bool(pred, self.emitter.registry, false)
+                        {
                             if !pred_as_bool {
                                 // predicate is reduced to false, short-circuit!
                                 continue;
@@ -326,7 +328,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
         };
     }
 }
-impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn emit_probe(
         &mut self,
         dynamic_data: &HashMap<String, Block>,
@@ -441,7 +443,9 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn pred_is_true(&mut self) -> bool {
         if let Some((.., pred)) = &self.curr_probe {
             if let Some(pred) = pred {
-                if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
+                if let Some(pred_as_bool) =
+                    ExprFolder::get_single_bool(pred, self.emitter.registry, false)
+                {
                     // predicate has been reduced to a boolean value
                     return pred_as_bool;
                 }

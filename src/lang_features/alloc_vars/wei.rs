@@ -5,7 +5,7 @@ use crate::emitter::memory_allocator::{StringAddr, VAR_BLOCK_BASE_VAR};
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::emitter::utils::{emit_stmt, EmitCtx};
-use crate::generator::ast::UnsharedVar;
+use crate::generator::ast::{UnsharedVar, WhammParams};
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{DataType, Definition, Statement};
@@ -42,6 +42,7 @@ impl UnsharedVarHandler {
     pub fn emit_alloc_func(
         &self,
         unshared_to_alloc: &mut [UnsharedVar],
+        init_args: &WhammParams,
         init_logic: &mut [Statement],
         emitter: &mut ModuleEmitter,
         err: &mut ErrorGen,
@@ -110,10 +111,14 @@ impl UnsharedVarHandler {
         };
         let addr_pc = VarAddr::Local { addr: *pc.id };
 
-        // params: (fname_ptr, fname_len, fid, pc)
-        let alloc_params = vec![fname_ptr.ty, fname_len.ty, fid.ty, pc.ty];
+        // BASE params: (fname_ptr, fname_len, fid, pc)
+        let mut param_str = "fname, fid, pc".to_string();
+        let mut alloc_params = vec![fname_ptr.ty, fname_len.ty, fid.ty, pc.ty];
         // results: mem_offset
         let alloc_results = vec![WirmType::I32];
+
+        // now extend params to account for any initialization logic that requires more data
+        ModuleEmitter::handle_params(init_args, &mut alloc_params, &mut param_str, emitter.table);
 
         let mut alloc = FunctionBuilder::new(&alloc_params, &alloc_results);
         // specify locals
@@ -288,6 +293,7 @@ impl UnsharedVarHandler {
                     emitter.strategy,
                     &mut alloc,
                     &mut EmitCtx::new(
+                        emitter.registry,
                         emitter.table,
                         emitter.mem_allocator,
                         &mut emitter.locals_tracker,
@@ -314,7 +320,7 @@ impl UnsharedVarHandler {
             *alloc_id,
             get_tag_for(&None),
         );
-        (Some(*alloc_id), "fname, fid, pc".to_string())
+        (Some(*alloc_id), param_str)
     }
 
     fn init_var_object(

@@ -5,7 +5,7 @@ use crate::common::metrics::Metrics;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
-use crate::emitter::tag_handler::get_tag_for;
+use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::InjectStrategy;
 use crate::generator::metadata_collector::MetadataCollector;
 use crate::generator::rewriting::init_generator::InitGenerator;
@@ -17,6 +17,7 @@ use crate::lang_features::libraries::core::io::IOPackage;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::libraries::core::maps::MapLibPackage;
 use crate::lang_features::libraries::core::{LibPackage, WHAMM_CORE_LIB_NAME};
+use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{Whamm, WhammVisitor};
 use crate::parser::whamm_parser::parse_script;
@@ -184,7 +185,7 @@ pub fn run_on_module(
         Ok(unparsed_str) => unparsed_str,
         Err(error) => {
             let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
-            err.add_instr_error(format!(
+            err.add_instr_error(&format!(
                 "Cannot read specified file {}: {}",
                 script_path, error
             ));
@@ -230,8 +231,9 @@ pub fn run(
     let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
 
     // Parse user libraries to Wasm modules
+    let mut user_lib_paths: HashMap<String, String> = HashMap::new();
     let mut user_lib_modules: HashMap<String, (Option<String>, Module)> = HashMap::default();
-    for (lib_name, lib_name_import_override, _, lib_buff) in user_libs.iter() {
+    for (lib_name, lib_name_import_override, path, lib_buff) in user_libs.iter() {
         user_lib_modules.insert(
             lib_name.clone(),
             (
@@ -239,6 +241,7 @@ pub fn run(
                 Module::parse(lib_buff, false).unwrap(),
             ),
         );
+        user_lib_paths.insert(lib_name.clone(), path.clone());
     }
     // add the core library just in case the script needs it
     user_lib_modules.insert(
@@ -251,6 +254,10 @@ pub fn run(
         Ok(whamm) => whamm,
         Err(_) => return Err(Box::new(err)),
     };
+    // If there were any errors encountered during parsing, report and exit!
+    if err.has_errors {
+        return Err(Box::new(err));
+    }
     let (mut symbol_table, has_reports) =
         match get_symbol_table(&mut whamm, &user_lib_modules, &mut err) {
             Ok(r) => r,
@@ -283,17 +290,26 @@ pub fn run(
         core_lib,
         &mut mem_allocator,
         &mut core_packages,
+        metadata_collector.err,
     );
+    // If there were any errors encountered, report and exit!
+    if metadata_collector.err.has_errors {
+        return Err(Box::new(err));
+    }
 
     // make the used user library functions the correct form
     let mut used_fns_per_lib: HashMap<String, HashSet<String>> = HashMap::default();
-    for (used_lib, used_fn) in metadata_collector.used_user_library_fns.iter() {
+    let mut static_libs: HashSet<String> = HashSet::default();
+    for ((used_lib, used_fn), is_static) in metadata_collector.used_user_library_fns.funcs.iter() {
         used_fns_per_lib
             .entry(used_lib.clone())
             .and_modify(|set| {
                 set.insert(used_fn.clone());
             })
             .or_insert(HashSet::from_iter([used_fn.clone()].iter().cloned()));
+        if *is_static {
+            static_libs.insert(used_lib.clone());
+        }
     }
     let mut map_lib_adapter = map_package.adapter;
     let mut io_adapter = io_package.adapter;
@@ -333,6 +349,8 @@ pub fn run(
             &mut whamm,
             metadata_collector,
             used_fns_per_lib,
+            static_libs,
+            user_lib_paths,
             user_lib_modules,
             target_wasm,
             has_reports,
@@ -359,6 +377,11 @@ pub fn run(
 
     // for debugging
     report_vars.print_metadata();
+
+    // report any warnings
+    if err.has_warnings {
+        err.report_warnings()
+    }
 
     if err.has_errors {
         Err(Box::new(err))
@@ -390,6 +413,7 @@ fn run_instr_wei(
     let mut injected_funcs = vec![];
     let mut wei_unshared_var_handler =
         crate::lang_features::alloc_vars::wei::UnsharedVarHandler::new(target_wasm);
+    let mut registry = WasmRegistry::default();
 
     let mut gen = crate::generator::wei::WeiGenerator {
         emitter: ModuleEmitter::new(
@@ -399,6 +423,8 @@ fn run_instr_wei(
             mem_allocator,
             map_lib_adapter,
             report_vars,
+            // shouldn't need this for `wei`!
+            &mut registry,
         ),
         io_adapter,
         context_name: "".to_string(),
@@ -417,7 +443,7 @@ fn run_instr_wei(
         used_strings,
         has_probe_state_init,
     );
-    call_instr_init_at_start(None, target_wasm);
+    call_instr_init_at_start(None, target_wasm, err);
 }
 
 fn run_instr_rewrite(
@@ -425,6 +451,8 @@ fn run_instr_rewrite(
     whamm: &mut Whamm,
     metadata_collector: MetadataCollector,
     used_fns_per_lib: HashMap<String, HashSet<String>>,
+    static_libs: HashSet<String>,
+    user_lib_paths: HashMap<String, String>,
     user_lib_modules: HashMap<String, (Option<String>, Module)>,
     target_wasm: &mut Module,
     has_reports: bool,
@@ -443,6 +471,8 @@ fn run_instr_rewrite(
     let has_probe_state_init = metadata_collector.has_probe_state_init;
     let config = metadata_collector.config;
 
+    let mut registry = WasmRegistry::new(&static_libs, &user_lib_paths, err);
+
     // Phase 0 of instrumentation (emit bound variables and fns)
     let mut init = InitGenerator {
         emitter: ModuleEmitter::new(
@@ -452,6 +482,7 @@ fn run_instr_rewrite(
             mem_allocator,
             map_lib_adapter,
             report_vars,
+            &mut registry,
         ),
         context_name: "".to_string(),
         err,
@@ -481,6 +512,7 @@ fn run_instr_rewrite(
             io_adapter,
             report_vars,
             unshared_var_handler,
+            &mut registry,
         ),
         simple_ast,
         err,
@@ -493,7 +525,7 @@ fn run_instr_rewrite(
         metrics.start(&match_time);
     }
     instr.run();
-    configure_init_func(init_func, target_wasm);
+    configure_init_func(init_func, target_wasm, err);
     if config.metrics {
         metrics.end(&match_time);
     }
@@ -504,7 +536,11 @@ fn run_instr_rewrite(
         Ok(())
     }
 }
-pub fn configure_init_func<'a>(init_func: FunctionBuilder<'a>, module: &mut Module<'a>) {
+pub fn configure_init_func<'a>(
+    init_func: FunctionBuilder<'a>,
+    module: &mut Module<'a>,
+    err: &mut ErrorGen,
+) {
     let state_init_id = if init_func.body.num_instructions > 0 {
         // Call the probe init state function in the instr_init body
         let state_init_id = init_func.finish_module_with_tag(module, get_tag_for(&None));
@@ -513,10 +549,14 @@ pub fn configure_init_func<'a>(init_func: FunctionBuilder<'a>, module: &mut Modu
     } else {
         None
     };
-    call_instr_init_at_start(state_init_id, module);
+    call_instr_init_at_start(state_init_id, module, err);
 }
 
-fn call_instr_init_at_start(state_init_id: Option<FunctionID>, module: &mut Module) {
+fn call_instr_init_at_start(
+    state_init_id: Option<FunctionID>,
+    module: &mut Module,
+    err: &mut ErrorGen,
+) {
     if let Some(instr_init_fid) = module.functions.get_local_fid_by_name("instr_init") {
         if let Some(state_init_id) = state_init_id {
             if let Some(mut instr_init) = module.functions.get_fn_modifier(instr_init_fid) {
@@ -527,24 +567,29 @@ fn call_instr_init_at_start(state_init_id: Option<FunctionID>, module: &mut Modu
         }
 
         // now call `instr_init` in the module's start function
-        if let Some(start_fid) = module.start {
-            if let Some(mut start_func) = module.functions.get_fn_modifier(start_fid) {
-                start_func.func_entry();
-                start_func.call(instr_init_fid);
-                start_func.finish_instr();
-            } else {
-                unreachable!("Should have found the function in the module.")
-            }
-        } else {
-            // create the start function and call the `instr_init` function
-            let mut start_func = FunctionBuilder::new(&[], &[]);
+        let (start_fid, _was_created) = ModuleEmitter::get_or_create_start_func(module);
+        if let Some(mut start_func) = module.functions.get_fn_modifier(FunctionID(start_fid)) {
+            start_func.func_entry();
             start_func.call(instr_init_fid);
 
-            let start_fid = start_func.finish_module_with_tag(module, get_tag_for(&None));
-            module.start = Some(start_fid);
+            let op_idx = start_func.curr_instr_len() as u32;
+            start_func.append_tag_at(
+                get_probe_tag_data(&None, op_idx),
+                // location is unused
+                wirm::Location::Module {
+                    func_idx: FunctionID(0),
+                    instr_idx: 0,
+                },
+            );
+            start_func.finish_instr();
+        } else {
+            err.add_internal_error("Should have found the function in the module.", &None);
         }
     } else if state_init_id.is_some() {
-        unreachable!("If there's a state init function, there should be an instr_init function!")
+        err.add_internal_error(
+            "If there's a state init function, there should be an instr_init function!",
+            &None,
+        );
     }
 }
 
@@ -670,7 +715,7 @@ fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> Resu
     if !passed {
         error!("AST failed verification!");
     }
-    if err.too_many {
+    if err.too_many | !passed {
         return Err(());
     }
 

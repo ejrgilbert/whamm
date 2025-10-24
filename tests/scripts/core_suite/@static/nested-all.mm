@@ -1,0 +1,7 @@
+use toggle;
+report var g: i32 = @static toggle.get_nonzero_nested(1, @static toggle.get_value());
+
+wasm:opcode:*:before / @static toggle.should_inject(fid as i32, @static toggle.get_value()) as bool / {
+    report var val: i32;
+    val = @static toggle.should_inject(fid as i32, @static toggle.get_value());
+}

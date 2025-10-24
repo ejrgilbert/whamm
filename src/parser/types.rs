@@ -14,6 +14,7 @@ use crate::parser::provider_handler::{
 };
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
+use wasmtime::Val;
 use wirm::ir::types::DataType as WirmType;
 
 #[derive(Parser)]
@@ -471,6 +472,33 @@ impl DataType {
             DataType::Unknown => {
                 yellow(true, "unknown, not type checked".to_string(), buffer);
             }
+        }
+    }
+    pub fn to_default_values(&self) -> Vec<Val> {
+        match self {
+            DataType::Boolean |
+            DataType::Map { .. } | // this uses a map_id which is an i32
+            DataType::U8 |
+            DataType::I8 |
+            DataType::U16 |
+            DataType::I16 |
+            DataType::U32 |
+            DataType::I32 => vec![Val::I32(0)],
+            DataType::F32 => vec![Val::F32(0)],
+            DataType::U64 |
+            DataType::I64 => vec![Val::I64(0)],
+            DataType::F64 => vec![Val::F64(0)],
+            DataType::Str => vec![Val::I32(0), Val::I32(0)], // (addr, len)
+            DataType::Tuple { ty_info } => {
+                let mut res = vec![];
+                for ty in ty_info.iter() {
+                    res.extend(ty.to_default_values());
+                }
+                res
+            }
+            DataType::Null |
+            DataType::Unknown |
+            DataType::AssumeGood => unreachable!()
         }
     }
 }
@@ -960,6 +988,12 @@ impl Value {
             }
         }
     }
+    pub fn gen_empty_tuple() -> Self {
+        Self::Tuple {
+            ty: DataType::Tuple { ty_info: vec![] },
+            vals: Vec::new(),
+        }
+    }
     pub fn gen_u8(val: u8) -> Self {
         Self::gen_num(NumLit::u8(val), DataType::U8)
     }
@@ -1110,6 +1144,46 @@ impl Value {
         }
     }
 }
+impl From<&Val> for Value {
+    fn from(val: &Val) -> Self {
+        match val {
+            Val::I32(val) => Self::gen_i32(*val),
+            Val::I64(val) => Self::gen_i64(*val),
+            Val::F32(val) => Self::gen_f32(f32::from_bits(*val)),
+            Val::F64(val) => Self::gen_f64(f64::from_bits(*val)),
+            Val::V128(_)
+            | Val::FuncRef(_)
+            | Val::ExternRef(_)
+            | Val::AnyRef(_)
+            | Val::ExnRef(_)
+            | Val::ContRef(_) => todo!(),
+        }
+    }
+}
+pub(crate) fn whamm_value_to_wasm_val(v: &Value) -> Option<Val> {
+    match v {
+        Value::Number { val, .. } => match val {
+            NumLit::I8 { val } => Some(Val::I32(*val as i32)),
+            NumLit::U8 { val } => Some(Val::I32(*val as i32)),
+            NumLit::I16 { val } => Some(Val::I32(*val as i32)),
+            NumLit::U16 { val } => Some(Val::I32(*val as i32)),
+            NumLit::I32 { val } => Some(Val::I32(*val)),
+            NumLit::U32 { val } => Some(Val::I32(*val as i32)),
+            NumLit::I64 { val } => Some(Val::I64(*val)),
+            NumLit::U64 { val } => Some(Val::I64(*val as i64)),
+            NumLit::F32 { val } => Some(Val::F32(val.to_bits())),
+            NumLit::F64 { val } => Some(Val::F64(val.to_bits())),
+        },
+        Value::Boolean { val } => {
+            if *val {
+                Some(Val::I32(1))
+            } else {
+                Some(Val::I32(0))
+            }
+        }
+        Value::Str { .. } | Value::Tuple { .. } | Value::U32U32Map { .. } => None,
+    }
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct Block {
@@ -1136,6 +1210,14 @@ impl From<&Statement> for Block {
     fn from(stmt: &Statement) -> Self {
         Self {
             stmts: vec![stmt.clone()],
+            ..Default::default()
+        }
+    }
+}
+impl From<Vec<Statement>> for Block {
+    fn from(stmts: Vec<Statement>) -> Self {
+        Self {
+            stmts,
             ..Default::default()
         }
     }
@@ -1213,6 +1295,25 @@ impl Statement {
 }
 
 #[derive(Clone, Debug)]
+pub enum Annotation {
+    Static,
+}
+impl Annotation {
+    pub fn is_static(&self) -> bool {
+        matches!(self, Self::Static)
+    }
+}
+impl TryFrom<&str> for Annotation {
+    type Error = String;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "static" => Ok(Self::Static),
+            _ => Err(format!("`@{}` is not a valid annotation", value)),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum Expr {
     UnOp {
         // Type is based on the outermost `op`
@@ -1245,8 +1346,10 @@ pub enum Expr {
         loc: Option<Location>,
     },
     LibCall {
+        annotation: Option<Annotation>,
         lib_name: String,
-        call: Box<Expr>, // should be Expr::Call
+        call: Box<Expr>,           // should be Expr::Call
+        results: Option<DataType>, // set by the type checker!
         loc: Option<Location>,
     },
     VarId {
@@ -1266,6 +1369,12 @@ pub enum Expr {
     },
 }
 impl Expr {
+    pub fn empty_tuple(loc: &Option<Location>) -> Self {
+        Expr::Primitive {
+            val: Value::gen_empty_tuple(),
+            loc: loc.clone(),
+        }
+    }
     pub fn one(line_col: LineColLocation) -> Self {
         Expr::Primitive {
             val: Value::Number {
@@ -1350,6 +1459,12 @@ impl Display for Expr {
             Expr::Primitive { val, .. } => write!(f, "{val}"),
             Expr::MapGet { map, key, .. } => write!(f, "{map}.{}", key),
         }
+    }
+}
+pub(crate) fn expr_to_val(expr: &Expr) -> Option<Val> {
+    match expr {
+        Expr::Primitive { val, .. } => whamm_value_to_wasm_val(val),
+        _ => None,
     }
 }
 
@@ -1955,7 +2070,6 @@ pub trait WhammVisitor<T> {
     fn visit_event(&mut self, event: &Event) -> T;
     fn visit_probe(&mut self, probe: &Probe) -> T;
     fn visit_block(&mut self, block: &Block) -> T;
-    fn visit_stmt(&mut self, stmt: &Statement) -> T;
     fn visit_expr(&mut self, expr: &Expr) -> T;
 }
 
@@ -1971,6 +2085,7 @@ pub trait WhammVisitorMut<T> {
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) -> T;
     fn visit_block(&mut self, block: &mut Block) -> T;
     fn visit_stmt(&mut self, stmt: &mut Statement) -> T;
+    fn visit_stmt_global(&mut self, stmt: &mut Statement) -> T;
     fn visit_expr(&mut self, expr: &mut Expr) -> T;
     fn visit_value(&mut self, val: &mut Value) -> T;
 }

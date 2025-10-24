@@ -628,6 +628,18 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                     is_report_var = *is_report;
                     &mut **decl
                 }
+                Statement::UnsharedDeclInit { decl, .. } => {
+                    if let Statement::UnsharedDecl {
+                        decl: d, is_report, ..
+                    } = decl.as_mut()
+                    {
+                        is_report_var = *is_report;
+                        &mut **d
+                    } else {
+                        self.err.add_internal_error(&format!("An unshared decl initialization statement should always contain an unshared declaration, but this was: {decl:?}"), decl.loc());
+                        return;
+                    }
+                }
                 _ => stmt,
             };
             if let Statement::Decl { ty, var_id, .. } = stmt {
@@ -643,13 +655,12 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                         },
                     );
                 } else {
-                    panic!(
-                        "{} \
-                Variable declaration var_id is not the correct Expr variant!!",
-                        UNEXPECTED_ERR_MSG
-                    );
+                    self.err.add_internal_error(&format!(
+                        "{UNEXPECTED_ERR_MSG} \
+            Variable declaration var_id is not the correct Expr variant!!",
+                    ), var_id.loc());
                 }
-            };
+            }
             self.visit_stmt(stmt)
         });
 
@@ -903,9 +914,19 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                 }
                 Statement::UnsharedDeclInit { .. }
                 | Statement::UnsharedDecl { .. }
-                | Statement::LibImport { .. }
                 | Statement::Decl { .. } => {}
+                _ => self.err.add_internal_error(
+                    &format!("Should already be handled: {stmt:?}"),
+                    stmt.loc(),
+                ),
             }
+        }
+    }
+
+    fn visit_stmt_global(&mut self, stmt: &mut Statement) {
+        match stmt {
+            Statement::LibImport { .. } => {}
+            _ => self.visit_stmt(stmt),
         }
     }
 

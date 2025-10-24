@@ -45,7 +45,7 @@ impl LibAdapter for MapLibAdapter {
     fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32> {
         &mut self.funcs
     }
-    fn define_helper_funcs(&mut self, app_wasm: &mut Module) -> Vec<FunctionID> {
+    fn define_helper_funcs(&mut self, app_wasm: &mut Module, _: &mut ErrorGen) -> Vec<FunctionID> {
         self.emit_helper_funcs(app_wasm)
     }
 }
@@ -143,7 +143,7 @@ impl MapLibAdapter {
             None
         };
 
-        self.call(&fname, func);
+        self.call(&fname, func, err);
 
         if matches!(key, DataType::Str) {
             let Some(src_len) = src_len else {
@@ -204,7 +204,7 @@ impl MapLibAdapter {
             None
         };
 
-        self.call(&fname, func);
+        self.call(&fname, func, err);
 
         if matches!(&key, DataType::Str) {
             let Some(src_len) = src_len else {
@@ -239,7 +239,7 @@ impl MapLibAdapter {
     ) -> u32 {
         let (map_id, func_name) = self.create_map_internal(ty, err);
         func.u32_const(map_id);
-        self.call(func_name.as_str(), func);
+        self.call(func_name.as_str(), func, err);
         map_id
     }
 
@@ -251,16 +251,17 @@ impl MapLibAdapter {
     ) {
         // This variation of map_create doesn't know the ID statically
         let func_name = self.create_map_fname_by_map_type(ty, true, err);
-        self.call(func_name.as_str(), func);
+        self.call(func_name.as_str(), func, err);
     }
 
     pub fn print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         map_id: u32,
         func: &mut T,
+        err: &mut ErrorGen,
     ) {
         func.u32_const(map_id);
-        self.call_print_map(func)
+        self.call_print_map(func, err)
     }
 
     // -------------------
@@ -276,8 +277,9 @@ impl MapLibAdapter {
     pub(crate) fn call_print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
         func: &mut T,
+        err: &mut ErrorGen,
     ) {
-        self.call(PRINT_MAP, func)
+        self.call(PRINT_MAP, func, err)
     }
 
     fn next_map_id(&mut self) -> u32 {
@@ -407,8 +409,13 @@ impl MapLibAdapter {
         }
     }
 
-    fn call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(&mut self, fname: &str, func: &mut T) {
-        let fid = self.get_fid(fname);
+    fn call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        fname: &str,
+        func: &mut T,
+        err: &mut ErrorGen,
+    ) {
+        let fid = self.get_fid(fname, err);
         func.call(FunctionID(fid));
     }
 

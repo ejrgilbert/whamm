@@ -107,6 +107,7 @@ impl Reason {
         }
     }
     fn from_bytes(bytes: &mut Vec<u8>) -> Vec<Reason> {
+        assert!(!bytes.is_empty());
         let mut reasons = vec![];
         let id = read_le_u8(bytes);
         match id {

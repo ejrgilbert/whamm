@@ -16,6 +16,10 @@ itertools = "0.14.0"
 #wirm = { path = "../wirm" }
 wirm = "=2.0.0"
 
+# For the wasmtime embedding for @static
+wasmtime = "38.0.2"
+wasi-common = "38.0.2"
+
 # Logging
 env_logger = "0.10.2"
 log = "0.4.20"

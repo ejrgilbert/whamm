@@ -8,6 +8,7 @@ use crate::generator::ast::Probe;
 use crate::generator::folding::expr::ExprFolder;
 use crate::generator::folding::stmt::StmtFolder;
 use crate::lang_features::libraries::core::maps::map_adapter::{MapLibAdapter, MAP_LIB_MEM_OFFSET};
+use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
 };
@@ -18,6 +19,7 @@ use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmVa
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{MacroOpcode, Opcode};
 use wirm::{InitInstr, Module};
+
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -28,26 +30,29 @@ use wirm::{InitInstr, Module};
 // ==================================================================
 // ==================================================================
 
-pub struct EmitCtx<'a, 'b, 'c, 'd, 'e> {
-    table: &'a mut SymbolTable,
-    mem_allocator: &'b MemoryAllocator,
-    locals_tracker: &'c mut LocalsTracker,
+pub struct EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
+    registry: &'a mut WasmRegistry,
+    table: &'b mut SymbolTable,
+    mem_allocator: &'c MemoryAllocator,
+    locals_tracker: &'d mut LocalsTracker,
     in_map_op: bool,
     in_lib_call_to: Option<String>,
-    map_lib_adapter: &'d mut MapLibAdapter,
+    map_lib_adapter: &'e mut MapLibAdapter,
     err_msg: String,
-    err: &'e mut ErrorGen,
+    err: &'f mut ErrorGen,
 }
-impl<'a, 'b, 'c, 'd, 'e> EmitCtx<'a, 'b, 'c, 'd, 'e> {
+impl<'a, 'b, 'c, 'd, 'e, 'f> EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
     pub fn new(
-        table: &'a mut SymbolTable,
-        mem_allocator: &'b MemoryAllocator,
-        locals_tracker: &'c mut LocalsTracker,
-        map_lib_adapter: &'d mut MapLibAdapter,
+        registry: &'a mut WasmRegistry,
+        table: &'b mut SymbolTable,
+        mem_allocator: &'c MemoryAllocator,
+        locals_tracker: &'d mut LocalsTracker,
+        map_lib_adapter: &'e mut MapLibAdapter,
         err_msg: &str,
-        err: &'e mut ErrorGen,
+        err: &'f mut ErrorGen,
     ) -> Self {
         Self {
+            registry,
             table,
             mem_allocator,
             locals_tracker,
@@ -93,7 +98,8 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     let mut is_success = true;
-    let mut folded_stmt = StmtFolder::fold_stmt(stmt, ctx.table, ctx.err);
+    let mut folded_stmt =
+        StmtFolder::fold_stmt(stmt, strategy.as_monitor_module(), ctx.table, ctx.err);
     for s in folded_stmt.stmts.iter_mut() {
         is_success &= emit_stmt_inner(s, strategy, injector, ctx);
     }
@@ -601,7 +607,13 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     // fold it first!
-    let mut folded_expr = ExprFolder::fold_expr(expr, ctx.table, ctx.err);
+    let mut folded_expr = ExprFolder::fold_expr(
+        expr,
+        ctx.registry,
+        strategy.as_monitor_module(),
+        ctx.table,
+        ctx.err,
+    );
     match &mut folded_expr {
         Expr::UnOp {
             op, expr, done_on, ..
@@ -673,11 +685,17 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 _ => return false,
             };
 
+            // first save off current context's state on whether we're in a lib call
+            let in_lib_call_to = ctx.in_lib_call_to.clone();
+
             // emit the arguments
             let mut is_success = true;
             for arg in args.iter_mut() {
                 is_success = emit_expr(arg, strategy, injector, ctx);
             }
+
+            // now that we've emitted the arguments, restore the original lib call tracking
+            ctx.in_lib_call_to = in_lib_call_to;
 
             let addr = if let Some(lib_name) = &ctx.in_lib_call_to {
                 let Some(Record::LibFn { addr, .. }) = ctx.table.lookup_lib_fn(lib_name, &fn_name)
@@ -695,11 +713,14 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             if let Some(f_id) = addr {
                 injector.call(FunctionID(f_id));
             } else {
-                unreachable!(
-                    "{} \
-                                fn_target address not in symbol table for '{}', not emitted yet...",
-                    ctx.err_msg, fn_name
-                );
+                ctx.err.add_internal_error(&format!("{}\n\tfn_target address not in symbol table for '{}{}', not emitted yet...",
+                                                    ctx.err_msg,
+                                                    if let Some(lib_name) = &ctx.in_lib_call_to {
+                                                        format!("{lib_name}.")
+                                                    } else {
+                                                        "".to_string()
+                                                    },
+                                                    fn_name), expr.loc());
             }
             is_success
         }

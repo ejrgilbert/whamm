@@ -19,15 +19,15 @@ use wirm::Module;
 /// emit some compiler-defined functions and user-defined globals.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the Emitter field.
-pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i> {
-    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f>,
+pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
+    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
     pub context_name: String,
-    pub err: &'g mut ErrorGen,
-    pub injected_funcs: &'h mut Vec<FunctionID>,
+    pub err: &'h mut ErrorGen,
+    pub injected_funcs: &'i mut Vec<FunctionID>,
     pub used_fns_per_lib: HashMap<String, HashSet<String>>,
-    pub user_lib_modules: HashMap<String, (Option<String>, Module<'i>)>,
+    pub user_lib_modules: HashMap<String, (Option<String>, Module<'j>)>,
 }
-impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         whamm: &mut Whamm,
@@ -46,7 +46,11 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 }
 
-impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+    fn add_internal_error(&mut self, message: &str, loc: &Option<Location>) {
+        self.err.add_internal_error(message, loc);
+    }
+
     fn emit_string(&mut self, val: &mut Value) -> bool {
         self.emitter.emit_string(val)
     }
@@ -126,7 +130,35 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn visit_global_stmts(&mut self, stmts: &mut [Statement]) -> bool {
-        self.visit_stmts(stmts);
-        self.emitter.emit_global_stmts(stmts, self.err)
+        for stmt in stmts.iter_mut() {
+            match stmt {
+                Statement::Decl { .. } | Statement::UnsharedDecl { .. } => {} // already handled
+                Statement::LibImport { lib_name, loc, .. } => {
+                    self.link_user_lib(lib_name, loc);
+                }
+                Statement::Assign { .. } | Statement::Expr { .. } => {
+                    // assume this is a valid AST node since we've gone through validation
+                    maybe_add_start_fn(
+                        self.injected_funcs,
+                        self.emitter.emit_global_stmt(stmt, self.err),
+                    )
+                }
+                Statement::UnsharedDeclInit { init, .. } => maybe_add_start_fn(
+                    self.injected_funcs,
+                    self.emitter.emit_global_stmt(init, self.err),
+                ),
+                _ => {
+                    self.err.add_unimplemented_error(&format!("We don't support this statement type yet in global script scope: {stmt:?}"), stmt.loc());
+                }
+            }
+        }
+
+        fn maybe_add_start_fn(injected_funcs: &mut Vec<FunctionID>, fid: Option<u32>) {
+            if let Some(fid) = fid {
+                // the start function was created, add this
+                injected_funcs.push(FunctionID(fid));
+            }
+        }
+        true
     }
 }
