@@ -158,6 +158,14 @@ fn instrument_with_branch_monitor_rewriting_scripts() {
     run_core_suite("branch-monitor_rewriting", processed_scripts, true, false)
 }
 #[test]
+fn instrument_with_bytecode_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/bytecode");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("bytecode", processed_scripts, true, true)
+}
+#[test]
 fn instrument_with_local_n_scripts() {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/localN");

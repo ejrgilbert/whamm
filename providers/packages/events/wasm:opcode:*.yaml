@@ -1,14 +1,3 @@
-# ============================
-# ==== Metadata Constants ====
-# ============================
-
-opname: &opname
-  name: opname
-  type: str
-  docs: The name of the activated opcode.
-  lifetime: static
-  derived_from: null
-
 # ========================
 # ==== argN Constants ====
 # ========================
@@ -618,7 +607,16 @@ is_write_false: &is_write_false
 unreachable: &unreachable
   name: unreachable
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"unreachable\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0000
     - *category_id_misc
     - *category_name_misc
   bound_fns: []
@@ -631,7 +629,16 @@ unreachable: &unreachable
 nop: &nop
   name: nop
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"nop\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0001
     - *category_id_misc
     - *category_name_misc
   bound_fns: []
@@ -642,7 +649,16 @@ nop: &nop
 block: &block
   name: block
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"block\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0002
     - *category_id_control
     - *category_name_control
     - *argN
@@ -654,7 +670,16 @@ block: &block
 loop: &loop
   name: loop
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"loop\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0003
     - *category_id_control
     - *category_name_control
     - *argN
@@ -666,7 +691,16 @@ loop: &loop
 if: &if
   name: if
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"if\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0004
     - *category_id_control
     - *category_name_control
     - *arg0_u32
@@ -678,7 +712,16 @@ if: &if
 else: &else
   name: else
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"else\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0005
     - *category_id_control
     - *category_name_control
   bound_fns: []
@@ -686,21 +729,21 @@ else: &else
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/if...else"
 
-try_table: &try_table
-  name: try_table
-  bound_vars:
-    - *opname
-    - *category_id_table
-    - *category_name_table
-  bound_fns: []
-  supported_modes: *block_modes
-
-  docs: "https://github.com/WebAssembly/exception-handling/blob/e7c7c313d26f6b0fe8f1bda33cd6ab5e9edd838b/proposals/exception-handling/Exceptions.md#try-blocks"
+# TODO: try (0x0006) / catch (0x0007)
 
 throw: &throw
   name: throw
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"throw\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0008
     - *category_id_exn
     - *category_name_exn
     - *argN
@@ -710,10 +753,21 @@ throw: &throw
 
   docs: "https://github.com/WebAssembly/exception-handling/blob/e7c7c313d26f6b0fe8f1bda33cd6ab5e9edd838b/proposals/exception-handling/Exceptions.md#throwing-an-exception"
 
+# TODO: rethrow (0x0009)
+
 throw_ref: &throw_ref
   name: throw_ref
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"throw_ref\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x000A
     - *category_id_exn
     - *category_name_exn
     - *argN
@@ -725,7 +779,16 @@ throw_ref: &throw_ref
 end: &end
   name: end
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"end\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x000B
     - *category_id_control
     - *category_name_control
   bound_fns: []
@@ -736,7 +799,16 @@ end: &end
 br: &br
   name: br
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"br\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x000C
     - *category_id_control
     - *category_name_control
     - *imm0_u32
@@ -748,7 +820,16 @@ br: &br
 br_if: &br_if
   name: br_if
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"br_if\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x000D
     - *category_id_control
     - *category_name_control
     - *arg0_u32
@@ -761,7 +842,16 @@ br_if: &br_if
 br_table: &br_table
   name: br_table
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"br_table\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x000E
     - *category_id_control
     - *category_name_control
     - *arg0_u32
@@ -794,7 +884,16 @@ br_table: &br_table
 return: &return
   name: return
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"return\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x000F
     - *category_id_control
     - *category_name_control
   bound_fns: []
@@ -806,7 +905,16 @@ return: &return
 call: &call
   name: call
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"call\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0010
     - *category_id_control
     - *category_name_control
     - *argN
@@ -824,7 +932,16 @@ call: &call
 call_indirect: &call_indirect
   name: call_indirect
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"call_indirect\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0011
     - *category_id_control
     - *category_name_control
     - *argN
@@ -838,7 +955,16 @@ call_indirect: &call_indirect
 return_call: &return_call
   name: return_call
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"return_call\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0012
     - *category_id_control
     - *category_name_control
     - *argN
@@ -856,7 +982,16 @@ return_call: &return_call
 return_call_indirect: &return_call_indirect
   name: return_call_indirect
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"return_call_indirect\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0013
     - *category_id_control
     - *category_name_control
     - *argN
@@ -867,10 +1002,65 @@ return_call_indirect: &return_call_indirect
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
 
+call_ref: &call_ref
+  name: call_ref
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"call_ref\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0014
+    - *category_id_control
+    - *category_name_control
+    - *imm0_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+return_call_ref: &return_call_ref
+  name: return_call_ref
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"return_call_ref\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0015
+    - *category_id_control
+    - *category_name_control
+    - *imm0_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+# TODO: delegate/catch_all
+
 drop: &drop
   name: drop
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"drop\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x001A
     - *category_id_misc
     - *category_name_misc
     - *argN
@@ -882,7 +1072,16 @@ drop: &drop
 select: &select
   name: select
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"select\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x001B
     - *category_id_control
     - *category_name_control
     - *argN
@@ -896,7 +1095,16 @@ select: &select
 typed_select: &typed_select
   name: typed_select
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"select\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x001C
     - *category_id_control
     - *category_name_control
     - *argN
@@ -905,10 +1113,39 @@ typed_select: &typed_select
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/Select"
 
+try_table: &try_table
+  name: try_table
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"try_table\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x001F
+    - *category_id_table
+    - *category_name_table
+  bound_fns: []
+  supported_modes: *block_modes
+
+  docs: "https://github.com/WebAssembly/exception-handling/blob/e7c7c313d26f6b0fe8f1bda33cd6ab5e9edd838b/proposals/exception-handling/Exceptions.md#try-blocks"
+
 local_get: &local_get
   name: local.get
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"local.get\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0020
     - *category_id_local
     - *category_name_local
     - *imm0_u32
@@ -920,7 +1157,16 @@ local_get: &local_get
 local_set: &local_set
   name: local.set
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"local.set\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0021
     - *category_id_local
     - *category_name_local
     - *arg0_unknown
@@ -933,7 +1179,16 @@ local_set: &local_set
 local_tee: &local_tee
   name: local.tee
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"local.tee\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0022
     - *category_id_local
     - *category_name_local
     - *arg0_unknown
@@ -946,7 +1201,16 @@ local_tee: &local_tee
 global_get: &global_get
   name: global.get
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"global.get\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0023
     - *category_id_global
     - *category_name_global
     - *imm0_u32
@@ -958,7 +1222,16 @@ global_get: &global_get
 global_set: &global_set
   name: global.set
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"global.set\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0024
     - *category_id_global
     - *category_name_global
     - *arg0_unknown
@@ -968,10 +1241,63 @@ global_set: &global_set
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables/Global_set"
 
+table_get: &table_get
+  name: table.get
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"table.get\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0025
+    - *category_id_table
+    - *category_name_table
+    - *imm0_u32
+    - *arg0_i32
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+table_set: &table_set
+  name: table.set
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"table.set\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0026
+    - *category_id_table
+    - *category_name_table
+    - *imm0_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
 i32_load: &i32_load
   name: i32.load
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.load\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0028
     - name: data_size
       type: u32
       derived_from: 4
@@ -999,7 +1325,16 @@ i32_load: &i32_load
 i64_load: &i64_load
   name: i64.load
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.load\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0029
     - name: data_size
       type: u32
       derived_from: 8
@@ -1027,7 +1362,16 @@ i64_load: &i64_load
 f32_load: &f32_load
   name: f32.load
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.load\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x002A
     - name: data_size
       type: u32
       derived_from: 4
@@ -1055,7 +1399,16 @@ f32_load: &f32_load
 f64_load: &f64_load
   name: f64.load
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.load\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x002B
     - name: data_size
       type: u32
       derived_from: 8
@@ -1083,7 +1436,16 @@ f64_load: &f64_load
 i32_load8_s: &i32_load8_s
   name: i32.load8_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.load8_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x002C
     - name: data_size
       type: u32
       derived_from: 1
@@ -1111,7 +1473,16 @@ i32_load8_s: &i32_load8_s
 i32_load8_u: &i32_load8_u
   name: i32.load8_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.load8_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x002D
     - name: data_size
       type: u32
       derived_from: 1
@@ -1139,7 +1510,16 @@ i32_load8_u: &i32_load8_u
 i32_load16_s: &i32_load16_s
   name: i32.load16_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.load16_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x002E
     - name: data_size
       type: u32
       derived_from: 2
@@ -1167,7 +1547,16 @@ i32_load16_s: &i32_load16_s
 i32_load16_u: &i32_load16_u
   name: i32.load16_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.load16_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x002F
     - name: data_size
       type: u32
       derived_from: 2
@@ -1195,7 +1584,16 @@ i32_load16_u: &i32_load16_u
 i64_load8_s: &i64_load8_s
   name: i64.load8_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.load8_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0030
     - name: data_size
       type: u32
       derived_from: 1
@@ -1223,7 +1621,16 @@ i64_load8_s: &i64_load8_s
 i64_load8_u: &i64_load8_u
   name: i64.load8_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.load8_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0031
     - name: data_size
       type: u32
       derived_from: 1
@@ -1251,7 +1658,16 @@ i64_load8_u: &i64_load8_u
 i64_load16_s: &i64_load16_s
   name: i64.load16_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.load16_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0032
     - name: data_size
       type: u32
       derived_from: 2
@@ -1279,7 +1695,16 @@ i64_load16_s: &i64_load16_s
 i64_load16_u: &i64_load16_u
   name: i64.load16_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.load16_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0033
     - name: data_size
       type: u32
       derived_from: 2
@@ -1307,7 +1732,16 @@ i64_load16_u: &i64_load16_u
 i64_load32_s: &i64_load32_s
   name: i64.load32_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.load32_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0034
     - name: data_size
       type: u32
       derived_from: 4
@@ -1335,7 +1769,16 @@ i64_load32_s: &i64_load32_s
 i64_load32_u: &i64_load32_u
   name: i64.load32_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.load32_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0035
     - name: data_size
       type: u32
       derived_from: 4
@@ -1363,7 +1806,16 @@ i64_load32_u: &i64_load32_u
 i32_store: &i32_store
   name: i32.store
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.store\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0036
     - name: data_size
       type: u32
       derived_from: 4
@@ -1391,7 +1843,16 @@ i32_store: &i32_store
 i64_store: &i64_store
   name: i64.store
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.store\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0037
     - name: data_size
       type: u32
       derived_from: 8
@@ -1419,7 +1880,16 @@ i64_store: &i64_store
 f32_store: &f32_store
   name: f32.store
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.store\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0038
     - name: data_size
       type: u32
       derived_from: 4
@@ -1447,7 +1917,16 @@ f32_store: &f32_store
 f64_store: &f64_store
   name: f64.store
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.store\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0039
     - name: data_size
       type: u32
       derived_from: 8
@@ -1475,7 +1954,16 @@ f64_store: &f64_store
 i32_store8: &i32_store8
   name: i32.store8
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.store8\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x003A
     - name: data_size
       type: u32
       derived_from: 1
@@ -1503,7 +1991,16 @@ i32_store8: &i32_store8
 i32_store16: &i32_store16
   name: i32.store16
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.store16\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x003B
     - name: data_size
       type: u32
       derived_from: 2
@@ -1531,7 +2028,16 @@ i32_store16: &i32_store16
 i64_store8: &i64_store8
   name: i64.store8
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.store8\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x003C
     - name: data_size
       type: u32
       derived_from: 1
@@ -1560,7 +2066,16 @@ i64_store8: &i64_store8
 i64_store16: &i64_store16
   name: i64.store16
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.store16\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x003D
     - name: data_size
       type: u32
       derived_from: 2
@@ -1588,7 +2103,16 @@ i64_store16: &i64_store16
 i64_store32: &i64_store32
   name: i64.store32
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.store32\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x003E
     - name: data_size
       type: u32
       derived_from: 4
@@ -1616,7 +2140,16 @@ i64_store32: &i64_store32
 memory_size: &memory_size
   name: memory.size
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"memory.size\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x003F
     - *category_id_memory
     - *category_name_memory
     - *imm0_u32
@@ -1628,7 +2161,16 @@ memory_size: &memory_size
 memory_grow: &memory_grow
   name: memory.grow
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"memory.grow\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0040
     - *category_id_memory
     - *category_name_memory
     - *arg0_u32
@@ -1641,7 +2183,16 @@ memory_grow: &memory_grow
 i32_const: &i32_const
   name: i32.const
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.const\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0041
     - *category_id_const
     - *category_name_const
     - *imm0_i32
@@ -1653,7 +2204,16 @@ i32_const: &i32_const
 i64_const: &i64_const
   name: i64.const
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.const\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0042
     - *category_id_const
     - *category_name_const
     - *imm0_i64
@@ -1665,7 +2225,16 @@ i64_const: &i64_const
 f32_const: &f32_const
   name: f32.const
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.const\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0043
     - *category_id_const
     - *category_name_const
     - *imm0_f32
@@ -1677,7 +2246,16 @@ f32_const: &f32_const
 f64_const: &f64_const
   name: f64.const
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.const\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0044
     - *category_id_const
     - *category_name_const
     - *imm0_f64
@@ -1686,60 +2264,21 @@ f64_const: &f64_const
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Const"
 
-# TODO -- support pulling heaptype
-#     RefNull { hty: $crate::HeapType } => visit_ref_null
-ref_null: &ref_null
-  name: ref.null
-  bound_vars:
-    - *opname
-    - *category_id_gc
-    - *category_name_gc
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
-
-# TODO -- support argN
-ref_is_null: &ref_is_null
-  name: ref.is_null
-  bound_vars:
-    - *opname
-    - *category_id_gc
-    - *category_name_gc
-    - *argN
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
-
-ref_func: &ref_func
-  name: ref.func
-  bound_vars:
-    - *opname
-    - *category_id_gc
-    - *category_name_gc
-    - *imm0_u32
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
-
-ref_eq: &ref_eq
-  name: ref.eq
-  bound_vars:
-    - *opname
-    - *category_id_gc
-    - *category_name_gc
-    - *argN
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+#TODO: comparisons are next (by bytecode)
 
 i32_eqz: &i32_eqz
   name: i32.eqz
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.eqz\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0045
     - *category_id_compare
     - *category_name_compare
     - *arg0_i32
@@ -1751,7 +2290,16 @@ i32_eqz: &i32_eqz
 i32_eq: &i32_eq
   name: i32.eq
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.eq\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0046
     - *category_id_compare
     - *category_name_compare
     - *arg0_i32
@@ -1764,7 +2312,16 @@ i32_eq: &i32_eq
 i32_ne: &i32_ne
   name: i32.ne
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.ne\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0047
     - *category_id_compare
     - *category_name_compare
     - *arg0_i32
@@ -1777,7 +2334,16 @@ i32_ne: &i32_ne
 i32_lt_s: &i32_lt_s
   name: i32.lt_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.lt_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0048
     - *category_id_compare
     - *category_name_compare
     - *arg0_i32
@@ -1790,7 +2356,16 @@ i32_lt_s: &i32_lt_s
 i32_lt_u: &i32_lt_u
   name: i32.lt_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.lt_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0049
     - *category_id_compare
     - *category_name_compare
     - *arg0_u32
@@ -1803,7 +2378,16 @@ i32_lt_u: &i32_lt_u
 i32_gt_s: &i32_gt_s
   name: i32.gt_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.gt_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x004A
     - *category_id_compare
     - *category_name_compare
     - *arg0_i32
@@ -1816,7 +2400,16 @@ i32_gt_s: &i32_gt_s
 i32_gt_u: &i32_gt_u
   name: i32.gt_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.gt_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x004B
     - *category_id_compare
     - *category_name_compare
     - *arg0_u32
@@ -1829,7 +2422,16 @@ i32_gt_u: &i32_gt_u
 i32_le_s: &i32_le_s
   name: i32.le_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.le_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x004C
     - *category_id_compare
     - *category_name_compare
     - *arg0_i32
@@ -1842,7 +2444,16 @@ i32_le_s: &i32_le_s
 i32_le_u: &i32_le_u
   name: i32.le_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.le_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x004D
     - *category_id_compare
     - *category_name_compare
     - *arg0_u32
@@ -1855,7 +2466,16 @@ i32_le_u: &i32_le_u
 i32_ge_s: &i32_ge_s
   name: i32.ge_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.ge_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x004E
     - *category_id_compare
     - *category_name_compare
     - *arg0_i32
@@ -1868,7 +2488,16 @@ i32_ge_s: &i32_ge_s
 i32_ge_u: &i32_ge_u
   name: i32.ge_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.ge_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x004F
     - *category_id_compare
     - *category_name_compare
     - *arg0_u32
@@ -1881,7 +2510,16 @@ i32_ge_u: &i32_ge_u
 i64_eqz: &i64_eqz
   name: i64.eqz
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.eqz\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0050
     - *category_id_compare
     - *category_name_compare
     - *arg0_i64
@@ -1893,7 +2531,16 @@ i64_eqz: &i64_eqz
 i64_eq: &i64_eq
   name: i64.eq
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.eq\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0051
     - *category_id_compare
     - *category_name_compare
     - *arg0_i64
@@ -1905,7 +2552,16 @@ i64_eq: &i64_eq
 i64_ne: &i64_ne
   name: i64.ne
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.ne\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0052
     - *category_id_compare
     - *category_name_compare
     - *arg0_i64
@@ -1918,7 +2574,16 @@ i64_ne: &i64_ne
 i64_lt_s: &i64_lt_s
   name: i64.lt_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.lt_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0053
     - *category_id_compare
     - *category_name_compare
     - *arg0_i64
@@ -1931,7 +2596,16 @@ i64_lt_s: &i64_lt_s
 i64_lt_u: &i64_lt_u
   name: i64.lt_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.lt_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0054
     - *category_id_compare
     - *category_name_compare
     - *arg0_u64
@@ -1944,7 +2618,16 @@ i64_lt_u: &i64_lt_u
 i64_gt_s: &i64_gt_s
   name: i64.gt_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.gt_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0055
     - *category_id_compare
     - *category_name_compare
     - *arg0_i64
@@ -1957,7 +2640,16 @@ i64_gt_s: &i64_gt_s
 i64_gt_u: &i64_gt_u
   name: i64.gt_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.gt_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0056
     - *category_id_compare
     - *category_name_compare
     - *arg0_u64
@@ -1970,7 +2662,16 @@ i64_gt_u: &i64_gt_u
 i64_le_s: &i64_le_s
   name: i64.le_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.le_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0057
     - *category_id_compare
     - *category_name_compare
     - *arg0_i64
@@ -1983,7 +2684,16 @@ i64_le_s: &i64_le_s
 i64_le_u: &i64_le_u
   name: i64.le_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.le_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0058
     - *category_id_compare
     - *category_name_compare
     - *arg0_u64
@@ -1996,7 +2706,16 @@ i64_le_u: &i64_le_u
 i64_ge_s: &i64_ge_s
   name: i64.ge_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.ge_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0059
     - *category_id_compare
     - *category_name_compare
     - *arg0_i64
@@ -2009,7 +2728,16 @@ i64_ge_s: &i64_ge_s
 i64_ge_u: &i64_ge_u
   name: i64.ge_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.ge_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x005A
     - *category_id_compare
     - *category_name_compare
     - *arg0_u64
@@ -2022,7 +2750,16 @@ i64_ge_u: &i64_ge_u
 f32_eq: &f32_eq
   name: f32.eq
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.eq\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x005B
     - *category_id_compare
     - *category_name_compare
     - *arg0_f32
@@ -2035,7 +2772,16 @@ f32_eq: &f32_eq
 f32_ne: &f32_ne
   name: f32.ne
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.ne\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x005C
     - *category_id_compare
     - *category_name_compare
     - *arg0_f32
@@ -2048,7 +2794,16 @@ f32_ne: &f32_ne
 f32_lt: &f32_lt
   name: f32.lt
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.lt\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x005D
     - *category_id_compare
     - *category_name_compare
     - *arg0_f32
@@ -2061,7 +2816,16 @@ f32_lt: &f32_lt
 f32_gt: &f32_gt
   name: f32.gt
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.gt\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x005E
     - *category_id_compare
     - *category_name_compare
     - *arg0_f32
@@ -2074,7 +2838,16 @@ f32_gt: &f32_gt
 f32_le: &f32_le
   name: f32.le
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.le\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x005F
     - *category_id_compare
     - *category_name_compare
     - *arg0_f32
@@ -2087,7 +2860,16 @@ f32_le: &f32_le
 f32_ge: &f32_ge
   name: f32.ge
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.ge\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0060
     - *category_id_compare
     - *category_name_compare
     - *arg0_f32
@@ -2100,7 +2882,16 @@ f32_ge: &f32_ge
 f64_eq: &f64_eq
   name: f64.eq
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.eq\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0061
     - *category_id_compare
     - *category_name_compare
     - *arg0_f64
@@ -2113,7 +2904,16 @@ f64_eq: &f64_eq
 f64_ne: &f64_ne
   name: f64.ne
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.ne\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0062
     - *category_id_compare
     - *category_name_compare
     - *arg0_f64
@@ -2126,7 +2926,16 @@ f64_ne: &f64_ne
 f64_lt: &f64_lt
   name: f64.lt
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.lt\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0063
     - *category_id_compare
     - *category_name_compare
     - *arg0_f64
@@ -2139,7 +2948,16 @@ f64_lt: &f64_lt
 f64_gt: &f64_gt
   name: f64.gt
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.gt\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0064
     - *category_id_compare
     - *category_name_compare
     - *arg0_f64
@@ -2152,7 +2970,16 @@ f64_gt: &f64_gt
 f64_le: &f64_le
   name: f64.le
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.le\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0065
     - *category_id_compare
     - *category_name_compare
     - *arg0_f64
@@ -2165,7 +2992,16 @@ f64_le: &f64_le
 f64_ge: &f64_ge
   name: f64.ge
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.ge\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0066
     - *category_id_compare
     - *category_name_compare
     - *arg0_f64
@@ -2178,7 +3014,16 @@ f64_ge: &f64_ge
 i32_clz: &i32_clz
   name: i32.clz
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.clz\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0067
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2190,7 +3035,16 @@ i32_clz: &i32_clz
 i32_ctz: &i32_ctz
   name: i32.ctz
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.ctz\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0068
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2202,7 +3056,16 @@ i32_ctz: &i32_ctz
 i32_popcnt: &i32_popcnt
   name: i32.popcnt
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.popcnt\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0069
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2214,7 +3077,16 @@ i32_popcnt: &i32_popcnt
 i32_add: &i32_add
   name: i32.add
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.add\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x006A
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2227,7 +3099,16 @@ i32_add: &i32_add
 i32_sub: &i32_sub
   name: i32.sub
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.sub\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x006B
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2240,7 +3121,16 @@ i32_sub: &i32_sub
 i32_mul: &i32_mul
   name: i32.mul
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.mul\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x006C
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2253,7 +3143,16 @@ i32_mul: &i32_mul
 i32_div_s: &i32_div_s
   name: i32.div_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.div_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x006D
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2266,7 +3165,16 @@ i32_div_s: &i32_div_s
 i32_div_u: &i32_div_u
   name: i32.div_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.div_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x006E
     - *category_id_arith
     - *category_name_arith
     - *arg0_u32
@@ -2279,7 +3187,16 @@ i32_div_u: &i32_div_u
 i32_rem_s: &i32_rem_s
   name: i32.rem_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.rem_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x006F
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2292,7 +3209,16 @@ i32_rem_s: &i32_rem_s
 i32_rem_u: &i32_rem_u
   name: i32.rem_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.rem_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0070
     - *category_id_arith
     - *category_name_arith
     - *arg0_u32
@@ -2305,7 +3231,16 @@ i32_rem_u: &i32_rem_u
 i32_and: &i32_and
   name: i32.and
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.and\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0071
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2318,7 +3253,16 @@ i32_and: &i32_and
 i32_or: &i32_or
   name: i32.or
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.or\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0072
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2331,7 +3275,16 @@ i32_or: &i32_or
 i32_xor: &i32_xor
   name: i32.xor
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.xor\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0073
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2344,7 +3297,16 @@ i32_xor: &i32_xor
 i32_shl: &i32_shl
   name: i32.shl
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.shl\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0074
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2357,7 +3319,16 @@ i32_shl: &i32_shl
 i32_shr_s: &i32_shr_s
   name: i32.shr_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.shr_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0075
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2370,7 +3341,16 @@ i32_shr_s: &i32_shr_s
 i32_shr_u: &i32_shr_u
   name: i32.shr_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.shr_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0076
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2383,7 +3363,16 @@ i32_shr_u: &i32_shr_u
 i32_rotl: &i32_rotl
   name: i32.rotl
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.rotl\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0077
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2396,7 +3385,16 @@ i32_rotl: &i32_rotl
 i32_rotr: &i32_rotr
   name: i32.rotr
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.rotr\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0078
     - *category_id_arith
     - *category_name_arith
     - *arg0_i32
@@ -2409,7 +3407,16 @@ i32_rotr: &i32_rotr
 i64_clz: &i64_clz
   name: i64.clz
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.clz\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0079
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2421,7 +3428,16 @@ i64_clz: &i64_clz
 i64_ctz: &i64_ctz
   name: i64.ctz
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.ctz\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x007A
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2433,7 +3449,16 @@ i64_ctz: &i64_ctz
 i64_popcnt: &i64_popcnt
   name: i64.popcnt
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.popcnt\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x007B
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2445,7 +3470,16 @@ i64_popcnt: &i64_popcnt
 i64_add: &i64_add
   name: i64.add
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.add\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x007C
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2458,7 +3492,16 @@ i64_add: &i64_add
 i64_sub: &i64_sub
   name: i64.sub
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.sub\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x007D
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2471,7 +3514,16 @@ i64_sub: &i64_sub
 i64_mul: &i64_mul
   name: i64.mul
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.mul\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x007E
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2484,7 +3536,16 @@ i64_mul: &i64_mul
 i64_div_s: &i64_div_s
   name: i64.div_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.div_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x007F
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2497,7 +3558,16 @@ i64_div_s: &i64_div_s
 i64_div_u: &i64_div_u
   name: i64.div_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.div_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0080
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2510,7 +3580,16 @@ i64_div_u: &i64_div_u
 i64_rem_s: &i64_rem_s
   name: i64.rem_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.rem_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0081
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2523,7 +3602,16 @@ i64_rem_s: &i64_rem_s
 i64_rem_u: &i64_rem_u
   name: i64.rem_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.rem_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0082
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2536,7 +3624,16 @@ i64_rem_u: &i64_rem_u
 i64_and: &i64_and
   name: i64.and
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.and\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0083
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2549,7 +3646,16 @@ i64_and: &i64_and
 i64_or: &i64_or
   name: i64.or
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.or\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0084
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2562,7 +3668,16 @@ i64_or: &i64_or
 i64_xor: &i64_xor
   name: i64.xor
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.xor\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0085
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2575,7 +3690,16 @@ i64_xor: &i64_xor
 i64_shl: &i64_shl
   name: i64.shl
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.shl\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0086
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2588,7 +3712,16 @@ i64_shl: &i64_shl
 i64_shr_s: &i64_shr_s
   name: i64.shr_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.shr_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0087
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2601,7 +3734,16 @@ i64_shr_s: &i64_shr_s
 i64_shr_u: &i64_shr_u
   name: i64.shr_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.shr_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0088
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2614,7 +3756,16 @@ i64_shr_u: &i64_shr_u
 i64_rotl: &i64_rotl
   name: i64.rotl
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.rotl\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0089
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2627,7 +3778,16 @@ i64_rotl: &i64_rotl
 i64_rotr: &i64_rotr
   name: i64.rotr
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.rotr\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x008A
     - *category_id_arith
     - *category_name_arith
     - *arg0_i64
@@ -2640,7 +3800,16 @@ i64_rotr: &i64_rotr
 f32_abs: &f32_abs
   name: f32.abs
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.abs\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x008B
     - *category_id_arith
     - *category_name_arith
     - *arg0_f32
@@ -2652,7 +3821,16 @@ f32_abs: &f32_abs
 f32_neg: &f32_neg
   name: f32.neg
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.neg\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x008C
     - *category_id_arith
     - *category_name_arith
     - *arg0_f32
@@ -2664,7 +3842,16 @@ f32_neg: &f32_neg
 f32_ceil: &f32_ceil
   name: f32.ceil
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.ceil\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x008D
     - *category_id_arith
     - *category_name_arith
     - *arg0_f32
@@ -2676,7 +3863,16 @@ f32_ceil: &f32_ceil
 f32_floor: &f32_floor
   name: f32.floor
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.floor\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x008E
     - *category_id_arith
     - *category_name_arith
     - *arg0_f32
@@ -2688,7 +3884,16 @@ f32_floor: &f32_floor
 f32_trunc: &f32_trunc
   name: f32.trunc
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.trunc\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x008F
     - *category_id_arith
     - *category_name_arith
     - *arg0_f32
@@ -2700,7 +3905,16 @@ f32_trunc: &f32_trunc
 f32_nearest: &f32_nearest
   name: f32.nearest
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.nearest\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0090
     - *category_id_arith
     - *category_name_arith
     - *arg0_f32
@@ -2712,7 +3926,16 @@ f32_nearest: &f32_nearest
 f32_sqrt: &f32_sqrt
   name: f32.sqrt
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.sqrt\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0091
     - *category_id_arith
     - *category_name_arith
     - *arg0_f32
@@ -2724,7 +3947,16 @@ f32_sqrt: &f32_sqrt
 f32_add: &f32_add
   name: f32.add
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.add\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0092
     - *category_id_arith
     - *category_name_arith
     - *arg0_f32
@@ -2737,7 +3969,16 @@ f32_add: &f32_add
 f32_sub: &f32_sub
   name: f32.sub
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.sub\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0093
     - *category_id_arith
     - *category_name_arith
     - *arg0_f32
@@ -2750,7 +3991,16 @@ f32_sub: &f32_sub
 f32_mul: &f32_mul
   name: f32.mul
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.mul\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0094
     - *category_id_arith
     - *category_name_arith
     - *arg0_f32
@@ -2763,7 +4013,16 @@ f32_mul: &f32_mul
 f32_div: &f32_div
   name: f32.div
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.div\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0095
     - *category_id_arith
     - *category_name_arith
     - *arg0_f32
@@ -2776,7 +4035,16 @@ f32_div: &f32_div
 f32_min: &f32_min
   name: f32.min
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.min\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0096
     - *category_id_arith
     - *category_name_arith
     - *arg0_f32
@@ -2789,7 +4057,16 @@ f32_min: &f32_min
 f32_max: &f32_max
   name: f32.max
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.max\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0097
     - *category_id_arith
     - *category_name_arith
     - *arg0_f32
@@ -2802,7 +4079,16 @@ f32_max: &f32_max
 f32_copysign: &f32_copysign
   name: f32.copysign
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.copysign\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0098
     - *category_id_arith
     - *category_name_arith
     - *arg0_f32
@@ -2815,7 +4101,16 @@ f32_copysign: &f32_copysign
 f64_abs: &f64_abs
   name: f64.abs
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.abs\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x0099
     - *category_id_arith
     - *category_name_arith
     - *arg0_f64
@@ -2827,7 +4122,16 @@ f64_abs: &f64_abs
 f64_neg: &f64_neg
   name: f64.neg
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.neg\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x009A
     - *category_id_arith
     - *category_name_arith
     - *arg0_f64
@@ -2839,7 +4143,16 @@ f64_neg: &f64_neg
 f64_ceil: &f64_ceil
   name: f64.ceil
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.ceil\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x009B
     - *category_id_arith
     - *category_name_arith
     - *arg0_f64
@@ -2851,7 +4164,16 @@ f64_ceil: &f64_ceil
 f64_floor: &f64_floor
   name: f64.floor
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.floor\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x009C
     - *category_id_arith
     - *category_name_arith
     - *arg0_f64
@@ -2863,7 +4185,16 @@ f64_floor: &f64_floor
 f64_trunc: &f64_trunc
   name: f64.trunc
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.trunc\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x009D
     - *category_id_arith
     - *category_name_arith
     - *arg0_f64
@@ -2875,7 +4206,16 @@ f64_trunc: &f64_trunc
 f64_nearest: &f64_nearest
   name: f64.nearest
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.nearest\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x009E
     - *category_id_arith
     - *category_name_arith
     - *arg0_f64
@@ -2887,7 +4227,16 @@ f64_nearest: &f64_nearest
 f64_sqrt: &f64_sqrt
   name: f64.sqrt
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.sqrt\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x009F
     - *category_id_arith
     - *category_name_arith
     - *arg0_f64
@@ -2899,7 +4248,16 @@ f64_sqrt: &f64_sqrt
 f64_add: &f64_add
   name: f64.add
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.add\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00A0
     - *category_id_arith
     - *category_name_arith
     - *arg0_f64
@@ -2912,7 +4270,16 @@ f64_add: &f64_add
 f64_sub: &f64_sub
   name: f64.sub
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.sub\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00A1
     - *category_id_arith
     - *category_name_arith
     - *arg0_f64
@@ -2925,7 +4292,16 @@ f64_sub: &f64_sub
 f64_mul: &f64_mul
   name: f64.mul
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.mul\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00A2
     - *category_id_arith
     - *category_name_arith
     - *arg0_f64
@@ -2938,7 +4314,16 @@ f64_mul: &f64_mul
 f64_div: &f64_div
   name: f64.div
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.div\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00A3
     - *category_id_arith
     - *category_name_arith
     - *arg0_f64
@@ -2951,7 +4336,16 @@ f64_div: &f64_div
 f64_min: &f64_min
   name: f64.min
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.min\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00A4
     - *category_id_arith
     - *category_name_arith
     - *arg0_f64
@@ -2964,7 +4358,16 @@ f64_min: &f64_min
 f64_max: &f64_max
   name: f64.max
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.max\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00A5
     - *category_id_arith
     - *category_name_arith
     - *arg0_f64
@@ -2977,7 +4380,16 @@ f64_max: &f64_max
 f64_copysign: &f64_copysign
   name: f64.copysign
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.copysign\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00A6
     - *category_id_arith
     - *category_name_arith
     - *arg0_f64
@@ -2990,7 +4402,16 @@ f64_copysign: &f64_copysign
 i32_wrap_i64: &i32_wrap_i64
   name: i32.wrap_i64
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.wrap_i64\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00A7
     - *category_id_convert
     - *category_name_convert
     - *arg0_i64
@@ -3002,7 +4423,16 @@ i32_wrap_i64: &i32_wrap_i64
 i32_trunc_f32_s: &i32_trunc_f32_s
   name: i32.trunc_f32_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.trunc_f32_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00A8
     - *category_id_convert
     - *category_name_convert
     - *arg0_f32
@@ -3014,7 +4444,16 @@ i32_trunc_f32_s: &i32_trunc_f32_s
 i32_trunc_f32_u: &i32_trunc_f32_u
   name: i32.trunc_f32_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.trunc_f32_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00A9
     - *category_id_convert
     - *category_name_convert
     - *arg0_f32
@@ -3026,7 +4465,16 @@ i32_trunc_f32_u: &i32_trunc_f32_u
 i32_trunc_f64_s: &i32_trunc_f64_s
   name: i32.trunc_f64_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.trunc_f64_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00AA
     - *category_id_convert
     - *category_name_convert
     - *arg0_f64
@@ -3038,7 +4486,16 @@ i32_trunc_f64_s: &i32_trunc_f64_s
 i32_trunc_f64_u: &i32_trunc_f64_u
   name: i32.trunc_f64_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.trunc_f64_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00AB
     - *category_id_convert
     - *category_name_convert
     - *arg0_f64
@@ -3050,7 +4507,16 @@ i32_trunc_f64_u: &i32_trunc_f64_u
 i64_extend_i32_s: &i64_extend_i32_s
   name: i64.extend_i32_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.extend_i32_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00AC
     - *category_id_convert
     - *category_name_convert
     - *arg0_i32
@@ -3062,7 +4528,16 @@ i64_extend_i32_s: &i64_extend_i32_s
 i64_extend_i32_u: &i64_extend_i32_u
   name: i64.extend_i32_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.extend_i32_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00AD
     - *category_id_convert
     - *category_name_convert
     - *arg0_u32
@@ -3074,7 +4549,16 @@ i64_extend_i32_u: &i64_extend_i32_u
 i64_trunc_f32_s: &i64_trunc_f32_s
   name: i64.trunc_f32_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.trunc_f32_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00AE
     - *category_id_convert
     - *category_name_convert
     - *arg0_f32
@@ -3086,7 +4570,16 @@ i64_trunc_f32_s: &i64_trunc_f32_s
 i64_trunc_f32_u: &i64_trunc_f32_u
   name: i64.trunc_f32_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.trunc_f32_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00AF
     - *category_id_convert
     - *category_name_convert
     - *arg0_f32
@@ -3095,10 +4588,61 @@ i64_trunc_f32_u: &i64_trunc_f32_u
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
 
+i64_trunc_f64_s: &i64_trunc_f64_s
+  name: i64.trunc_f64_s
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.trunc_f64_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00B0
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
+
+i64_trunc_f64_u: &i64_trunc_f64_u
+  name: i64.trunc_f64_u
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.trunc_f64_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00B1
+    - *category_id_convert
+    - *category_name_convert
+    - *arg0_f64
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Truncate_float_to_int"
+
 f32_convert_i32_s: &f32_convert_i32_s
   name: f32.convert_i32_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.convert_i32_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00B2
     - *category_id_convert
     - *category_name_convert
     - *arg0_i32
@@ -3110,7 +4654,16 @@ f32_convert_i32_s: &f32_convert_i32_s
 f32_convert_i32_u: &f32_convert_i32_u
   name: f32.convert_i32_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.convert_i32_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00B3
     - *category_id_convert
     - *category_name_convert
     - *arg0_u32
@@ -3122,7 +4675,16 @@ f32_convert_i32_u: &f32_convert_i32_u
 f32_convert_i64_s: &f32_convert_i64_s
   name: f32.convert_i64_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.convert_i64_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00B4
     - *category_id_convert
     - *category_name_convert
     - *arg0_i64
@@ -3134,7 +4696,16 @@ f32_convert_i64_s: &f32_convert_i64_s
 f32_convert_i64_u: &f32_convert_i64_u
   name: f32.convert_i64_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.convert_i64_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00B5
     - *category_id_convert
     - *category_name_convert
     - *arg0_u64
@@ -3146,7 +4717,16 @@ f32_convert_i64_u: &f32_convert_i64_u
 f32_demote_f64: &f32_demote_f64
   name: f32.demote_f64
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.demote_f64\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00B6
     - *category_id_convert
     - *category_name_convert
     - *arg0_f64
@@ -3158,7 +4738,16 @@ f32_demote_f64: &f32_demote_f64
 f64_convert_i32_s: &f64_convert_i32_s
   name: f64.convert_i32_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.convert_i32_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00B7
     - *category_id_convert
     - *category_name_convert
     - *arg0_i32
@@ -3170,7 +4759,16 @@ f64_convert_i32_s: &f64_convert_i32_s
 f64_convert_i32_u: &f64_convert_i32_u
   name: f64.convert_i32_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.convert_i32_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00B8
     - *category_id_convert
     - *category_name_convert
     - *arg0_u32
@@ -3182,7 +4780,16 @@ f64_convert_i32_u: &f64_convert_i32_u
 f64_convert_i64_s: &f64_convert_i64_s
   name: f64.convert_i64_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.convert_i64_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00B9
     - *category_id_convert
     - *category_name_convert
     - *arg0_i64
@@ -3194,7 +4801,16 @@ f64_convert_i64_s: &f64_convert_i64_s
 f64_convert_i64_u: &f64_convert_i64_u
   name: f64.convert_i64_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.convert_i64_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00BA
     - *category_id_convert
     - *category_name_convert
     - *arg0_u64
@@ -3206,7 +4822,16 @@ f64_convert_i64_u: &f64_convert_i64_u
 f64_promote_f32: &f64_promote_f32
   name: f64.promote_f32
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.promote_f32\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00BB
     - *category_id_convert
     - *category_name_convert
     - *arg0_f32
@@ -3218,7 +4843,16 @@ f64_promote_f32: &f64_promote_f32
 i32_reinterpret_f32: &i32_reinterpret_f32
   name: i32.reinterpret_f32
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.reinterpret_f32\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00BC
     - *category_id_convert
     - *category_name_convert
     - *arg0_f32
@@ -3230,7 +4864,16 @@ i32_reinterpret_f32: &i32_reinterpret_f32
 i64_reinterpret_f64: &i64_reinterpret_f64
   name: i64.reinterpret_f64
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.reinterpret_f64\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00BD
     - *category_id_convert
     - *category_name_convert
     - *arg0_f64
@@ -3242,7 +4885,16 @@ i64_reinterpret_f64: &i64_reinterpret_f64
 f32_reinterpret_i32: &f32_reinterpret_i32
   name: f32.reinterpret_i32
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f32.reinterpret_i32\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00BE
     - *category_id_convert
     - *category_name_convert
     - *arg0_i32
@@ -3254,7 +4906,16 @@ f32_reinterpret_i32: &f32_reinterpret_i32
 f64_reinterpret_i64: &f64_reinterpret_i64
   name: f64.reinterpret_i64
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"f64.reinterpret_i64\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00BF
     - *category_id_convert
     - *category_name_convert
     - *arg0_i64
@@ -3266,7 +4927,16 @@ f64_reinterpret_i64: &f64_reinterpret_i64
 i32_extend8_s: &i32_extend8_s
   name: i32.extend8_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.extend8_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00C0
     - *category_id_convert
     - *category_name_convert
     - *arg0_i32
@@ -3278,7 +4948,16 @@ i32_extend8_s: &i32_extend8_s
 i32_extend16_s: &i32_extend16_s
   name: i32.extend16_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.extend16_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00C1
     - *category_id_convert
     - *category_name_convert
     - *arg0_i32
@@ -3290,7 +4969,16 @@ i32_extend16_s: &i32_extend16_s
 i64_extend8_s: &i64_extend8_s
   name: i64.extend8_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.extend8_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00C2
     - *category_id_convert
     - *category_name_convert
     - *arg0_i64
@@ -3302,7 +4990,16 @@ i64_extend8_s: &i64_extend8_s
 i64_extend16_s: &i64_extend16_s
   name: i64.extend16_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.extend16_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00C3
     - *category_id_convert
     - *category_name_convert
     - *arg0_i64
@@ -3314,7 +5011,16 @@ i64_extend16_s: &i64_extend16_s
 i64_extend32_s: &i64_extend32_s
   name: i64.extend32_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.extend32_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00C4
     - *category_id_convert
     - *category_name_convert
     - *arg0_i64
@@ -3323,10 +5029,169 @@ i64_extend32_s: &i64_extend32_s
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric/Extend"
 
+# TODO -- support pulling heaptype
+#     RefNull { hty: $crate::HeapType } => visit_ref_null
+ref_null: &ref_null
+  name: ref.null
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"ref.null\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00D0
+    - *category_id_gc
+    - *category_name_gc
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+# TODO -- support argN
+ref_is_null: &ref_is_null
+  name: ref.is_null
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"ref.is_null\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00D1
+    - *category_id_gc
+    - *category_name_gc
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+ref_func: &ref_func
+  name: ref.func
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"ref.func\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00D2
+    - *category_id_gc
+    - *category_name_gc
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+ref_eq: &ref_eq
+  name: ref.eq
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"ref.eq\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00D3
+    - *category_id_gc
+    - *category_name_gc
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
+ref_as_non_null: &ref_as_non_null
+  name: ref.as_non_null
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"ref.as_non_null\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00D4
+    - *category_id_convert
+    - *category_name_convert
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"
+
+br_on_null: &br_on_null
+  name: br_on_null
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"br_on_null\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00D5
+    - *category_id_control
+    - *category_name_control
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"
+
+br_on_non_null: &br_on_non_null
+  name: br_on_non_null
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"br_on_non_null\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0x00D6
+    - *category_id_control
+    - *category_name_control
+    - *imm0_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"
+
 struct_new: &struct_new
   name: struct.new
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"struct.new\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB00
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3340,7 +5205,16 @@ struct_new: &struct_new
 struct_new_default: &struct_new_default
   name: struct.new_default
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"struct.new_default\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB01
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3353,7 +5227,16 @@ struct_new_default: &struct_new_default
 struct_get: &struct_get
   name: struct.get
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"struct.get\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB02
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3369,7 +5252,16 @@ struct_get: &struct_get
 struct_get_s: &struct_get_s
   name: struct.get_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"struct.get_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB03
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3385,7 +5277,16 @@ struct_get_s: &struct_get_s
 struct_get_u: &struct_get_u
   name: struct.get_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"struct.get_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB04
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3401,7 +5302,16 @@ struct_get_u: &struct_get_u
 struct_set: &struct_set
   name: struct.set
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"struct.set\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB05
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3417,7 +5327,16 @@ struct_set: &struct_set
 array_new: &array_new
   name: array.new
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"array.new\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB06
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3432,7 +5351,16 @@ array_new: &array_new
 array_new_default: &array_new_default
   name: array.new_default
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"array.new_default\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB07
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3446,7 +5374,16 @@ array_new_default: &array_new_default
 array_new_fixed: &array_new_fixed
   name: array.new_fixed
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"array.new_fixed\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB08
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3461,7 +5398,16 @@ array_new_fixed: &array_new_fixed
 array_new_data: &array_new_data
   name: array.new_data
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"array.new_data\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB09
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3477,7 +5423,16 @@ array_new_data: &array_new_data
 array_new_elem: &array_new_elem
   name: array.new_elem
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"array.new_elem\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB0A
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3493,7 +5448,16 @@ array_new_elem: &array_new_elem
 array_get: &array_get
   name: array.get
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"array.get\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB0B
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3507,7 +5471,16 @@ array_get: &array_get
 array_get_s: &array_get_s
   name: array.get_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"array.get_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB0C
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3521,7 +5494,16 @@ array_get_s: &array_get_s
 array_get_u: &array_get_u
   name: array.get_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"array.get_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB0D
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3535,7 +5517,16 @@ array_get_u: &array_get_u
 array_set: &array_set
   name: array.set
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"array.set\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB0E
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3549,7 +5540,16 @@ array_set: &array_set
 array_len: &array_len
   name: array.len
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"array.len\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB0F
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3563,7 +5563,16 @@ array_len: &array_len
 array_fill: &array_fill
   name: array.fill
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"array.fill\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB10
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3577,7 +5586,16 @@ array_fill: &array_fill
 array_copy: &array_copy
   name: array.copy
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"array.copy\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB11
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3591,7 +5609,16 @@ array_copy: &array_copy
 array_init_data: &array_init_data
   name: array.init_data
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"array.init_data\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB12
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3606,7 +5633,16 @@ array_init_data: &array_init_data
 array_init_elem: &array_init_elem
   name: array.init_elem
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"array.init_elem\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB13
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
@@ -3621,7 +5657,16 @@ array_init_elem: &array_init_elem
 ref_test: &ref_test
   name: ref.test
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"ref.test\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB14
     - *category_id_gc
     - *category_name_gc
     - *immN
@@ -3634,7 +5679,16 @@ ref_test: &ref_test
 ref_test_null: &ref_test_null
   name: ref.test_null
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"ref.test_null\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB15
     - *category_id_gc
     - *category_name_gc
     - *immN
@@ -3647,7 +5701,16 @@ ref_test_null: &ref_test_null
 ref_cast: &ref_cast
   name: ref.cast
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"ref.cast\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB16
     - *category_id_gc
     - *category_name_gc
     - *immN
@@ -3660,7 +5723,16 @@ ref_cast: &ref_cast
 ref_cast_null: &ref_cast_null
   name: ref.cast_null
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"ref.cast_null\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB17
     - *category_id_gc
     - *category_name_gc
     - *immN
@@ -3673,7 +5745,16 @@ ref_cast_null: &ref_cast_null
 br_on_cast: &br_on_cast
   name: br_on_cast
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"br_on_cast\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB18
     - *category_id_control
     - *category_name_control
     - *imm0_u32
@@ -3688,7 +5769,16 @@ br_on_cast: &br_on_cast
 br_on_cast_fail: &br_on_cast_fail
   name: br_on_cast_fail
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"br_on_cast_fail\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB19
     - *category_id_control
     - *category_name_control
     - *imm0_u32
@@ -3703,7 +5793,16 @@ br_on_cast_fail: &br_on_cast_fail
 any_convert_extern: &any_convert_extern
   name: any.convert_extern
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"any.convert_extern\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB1A
     - *category_id_gc
     - *category_name_gc
     - *argN
@@ -3715,7 +5814,16 @@ any_convert_extern: &any_convert_extern
 extern_convert_any: &extern_convert_any
   name: extern.convert_any
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"extern.convert_any\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB1B
     - *category_id_gc
     - *category_name_gc
     - *argN
@@ -3727,7 +5835,16 @@ extern_convert_any: &extern_convert_any
 ref_i31: &ref_i31
   name: ref.i31
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"ref.i31\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB1C
     - *category_id_gc
     - *category_name_gc
     - *arg0_i32
@@ -3739,7 +5856,16 @@ ref_i31: &ref_i31
 i31_get_s: &i31_get_s
   name: i31.get_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i31.get_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB1D
     - *category_id_gc
     - *category_name_gc
     - *argN
@@ -3751,7 +5877,16 @@ i31_get_s: &i31_get_s
 i31_get_u: &i31_get_u
   name: i31.get_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i31.get_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFB1E
     - *category_id_gc
     - *category_name_gc
     - *argN
@@ -3763,7 +5898,16 @@ i31_get_u: &i31_get_u
 i32_trunc_sat_f32_s: &i32_trunc_sat_f32_s
   name: i32.trunc_sat_f32_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.trunc_sat_f32_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC00
     - *category_id_convert
     - *category_name_convert
     - *arg0_f32
@@ -3775,7 +5919,16 @@ i32_trunc_sat_f32_s: &i32_trunc_sat_f32_s
 i32_trunc_sat_f32_u: &i32_trunc_sat_f32_u
   name: i32.trunc_sat_f32_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.trunc_sat_f32_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC01
     - *category_id_convert
     - *category_name_convert
     - *arg0_f32
@@ -3787,7 +5940,16 @@ i32_trunc_sat_f32_u: &i32_trunc_sat_f32_u
 i32_trunc_sat_f64_s: &i32_trunc_sat_f64_s
   name: i32.trunc_sat_f64_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.trunc_sat_f64_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC02
     - *category_id_convert
     - *category_name_convert
     - *arg0_f64
@@ -3799,7 +5961,16 @@ i32_trunc_sat_f64_s: &i32_trunc_sat_f64_s
 i32_trunc_sat_f64_u: &i32_trunc_sat_f64_u
   name: i32.trunc_sat_f64_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.trunc_sat_f64_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC03
     - *category_id_convert
     - *category_name_convert
     - *arg0_f64
@@ -3811,7 +5982,16 @@ i32_trunc_sat_f64_u: &i32_trunc_sat_f64_u
 i64_trunc_sat_f32_s: &i64_trunc_sat_f32_s
   name: i64.trunc_sat_f32_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.trunc_sat_f32_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC04
     - *category_id_convert
     - *category_name_convert
     - *arg0_f32
@@ -3823,7 +6003,16 @@ i64_trunc_sat_f32_s: &i64_trunc_sat_f32_s
 i64_trunc_sat_f32_u: &i64_trunc_sat_f32_u
   name: i64.trunc_sat_f32_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.trunc_sat_f32_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC05
     - *category_id_convert
     - *category_name_convert
     - *arg0_f32
@@ -3835,7 +6024,16 @@ i64_trunc_sat_f32_u: &i64_trunc_sat_f32_u
 i64_trunc_sat_f64_s: &i64_trunc_sat_f64_s
   name: i64.trunc_sat_f64_s
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.trunc_sat_f64_s\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC06
     - *category_id_convert
     - *category_name_convert
     - *arg0_f64
@@ -3847,7 +6045,16 @@ i64_trunc_sat_f64_s: &i64_trunc_sat_f64_s
 i64_trunc_sat_f64_u: &i64_trunc_sat_f64_u
   name: i64.trunc_sat_f64_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.trunc_sat_f64_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC07
     - *category_id_convert
     - *category_name_convert
     - *arg0_f64
@@ -3859,7 +6066,16 @@ i64_trunc_sat_f64_u: &i64_trunc_sat_f64_u
 memory_init: &memory_init
   name: memory.init
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"memory.init\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC08
     - *category_id_memory
     - *category_name_memory
     - *imm0_u32
@@ -3869,10 +6085,40 @@ memory_init: &memory_init
 
   docs: "https://pengowray.github.io/wasm-ops/"
 
+data_drop: &data_drop
+  name: data.drop
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"data.drop\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC09
+    - *category_id_memory
+    - *category_name_memory
+    - *imm0_u32
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://pengowray.github.io/wasm-ops/"
+
 memory_copy: &memory_copy
   name: memory.copy
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"memory.copy\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC0A
     - *category_id_memory
     - *category_name_memory
     - *imm0_u32
@@ -3887,7 +6133,16 @@ memory_copy: &memory_copy
 memory_fill: &memory_fill
   name: memory.fill
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"memory.fill\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC0B
     - *category_id_memory
     - *category_name_memory
     - *imm0_u32
@@ -3899,22 +6154,44 @@ memory_fill: &memory_fill
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill"
 
-data_drop: &data_drop
-  name: data.drop
+table_init: &table_init
+  name: table.init
   bound_vars:
-    - *opname
-    - *category_id_memory
-    - *category_name_memory
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"table.init\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC0C
+    - *category_id_table
+    - *category_name_table
     - *imm0_u32
+    - *imm1_u32
+    - *arg0_i32
+    - *arg1_i32
+    - *arg2_i32
   bound_fns: []
   supported_modes: *default_modes
 
-  docs: "https://pengowray.github.io/wasm-ops/"
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 elem_drop: &elem_drop
   name: elem.drop
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"elem.drop\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC0D
     - *category_id_table
     - *category_name_table
     - *imm0_u32
@@ -3926,7 +6203,16 @@ elem_drop: &elem_drop
 table_copy: &table_copy
   name: table.copy
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"table.copy\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC0E
     - *category_id_table
     - *category_name_table
     - *imm0_u32
@@ -3934,61 +6220,6 @@ table_copy: &table_copy
     - *arg0_i32
     - *arg1_i32
     - *arg2_i32
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
-
-table_init: &table_init
-  name: table.init
-  bound_vars:
-    - *opname
-    - *category_id_table
-    - *category_name_table
-    - *imm0_u32
-    - *imm1_u32
-    - *arg0_i32
-    - *arg1_i32
-    - *arg2_i32
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
-
-table_fill: &table_fill
-  name: table.fill
-  bound_vars:
-    - *opname
-    - *category_id_table
-    - *category_name_table
-    - *imm0_u32
-    - *argN
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
-
-table_get: &table_get
-  name: table.get
-  bound_vars:
-    - *opname
-    - *category_id_table
-    - *category_name_table
-    - *imm0_u32
-    - *arg0_i32
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
-
-table_set: &table_set
-  name: table.set
-  bound_vars:
-    - *opname
-    - *category_id_table
-    - *category_name_table
-    - *imm0_u32
-    - *argN
   bound_fns: []
   supported_modes: *default_modes
 
@@ -3997,7 +6228,16 @@ table_set: &table_set
 table_grow: &table_grow
   name: table.grow
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"table.grow\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC0F
     - *category_id_table
     - *category_name_table
     - *imm0_u32
@@ -4010,7 +6250,16 @@ table_grow: &table_grow
 table_size: &table_size
   name: table.size
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"table.size\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC10
     - *category_id_table
     - *category_name_table
     - *imm0_u32
@@ -4019,10 +6268,41 @@ table_size: &table_size
 
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
+table_fill: &table_fill
+  name: table.fill
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"table.fill\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFC11
+    - *category_id_table
+    - *category_name_table
+    - *imm0_u32
+    - *argN
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
+
 memory_atomic_notify: &memory_atomic_notify
   name: memory.atomic_notify
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"memory.atomic_notify\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE00
     - name: addr
       type: u32
       derived_from: arg1
@@ -4045,7 +6325,16 @@ memory_atomic_notify: &memory_atomic_notify
 memory_atomic_wait32: &memory_atomic_wait32
   name: memory.atomic_wait32
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"memory.atomic_wait32\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE01
     - name: addr
       type: u32
       derived_from: arg2
@@ -4069,7 +6358,16 @@ memory_atomic_wait32: &memory_atomic_wait32
 memory_atomic_wait64: &memory_atomic_wait64
   name: memory.atomic_wait64
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"memory.atomic_wait64\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE02
     - name: addr
       type: u32
       derived_from: arg2
@@ -4093,7 +6391,16 @@ memory_atomic_wait64: &memory_atomic_wait64
 atomic_fence: &atomic_fence
   name: atomic.fence
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"atomic.fence\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE03
     - *category_id_atomic
     - *category_name_atomic
   bound_fns: []
@@ -4104,7 +6411,16 @@ atomic_fence: &atomic_fence
 i32_atomic_load: &i32_atomic_load
   name: i32.atomic_load
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_load\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE10
     - name: data_size
       type: u32
       derived_from: 4
@@ -4132,7 +6448,16 @@ i32_atomic_load: &i32_atomic_load
 i64_atomic_load: &i64_atomic_load
   name: i64.atomic_load
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_load\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE11
     - name: data_size
       type: u32
       derived_from: 8
@@ -4160,7 +6485,16 @@ i64_atomic_load: &i64_atomic_load
 i32_atomic_load8_u: &i32_atomic_load8_u
   name: i32.atomic_load8_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_load8_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE12
     - name: data_size
       type: u32
       derived_from: 1
@@ -4188,7 +6522,16 @@ i32_atomic_load8_u: &i32_atomic_load8_u
 i32_atomic_load16_u: &i32_atomic_load16_u
   name: i32.atomic_load16_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_load16_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE13
     - name: data_size
       type: u32
       derived_from: 2
@@ -4216,7 +6559,16 @@ i32_atomic_load16_u: &i32_atomic_load16_u
 i64_atomic_load8_u: &i64_atomic_load8_u
   name: i64.atomic_load8_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_load8_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE14
     - name: data_size
       type: u32
       derived_from: 1
@@ -4244,7 +6596,16 @@ i64_atomic_load8_u: &i64_atomic_load8_u
 i64_atomic_load16_u: &i64_atomic_load16_u
   name: i64.atomic_load16_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_load16_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE15
     - name: data_size
       type: u32
       derived_from: 2
@@ -4272,7 +6633,16 @@ i64_atomic_load16_u: &i64_atomic_load16_u
 i64_atomic_load32_u: &i64_atomic_load32_u
   name: i64.atomic_load32_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_load32_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE16
     - name: data_size
       type: u32
       derived_from: 4
@@ -4300,7 +6670,16 @@ i64_atomic_load32_u: &i64_atomic_load32_u
 i32_atomic_store: &i32_atomic_store
   name: i32.atomic_store
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_store\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE17
     - name: data_size
       type: u32
       derived_from: 4
@@ -4325,10 +6704,56 @@ i32_atomic_store: &i32_atomic_store
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
+i64_atomic_store: &i64_atomic_store
+  name: i64.atomic_store
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_store\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE18
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *is_write_true
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
 i32_atomic_store8: &i32_atomic_store8
   name: i32.atomic_store8
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_store8\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE19
     - name: data_size
       type: u32
       derived_from: 1
@@ -4356,7 +6781,16 @@ i32_atomic_store8: &i32_atomic_store8
 i32_atomic_store16: &i32_atomic_store16
   name: i32.atomic_store16
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_store16\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE1A
     - name: data_size
       type: u32
       derived_from: 2
@@ -4381,38 +6815,19 @@ i32_atomic_store16: &i32_atomic_store16
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-i64_atomic_store: &i64_atomic_store
-  name: i64.atomic_store
-  bound_vars:
-    - *opname
-    - name: data_size
-      type: u32
-      derived_from: 8
-      lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.store8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      lifetime: dynamic
-      docs: The memory address argument passed to the opcode.
-    - *category_id_atomic
-    - *category_name_atomic
-    - *memory
-    - *align
-    - *effective_addr
-    - *is_write_true
-    - *offset
-    - *arg0_i64
-    - *arg1_u32
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-
 i64_atomic_store8: &i64_atomic_store8
   name: i64.atomic_store8
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_store8\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE1B
     - name: data_size
       type: u32
       derived_from: 1
@@ -4440,7 +6855,16 @@ i64_atomic_store8: &i64_atomic_store8
 i64_atomic_store16: &i64_atomic_store16
   name: i64.atomic_store16
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_store16\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE1C
     - name: data_size
       type: u32
       derived_from: 2
@@ -4468,7 +6892,16 @@ i64_atomic_store16: &i64_atomic_store16
 i64_atomic_store32: &i64_atomic_store32
   name: i64.atomic_store32
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_store32\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE1D
     - name: data_size
       type: u32
       derived_from: 4
@@ -4496,7 +6929,16 @@ i64_atomic_store32: &i64_atomic_store32
 i32_atomic_rmw_add: &i32_atomic_rmw_add
   name: i32.atomic_rmw_add
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw_add\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE1E
     - name: data_size
       type: u32
       derived_from: 4
@@ -4521,10 +6963,56 @@ i32_atomic_rmw_add: &i32_atomic_rmw_add
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
+i64_atomic_rmw_add: &i64_atomic_rmw_add
+  name: i64.atomic_rmw_add
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw_add\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE1F
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *is_write_true
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
 i32_atomic_rmw8_add_u: &i32_atomic_rmw8_add_u
   name: i32.atomic_rmw8_add_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw8_add_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE20
     - name: data_size
       type: u32
       derived_from: 1
@@ -4552,7 +7040,16 @@ i32_atomic_rmw8_add_u: &i32_atomic_rmw8_add_u
 i32_atomic_rmw16_add_u: &i32_atomic_rmw16_add_u
   name: i32.atomic_rmw16_add_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw16_add_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE21
     - name: data_size
       type: u32
       derived_from: 2
@@ -4577,38 +7074,19 @@ i32_atomic_rmw16_add_u: &i32_atomic_rmw16_add_u
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-i64_atomic_rmw_add: &i64_atomic_rmw_add
-  name: i64.atomic_rmw_add
-  bound_vars:
-    - *opname
-    - name: data_size
-      type: u32
-      derived_from: 8
-      lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      lifetime: dynamic
-      docs: The memory address argument passed to the opcode.
-    - *category_id_atomic
-    - *category_name_atomic
-    - *memory
-    - *align
-    - *effective_addr
-    - *is_write_true
-    - *offset
-    - *arg0_i64
-    - *arg1_u32
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-
 i64_atomic_rmw8_add_u: &i64_atomic_rmw8_add_u
   name: i64.atomic_rmw8_add_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw8_add_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE22
     - name: data_size
       type: u32
       derived_from: 1
@@ -4636,7 +7114,16 @@ i64_atomic_rmw8_add_u: &i64_atomic_rmw8_add_u
 i64_atomic_rmw16_add_u: &i64_atomic_rmw16_add_u
   name: i64.atomic_rmw16_add_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw16_add_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE23
     - name: data_size
       type: u32
       derived_from: 2
@@ -4664,7 +7151,16 @@ i64_atomic_rmw16_add_u: &i64_atomic_rmw16_add_u
 i64_atomic_rmw32_add_u: &i64_atomic_rmw32_add_u
   name: i64.atomic_rmw32_add_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw32_add_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE24
     - name: data_size
       type: u32
       derived_from: 4
@@ -4692,7 +7188,16 @@ i64_atomic_rmw32_add_u: &i64_atomic_rmw32_add_u
 i32_atomic_rmw_sub: &i32_atomic_rmw_sub
   name: i32.atomic_rmw_sub
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw_sub\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE25
     - name: data_size
       type: u32
       derived_from: 4
@@ -4717,10 +7222,56 @@ i32_atomic_rmw_sub: &i32_atomic_rmw_sub
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
+i64_atomic_rmw_sub: &i64_atomic_rmw_sub
+  name: i64.atomic_rmw_sub
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw_sub\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE26
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *is_write_true
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
 i32_atomic_rmw8_sub_u: &i32_atomic_rmw8_sub_u
   name: i32.atomic_rmw8_sub_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw8_sub_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE27
     - name: data_size
       type: u32
       derived_from: 1
@@ -4748,7 +7299,16 @@ i32_atomic_rmw8_sub_u: &i32_atomic_rmw8_sub_u
 i32_atomic_rmw16_sub_u: &i32_atomic_rmw16_sub_u
   name: i32.atomic_rmw16_sub_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw16_sub_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE28
     - name: data_size
       type: u32
       derived_from: 2
@@ -4773,38 +7333,19 @@ i32_atomic_rmw16_sub_u: &i32_atomic_rmw16_sub_u
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-i64_atomic_rmw_sub: &i64_atomic_rmw_sub
-  name: i64.atomic_rmw_sub
-  bound_vars:
-    - *opname
-    - name: data_size
-      type: u32
-      derived_from: 8
-      lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      lifetime: dynamic
-      docs: The memory address argument passed to the opcode.
-    - *category_id_atomic
-    - *category_name_atomic
-    - *memory
-    - *align
-    - *effective_addr
-    - *is_write_true
-    - *offset
-    - *arg0_i64
-    - *arg1_u32
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-
 i64_atomic_rmw8_sub_u: &i64_atomic_rmw8_sub_u
   name: i64.atomic_rmw8_sub_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw8_sub_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE29
     - name: data_size
       type: u32
       derived_from: 1
@@ -4832,7 +7373,16 @@ i64_atomic_rmw8_sub_u: &i64_atomic_rmw8_sub_u
 i64_atomic_rmw16_sub_u: &i64_atomic_rmw16_sub_u
   name: i64.atomic_rmw16_sub_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw16_sub_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE2A
     - name: data_size
       type: u32
       derived_from: 2
@@ -4860,7 +7410,16 @@ i64_atomic_rmw16_sub_u: &i64_atomic_rmw16_sub_u
 i64_atomic_rmw32_sub_u: &i64_atomic_rmw32_sub_u
   name: i64.atomic_rmw32_sub_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw32_sub_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE2B
     - name: data_size
       type: u32
       derived_from: 4
@@ -4888,7 +7447,16 @@ i64_atomic_rmw32_sub_u: &i64_atomic_rmw32_sub_u
 i32_atomic_rmw_and: &i32_atomic_rmw_and
   name: i32.atomic_rmw_and
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw_and\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE2C
     - name: data_size
       type: u32
       derived_from: 4
@@ -4913,10 +7481,56 @@ i32_atomic_rmw_and: &i32_atomic_rmw_and
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
+i64_atomic_rmw_and: &i64_atomic_rmw_and
+  name: i64.atomic_rmw_and
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw_and\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE2D
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *is_write_true
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
 i32_atomic_rmw8_and_u: &i32_atomic_rmw8_and_u
   name: i32.atomic_rmw8_and_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw8_and_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE2E
     - name: data_size
       type: u32
       derived_from: 1
@@ -4944,7 +7558,16 @@ i32_atomic_rmw8_and_u: &i32_atomic_rmw8_and_u
 i32_atomic_rmw16_and_u: &i32_atomic_rmw16_and_u
   name: i32.atomic_rmw16_and_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw16_and_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE2F
     - name: data_size
       type: u32
       derived_from: 2
@@ -4969,38 +7592,19 @@ i32_atomic_rmw16_and_u: &i32_atomic_rmw16_and_u
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-i64_atomic_rmw_and: &i64_atomic_rmw_and
-  name: i64.atomic_rmw_and
-  bound_vars:
-    - *opname
-    - name: data_size
-      type: u32
-      derived_from: 8
-      lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      lifetime: dynamic
-      docs: The memory address argument passed to the opcode.
-    - *category_id_atomic
-    - *category_name_atomic
-    - *memory
-    - *align
-    - *effective_addr
-    - *is_write_true
-    - *offset
-    - *arg0_i64
-    - *arg1_u32
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-
 i64_atomic_rmw8_and_u: &i64_atomic_rmw8_and_u
   name: i64.atomic_rmw8_and_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw8_and_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE30
     - name: data_size
       type: u32
       derived_from: 1
@@ -5028,7 +7632,16 @@ i64_atomic_rmw8_and_u: &i64_atomic_rmw8_and_u
 i64_atomic_rmw16_and_u: &i64_atomic_rmw16_and_u
   name: i64.atomic_rmw16_and_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw16_and_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE31
     - name: data_size
       type: u32
       derived_from: 2
@@ -5056,7 +7669,16 @@ i64_atomic_rmw16_and_u: &i64_atomic_rmw16_and_u
 i64_atomic_rmw32_and_u: &i64_atomic_rmw32_and_u
   name: i64.atomic_rmw32_and_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw32_and_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE32
     - name: data_size
       type: u32
       derived_from: 4
@@ -5084,7 +7706,16 @@ i64_atomic_rmw32_and_u: &i64_atomic_rmw32_and_u
 i32_atomic_rmw_or: &i32_atomic_rmw_or
   name: i32.atomic_rmw_or
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw_or\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE33
     - name: data_size
       type: u32
       derived_from: 4
@@ -5109,10 +7740,56 @@ i32_atomic_rmw_or: &i32_atomic_rmw_or
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
+i64_atomic_rmw_or: &i64_atomic_rmw_or
+  name: i64.atomic_rmw_or
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw_or\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE34
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *is_write_true
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
 i32_atomic_rmw8_or_u: &i32_atomic_rmw8_or_u
   name: i32.atomic_rmw8_or_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw8_or_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE35
     - name: data_size
       type: u32
       derived_from: 1
@@ -5140,7 +7817,16 @@ i32_atomic_rmw8_or_u: &i32_atomic_rmw8_or_u
 i32_atomic_rmw16_or_u: &i32_atomic_rmw16_or_u
   name: i32.atomic_rmw16_or_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw16_or_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE36
     - name: data_size
       type: u32
       derived_from: 2
@@ -5165,38 +7851,19 @@ i32_atomic_rmw16_or_u: &i32_atomic_rmw16_or_u
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-i64_atomic_rmw_or: &i64_atomic_rmw_or
-  name: i64.atomic_rmw_or
-  bound_vars:
-    - *opname
-    - name: data_size
-      type: u32
-      derived_from: 8
-      lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      lifetime: dynamic
-      docs: The memory address argument passed to the opcode.
-    - *category_id_atomic
-    - *category_name_atomic
-    - *memory
-    - *align
-    - *effective_addr
-    - *is_write_true
-    - *offset
-    - *arg0_i64
-    - *arg1_u32
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-
 i64_atomic_rmw8_or_u: &i64_atomic_rmw8_or_u
   name: i64.atomic_rmw8_or_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw8_or_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE37
     - name: data_size
       type: u32
       derived_from: 1
@@ -5224,7 +7891,16 @@ i64_atomic_rmw8_or_u: &i64_atomic_rmw8_or_u
 i64_atomic_rmw16_or_u: &i64_atomic_rmw16_or_u
   name: i64.atomic_rmw16_or_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw16_or_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE38
     - name: data_size
       type: u32
       derived_from: 2
@@ -5252,7 +7928,16 @@ i64_atomic_rmw16_or_u: &i64_atomic_rmw16_or_u
 i64_atomic_rmw32_or_u: &i64_atomic_rmw32_or_u
   name: i64.atomic_rmw32_or_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw32_or_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE39
     - name: data_size
       type: u32
       derived_from: 4
@@ -5280,7 +7965,16 @@ i64_atomic_rmw32_or_u: &i64_atomic_rmw32_or_u
 i32_atomic_rmw_xor: &i32_atomic_rmw_xor
   name: i32.atomic_rmw_xor
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw_xor\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE3A
     - name: data_size
       type: u32
       derived_from: 4
@@ -5305,10 +7999,56 @@ i32_atomic_rmw_xor: &i32_atomic_rmw_xor
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
+i64_atomic_rmw_xor: &i64_atomic_rmw_xor
+  name: i64.atomic_rmw_xor
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw_xor\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE3B
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *is_write_true
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
 i32_atomic_rmw8_xor_u: &i32_atomic_rmw8_xor_u
   name: i32.atomic_rmw8_xor_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw8_xor_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE3C
     - name: data_size
       type: u32
       derived_from: 1
@@ -5336,7 +8076,16 @@ i32_atomic_rmw8_xor_u: &i32_atomic_rmw8_xor_u
 i32_atomic_rmw16_xor_u: &i32_atomic_rmw16_xor_u
   name: i32.atomic_rmw16_xor_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw16_xor_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE3D
     - name: data_size
       type: u32
       derived_from: 2
@@ -5361,38 +8110,19 @@ i32_atomic_rmw16_xor_u: &i32_atomic_rmw16_xor_u
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-i64_atomic_rmw_xor: &i64_atomic_rmw_xor
-  name: i64.atomic_rmw_xor
-  bound_vars:
-    - *opname
-    - name: data_size
-      type: u32
-      derived_from: 8
-      lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      lifetime: dynamic
-      docs: The memory address argument passed to the opcode.
-    - *category_id_atomic
-    - *category_name_atomic
-    - *memory
-    - *align
-    - *effective_addr
-    - *is_write_true
-    - *offset
-    - *arg0_i64
-    - *arg1_u32
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-
 i64_atomic_rmw8_xor_u: &i64_atomic_rmw8_xor_u
   name: i64.atomic_rmw8_xor_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw8_xor_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE3E
     - name: data_size
       type: u32
       derived_from: 1
@@ -5420,7 +8150,16 @@ i64_atomic_rmw8_xor_u: &i64_atomic_rmw8_xor_u
 i64_atomic_rmw16_xor_u: &i64_atomic_rmw16_xor_u
   name: i64.atomic_rmw16_xor_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw16_xor_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE3F
     - name: data_size
       type: u32
       derived_from: 2
@@ -5448,7 +8187,16 @@ i64_atomic_rmw16_xor_u: &i64_atomic_rmw16_xor_u
 i64_atomic_rmw32_xor_u: &i64_atomic_rmw32_xor_u
   name: i64.atomic_rmw32_xor_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw32_xor_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE40
     - name: data_size
       type: u32
       derived_from: 4
@@ -5476,7 +8224,16 @@ i64_atomic_rmw32_xor_u: &i64_atomic_rmw32_xor_u
 i32_atomic_rmw_xchg: &i32_atomic_rmw_xchg
   name: i32.atomic_rmw_xchg
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw_xchg\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE41
     - name: data_size
       type: u32
       derived_from: 4
@@ -5501,10 +8258,56 @@ i32_atomic_rmw_xchg: &i32_atomic_rmw_xchg
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
+i64_atomic_rmw_xchg: &i64_atomic_rmw_xchg
+  name: i64.atomic_rmw_xchg
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw_xchg\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE42
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *is_write_true
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
 i32_atomic_rmw8_xchg_u: &i32_atomic_rmw8_xchg_u
   name: i32.atomic_rmw8_xchg_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw8_xchg_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE43
     - name: data_size
       type: u32
       derived_from: 1
@@ -5532,7 +8335,16 @@ i32_atomic_rmw8_xchg_u: &i32_atomic_rmw8_xchg_u
 i32_atomic_rmw16_xchg_u: &i32_atomic_rmw16_xchg_u
   name: i32.atomic_rmw16_xchg_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw16_xchg_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE44
     - name: data_size
       type: u32
       derived_from: 2
@@ -5557,38 +8369,19 @@ i32_atomic_rmw16_xchg_u: &i32_atomic_rmw16_xchg_u
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-i64_atomic_rmw_xchg: &i64_atomic_rmw_xchg
-  name: i64.atomic_rmw_xchg
-  bound_vars:
-    - *opname
-    - name: data_size
-      type: u32
-      derived_from: 8
-      lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      lifetime: dynamic
-      docs: The memory address argument passed to the opcode.
-    - *category_id_atomic
-    - *category_name_atomic
-    - *memory
-    - *align
-    - *effective_addr
-    - *is_write_true
-    - *offset
-    - *arg0_i64
-    - *arg1_u32
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-
 i64_atomic_rmw8_xchg_u: &i64_atomic_rmw8_xchg_u
   name: i64.atomic_rmw8_xchg_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw8_xchg_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE45
     - name: data_size
       type: u32
       derived_from: 1
@@ -5616,7 +8409,16 @@ i64_atomic_rmw8_xchg_u: &i64_atomic_rmw8_xchg_u
 i64_atomic_rmw16_xchg_u: &i64_atomic_rmw16_xchg_u
   name: i64.atomic_rmw16_xchg_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw16_xchg_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE46
     - name: data_size
       type: u32
       derived_from: 2
@@ -5644,7 +8446,16 @@ i64_atomic_rmw16_xchg_u: &i64_atomic_rmw16_xchg_u
 i64_atomic_rmw32_xchg_u: &i64_atomic_rmw32_xchg_u
   name: i64.atomic_rmw32_xchg_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw32_xchg_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE47
     - name: data_size
       type: u32
       derived_from: 4
@@ -5672,7 +8483,16 @@ i64_atomic_rmw32_xchg_u: &i64_atomic_rmw32_xchg_u
 i32_atomic_rmw_cmpxchg: &i32_atomic_rmw_cmpxchg
   name: i32.atomic_rmw_cmpxchg
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw_cmpxchg\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE48
     - name: data_size
       type: u32
       derived_from: 4
@@ -5697,10 +8517,56 @@ i32_atomic_rmw_cmpxchg: &i32_atomic_rmw_cmpxchg
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
+i64_atomic_rmw_cmpxchg: &i64_atomic_rmw_cmpxchg
+  name: i64.atomic_rmw_cmpxchg
+  bound_vars:
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw_cmpxchg\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE49
+    - name: data_size
+      type: u32
+      derived_from: 8
+      lifetime: static
+      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
+    - name: addr
+      type: u32
+      derived_from: arg1
+      lifetime: dynamic
+      docs: The memory address argument passed to the opcode.
+    - *category_id_atomic
+    - *category_name_atomic
+    - *memory
+    - *align
+    - *effective_addr
+    - *is_write_true
+    - *offset
+    - *arg0_i64
+    - *arg1_u32
+  bound_fns: []
+  supported_modes: *default_modes
+
+  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
+
 i32_atomic_rmw8_cmpxchg_u: &i32_atomic_rmw8_cmpxchg_u
   name: i32.atomic_rmw8_cmpxchg_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw8_cmpxchg_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE4A
     - name: data_size
       type: u32
       derived_from: 1
@@ -5728,7 +8594,16 @@ i32_atomic_rmw8_cmpxchg_u: &i32_atomic_rmw8_cmpxchg_u
 i32_atomic_rmw16_cmpxchg_u: &i32_atomic_rmw16_cmpxchg_u
   name: i32.atomic_rmw16_cmpxchg_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i32.atomic_rmw16_cmpxchg_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE4B
     - name: data_size
       type: u32
       derived_from: 2
@@ -5753,38 +8628,19 @@ i32_atomic_rmw16_cmpxchg_u: &i32_atomic_rmw16_cmpxchg_u
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
-i64_atomic_rmw_cmpxchg: &i64_atomic_rmw_cmpxchg
-  name: i64.atomic_rmw_cmpxchg
-  bound_vars:
-    - *opname
-    - name: data_size
-      type: u32
-      derived_from: 8
-      lifetime: static
-      docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
-    - name: addr
-      type: u32
-      derived_from: arg1
-      lifetime: dynamic
-      docs: The memory address argument passed to the opcode.
-    - *category_id_atomic
-    - *category_name_atomic
-    - *memory
-    - *align
-    - *effective_addr
-    - *is_write_true
-    - *offset
-    - *arg0_i64
-    - *arg1_u32
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-
 i64_atomic_rmw8_cmpxchg_u: &i64_atomic_rmw8_cmpxchg_u
   name: i64.atomic_rmw8_cmpxchg_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw8_cmpxchg_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE4C
     - name: data_size
       type: u32
       derived_from: 1
@@ -5812,7 +8668,16 @@ i64_atomic_rmw8_cmpxchg_u: &i64_atomic_rmw8_cmpxchg_u
 i64_atomic_rmw16_cmpxchg_u: &i64_atomic_rmw16_cmpxchg_u
   name: i64.atomic_rmw16_cmpxchg_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw16_cmpxchg_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE4D
     - name: data_size
       type: u32
       derived_from: 2
@@ -5840,7 +8705,16 @@ i64_atomic_rmw16_cmpxchg_u: &i64_atomic_rmw16_cmpxchg_u
 i64_atomic_rmw32_cmpxchg_u: &i64_atomic_rmw32_cmpxchg_u
   name: i64.atomic_rmw32_cmpxchg_u
   bound_vars:
-    - *opname
+    - name: opname
+      type: str
+      docs: The name of the activated opcode.
+      lifetime: static
+      derived_from: "\"i64.atomic_rmw32_cmpxchg_u\""
+    - name: bytecode
+      type: u16
+      docs: The byte(s) that identify this opcode in the Wasm binary format.
+      lifetime: static
+      derived_from: 0xFE4E
     - name: data_size
       type: u32
       derived_from: 4
@@ -5864,66 +8738,3 @@ i64_atomic_rmw32_cmpxchg_u: &i64_atomic_rmw32_cmpxchg_u
   supported_modes: *default_modes
 
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
-
-call_ref: &call_ref
-  name: call_ref
-  bound_vars:
-    - *opname
-    - *category_id_control
-    - *category_name_control
-    - *imm0_u32
-    - *argN
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
-
-return_call_ref: &return_call_ref
-  name: return_call_ref
-  bound_vars:
-    - *opname
-    - *category_id_control
-    - *category_name_control
-    - *imm0_u32
-    - *argN
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
-
-ref_as_non_null: &ref_as_non_null
-  name: ref.as_non_null
-  bound_vars:
-    - *opname
-    - *category_id_convert
-    - *category_name_convert
-    - *argN
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"
-
-br_on_null: &br_on_null
-  name: br_on_null
-  bound_vars:
-    - *opname
-    - *category_id_control
-    - *category_name_control
-    - *argN
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"
-
-br_on_non_null: &br_on_non_null
-  name: br_on_non_null
-  bound_vars:
-    - *opname
-    - *category_id_control
-    - *category_name_control
-    - *imm0_u32
-    - *argN
-  bound_fns: []
-  supported_modes: *default_modes
-
-  docs: "https://github.com/WebAssembly/gc/blob/main/proposals/function-references/Overview.md"
