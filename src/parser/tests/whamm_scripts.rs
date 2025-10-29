@@ -740,7 +740,7 @@ wasm::call:alt /
     assert_eq!(1, package.events.len());
     let (_, event) = package.events.iter().next().unwrap();
     assert_eq!("call", event.def.name);
-    assert_eq!(8, event.def.bound_vars.len());
+    assert_eq!(9, event.def.bound_vars.len());
     assert_eq!(2, event.def.bound_fns.len());
 
     assert_eq!(1, event.probes.len());

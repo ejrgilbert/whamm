@@ -876,6 +876,12 @@ fn handle_opcode_events(
         "i64.trunc_f32_u" => if let Operator::I64TruncF32U {..} = instr {
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
+        "i64.trunc_f64_s" => if let Operator::I64TruncF64S {..} = instr {
+            loc_info.add_probes(probe_rule.clone(), evt, None);
+        },
+        "i64.trunc_f64_u" => if let Operator::I64TruncF64U {..} = instr {
+            loc_info.add_probes(probe_rule.clone(), evt, None);
+        },
         "f32.convert_i32_s" => if let Operator::F32ConvertI32S {..} = instr {
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
