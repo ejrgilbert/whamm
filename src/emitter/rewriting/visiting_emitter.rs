@@ -746,17 +746,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
                 .iter()
                 .sorted_by(|a, b| Ord::cmp(&a.ty, &b.ty));
 
-            let (fid, pc) = match self.app_iter.curr_loc().0 {
-                Location::Module {
-                    func_idx,
-                    instr_idx,
-                    ..
-                }
-                | Location::Component {
-                    func_idx,
-                    instr_idx,
-                    ..
-                } => (*func_idx, instr_idx as u32),
+            let loc = self.app_iter.curr_loc().0;
+            let (fid, pc) = match loc {
+                Location::Module { func_idx, .. } | Location::Component { func_idx, .. } => (
+                    *func_idx,
+                    VisitingEmitter::lookup_pc_offset_for(self.app_iter.module, &loc),
+                ),
             };
             let fname = self
                 .app_iter
@@ -850,6 +845,29 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
                 );
             };
             target_func.u32_const(offset).local_set(LocalID(id));
+        }
+    }
+
+    pub fn lookup_pc_offset_for(wasm: &Module, loc: &Location) -> u32 {
+        match loc {
+            Location::Module {
+                func_idx,
+                instr_idx,
+                ..
+            }
+            | Location::Component {
+                func_idx,
+                instr_idx,
+                ..
+            } =>
+            // increment by one to match with Wizard definition (points to right after the opcode)
+            {
+                wasm.functions
+                    .unwrap_local(*func_idx)
+                    .lookup_pc_offset_for(*instr_idx)
+                    .unwrap() as u32
+                    + 1
+            }
         }
     }
 }

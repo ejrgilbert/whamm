@@ -479,8 +479,8 @@ wasm::call:alt /
 
     // 7 scopes: whamm, strcmp, drop_args, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt
     let num_scopes = 10;
-    // records: num_scopes PLUS (at_func_end, str_addr, func_id, func_name, value, probe_id, fid, fname, pc, opname, bytecode, localN, target_imp_name, target_fn_name, target_fn_type, target_imp_module, imm0, arg[0:9]+, category_name, category_id)
-    let num_recs = num_scopes + 19;
+    // records: num_scopes PLUS (at_func_end, str_addr, func_id, func_name, value, probe_id, fid, fname, opidx, pc, opname, bytecode, localN, target_imp_name, target_fn_name, target_fn_type, target_imp_module, imm0, arg[0:9]+, category_name, category_id)
+    let num_recs = num_scopes + 20;
     // asserts on very high level table structure
     assert_eq!(num_scopes, table.scopes.len());
 
@@ -653,7 +653,7 @@ wasm:opcode:*:before / toggle.should_inject(fid as i32, @static toggle.get_value
     });
     let toggle_lib: HashMap<String, (Option<String>, Module)> = HashMap::from([(
         "toggle".to_string(),
-        (None, Module::parse(&toggle_bytes, true).unwrap()),
+        (None, Module::parse(&toggle_bytes, true, false).unwrap()),
     )]);
 
     let mut table = verifier::build_symbol_table(&mut ast, &toggle_lib, &mut err);

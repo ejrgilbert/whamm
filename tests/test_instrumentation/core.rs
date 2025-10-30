@@ -22,7 +22,7 @@ fn instrument_dfinity_with_fault_injection() {
     let wasm = fs::read(wasm_path).unwrap();
 
     for (script_path, ..) in processed_scripts {
-        let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
+        let mut module_to_instrument = Module::parse(&wasm, false, true).unwrap();
         if let Err(errs) = run_script(
             &script_path,
             wasm_path,
@@ -105,7 +105,7 @@ fn instrument_with_wizard_monitors() {
 
     let wasm = fs::read(APP_WASM_PATH).unwrap();
     for (script_path, ..) in processed_scripts {
-        let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
+        let mut module_to_instrument = Module::parse(&wasm, false, true).unwrap();
         if let Err(errs) = run_script(
             &script_path,
             APP_WASM_PATH,

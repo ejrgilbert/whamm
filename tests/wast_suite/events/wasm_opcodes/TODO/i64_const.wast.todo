@@ -92,7 +92,7 @@
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var1") (i64.const 3)) ;; sanity check
 ;;
-;;;; target a specific `block` using `fn_id`/`fname`/`pc`
+;;;; target a specific `block` using `fn_id`/`fname`/`opidx`
 ;;;; WHAMM --> i32 count; wasm:opcode:i64.const:before /imm0 == 4/ { count++; }
 ;;(assert_return (invoke "get_count") (i64.const 0)) ;; location DNE
 ;;;; @passes_uninstr
@@ -107,7 +107,7 @@
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var1") (i64.const 3)) ;; sanity check
 ;;
-;;;; WHAMM --> i32 count; wasm:opcode:i64.const:before /fid == 2 && pc == 8/ { count++; }
+;;;; WHAMM --> i32 count; wasm:opcode:i64.const:before /fid == 2 && opidx == 8/ { count++; }
 ;;(assert_return (invoke "get_count") (i64.const 1))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var0") (i64.const 0)) ;; sanity check
@@ -121,7 +121,7 @@
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var1") (i64.const 3)) ;; sanity check
 ;;
-;;;; WHAMM --> i32 count; wasm:opcode:i64.const:before /fname == "basic_br" && pc == 8/ { count++; }
+;;;; WHAMM --> i32 count; wasm:opcode:i64.const:before /fname == "basic_br" && opidx == 8/ { count++; }
 ;;(assert_return (invoke "get_count") (i64.const 1))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var0") (i64.const 0)) ;; sanity check
@@ -129,7 +129,7 @@
 ;;(assert_return (invoke "get_global_var1") (i64.const 3)) ;; sanity check
 ;;
 ;;;; after mode
-;;;; WHAMM --> i32 count; wasm:opcode:i64.const:after /fname == "basic_br" && pc == 8/ { count++; }
+;;;; WHAMM --> i32 count; wasm:opcode:i64.const:after /fname == "basic_br" && opidx == 8/ { count++; }
 ;;(assert_return (invoke "get_count") (i64.const 1))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var0") (i64.const 0)) ;; sanity check
@@ -137,7 +137,7 @@
 ;;(assert_return (invoke "get_global_var1") (i64.const 3)) ;; sanity check
 ;;
 ;;;; alt mode
-;;;; WHAMM --> wasm:opcode:i64.const:alt /fname == "basic_br" && pc == 8/ { return 1; }
+;;;; WHAMM --> wasm:opcode:i64.const:alt /fname == "basic_br" && opidx == 8/ { return 1; }
 ;;(assert_return (invoke "get_global_var0") (i64.const 1))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var1") (i64.const 3)) ;; sanity check

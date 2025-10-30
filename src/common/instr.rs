@@ -63,7 +63,7 @@ pub fn run_with_path(
 
     let mut target_wasm = if !config.as_monitor_module {
         // Read app Wasm into Wirm module
-        Module::parse(&buff, false).unwrap()
+        Module::parse(&buff, false, true).unwrap()
     } else {
         // Create a new wasm file to use as `mon.wasm`
         Module::default()
@@ -238,7 +238,7 @@ pub fn run(
             lib_name.clone(),
             (
                 lib_name_import_override.clone(),
-                Module::parse(lib_buff, false).unwrap(),
+                Module::parse(lib_buff, false, false).unwrap(),
             ),
         );
         user_lib_paths.insert(lib_name.clone(), path.clone());
@@ -246,7 +246,7 @@ pub fn run(
     // add the core library just in case the script needs it
     user_lib_modules.insert(
         WHAMM_CORE_LIB_NAME.to_string(),
-        (None, Module::parse(core_lib, true).unwrap()),
+        (None, Module::parse(core_lib, true, false).unwrap()),
     );
 
     // Process the script

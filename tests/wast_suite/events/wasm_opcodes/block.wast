@@ -111,8 +111,8 @@
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var2") (i32.const 1)) ;; sanity check
 
-;; target a specific `block` using `fn_id`/`fname`/`pc`
-;; WHAMM --> var count: i32; wasm:opcode:block:before /fid == 3 && pc == 6/ { count++; }
+;; target a specific `block` using `fn_id`/`fname`/`opidx`
+;; WHAMM --> var count: i32; wasm:opcode:block:before /fid == 3 && opidx == 6/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -121,7 +121,7 @@
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var2") (i32.const 1)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:block:before /fid == 3 && pc == 8/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:block:before /fid == 3 && opidx == 8/ { count++; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; location DNE
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -130,7 +130,7 @@
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var2") (i32.const 1)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:block:before /fname == "more_nesting" && pc == 2/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:block:before /fname == "more_nesting" && opidx == 2/ { count++; }
 (assert_return (invoke "get_count") (i32.const 4))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -172,14 +172,14 @@
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
 ;; alt mode
-;; WHAMM --> var count: i32; wasm:opcode:block:alt /fid == 3 && pc == 6/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:block:alt /fid == 3 && opidx == 6/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 (assert_return (invoke "get_global_var0") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
 ;; if empty alt body, remove original!
-;; WHAMM --> wasm:opcode:block:alt /fid == 3 && pc == 0/ {}
+;; WHAMM --> wasm:opcode:block:alt /fid == 3 && opidx == 0/ {}
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr

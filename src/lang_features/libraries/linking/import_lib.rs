@@ -41,7 +41,7 @@ pub fn link_core_lib(
         package.set_adapter_usage(package.is_used());
         package.set_global_adapter_usage(package.is_used_in_global_scope());
         if package.is_used() {
-            let core_lib = Module::parse(core_lib, false).unwrap();
+            let core_lib = Module::parse(core_lib, false, false).unwrap();
             if package.import_memory() {
                 let lib_mem_id =
                     import_lib_memory(app_wasm, &None, WHAMM_CORE_LIB_NAME.to_string());

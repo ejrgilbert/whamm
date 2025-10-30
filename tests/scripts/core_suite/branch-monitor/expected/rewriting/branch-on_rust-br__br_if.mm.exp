@@ -44,16 +44,16 @@ hello world!
 
 ================================= REPORT CSV FLUSH ====================================
 id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
-4, memaddr, taken, i32, i32, script0, calc, 27, 39, 1_wasm:opcode:br_if:before, 4
-36, memaddr, not_taken, i32, i32, script0, calc, 27, 39, 1_wasm:opcode:br_if:before, 6
-68, memaddr, taken, i32, i32, script0, calc, 27, 79, 1_wasm:opcode:br_if:before, 0
-100, memaddr, not_taken, i32, i32, script0, calc, 27, 79, 1_wasm:opcode:br_if:before, 6
-132, memaddr, taken, i32, i32, script0, calc, 27, 80, 0_wasm:opcode:br:before, 6
-164, memaddr, taken, i32, i32, script0, calc, 27, 107, 1_wasm:opcode:br_if:before, 0
-196, memaddr, not_taken, i32, i32, script0, calc, 27, 107, 1_wasm:opcode:br_if:before, 4
-228, memaddr, taken, i32, i32, script0, calc, 27, 108, 0_wasm:opcode:br:before, 4
-260, memaddr, taken, i32, i32, script0, calc, 27, 113, 0_wasm:opcode:br:before, 6
-292, memaddr, taken, i32, i32, script0, calc, 27, 124, 0_wasm:opcode:br:before, 4
-324, memaddr, taken, i32, i32, script0, print_x, 28, 67, 1_wasm:opcode:br_if:before, 30
-356, memaddr, not_taken, i32, i32, script0, print_x, 28, 67, 1_wasm:opcode:br_if:before, 3
-388, memaddr, taken, i32, i32, script0, print_x, 28, 191, 0_wasm:opcode:br:before, 30
+4, memaddr, taken, i32, i32, script0, calc, 27, 88, 1_wasm:opcode:br_if:before, 4
+36, memaddr, not_taken, i32, i32, script0, calc, 27, 88, 1_wasm:opcode:br_if:before, 6
+68, memaddr, taken, i32, i32, script0, calc, 27, 159, 1_wasm:opcode:br_if:before, 0
+100, memaddr, not_taken, i32, i32, script0, calc, 27, 159, 1_wasm:opcode:br_if:before, 6
+132, memaddr, taken, i32, i32, script0, calc, 27, 161, 0_wasm:opcode:br:before, 6
+164, memaddr, taken, i32, i32, script0, calc, 27, 209, 1_wasm:opcode:br_if:before, 0
+196, memaddr, not_taken, i32, i32, script0, calc, 27, 209, 1_wasm:opcode:br_if:before, 4
+228, memaddr, taken, i32, i32, script0, calc, 27, 211, 0_wasm:opcode:br:before, 4
+260, memaddr, taken, i32, i32, script0, calc, 27, 221, 0_wasm:opcode:br:before, 6
+292, memaddr, taken, i32, i32, script0, calc, 27, 245, 0_wasm:opcode:br:before, 4
+324, memaddr, taken, i32, i32, script0, print_x, 28, 154, 1_wasm:opcode:br_if:before, 30
+356, memaddr, not_taken, i32, i32, script0, print_x, 28, 154, 1_wasm:opcode:br_if:before, 3
+388, memaddr, taken, i32, i32, script0, print_x, 28, 408, 0_wasm:opcode:br:before, 30

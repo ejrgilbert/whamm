@@ -91,7 +91,7 @@
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; target a specific `block` using `fn_id`/`fname`/`pc`
+;; target a specific `block` using `fn_id`/`fname`/`opidx`
 ;; WHAMM --> var count: i32; wasm:opcode:local.get:before /imm0 == 1/ { count++; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; location DNE
 ;; @passes_uninstr
@@ -106,7 +106,7 @@
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:local.get:before /fid == 2 && pc == 2/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:local.get:before /fid == 2 && opidx == 2/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -120,7 +120,7 @@
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:local.get:before /fname == "basic_br" && pc == 2/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:local.get:before /fname == "basic_br" && opidx == 2/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -128,7 +128,7 @@
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
 ;; after mode
-;; WHAMM --> var count: i32; wasm:opcode:local.get:after /fname == "basic_br" && pc == 2/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:local.get:after /fname == "basic_br" && opidx == 2/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -136,7 +136,7 @@
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
 ;; alt mode
-;; WHAMM --> wasm:opcode:local.get:alt /fname == "basic_br" && pc == 2/ { return 1; }
+;; WHAMM --> wasm:opcode:local.get:alt /fname == "basic_br" && opidx == 2/ { return 1; }
 (assert_return (invoke "get_global_var0") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
