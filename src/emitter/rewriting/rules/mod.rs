@@ -1,3 +1,4 @@
+use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::generator::ast::{Probe, StackReq, WhammParam};
 use crate::generator::rewriting::simple_ast::{SimpleAST, SimpleEvt, SimplePkg, SimpleProv};
 use crate::parser::provider_handler::ModeKind;
@@ -14,7 +15,6 @@ use wirm::ir::module::Module;
 use wirm::ir::types::{DataType as WirmType, InstrumentationMode};
 use wirm::wasmparser::{BlockType, BrTable, GlobalType, MemArg, Operator};
 use wirm::Location;
-use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 
 pub fn get_loc_info_for_active_probes(
     app_wasm: &Module,
@@ -143,9 +143,16 @@ fn handle_wasm(
 
     let mut res: Option<LocInfo> = Some(loc_info);
     for (package, pkg) in prov.pkgs.iter_mut() {
-        if let Some(mut tmp) =
-            handle_wasm_packages(app_wasm, state, at_func_end, &fid, opidx, instr, package, pkg)
-        {
+        if let Some(mut tmp) = handle_wasm_packages(
+            app_wasm,
+            state,
+            at_func_end,
+            &fid,
+            opidx,
+            instr,
+            package,
+            pkg,
+        ) {
             if let Some(r) = &mut res {
                 r.append(&mut tmp);
             } else {

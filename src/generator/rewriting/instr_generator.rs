@@ -298,14 +298,13 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l>
         let curr_probe_id = format!("{}_{}", probe.probe_number, probe_rule_str);
         let loc = self.emitter.app_iter.curr_loc().0;
         let (loc, new_fid) = match loc {
-            WirmLocation::Module {
-                func_idx,
-                ..
-            }
-            | WirmLocation::Component {
-                func_idx,
-                ..
-            } => (BytecodeLoc::new(*func_idx, VisitingEmitter::lookup_pc_offset_for(self.emitter.app_iter.module, &loc)), *func_idx),
+            WirmLocation::Module { func_idx, .. } | WirmLocation::Component { func_idx, .. } => (
+                BytecodeLoc::new(
+                    *func_idx,
+                    VisitingEmitter::lookup_pc_offset_for(self.emitter.app_iter.module, &loc),
+                ),
+                *func_idx,
+            ),
         };
 
         if let LocationData::Local {

@@ -748,14 +748,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
 
             let loc = self.app_iter.curr_loc().0;
             let (fid, pc) = match loc {
-                Location::Module {
-                    func_idx,
-                    ..
-                }
-                | Location::Component {
-                    func_idx,
-                    ..
-                } => (*func_idx, VisitingEmitter::lookup_pc_offset_for(self.app_iter.module, &loc)),
+                Location::Module { func_idx, .. } | Location::Component { func_idx, .. } => (
+                    *func_idx,
+                    VisitingEmitter::lookup_pc_offset_for(self.app_iter.module, &loc),
+                ),
             };
             let fname = self
                 .app_iter
@@ -864,8 +860,14 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
                 instr_idx,
                 ..
             } =>
-                // increment by one to match with Wizard definition (points to right after the opcode)
-                wasm.functions.unwrap_local(*func_idx).lookup_pc_offset_for(*instr_idx).unwrap() as u32 + 1
+            // increment by one to match with Wizard definition (points to right after the opcode)
+            {
+                wasm.functions
+                    .unwrap_local(*func_idx)
+                    .lookup_pc_offset_for(*instr_idx)
+                    .unwrap() as u32
+                    + 1
+            }
         }
     }
 }
