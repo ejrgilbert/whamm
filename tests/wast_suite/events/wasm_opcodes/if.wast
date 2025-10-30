@@ -88,45 +88,45 @@
 ;;;; WHAMM --> var count: i32; wasm:opcode:if:before { count = count + arg0; }
 ;;(assert_return (invoke "get_count") (i32.const 2))
 ;;
-;;;; target a specific `if` using `fn_id`/`fname`/`pc`
-;;;; WHAMM --> var count: i32; wasm:opcode:if:entry /fid == 1 && pc == 1/ { count++; }
+;;;; target a specific `if` using `fn_id`/`fname`/`opidx`
+;;;; WHAMM --> var count: i32; wasm:opcode:if:entry /fid == 1 && opidx == 1/ { count++; }
 ;;(assert_return (invoke "get_count") (i32.const 1))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
-;;;; WHAMM --> var count: i32; wasm:opcode:if:entry /fid == 1 && pc == 0/ { count++; }
+;;;; WHAMM --> var count: i32; wasm:opcode:if:entry /fid == 1 && opidx == 0/ { count++; }
 ;;(assert_return (invoke "get_count") (i32.const 0)) ;; loc DNE
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
-;;;; WHAMM --> var count: i32; wasm:opcode:if:entry /fid == 1 && pc == 2/ { count++; }
+;;;; WHAMM --> var count: i32; wasm:opcode:if:entry /fid == 1 && opidx == 2/ { count++; }
 ;;(assert_return (invoke "get_count") (i32.const 0)) ;; loc DNE
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
-;;;; WHAMM --> var count: i32; wasm:opcode:if:entry /fname == "check" && pc == 1/ { count++; }
+;;;; WHAMM --> var count: i32; wasm:opcode:if:entry /fname == "check" && opidx == 1/ { count++; }
 ;;(assert_return (invoke "get_count") (i32.const 1))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
 ;;
 ;;;; exit mode
-;;;; WHAMM --> var count: i32; wasm:opcode:if:exit /fid == 1 && pc == 1/ { count++; }
+;;;; WHAMM --> var count: i32; wasm:opcode:if:exit /fid == 1 && opidx == 1/ { count++; }
 ;;(assert_return (invoke "get_count") (i32.const 1))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
-;;;; WHAMM --> var count: i32; wasm:opcode:if:exit /fid == 2 && pc == 1/ { count++; }
+;;;; WHAMM --> var count: i32; wasm:opcode:if:exit /fid == 2 && opidx == 1/ { count++; }
 ;;(assert_return (invoke "get_count") (i32.const 0))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
 ;;
 ;;;; after mode
-;;;; WHAMM --> var count: i32; wasm:opcode:if:after /fid == 1 && pc == 1/ { count++; }
+;;;; WHAMM --> var count: i32; wasm:opcode:if:after /fid == 1 && opidx == 1/ { count++; }
 ;;(assert_return (invoke "get_count") (i32.const 1))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
 ;;
 ;;;; alt mode
-;;;; WHAMM --> wasm:opcode:if:alt /fid == 1 && pc == 1/ { drop_args(); return 0; }
+;;;; WHAMM --> wasm:opcode:if:alt /fid == 1 && opidx == 1/ { drop_args(); return 0; }
 ;;(assert_return (invoke "get_global_var") (i32.const 0))
 ;;
-;;;; WHAMM --> wasm:opcode:if:alt /fid == 1 && pc == 1/ { drop_args(); } wasm:opcode:nop:before /fid == 1 && pc == 6/ { return 2; }
+;;;; WHAMM --> wasm:opcode:if:alt /fid == 1 && opidx == 1/ { drop_args(); } wasm:opcode:nop:before /fid == 1 && opidx == 6/ { return 2; }
 ;;(assert_return (invoke "get_global_var") (i32.const 2))
 ;;
 ;;;; TODO -- `BlockType` struct? Issue #139

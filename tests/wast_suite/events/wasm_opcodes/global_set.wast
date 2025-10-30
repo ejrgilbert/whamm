@@ -99,7 +99,7 @@
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; target a specific `block` using `fn_id`/`fname`/`pc`
+;; target a specific `block` using `fn_id`/`fname`/`opidx`
 ;; WHAMM --> var count: i32; wasm:opcode:global.set:before /imm0 == 2/ { count++; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; location DNE
 ;; @passes_uninstr
@@ -120,7 +120,7 @@
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:global.set:before /fid == 4 && pc == 7/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:global.set:before /fid == 4 && opidx == 7/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -134,7 +134,7 @@
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:global.set:before /fname == "start" && pc == 7/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:global.set:before /fname == "start" && opidx == 7/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -142,7 +142,7 @@
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
 ;; after mode
-;; WHAMM --> var count: i32; wasm:opcode:global.set:after /fname == "start" && pc == 7/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:global.set:after /fname == "start" && opidx == 7/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
@@ -151,7 +151,7 @@
 
 ;;;;;; TODO -- what to do about assigning to static data?
 ;;;;;; alt mode
-;;;;;; WHAMM --> wasm:opcode:global.set:alt /fname == "more_nesting" && pc == 1/ { imm0 = 2; }
+;;;;;; WHAMM --> wasm:opcode:global.set:alt /fname == "more_nesting" && opidx == 1/ { imm0 = 2; }
 ;;;;;; @passes_uninstr
 ;;;;(assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;;;;;; @passes_uninstr

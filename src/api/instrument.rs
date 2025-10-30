@@ -139,7 +139,7 @@ pub fn instrument_as_dry_run_rewriting(
     defs_path: Option<String>,
 ) -> Result<HashMap<WirmInjectType, Vec<Injection>>, Vec<WhammError>> {
     let buff = std::fs::read(app_wasm_path).unwrap();
-    let mut target_wasm = Module::parse(&buff, false).unwrap();
+    let mut target_wasm = Module::parse(&buff, false, true).unwrap();
 
     let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
     let response = instr::dry_run_on_bytes(

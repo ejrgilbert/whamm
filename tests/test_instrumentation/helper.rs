@@ -383,7 +383,7 @@ fn run_testcase_rewriting(
 ) {
     // run the script on configured application
     let wasm = fs::read(app_path_str).unwrap();
-    let mut module_to_instrument = Module::parse(&wasm, false).unwrap();
+    let mut module_to_instrument = Module::parse(&wasm, false, true).unwrap();
     if let Err(errs) = run_script(
         script,
         app_path_str,

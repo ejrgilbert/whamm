@@ -14,6 +14,7 @@ use wirm::ir::module::Module;
 use wirm::ir::types::{DataType as WirmType, InstrumentationMode};
 use wirm::wasmparser::{BlockType, BrTable, GlobalType, MemArg, Operator};
 use wirm::Location;
+use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 
 pub fn get_loc_info_for_active_probes(
     app_wasm: &Module,
@@ -62,7 +63,7 @@ fn handle_wasm(
     prov: &mut SimpleProv,
 ) -> Option<LocInfo> {
     let mut loc_info = LocInfo::new();
-    let (fid, pc, fname) = match loc {
+    let (fid, opidx, pc, fname) = match loc {
         Location::Module {
             func_idx,
             instr_idx,
@@ -77,7 +78,8 @@ fn handle_wasm(
                 .get_name(func_idx)
                 .clone()
                 .unwrap_or_default();
-            (func_idx, instr_idx, fname)
+            let pc = VisitingEmitter::lookup_pc_offset_for(app_wasm, &loc);
+            (func_idx, instr_idx, pc, fname)
         }
     };
     loc_info
@@ -87,10 +89,13 @@ fn handle_wasm(
     loc_info
         .static_data
         .insert("fname".to_string(), Some(Value::Str { val: fname.clone() }));
+    loc_info
+        .static_data
+        .insert("opidx".to_string(), Some(Value::gen_u32(opidx as u32)));
 
     loc_info
         .static_data
-        .insert("pc".to_string(), Some(Value::gen_u32(pc as u32)));
+        .insert("pc".to_string(), Some(Value::gen_u32(pc)));
 
     loc_info.static_data.insert(
         "at_func_end".to_string(),
@@ -139,7 +144,7 @@ fn handle_wasm(
     let mut res: Option<LocInfo> = Some(loc_info);
     for (package, pkg) in prov.pkgs.iter_mut() {
         if let Some(mut tmp) =
-            handle_wasm_packages(app_wasm, state, at_func_end, &fid, pc, instr, package, pkg)
+            handle_wasm_packages(app_wasm, state, at_func_end, &fid, opidx, instr, package, pkg)
         {
             if let Some(r) = &mut res {
                 r.append(&mut tmp);
@@ -156,15 +161,15 @@ fn handle_wasm_packages(
     state: &mut MatchState,
     at_func_end: bool,
     fid: &FunctionID,
-    pc: usize,
+    opidx: usize,
     instr: &Operator,
     package: &str,
     pkg: &mut SimplePkg,
 ) -> Option<LocInfo> {
     match package {
         "opcode" => handle_opcode(app_wasm, fid, instr, pkg),
-        "func" => handle_func(app_wasm, fid, pc, instr, pkg),
-        "block" => handle_block(app_wasm, state, at_func_end, fid, pc, instr, pkg),
+        "func" => handle_func(app_wasm, fid, opidx, instr, pkg),
+        "block" => handle_block(app_wasm, state, at_func_end, fid, opidx, instr, pkg),
         "begin" | "end" => unimplemented!("Have not implemented the package yet: {package}"),
         "report" => None, // not handled here
         _ => panic!("Package not available: 'wasm:{package}'"),
@@ -2515,7 +2520,7 @@ fn handle_block(
     state: &mut MatchState,
     at_func_end: bool,
     fid: &FunctionID,
-    pc: usize,
+    opidx: usize,
     instr: &Operator,
     pkg: &SimplePkg,
 ) -> Option<LocInfo> {
@@ -2527,7 +2532,7 @@ fn handle_block(
             state,
             at_func_end,
             fid,
-            pc,
+            opidx,
             instr,
             &name.to_string(),
             evt,
@@ -2587,7 +2592,7 @@ fn handle_block_events(
     state: &mut MatchState,
     at_func_end: bool,
     _fid: &FunctionID,
-    pc: usize,
+    opidx: usize,
     instr: &Operator,
     event: &String,
     evt: &SimpleEvt,
@@ -2603,7 +2608,7 @@ fn handle_block_events(
 
     let block_state = &mut state.basic_blocks;
     // reset the state if we've entered a new function!
-    if pc == 0 { block_state.reset() }
+    if opidx == 0 { block_state.reset() }
 
     let is_prog_exit = is_prog_exit_call(instr, app_wasm);
 
@@ -2614,7 +2619,7 @@ fn handle_block_events(
         // TODO (for End): track whether ends are branched to using a control stack.
         //       If this end has a branch to it, end the previous block, if there was one.
         Operator::End => {
-            if block_state.start != pc {
+            if block_state.start != opidx {
                 define_block_data(event.as_str(), block_state, &mut loc_info);
                 block_state.end_block_here();
                 match event.as_str() {
@@ -2627,7 +2632,7 @@ fn handle_block_events(
                     },
                     _ => panic!("Event not available: 'wasm:block:{event}'"),
                 }
-            } else if pc == 0 && event == "start" {
+            } else if opidx == 0 && event == "start" {
                 // if we're at the start of the function, we want to insert basic block entry probes
                 define_block_data(event.as_str(), block_state, &mut loc_info);
                 block_state.continue_block();
@@ -2668,7 +2673,7 @@ fn handle_block_events(
         _ => {
             block_state.continue_block();
             // handle block:entry at the top of a function!
-            if (pc == 0 && event == "start")
+            if (opidx == 0 && event == "start")
                 // handle block:exit if this is program exit call
                 || (is_prog_exit && event == "end") {
                 Some(InstrumentationMode::Before)
@@ -2702,14 +2707,14 @@ fn define_block_data(evt: &str, block_state: &BasicBlockState, loc_info: &mut Lo
 fn handle_func(
     app_wasm: &Module,
     fid: &FunctionID,
-    pc: usize,
+    opidx: usize,
     instr: &Operator,
     pkg: &SimplePkg,
 ) -> Option<LocInfo> {
     let mut res: Option<LocInfo> = None;
     for (package, evt) in pkg.evts.iter() {
         // See OpcodeEvent.get_loc_info
-        if let Some(mut tmp) = handle_func_events(app_wasm, fid, pc, instr, package, evt) {
+        if let Some(mut tmp) = handle_func_events(app_wasm, fid, opidx, instr, package, evt) {
             if let Some(r) = &mut res {
                 r.append(&mut tmp);
             } else {
@@ -2724,7 +2729,7 @@ fn handle_func(
 fn handle_func_events(
     app_wasm: &Module,
     _fid: &FunctionID,
-    pc: usize,
+    opidx: usize,
     instr: &Operator,
     event: &String,
     evt: &SimpleEvt,
@@ -2742,13 +2747,17 @@ fn handle_func_events(
     let is_prog_exit = is_prog_exit_call(instr, app_wasm);
 
     match event.as_str() {
-        "exit" => if is_prog_exit || pc == 0 {
+        "exit" => if is_prog_exit || opidx == 0 {
             // if this is program exit, we want to inject the function exit logic (as opcode:before)!
             // we're at the start of the function, inject both of these types of special events!
             // we only want to inject entry/exit events once.
             loc_info.add_probes(probe_rule.clone(), evt, None);
         }
-        "entry" => if pc == 0 {
+        "entry" => if opidx == 0 {
+            // override the `pc` value to be 0
+        loc_info
+                .static_data
+                .insert("pc".to_string(), Some(Value::gen_u32(0)));
             // we're at the start of the function, inject both of these types of special events!
             // we only want to inject entry/exit events once.
             loc_info.add_probes(probe_rule.clone(), evt, None);

@@ -53,18 +53,18 @@
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 50)) ;; sanity check
 
-;; target a specific `block` using `fn_id`/`fname`/`pc`
-;; WHAMM --> var count: i32; wasm:opcode:loop:before /fid == 1 && pc == 0/ { count++; }
+;; target a specific `block` using `fn_id`/`fname`/`opidx`
+;; WHAMM --> var count: i32; wasm:opcode:loop:before /fid == 1 && opidx == 0/ { count++; }
 (assert_return (invoke "get_count") (i32.const 300))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 50)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:loop:before /fid == 1 && pc == 1/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:loop:before /fid == 1 && opidx == 1/ { count++; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; location DNE
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 50)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:loop:before /fname == "start" && pc == 2/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:loop:before /fname == "start" && opidx == 2/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1)) ;; location DNE
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 50)) ;; sanity check

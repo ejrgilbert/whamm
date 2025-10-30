@@ -100,29 +100,29 @@
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; target a specific `block` using `fn_id`/`fname`/`pc`
-;; WHAMM --> var count: i32; wasm:opcode:return:before /fid == 2 && pc == 1/ { count++; }
+;; target a specific `block` using `fn_id`/`fname`/`opidx`
+;; WHAMM --> var count: i32; wasm:opcode:return:before /fid == 2 && opidx == 1/ { count++; }
 (assert_return (invoke "get_count") (i32.const 0)) ;; location DNE
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:return:before /fid == 2 && pc == 9/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:return:before /fid == 2 && opidx == 9/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:return:before /fid == 2 && pc == 12/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:return:before /fid == 2 && opidx == 12/ { count++; }
 (assert_return (invoke "get_count") (i32.const 0))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
-;; WHAMM --> var count: i32; wasm:opcode:return:before /fname == "basic_br" && pc == 9/ { count++; }
+;; WHAMM --> var count: i32; wasm:opcode:return:before /fname == "basic_br" && opidx == 9/ { count++; }
 (assert_return (invoke "get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
