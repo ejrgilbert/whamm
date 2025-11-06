@@ -349,25 +349,14 @@ impl SymbolTable {
     }
 
     pub fn lookup_lib_fn(&self, lib_name: &str, lib_fn_name: &str) -> Option<&Record> {
-        if let Some(rec) = self.lookup_lib(lib_name) {
-            if let Record::Library { fns, .. } = rec {
-                if let Some(rec) = fns.get(lib_fn_name) {
-                    if let Some(rec) = self.get_record(*rec) {
-                        Some(rec)
-                    } else {
-                        unreachable!("Could not find library func for: {}", lib_fn_name);
-                    }
-                } else {
-                    Self::no_match(rec, "LibraryFunc");
-                    None
+        if let Some(Record::Library { fns, .. }) = self.lookup_lib(lib_name) {
+            if let Some(rec) = fns.get(lib_fn_name) {
+                if let Some(rec) = self.get_record(*rec) {
+                    return Some(rec);
                 }
-            } else {
-                Self::no_match(rec, "Library");
-                None
             }
-        } else {
-            unreachable!("Could not find library for: {}", lib_name);
         }
+        None
     }
 
     pub fn lookup_lib_fn_mut(&mut self, lib_name: &str, lib_fn_name: &str) -> Option<&mut Record> {

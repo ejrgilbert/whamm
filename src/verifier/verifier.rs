@@ -1122,6 +1122,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     if let Some(id) = self.table.lookup_lib_fn(lib_name, fn_name) {
                         id
                     } else {
+                        self.err.type_check_error(
+                            "Could not find library function".to_string(),
+                            &loc.clone().map(|l| l.line_col),
+                        );
                         return Some(DataType::AssumeGood);
                     }
                 } else if let Some(id) = self.table.lookup_fn(fn_name, true) {
