@@ -20,13 +20,14 @@ pub struct SymbolTableBuilder<'a, 'b, 'c> {
     pub table: SymbolTable,
     pub user_libs: &'b HashMap<String, (Option<String>, Module<'c>)>,
     pub err: &'a mut ErrorGen,
-    pub curr_whamm: Option<usize>,  // indexes into this::table::records
-    pub curr_script: Option<usize>, // indexes into this::table::records
-    pub curr_provider: Option<usize>, // indexes into this::table::records
-    pub curr_package: Option<usize>, // indexes into this::table::records
-    pub curr_event: Option<usize>,  // indexes into this::table::records
-    pub curr_probe: Option<usize>,  // indexes into this::table::records
-    pub curr_fn: Option<usize>,     // indexes into this::table::records
+    pub curr_whamm: Option<usize>,      // indexes into this::table::records
+    pub curr_script: Option<usize>,     // indexes into this::table::records
+    pub curr_provider: Option<usize>,   // indexes into this::table::records
+    pub curr_package: Option<usize>,    // indexes into this::table::records
+    pub curr_event: Option<usize>,      // indexes into this::table::records
+    pub curr_mode: Option<usize>,       // indexes into this::table::records
+    pub curr_probe: Option<usize>,      // indexes into this::table::records
+    pub curr_fn: Option<usize>,         // indexes into this::table::records
 
     // track the derived variables that need to be defined
     pub aliases: HashMap<String, String>,
@@ -189,7 +190,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
         let event_rec = Record::Event {
             fns: vec![],
             vars: vec![],
-            probes: vec![],
+            modes: vec![],
         };
 
         // Add event to scope
@@ -222,42 +223,85 @@ impl SymbolTableBuilder<'_, '_, '_> {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(
-            &probe.kind.name(),
-            &None,
-            &Definition::CompilerStatic,
-            &self.table,
-            self.err,
-        ) {
-            return;
+        // if check_duplicate_id(
+        //     &probe.kind.name(),
+        //     &None,
+        //     &Definition::CompilerStatic,
+        //     &self.table,
+        //     self.err,
+        // ) {
+        //     return;
+        // }
+
+        // TODO -- factor this to reduce duplicate code!
+        if self.table.lookup(&probe.kind.name()).is_none() {
+            // Add mode to scope
+            let mode_rec = Record::Mode {
+                probes: vec![]
+            };
+            let id = self.table.put(probe.kind.name(), mode_rec);
+            self.curr_mode = Some(id);
+
+            // Add probe to current event record
+            match self.table.get_record_mut(self.curr_event.unwrap()) {
+                Some(Record::Event { modes, .. }) => {
+                    modes.push(id);
+                }
+                _ => {
+                    unreachable!("{}", UNEXPECTED_ERR_MSG);
+                }
+            }
+
+            // enter the NEW mode scope
+            self.table.enter_scope();
+            self.table
+                .set_curr_scope_info(probe.kind.name(), ScopeType::Mode);
+        } else {
+            // enter the already-existing mode scope
+            self.table.enter_named_scope(&probe.kind.name());
         }
 
-        // create record
+        let probe_name = if let Some(rec_id) = self.table.lookup(&probe.kind.name()) {
+            self.curr_mode = Some(rec_id);
+            // This probe mode already exists for the event! Directly edit this one
+            let Some(Record::Mode { probes }) = self.table.get_record_mut(rec_id) else {
+                unreachable!("Could not find record with id: {rec_id}");
+            };
+
+            probes.len().to_string()
+        } else {
+            panic!();
+        };
+
+
+        // Add probe record
         let probe_rec = Record::Probe {
             fns: vec![],
             vars: vec![],
         };
+        let id = self.table.put(probe_name.clone(), probe_rec);
 
-        // Add probe to scope
-        let id = self.table.put(probe.kind.name(), probe_rec);
+        if let Some(rec_id) = self.table.lookup(&probe.kind.name()) {
+            self.curr_mode = Some(rec_id);
+            // This probe mode already exists for the event! Directly edit this one
+            let Some(Record::Mode { probes }) = self.table.get_record_mut(rec_id) else {
+                unreachable!("Could not find record with id: {rec_id}");
+            };
 
-        // Add probe to current event record
-        match self.table.get_record_mut(self.curr_event.unwrap()) {
-            Some(Record::Event { probes, .. }) => {
-                probes.push(id);
-            }
-            _ => {
-                unreachable!("{}", UNEXPECTED_ERR_MSG);
-            }
-        }
+            // add probe to the current mode
+            probes.push(id);
+        } else {
+            panic!();
+        };
 
-        // enter probe scope
-        self.table.enter_scope();
+
         self.curr_probe = Some(id);
+        // enter probe scope
+        self.table.add_new_scope();
 
         // set scope name and type
         self.table
-            .set_curr_scope_info(probe.kind.name(), ScopeType::Probe);
+            .set_curr_scope_info(probe_name, ScopeType::Probe);
     }
 
     fn add_user_lib(&mut self, lib_name: &String, loc: &Option<Location>) {
@@ -813,7 +857,8 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         self.used_derived_vars.clear();
 
         trace!("Exiting: visit_probe");
-        self.table.exit_scope();
+        self.table.exit_scope(); // exit the probe scope
+        self.table.exit_scope(); // exit the mode scope
         self.curr_probe = None;
     }
 

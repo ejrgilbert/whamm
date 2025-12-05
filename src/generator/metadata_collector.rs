@@ -685,7 +685,8 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
 
     fn visit_probe(&mut self, probe: &ParserProbe) {
         trace!("Entering: CodeGenerator::visit_probe");
-        self.table.enter_named_scope(&probe.kind.name());
+        let _ = self.table.enter_named_scope(&probe.kind.name());    // enter mode scope
+        let _ = self.table.enter_named_scope(&probe.id.to_string()); // enter probe scope
         self.append_curr_rule(format!(":{}", probe.kind.name()));
         if let Some(pred) = &probe.predicate {
             self.visiting = Visiting::Predicate;
@@ -708,7 +709,8 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
         self.visiting = Visiting::None;
 
         trace!("Exiting: CodeGenerator::visit_probe");
-        self.table.exit_scope();
+        self.table.exit_scope(); // exit the mode scope
+        self.table.exit_scope(); // exit the probe scope
         let curr_rule = self.get_curr_rule();
         self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
     }
