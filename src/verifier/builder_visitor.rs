@@ -220,19 +220,6 @@ impl SymbolTableBuilder<'_, '_, '_> {
     }
 
     fn add_probe(&mut self, probe: &mut Probe) {
-        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
-        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
-        just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        // if check_duplicate_id(
-        //     &probe.kind.name(),
-        //     &None,
-        //     &Definition::CompilerStatic,
-        //     &self.table,
-        //     self.err,
-        // ) {
-        //     return;
-        // }
-
         // TODO -- factor this to reduce duplicate code!
         if self.table.lookup(&probe.kind.name()).is_none() {
             // Add mode to scope
@@ -246,7 +233,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                     modes.push(id);
                 }
                 _ => {
-                    unreachable!("{}", UNEXPECTED_ERR_MSG);
+                    unreachable!("{UNEXPECTED_ERR_MSG} Should be able to find the current event in the symbol table.");
                 }
             }
 
@@ -259,17 +246,18 @@ impl SymbolTableBuilder<'_, '_, '_> {
             self.table.enter_named_scope(&probe.kind.name());
         }
 
+        // NOTE: Had to duplicate this with a slight difference due to Rust mutable reference rules...
         let probe_scope_id = if let Some(rec_id) = self.table.lookup(&probe.kind.name()) {
             self.curr_mode = Some(rec_id);
             // This probe mode already exists for the event! Directly edit this one
             let Some(Record::Mode { probes }) = self.table.get_record_mut(rec_id) else {
-                unreachable!("Could not find record with id: {rec_id}");
+                unreachable!("{UNEXPECTED_ERR_MSG} Could not find record with id: {rec_id}");
             };
 
             // need to use this as the probe's scope ID
             probes.len()
         } else {
-            panic!();
+            unreachable!("{UNEXPECTED_ERR_MSG} Should be able to find the probe kind in the symbol table (already visited that scope)!");
         };
         probe.scope_id = probe_scope_id;
         let probe_name = probe_scope_id.to_string();
@@ -291,7 +279,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
             // add probe to the current mode
             probes.push(id);
         } else {
-            panic!();
+            unreachable!("{UNEXPECTED_ERR_MSG} Should be able to find the probe kind in the symbol table (already visited that scope)!");
         };
 
         self.curr_probe = Some(id);

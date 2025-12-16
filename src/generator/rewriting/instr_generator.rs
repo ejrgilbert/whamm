@@ -235,7 +235,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l>
                     // Enter the scope for this matched probe
                     self.set_curr_loc(probe_rule, probe);
 
-                    // TODO -- this must be wrong!
                     // enter mode scope
                     assert!(
                         self.emitter.enter_scope_via_rule(
