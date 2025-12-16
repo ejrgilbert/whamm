@@ -189,6 +189,7 @@ impl Event {
 
             probes.push(Probe {
                 id: *next_id,
+                scope_id: 0,
                 kind: matched_mode.kind.clone(),
                 def: matched_mode.def.clone(),
                 predicate: predicate.clone(),
@@ -885,6 +886,8 @@ trait MatchOn {
 pub struct Probe {
     // The ID of the probe (in order of placement in script)
     pub id: u32,
+    // The ID used to identify this probe's scope in the symbol table
+    pub scope_id: usize,
     pub kind: ModeKind,
     pub def: Def,
     pub predicate: Option<Expr>,

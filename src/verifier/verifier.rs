@@ -39,6 +39,7 @@ pub fn build_symbol_table(
         curr_provider: None,
         curr_package: None,
         curr_event: None,
+        curr_mode: None,
         curr_probe: None,
         curr_fn: None,
         aliases: HashMap::default(),
@@ -297,6 +298,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
         self.handle_type_bounds(&event.type_bounds);
 
+        // Iterate over the probes in order
         event.probes.values_mut().for_each(|probe| {
             probe.iter_mut().for_each(|probe| {
                 self.visit_probe(probe);
@@ -311,7 +313,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_probe(&mut self, probe: &mut Probe) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&probe.kind.name());
+        assert!(self.table.enter_named_scope(&probe.kind.name())); // enter mode scope
+        assert!(self.table.enter_named_scope(&probe.scope_id.to_string())); // enter probe scope
         self.append_curr_rule(format!(":{}", probe.kind.name()));
 
         // type check predicate
@@ -332,7 +335,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             self.visit_block(body);
         }
 
-        self.table.exit_scope();
+        self.table.exit_scope(); // exit the mode scope
+        self.table.exit_scope(); // exit the probe scope
         let curr_rule = self.get_curr_rule();
         self.set_curr_rule(Some(curr_rule[..curr_rule.rfind(':').unwrap()].to_string()));
         None

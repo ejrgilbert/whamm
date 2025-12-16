@@ -166,6 +166,14 @@ fn instrument_with_bytecode_scripts() {
     run_core_suite("bytecode", processed_scripts, true, true)
 }
 #[test]
+fn instrument_with_overlap_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/overlap");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("overlap", processed_scripts, true, true)
+}
+#[test]
 fn instrument_with_local_n_scripts() {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/localN");

@@ -78,7 +78,12 @@ impl SymbolTable {
         false
     }
 
-    pub fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule) -> bool {
+    pub fn enter_scope_via_rule(
+        &mut self,
+        script_id: &str,
+        probe_rule: &ProbeRule,
+        scope_id: usize,
+    ) -> bool {
         let mut is_success = true;
 
         self.reset();
@@ -91,6 +96,7 @@ impl SymbolTable {
                     is_success &= self.enter_named_scope(&event.name);
                     if let Some(mode) = &probe_rule.mode {
                         is_success &= self.enter_named_scope(&mode.name);
+                        is_success &= self.enter_named_scope(&scope_id.to_string());
                     }
                 }
             }
@@ -99,8 +105,6 @@ impl SymbolTable {
     }
 
     pub fn enter_scope(&mut self) {
-        let new_id = self.scopes.len();
-
         let curr_scope = self.get_curr_scope_mut().unwrap();
         if curr_scope.has_next() {
             if let Some(n) = curr_scope.next_child() {
@@ -108,19 +112,7 @@ impl SymbolTable {
             }
             return;
         }
-        // Will need to create a new next scope
-        // Store new scope in the current scope's children
-        curr_scope.add_child(new_id);
-
-        // Does not have next child, create it
-        let new_scope = Scope::new(new_id, "".to_string(), ScopeType::Null, Some(curr_scope.id));
-
-        // Increment current scope's next child pointer
-        curr_scope.next += 1;
-
-        // Add new scope
-        self.scopes.push(new_scope);
-        self.curr_scope = new_id;
+        self.add_and_enter_new_scope()
     }
 
     pub fn exit_scope(&mut self) {
@@ -133,6 +125,27 @@ impl SymbolTable {
                 );
             }
         }
+    }
+
+    // Used when we want to force the addition of a new scope (even when we
+    // haven't visited the children)
+    pub fn add_and_enter_new_scope(&mut self) {
+        let new_id = self.scopes.len();
+
+        let curr_scope = self.get_curr_scope_mut().unwrap();
+        // Will need to create a new next scope
+        // Store new scope in the current scope's children
+        curr_scope.add_child(new_id);
+
+        // Does not have next child, create it
+        let new_scope = Scope::new(new_id, "".to_string(), ScopeType::Null, Some(curr_scope.id));
+
+        // current scope's next pointer should be pushed to the end
+        curr_scope.next = curr_scope.children.len();
+
+        // Add new scope
+        self.scopes.push(new_scope);
+        self.curr_scope = new_id;
     }
 
     // Record operations
@@ -209,6 +222,7 @@ impl SymbolTable {
             | Record::Provider { .. }
             | Record::Package { .. }
             | Record::Event { .. }
+            | Record::Mode { .. }
             | Record::Probe { .. } => {
                 self.curr_rec = new_rec_id;
             }
@@ -489,8 +503,7 @@ impl Scope {
 
     pub fn next_child(&mut self) -> Option<&usize> {
         if !self.has_next() {
-            unreachable!("{} Scope::next_child() should never be called without first checking that there is one.", UNEXPECTED_ERR_MSG
-            );
+            unreachable!("{UNEXPECTED_ERR_MSG} Scope::next_child() should never be called without first checking that there is one.");
         }
 
         let next_child = self.children.get(self.next).unwrap();
@@ -521,6 +534,7 @@ pub enum ScopeType {
     Provider,
     Package,
     Event,
+    Mode,
     Probe,
     Fn,
     Null,
@@ -542,6 +556,9 @@ impl Display for ScopeType {
             }
             ScopeType::Event => {
                 write!(f, "Event")
+            }
+            ScopeType::Mode => {
+                write!(f, "Mode")
             }
             ScopeType::Probe => {
                 write!(f, "Probe")
@@ -586,6 +603,9 @@ pub enum Record {
     Event {
         fns: Vec<usize>,
         vars: Vec<usize>,
+        modes: Vec<usize>,
+    },
+    Mode {
         probes: Vec<usize>,
     },
     Probe {

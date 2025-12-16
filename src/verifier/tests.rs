@@ -477,8 +477,8 @@ wasm::call:alt /
     let table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
     debug!("{:#?}", table);
 
-    // 7 scopes: whamm, strcmp, drop_args, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt
-    let num_scopes = 10;
+    // 7 scopes: whamm, strcmp, drop_args, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt, probe itself
+    let num_scopes = 11;
     // records: num_scopes PLUS (at_func_end, str_addr, func_id, func_name, value, probe_id, fid, fname, opidx, pc, opname, bytecode, localN, target_imp_name, target_fn_name, target_fn_type, target_imp_module, imm0, arg[0:9]+, category_name, category_id)
     let num_recs = num_scopes + 20;
     // asserts on very high level table structure
