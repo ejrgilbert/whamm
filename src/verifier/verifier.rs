@@ -298,6 +298,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
         self.handle_type_bounds(&event.type_bounds);
 
+        // Iterate over the probes in order
         event.probes.values_mut().for_each(|probe| {
             probe.iter_mut().for_each(|probe| {
                 self.visit_probe(probe);
@@ -312,8 +313,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_probe(&mut self, probe: &mut Probe) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&probe.kind.name());    // enter mode scope
-        let _ = self.table.enter_named_scope(&probe.id.to_string()); // enter probe scope
+        assert!(self.table.enter_named_scope(&probe.kind.name()));    // enter mode scope
+        assert!(self.table.enter_named_scope(&probe.scope_id.to_string())); // enter probe scope
         self.append_curr_rule(format!(":{}", probe.kind.name()));
 
         // type check predicate

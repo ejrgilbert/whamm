@@ -39,6 +39,7 @@ pub struct Probe {
     pub static_lib_calls: Vec<(WhammParams, Expr)>,
     pub init_logic: Vec<Statement>,
     pub probe_number: u32,
+    pub scope_id: usize,
     pub script_id: u8,
     pub loc: Option<Location>,
 }
@@ -48,10 +49,11 @@ impl Display for Probe {
     }
 }
 impl Probe {
-    pub(crate) fn new(rule_str: String, probe_number: u32, script_id: u8, loc: Location) -> Self {
+    pub(crate) fn new(rule_str: String, probe_number: u32, scope_id: usize, script_id: u8, loc: Location) -> Self {
         Self {
             rule: ProbeRule::from(rule_str),
             probe_number,
+            scope_id,
             script_id,
             loc: Some(loc),
             ..Default::default()

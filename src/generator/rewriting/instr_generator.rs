@@ -234,10 +234,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l>
                 for (probe_rule, probe, mode) in loc_info.probes.iter() {
                     // Enter the scope for this matched probe
                     self.set_curr_loc(probe_rule, probe);
+
+                    // TODO -- this must be wrong!
                     // enter mode scope
                     assert!(
                         self.emitter
-                            .enter_scope_via_rule(&probe.script_id.to_string(), probe_rule),
+                            .enter_scope_via_rule(&probe.script_id.to_string(), probe_rule, probe.scope_id),
                         "Failed to enter scope: {}",
                         probe_rule
                     );

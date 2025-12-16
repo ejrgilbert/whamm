@@ -141,7 +141,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
         self.app_iter.finish_instr();
     }
 
-    pub(crate) fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule) -> bool {
+    pub(crate) fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule, scope_id: usize) -> bool {
         self.table.enter_scope_via_rule(
             script_id,
             &parser::types::ProbeRule {
@@ -153,6 +153,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
                     None,
                 )),
             },
+            scope_id
         )
     }
 

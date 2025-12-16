@@ -219,7 +219,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
             .set_curr_scope_info(event.def.name.clone(), ScopeType::Event);
     }
 
-    fn add_probe(&mut self, probe: &Probe) {
+    fn add_probe(&mut self, probe: &mut Probe) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
         just in case it is non-fatal to avoid having 2 strings w/same name in record */
@@ -261,18 +261,20 @@ impl SymbolTableBuilder<'_, '_, '_> {
             self.table.enter_named_scope(&probe.kind.name());
         }
 
-        let probe_name = if let Some(rec_id) = self.table.lookup(&probe.kind.name()) {
+        let probe_scope_id = if let Some(rec_id) = self.table.lookup(&probe.kind.name()) {
             self.curr_mode = Some(rec_id);
             // This probe mode already exists for the event! Directly edit this one
             let Some(Record::Mode { probes }) = self.table.get_record_mut(rec_id) else {
                 unreachable!("Could not find record with id: {rec_id}");
             };
 
-            probes.len().to_string()
+            // need to use this as the probe's scope ID
+            probes.len()
         } else {
             panic!();
         };
-
+        probe.scope_id = probe_scope_id;
+        let probe_name = probe_scope_id.to_string();
 
         // Add probe record
         let probe_rec = Record::Probe {
@@ -297,7 +299,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
 
         self.curr_probe = Some(id);
         // enter probe scope
-        self.table.add_new_scope();
+        self.table.add_and_enter_new_scope();
 
         // set scope name and type
         self.table

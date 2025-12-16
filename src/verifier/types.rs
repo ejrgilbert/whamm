@@ -78,7 +78,7 @@ impl SymbolTable {
         false
     }
 
-    pub fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule) -> bool {
+    pub fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule, scope_id: usize) -> bool {
         let mut is_success = true;
 
         self.reset();
@@ -91,6 +91,7 @@ impl SymbolTable {
                     is_success &= self.enter_named_scope(&event.name);
                     if let Some(mode) = &probe_rule.mode {
                         is_success &= self.enter_named_scope(&mode.name);
+                        is_success &= self.enter_named_scope(&scope_id.to_string());
                     }
                 }
             }
@@ -106,7 +107,7 @@ impl SymbolTable {
             }
             return;
         }
-        self.add_new_scope()
+        self.add_and_enter_new_scope()
     }
 
     pub fn exit_scope(&mut self) {
@@ -123,7 +124,7 @@ impl SymbolTable {
 
     // Used when we want to force the addition of a new scope (even when we
     // haven't visited the children)
-    pub fn add_new_scope(&mut self) {
+    pub fn add_and_enter_new_scope(&mut self) {
         let new_id = self.scopes.len();
 
         let curr_scope = self.get_curr_scope_mut().unwrap();
