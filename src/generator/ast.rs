@@ -49,7 +49,13 @@ impl Display for Probe {
     }
 }
 impl Probe {
-    pub(crate) fn new(rule_str: String, probe_number: u32, scope_id: usize, script_id: u8, loc: Location) -> Self {
+    pub(crate) fn new(
+        rule_str: String,
+        probe_number: u32,
+        scope_id: usize,
+        script_id: u8,
+        loc: Location,
+    ) -> Self {
         Self {
             rule: ProbeRule::from(rule_str),
             probe_number,

@@ -332,7 +332,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     // handle wasm:report override
                     self.table.enter_named_scope(&script_id.to_string());
                     emit_probes(
-                        &mut vec![probe],
+                        &mut [probe],
                         self.strategy,
                         &mut on_exit,
                         &mut EmitCtx::new(

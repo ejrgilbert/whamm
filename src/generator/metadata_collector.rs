@@ -686,7 +686,7 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
 
     fn visit_probe(&mut self, probe: &ParserProbe) {
         trace!("Entering: CodeGenerator::visit_probe");
-        let _ = self.table.enter_named_scope(&probe.kind.name());    // enter mode scope
+        let _ = self.table.enter_named_scope(&probe.kind.name()); // enter mode scope
         let _ = self.table.enter_named_scope(&probe.scope_id.to_string()); // enter probe scope
         self.append_curr_rule(format!(":{}", probe.kind.name()));
         if let Some(pred) = &probe.predicate {

@@ -78,7 +78,12 @@ impl SymbolTable {
         false
     }
 
-    pub fn enter_scope_via_rule(&mut self, script_id: &str, probe_rule: &ProbeRule, scope_id: usize) -> bool {
+    pub fn enter_scope_via_rule(
+        &mut self,
+        script_id: &str,
+        probe_rule: &ProbeRule,
+        scope_id: usize,
+    ) -> bool {
         let mut is_success = true;
 
         self.reset();
@@ -513,12 +518,6 @@ impl Scope {
     // Record operations
 
     pub fn put(&mut self, key: String, rec: usize) {
-        if let Some(r) = self.records.get(&key) {
-            // This key already exists in this scope's records, check
-            // to see if this is a probe type!
-
-        }
-
         self.records.insert(key, rec);
     }
 

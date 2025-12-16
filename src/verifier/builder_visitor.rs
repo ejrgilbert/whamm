@@ -20,14 +20,14 @@ pub struct SymbolTableBuilder<'a, 'b, 'c> {
     pub table: SymbolTable,
     pub user_libs: &'b HashMap<String, (Option<String>, Module<'c>)>,
     pub err: &'a mut ErrorGen,
-    pub curr_whamm: Option<usize>,      // indexes into this::table::records
-    pub curr_script: Option<usize>,     // indexes into this::table::records
-    pub curr_provider: Option<usize>,   // indexes into this::table::records
-    pub curr_package: Option<usize>,    // indexes into this::table::records
-    pub curr_event: Option<usize>,      // indexes into this::table::records
-    pub curr_mode: Option<usize>,       // indexes into this::table::records
-    pub curr_probe: Option<usize>,      // indexes into this::table::records
-    pub curr_fn: Option<usize>,         // indexes into this::table::records
+    pub curr_whamm: Option<usize>,  // indexes into this::table::records
+    pub curr_script: Option<usize>, // indexes into this::table::records
+    pub curr_provider: Option<usize>, // indexes into this::table::records
+    pub curr_package: Option<usize>, // indexes into this::table::records
+    pub curr_event: Option<usize>,  // indexes into this::table::records
+    pub curr_mode: Option<usize>,   // indexes into this::table::records
+    pub curr_probe: Option<usize>,  // indexes into this::table::records
+    pub curr_fn: Option<usize>,     // indexes into this::table::records
 
     // track the derived variables that need to be defined
     pub aliases: HashMap<String, String>,
@@ -236,9 +236,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
         // TODO -- factor this to reduce duplicate code!
         if self.table.lookup(&probe.kind.name()).is_none() {
             // Add mode to scope
-            let mode_rec = Record::Mode {
-                probes: vec![]
-            };
+            let mode_rec = Record::Mode { probes: vec![] };
             let id = self.table.put(probe.kind.name(), mode_rec);
             self.curr_mode = Some(id);
 
@@ -296,14 +294,12 @@ impl SymbolTableBuilder<'_, '_, '_> {
             panic!();
         };
 
-
         self.curr_probe = Some(id);
         // enter probe scope
         self.table.add_and_enter_new_scope();
 
         // set scope name and type
-        self.table
-            .set_curr_scope_info(probe_name, ScopeType::Probe);
+        self.table.set_curr_scope_info(probe_name, ScopeType::Probe);
     }
 
     fn add_user_lib(&mut self, lib_name: &String, loc: &Option<Location>) {

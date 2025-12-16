@@ -313,7 +313,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_probe(&mut self, probe: &mut Probe) -> Option<DataType> {
-        assert!(self.table.enter_named_scope(&probe.kind.name()));    // enter mode scope
+        assert!(self.table.enter_named_scope(&probe.kind.name())); // enter mode scope
         assert!(self.table.enter_named_scope(&probe.scope_id.to_string())); // enter probe scope
         self.append_curr_rule(format!(":{}", probe.kind.name()));
 

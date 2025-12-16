@@ -238,12 +238,17 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l>
                     // TODO -- this must be wrong!
                     // enter mode scope
                     assert!(
-                        self.emitter
-                            .enter_scope_via_rule(&probe.script_id.to_string(), probe_rule, probe.scope_id),
+                        self.emitter.enter_scope_via_rule(
+                            &probe.script_id.to_string(),
+                            probe_rule,
+                            probe.scope_id
+                        ),
                         "Failed to enter scope: {}",
                         probe_rule
                     );
-                    self.emitter.table.enter_named_scope(&probe.probe_number.to_string()); // enter probe scope
+                    self.emitter
+                        .table
+                        .enter_named_scope(&probe.probe_number.to_string()); // enter probe scope
 
                     // Initialize the symbol table with the metadata at this program point
                     add_to_table(&loc_info, &mut self.emitter);
