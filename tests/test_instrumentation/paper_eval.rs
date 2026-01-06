@@ -49,7 +49,7 @@ fn ins_coverage() {
     let processed_scripts = setup_tests("paper_eval/ins_coverage");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-ins_coverage", processed_scripts, false, true, true, false)
+    run_core_suite("paper_eval-ins_coverage", processed_scripts, false, false, true, false)
 }
 
 #[test]

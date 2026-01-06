@@ -488,9 +488,9 @@ fn run_testcase_wei(
     let out_file = format!("{outdir}/{out_filename}");
     let _ = fs::remove_file(out_file.clone());
     let mut cmd = Command::new(wizeng_path);
-    if matches!(exp_output, ExpectedOutput::Hash(_)) {
+    // if matches!(exp_output, ExpectedOutput::Hash(_)) {
         cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
-    }
+    // }
 
     // TODO -- uncomment once we figure out the OOM issue:
     //         https://github.com/ejrgilbert/whamm/actions/runs/16132265689/job/45521736032?pr=237
@@ -516,7 +516,8 @@ fn run_testcase_wei(
     } else {
         match exp_output {
             ExpectedOutput::Str(exp_str) => {
-                let stdout = String::from_utf8(res.stdout).unwrap();
+                let stdout = fs::read_to_string(&out_file)
+                    .unwrap_or_else(|_| panic!("Unable to read file at {:?}", out_file));
                 assert_eq!(stdout.trim(), exp_str.trim());
             }
             ExpectedOutput::Hash(exp_hash) => {
@@ -576,9 +577,9 @@ fn prep_outfile(cmd: &mut Command, outdir: &String, exp_output: &ExpectedOutput)
     let out_filename = "instr-flush.out";
     let out_file = format!("{outdir}/{out_filename}");
     let _ = fs::remove_file(out_file.clone());
-    if matches!(exp_output, ExpectedOutput::Hash(_)) {
+    // if matches!(exp_output, ExpectedOutput::Hash(_)) {
         cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
-    }
+    // }
 
     out_file
 }
@@ -602,7 +603,8 @@ fn run_and_assert(cmd: &mut Command, app_path: &String, out_file: &String, exp_o
         );
         match exp_output {
             ExpectedOutput::Str(exp_str) => {
-                let stdout = String::from_utf8(res.stdout).unwrap();
+                let stdout = fs::read_to_string(&out_file)
+                    .unwrap_or_else(|_| panic!("Unable to read file at {:?}", out_file));
                 assert_eq!(stdout.trim(), exp_str.trim());
             }
             ExpectedOutput::Hash(exp_hash) => {
