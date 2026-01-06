@@ -1,0 +1,86 @@
+package component:whamm-core;
+
+world support-lib {
+
+    // =============
+    // ==== I/O ====
+    // =============
+
+    export putc: func(c: u8);
+    export puts: func(a: u32, l: u32);
+    export putu8: func(u: u8);
+    export puti8: func(i: s8);
+    export putu16: func(u: u16);
+    export puti16: func(i: s16);
+    export putu32: func(u: u32);
+    export puti32: func(i: s32);
+    export putu64: func(u: u64);
+    export puti64: func(i: s64);
+    export putf32: func(f: f32);
+    export putf64: func(f: f64);
+    export putbool: func(u: u8);
+
+    // ==============
+    // ==== Maps ====
+    // ==============
+
+    // INSERT
+    export create-i32-i32-with-id: func(id: s32);
+    export create-i32-i32: func() -> s32;
+    export create-i32-bool-with-id: func(id: s32);
+    export create-i32-bool: func() -> s32;
+    export create-i32-string-with-id: func(id: s32);
+    export create-i32-string: func() -> s32;
+    export create-i32-tuple-with-id: func(id: s32);
+    export create-i32-tuple: func() -> s32;
+    export create-i32-map-with-id: func(id: s32);
+    export create-i32-map: func() -> s32;
+    export create-string-i32-with-id: func(id: s32);
+    export create-string-i32: func() -> s32;
+    export create-string-bool-with-id: func(id: s32);
+    export create-string-bool: func() -> s32;
+    export create-string-string-with-id: func(id: s32);
+    export create-string-string: func() -> s32;
+    export create-string-tuple-with-id: func(id: s32);
+    export create-string-tuple: func() -> s32;
+    export create-string-map-with-id: func(id: s32);
+    export create-string-map: func() -> s32;
+    export create-bool-i32-with-id: func(id: s32);
+    export create-bool-i32: func() -> s32;
+    export create-bool-bool-with-id: func(id: s32);
+    export create-bool-bool: func() -> s32;
+    export create-bool-string-with-id: func(id: s32);
+    export create-bool-string: func() -> s32;
+    export create-bool-tuple-with-id: func(id: s32);
+    export create-bool-tuple: func() -> s32;
+    export create-bool-map-with-id: func(id: s32);
+    export create-bool-map: func() -> s32;
+    export create-tuple-i32-with-id: func(id: s32);
+    export create-tuple-i32: func() -> s32;
+    export create-tuple-bool-with-id: func(id: s32);
+    export create-tuple-bool: func() -> s32;
+    export create-tuple-string-with-id: func(id: s32);
+    export create-tuple-string: func() -> s32;
+    export create-tuple-tuple-with-id: func(id: s32);
+    export create-tuple-tuple: func() -> s32;
+    export create-tuple-map-with-id: func(id: s32);
+    export create-tuple-map: func() -> s32;
+    
+    // INSERT
+    export insert-i32-i32: func(id: s32, key: s32, value: s32);
+    export insert-i32-string: func(id: s32, key: s32, val-offset: s32, val-length: s32);
+    export insert-string-i32: func(id: s32, key-offset: s32, key-length: s32, val: s32);
+    export insert-i32i32tuple-i32: func(id: s32, key0: s32, key1: s32, value: s32);
+    export insert-i32i32i32tuple-i32: func(id: s32, key0: s32, key1: s32, key2: s32, value: s32);
+    
+    // GET
+    export get-i32-i32: func(id: s32, key: s32) -> s32;
+    // export get-i32-string: func(id: s32, key: s32) -> string;
+    export get-string-i32: func(id: s32, key-offset: s32, key-length: s32) -> s32;
+    export get-i32i32tuple-i32: func(id: s32, key0: s32, key1: s32) -> s32;
+    export get-i32i32i32tuple-i32: func(id: s32, key0: s32, key1: s32, key2: s32) -> s32;
+    
+    // PRINT
+    export print-map: func(id: s32);
+    export print-map-as-csv: func(id: s32);
+}

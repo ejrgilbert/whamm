@@ -702,22 +702,8 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
             // now find where the "exit" is in the bytecode
             // exit of export "main"
             // OR if that doesn't exist, the end of the "start" function
-            let fid = if let Some(main_fid) = self
-                .app_iter
-                .module
-                .exports
-                .get_func_by_name("main".to_string())
-            {
+            let fid = if let Some(main_fid) = get_main_or_start_fid(self.app_iter.module) {
                 main_fid
-            } else if let Some(main_fid) = self
-                .app_iter
-                .module
-                .exports
-                .get_func_by_name("_start".to_string())
-            {
-                main_fid
-            } else if let Some(start_fid) = self.app_iter.module.start {
-                start_fid
             } else {
                 // neither exists, unsure how to support this...this would be a library instead of an application I guess?
                 // Maybe the answer is to expose query functions that can give a status update of the `report` vars?
@@ -950,4 +936,20 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             ),
         )
     }
+}
+
+pub(crate) fn get_main_or_start_fid(module: &Module) -> Option<FunctionID> {
+    if let Some(main_fid) = module.exports.get_func_by_name("main".to_string()) {
+        Some(main_fid)
+    } else if let Some(main_fid) = module.exports.get_func_by_name("_start".to_string()) {
+        Some(main_fid)
+    } else {
+        module.start
+    }
+
+    // if let Some(start_fid) = module.start {
+    //     Some(start_fid)
+    // } else {
+    //     None
+    // }
 }

@@ -42,8 +42,7 @@ pub fn get_matches(
             err.add_error(e);
         } else {
             // shouldn't happen, panic
-            error!("Got no matches, but without an error");
-            exit(1)
+            panic!("Got no matches, but without an error");
         }
     }
 
@@ -279,8 +278,7 @@ impl MatchOn for ProviderDef {
             }
         } else {
             // shouldn't happen, panic
-            error!("No provider pattern in the rule!");
-            exit(1)
+            panic!("No provider pattern in the rule!");
         }
     }
 }
@@ -409,8 +407,7 @@ impl MatchOn for PackageDef {
                 }
             }
         } else {
-            error!("No package pattern in the rule!");
-            exit(1)
+            panic!("No package pattern in the rule!");
         }
     }
 }
@@ -540,8 +537,7 @@ impl MatchOn for EventDef {
                 }
             }
         } else {
-            error!("The rule must contain an event pattern.");
-            exit(1);
+            panic!("The rule must contain an event pattern.");
         }
     }
 }
@@ -619,8 +615,7 @@ impl From<String> for ModeKind {
             "exit" => Self::Exit,
             "<no-mode>" => Self::Null,
             _ => {
-                error!("unable to match mode kind: {value}");
-                exit(1);
+                panic!("unable to match mode kind: {value}");
             }
         }
     }
@@ -690,8 +685,7 @@ impl MatchOn for ModeDef {
                 Err(())
             }
         } else {
-            error!("No mode pattern in the rule!");
-            exit(1);
+            panic!("No mode pattern in the rule!");
         }
     }
 }
@@ -806,11 +800,10 @@ impl CheckedFrom<BoundFuncYml> for BoundFunc {
                 }
             }
             Err(e) => {
-                error!(
+                panic!(
                     "Could not parse the token as function parameters: {}\n{:?}",
                     e, value.params
                 );
-                exit(1);
             }
         };
         let results =
@@ -983,16 +976,14 @@ fn parse_helper<T>(target: &str, parse_rule: Rule, token: &str, handler: &RuleHa
                     for e in errs.iter() {
                         error!("{:?}", e)
                     }
-                    exit(1)
+                    panic!();
                 })
             } else {
-                error!("Could not parse the token correctly");
-                exit(1)
+                panic!("Could not parse the token correctly");
             }
         }
         Err(e) => {
-            error!("Could not parse the token as a {target}: {token}\n{:?}", e);
-            exit(1)
+            panic!("Could not parse the token as a {target}: {token}\n{:?}", e);
         }
     }
 }

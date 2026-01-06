@@ -22,8 +22,7 @@ pub fn main() {
         for c in e.iter_chain().skip(1) {
             eprintln!("  caused by {}", c);
         }
-        eprintln!("{}", e.backtrace());
-        exit(1)
+        panic!("{}", e.backtrace());
     }
 }
 
@@ -42,7 +41,7 @@ fn try_main() -> Result<(), failure::Error> {
         } => {
             if let Err(mut err) = print_info(rule, defs_path, vars, functions) {
                 err.report();
-                exit(1);
+                panic!();
             }
         }
         Cmd::Wast { wast_path } => {
@@ -77,7 +76,7 @@ fn try_main() -> Result<(), failure::Error> {
                 Ok(res) => write_to_file(res, args.output_path),
                 Err(mut e) => {
                     e.report();
-                    exit(1)
+                    panic!();
                 }
             }
         }

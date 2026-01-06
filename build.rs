@@ -8,24 +8,31 @@ use std::path::Path;
 use std::process::Command;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let out_dir = env::var("OUT_DIR").unwrap();
+    let out_dir = env::var("OUT_DIR")?;
 
     // Bundling files as resources in Whamm for library usage!
 
     let out_path = Path::new(&out_dir).join("bundled.rs");
-    let mut out_file = File::create(&out_path).unwrap();
+    let mut out_file = File::create(&out_path)?;
 
     // -- bundle the provider definitions
     let defs_dir = "./";
     bundle_defs(defs_dir, &mut out_file, "DEF_YAMLS");
 
     // -- bundle the whamm_core library
-    let whamm_core_path = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
+    let whamm_core_path_module = "whamm_core-module/target/wasm32-wasip1/release/whamm_core.wasm";
+    let whamm_core_path_component = "whamm_core-component/target/wasm32-wasip2/release/whamm_core.wasm";
     bundle_wasm(
-        whamm_core_path,
-        build_core_library,
+        whamm_core_path_module,
+        build_core_library_module,
         &mut out_file,
-        "WHAMM_CORE_LIB_BYTES",
+        "WHAMM_CORE_LIB_BYTES_MODULE",
+    );
+    bundle_wasm(
+        whamm_core_path_component,
+        build_core_library_component,
+        &mut out_file,
+        "WHAMM_CORE_LIB_BYTES_COMPONENT",
     );
 
     // Build the CLI manual.
@@ -69,13 +76,21 @@ fn bundle_wasm(p: &str, build_wasm: fn(), out_file: &mut File, wasm_var_name: &s
     writeln!(out_file, "];").unwrap();
 }
 
-fn build_core_library() {
+fn build_core_library_module() {
+    build_core_library("whamm_core-module", "wasm32-wasip1");
+}
+
+fn build_core_library_component() {
+    build_core_library("whamm_core-component", "wasm32-wasip2");
+}
+
+fn build_core_library(dir: &str, target: &str) {
     let res = Command::new("cargo")
         .arg("build")
         .arg("--target")
-        .arg("wasm32-wasip1")
+        .arg(target)
         .arg("--release")
-        .current_dir("whamm_core")
+        .current_dir(dir)
         .output()
         .expect("failed to execute process");
     if !res.status.success() {

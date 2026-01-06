@@ -13,8 +13,9 @@ failure = "0.1.5"
 glob = "0.3.1"
 lazy_static = "1.4.0"
 itertools = "0.14.0"
-#wirm = { path = "../wirm" }
-wirm = "=2.2.0"
+wirm = { path = "../wirm-COMP/wirm" }
+#wirm = "=1.0.2"
+wasmparser = "0.243.0"
 
 # For the wasmtime embedding for @static
 wasmtime = "38.0.3"
@@ -42,3 +43,6 @@ wat = "1.214.0"
 clap = { version = "4.5.4", features = ["derive", "cargo", "env"] }
 clap_mangen = "0.2.20"
 glob = "0.3.1"
+
+[dev-dependencies]
+wac-graph = "0.7.0"

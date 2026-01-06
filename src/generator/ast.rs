@@ -274,8 +274,7 @@ impl WhammParams {
         }
         if let Some(n) = param.n_for("res") {
             if !matches!(mode, ModeKind::After) {
-                error!("we haven't supported bound resN variables in non-after probes yet!");
-                exit(1)
+                panic!("we haven't supported bound resN variables in non-after probes yet!");
             }
             self.requested_results.push(n);
         }

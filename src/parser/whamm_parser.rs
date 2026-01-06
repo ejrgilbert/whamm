@@ -151,7 +151,7 @@ fn to_ast(
         Rule::script => {
             if let Err(mut e) = parser_entry_point(def_yamls, &mut whamm, script_count, pair, err) {
                 e.report();
-                exit(1);
+                panic!();
             }
         }
         rule => {

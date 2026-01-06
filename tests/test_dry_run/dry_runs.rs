@@ -1,4 +1,4 @@
-use crate::util::{print_side_effects, setup_logger, CORE_WASM_PATH};
+use crate::util::{print_side_effects, setup_logger, DEFAULT_CORE_LIB_PATH_MODULE};
 use whamm::api::instrument::{
     instrument_as_dry_run_rewriting, instrument_as_dry_run_wei, WhammError,
 };
@@ -20,7 +20,7 @@ fn dry_run() {
         wasm_path.to_string(),
         script_path.to_string(),
         vec![],
-        Some(CORE_WASM_PATH.to_string()),
+        Some(DEFAULT_CORE_LIB_PATH_MODULE.to_string()),
         Some("./".to_string()),
     )
     .expect("Failed to run dry-run for bytecode rewriting");
@@ -36,7 +36,7 @@ fn dry_run_wei() {
     let side_effects = instrument_as_dry_run_wei(
         script_path.to_string(),
         vec![],
-        Some(CORE_WASM_PATH.to_string()),
+        Some(DEFAULT_CORE_LIB_PATH_MODULE.to_string()),
         Some("./".to_string()),
     )
     .expect("Failed to run dry-run for wei");
@@ -53,7 +53,7 @@ fn dry_run_errs() {
         wasm_path.to_string(),
         script_path.to_string(),
         vec![],
-        Some(CORE_WASM_PATH.to_string()),
+        Some(DEFAULT_CORE_LIB_PATH_MODULE.to_string()),
         Some("./".to_string()),
     )
     .expect_err("Should have failed to execute dry-run");

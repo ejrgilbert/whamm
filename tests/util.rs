@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use whamm::api::instrument::Injection;
 use wirm::ir::module::side_effects::InjectType;
 
-pub const CORE_WASM_PATH: &str = "tests/libs/whamm_core.wasm";
+pub const DEFAULT_CORE_LIB_PATH_MODULE: &str = "tests/libs/module/whamm_core.wasm";
+pub const DEFAULT_CORE_LIB_PATH_COMPONENT: &str = "tests/libs/component/whamm_core.wasm";
 
 pub fn setup_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
