@@ -5,6 +5,9 @@ use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 use std::process::Command;
+use serde::de::Expected;
+use wac_graph::{CompositionGraph, EncodeOptions};
+use wac_graph::types::Package;
 use whamm::api::instrument::instrument_as_dry_run;
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
 
@@ -17,6 +20,9 @@ const DOT_WAT: &str = ".wat";
 const DOT_WASM: &str = ".wasm";
 const MM_PATTERN: &str = "*.mm";
 const TODO: &str = "*.TODO";
+
+// FOR COMPONENTS
+const RUN_FUNC_PREFIX: &str = "wasi:cli/run@";
 
 fn get_test_scripts(sub_dir: &str) -> Vec<(PathBuf, String)> {
     let mut scripts = vec![];
@@ -194,10 +200,8 @@ pub(crate) fn run_core_suite(
     dry_run: bool,
 ) {
     let core_lib_path = build_whamm_core_lib(as_component);
+    println!("core_lib_path: {:?}", core_lib_path);
     build_user_libs(as_component);
-    // wat2wasm_on_dir("tests/apps/core_suite/rust");
-    // wat2wasm_on_dir("tests/apps/core_suite/handwritten");
-    // wat2wasm_on_dir("tests/apps/core_suite/clang");
 
     let mut rewriting_tests = vec![];
     let mut wizard_tests = vec![];
@@ -276,6 +280,7 @@ pub(crate) fn run_core_suite(
                 &outdir,
                 &instr_app_path,
                 dry_run,
+                as_component
             );
         }
     }
@@ -322,6 +327,7 @@ pub(crate) fn run_core_suite(
                 &outdir,
                 &instr_app_path,
                 dry_run,
+                as_component
             );
         }
     }
@@ -352,30 +358,22 @@ fn file_hash(file: &PathBuf) -> String {
 }
 
 fn build_lib(lib_path: &str, lib_name: &str, as_component: bool) -> String {
-    let (res, build_ty) = if as_component {
-        (
-            Command::new("cargo")
-                .arg("component")
-                .arg("build")
-                // .arg("--release") // TODO: for some reason, including '--release' causes it to generate a module...
-                .current_dir(lib_path)
-                .output()
-                .expect("failed to execute process"),
-            "debug"
-        )
+    let target = if as_component {
+        "wasm32-wasip2"
     } else {
-        (
-            Command::new("cargo")
-                .arg("build")
-                .arg("--target")
-                .arg("wasm32-wasip1")
-                .arg("--release")
-                .current_dir(lib_path)
-                .output()
-                .expect("failed to execute process"),
-            "release"
-        )
+        "wasm32-wasip1"
     };
+    let build_ty = "release";
+
+    let res = Command::new("cargo")
+        .arg("build")
+        .arg("--target")
+        .arg(target)
+        .arg("--release")
+        .current_dir(lib_path)
+        .output()
+        .expect("failed to execute process");
+
     if !res.status.success() {
         println!(
             "[ERROR] 'whamm_core' build project failed:\n{}\n{}",
@@ -385,16 +383,18 @@ fn build_lib(lib_path: &str, lib_name: &str, as_component: bool) -> String {
     }
     assert!(res.status.success());
 
-    format!("{lib_path}/target/wasm32-wasip1/{build_ty}/{lib_name}.wasm")
+    format!("{lib_path}/target/{target}/{build_ty}/{lib_name}.wasm")
 }
 
 pub(crate) fn build_whamm_core_lib(as_component: bool) -> String {
-    // Build the whamm_core library
-    if as_component {
-        build_lib("whamm_core-component", "whamm_core", true)
+    let path = if as_component {
+        "whamm_core-component"
     } else {
-        build_lib("whamm_core-module", "whamm_core", true)
-    }
+        "whamm_core-module"
+    };
+
+    // Build the whamm_core library
+    build_lib(path, "whamm_core", as_component)
 }
 
 pub(crate) fn build_user_libs(as_component: bool) {
@@ -470,6 +470,7 @@ fn run_testcase_rewriting(
     outdir: &String,
     instr_app_path: &String,
     dry_run: bool,
+    is_component: bool
 ) {
     // run the script on configured application
     run_script(
@@ -484,51 +485,10 @@ fn run_testcase_rewriting(
     );
 
     // run the instrumented application on wasmtime
-    // let res = Command::new(format!("{home}/.cargo/bin/cargo"))
-
-    let whamm_core_lib_path = format!("whamm_core={core_wasm_path}");
-    let out_filename = "instr-flush.out";
-    let out_file = format!("{outdir}/{out_filename}");
-    let _ = fs::remove_file(out_file.clone());
-    let mut cmd = Command::new("wasmtime");
-    if matches!(exp_output, ExpectedOutput::Hash(_)) {
-        cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
-    }
-    cmd.arg("run").arg("--env").arg("TO_CONSOLE=true");
-
-    for lib in user_libs.iter() {
-        cmd.arg("--preload").arg(format!("{lib}"));
-    }
-
-    let res = cmd
-        .arg("--preload")
-        .arg(whamm_core_lib_path)
-        .arg(instr_app_path)
-        .output()
-        .expect("failed to run on wasmtime");
-    if !res.status.success() {
-        println!(
-            "[ERROR] Failed to run on wasmtime:\n{}\n{}",
-            String::from_utf8(res.stdout).unwrap(),
-            String::from_utf8(res.stderr).unwrap()
-        );
-        assert!(false);
+    if is_component {
+        run_wasmtime_component(user_libs, core_wasm_path, exp_output, outdir, instr_app_path)
     } else {
-        assert!(
-            res.stderr.is_empty(),
-            "Had error: {}",
-            String::from_utf8(res.stderr).unwrap()
-        );
-        match exp_output {
-            ExpectedOutput::Str(exp_str) => {
-                let stdout = String::from_utf8(res.stdout).unwrap();
-                assert_eq!(stdout.trim(), exp_str.trim());
-            }
-            ExpectedOutput::Hash(exp_hash) => {
-                let hash = file_hash(&PathBuf::from(out_file));
-                assert_eq!(hash, exp_hash);
-            }
-        };
+        run_wasmtime_module(user_libs, core_wasm_path, exp_output, outdir, instr_app_path)
     }
 }
 
@@ -541,7 +501,11 @@ fn run_testcase_wizard(
     outdir: &String,
     instr_app_path: &String,
     dry_run: bool,
+    is_component: bool
 ) {
+    if is_component {
+        todo!("Haven't supported components on wizard yet!")
+    }
     let mut libs_to_link = "".to_string();
     for path in user_libs.iter() {
         let parts = path.split('=').collect::<Vec<&str>>();
@@ -605,6 +569,186 @@ fn run_testcase_wizard(
             }
         };
     }
+}
+
+fn run_wasmtime_component(
+    user_libs: Vec<String>,
+    core_wasm_path: String,
+    exp_output: ExpectedOutput,
+    outdir: &String,
+    instr_app_path: &String,
+) {
+    let composed_app_path = wac(instr_app_path, outdir, "whamm-core", &core_wasm_path);
+
+    let mut cmd = Command::new("wasmtime");
+    let out_file = prep_outfile(&mut cmd, outdir, &exp_output);
+    cmd.arg("run").arg("--env").arg("TO_CONSOLE=true");
+
+    if !user_libs.is_empty() {
+        todo!("Haven't supported user libraries for components yet!")
+    }
+
+    let res = cmd
+        .arg(composed_app_path)
+        .output()
+        .expect("failed to run on wasmtime");
+    if !res.status.success() {
+        println!(
+            "[ERROR] Failed to run on wasmtime @{instr_app_path}:\n{}\n{}",
+            String::from_utf8(res.stdout).unwrap(),
+            String::from_utf8(res.stderr).unwrap()
+        );
+        assert!(false);
+    } else {
+        assert!(
+            res.stderr.is_empty(),
+            "Had error: {}",
+            String::from_utf8(res.stderr).unwrap()
+        );
+        match exp_output {
+            ExpectedOutput::Str(exp_str) => {
+                let stdout = String::from_utf8(res.stdout).unwrap();
+                assert_eq!(stdout.trim(), exp_str.trim());
+            }
+            ExpectedOutput::Hash(exp_hash) => {
+                let hash = file_hash(&PathBuf::from(out_file));
+                assert_eq!(hash, exp_hash);
+            }
+        };
+    }
+}
+
+fn run_wasmtime_module(
+    user_libs: Vec<String>,
+    core_wasm_path: String,
+    exp_output: ExpectedOutput,
+    outdir: &String,
+    instr_app_path: &String,
+) {
+    let whamm_core_lib_path = format!("whamm_core={core_wasm_path}");
+    let mut cmd = Command::new("wasmtime");
+    let out_file = prep_outfile(&mut cmd, outdir, &exp_output);
+    cmd.arg("run").arg("--env").arg("TO_CONSOLE=true");
+
+    for lib in user_libs.iter() {
+        cmd.arg("--preload").arg(format!("{lib}"));
+    }
+
+    cmd
+        .arg("--preload")
+        .arg(whamm_core_lib_path)
+        .arg(instr_app_path);
+
+    run_and_assert(&mut cmd, &out_file, instr_app_path, exp_output);
+}
+
+fn prep_outfile(cmd: &mut Command, outdir: &String, exp_output: &ExpectedOutput) -> String {
+    let out_filename = "instr-flush.out";
+    let out_file = format!("{outdir}/{out_filename}");
+    let _ = fs::remove_file(out_file.clone());
+    if matches!(exp_output, ExpectedOutput::Hash(_)) {
+        cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
+    }
+
+    out_file
+}
+
+fn run_and_assert(cmd: &mut Command, app_path: &String, out_file: &String, exp_output: ExpectedOutput) {
+    let res = cmd
+        .output()
+        .expect("failed to run on wasmtime");
+    if !res.status.success() {
+        println!(
+            "[ERROR] Failed to run on wasmtime @{app_path}:\n{}\n{}",
+            String::from_utf8(res.stdout).unwrap(),
+            String::from_utf8(res.stderr).unwrap()
+        );
+        assert!(false);
+    } else {
+        assert!(
+            res.stderr.is_empty(),
+            "Had error: {}",
+            String::from_utf8(res.stderr).unwrap()
+        );
+        match exp_output {
+            ExpectedOutput::Str(exp_str) => {
+                let stdout = String::from_utf8(res.stdout).unwrap();
+                assert_eq!(stdout.trim(), exp_str.trim());
+            }
+            ExpectedOutput::Hash(exp_hash) => {
+                let hash = file_hash(&PathBuf::from(out_file));
+                assert_eq!(hash, exp_hash);
+            }
+        };
+    }
+}
+
+fn wac(app_path: &String, outdir: &String, core_lib_name: &str, core_lib_path: &str) -> String {
+    let mut graph = CompositionGraph::new();
+
+    // Register the package dependencies into the graph
+    let package = Package::from_file(
+        "app",
+        None,
+        app_path,
+        graph.types_mut(),
+    ).unwrap();
+    let app = graph.register_package(package).unwrap();
+
+    let package = Package::from_file(
+        core_lib_name,
+        None,
+        core_lib_path,
+        graph.types_mut(),
+    ).unwrap();
+    let whamm_core = graph.register_package(package).unwrap();
+
+    // print out some helpful information about what the imports/exports are from the packages.
+    println!("LIB EXPORTS:");
+    for (name, ty) in &graph.types()[graph[whamm_core].ty()].exports {
+        println!("- {name}: {:?}", ty);
+    }
+    println!("APP IMPORTS");
+    for (name, ty) in &graph.types()[graph[app].ty()].imports {
+        println!("- {name}: {:?}", ty);
+    }
+    println!("APP EXPORTS");
+    let mut run_func_name = None;
+    for (name, ty) in &graph.types()[graph[app].ty()].exports {
+        if name.starts_with(RUN_FUNC_PREFIX) {
+            run_func_name = Some(name.clone());
+        }
+        println!("- {name}: {:?}", ty);
+    }
+
+    // Instantiate the whamm_core instance which does not have any arguments
+    let whamm_core_instance = graph.instantiate(whamm_core);
+
+    // Instantiate the app instance which has a single argument "whamm-core"
+    // which is an instance of `whamm_core`
+    let app_instance = graph.instantiate(app);
+
+    // plug in the instance of `whamm_core` into the `app` import.
+    graph
+        .set_instantiation_argument(app_instance, core_lib_name, whamm_core_instance)
+        .unwrap();
+
+    // Export the "run" function from the app
+    if let Some(run_name) = run_func_name {
+        let run_export = graph
+            .alias_instance_export(app_instance, &run_name)
+            .unwrap();
+        graph.export(run_export, &run_name).unwrap();
+    } else {
+        panic!("Could not find an exported main function from the component, should start with: {RUN_FUNC_PREFIX}")
+    }
+
+    // Encode the graph into a WASM binary
+    let encoding = graph.encode(EncodeOptions::default()).unwrap();
+    let composed_path = format!("{outdir}/composition.wasm");
+    fs::write(&composed_path, encoding).unwrap();
+
+    composed_path
 }
 
 struct TestCase {

@@ -78,7 +78,7 @@ pub fn configure_component_libraries<'a>(
 
     fn configure_lib<'a>(target_module_id: u32, wasm: &mut Component<'a>, wasi_instance_loc: usize, lib_name: &'a str, lib_bytes: &'a [u8]) {
         let wasi_name = "wasi_snapshot_preview1";
-        let lib_wasm = Component::parse(lib_bytes, false).unwrap();
+        let lib_wasm = Component::parse(lib_bytes, false, true).unwrap();
         // TODO: add libraries as *core module*s in the top-level of the component
         // TODO: add *core instance*s in the top-level of the component for each of the added library modules
         //       Should list out what's exported in the library in the instantiation too

@@ -13,9 +13,9 @@ failure = "0.1.5"
 glob = "0.3.1"
 lazy_static = "1.4.0"
 itertools = "0.14.0"
-wirm = { path = "../wirm" }
+wirm = { path = "../wirm-COMP/wirm" }
 #wirm = "=1.0.2"
-wasmparser = "0.235.0"
+wasmparser = "0.243.0"
 
 # Logging
 env_logger = "0.10.2"
@@ -41,3 +41,6 @@ clap = { version = "4.5.4", features = ["derive", "cargo", "env"] }
 clap_complete = "4.5.2"
 clap_mangen = "0.2.20"
 glob = "0.3.1"
+
+[dev-dependencies]
+wac-graph = "0.7.0"

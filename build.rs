@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // -- bundle the whamm_core library
     let whamm_core_path_module = "whamm_core-module/target/wasm32-wasip1/release/whamm_core.wasm";
-    let whamm_core_path_component = "whamm_core-component/target/wasm32-wasip1/release/whamm_core.wasm";
+    let whamm_core_path_component = "whamm_core-component/target/wasm32-wasip2/release/whamm_core.wasm";
     bundle_wasm(
         whamm_core_path_module,
         build_core_library_module,
@@ -77,18 +77,18 @@ fn bundle_wasm(p: &str, build_wasm: fn(), out_file: &mut File, wasm_var_name: &s
 }
 
 fn build_core_library_module() {
-    build_core_library("whamm_core-module");
+    build_core_library("whamm_core-module", "wasm32-wasip1");
 }
 
 fn build_core_library_component() {
-    build_core_library("whamm_core-component");
+    build_core_library("whamm_core-component", "wasm32-wasip2");
 }
 
-fn build_core_library(dir: &str) {
+fn build_core_library(dir: &str, target: &str) {
     let res = Command::new("cargo")
         .arg("build")
         .arg("--target")
-        .arg("wasm32-wasip1")
+        .arg(target)
         .arg("--release")
         .current_dir(dir)
         .output()

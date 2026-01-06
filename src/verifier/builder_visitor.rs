@@ -275,7 +275,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
             if self.libs_as_components {
                 unimplemented!("Have not implemented support for component libraries.")
             } else {
-                let lib_module = Module::parse(lib_bytes, false).unwrap();
+                let lib_module = Module::parse(lib_bytes, false, true).unwrap();
 
                 // add user library to the current scope (should be Script)
                 // enters a new scope (named 'lib_name')

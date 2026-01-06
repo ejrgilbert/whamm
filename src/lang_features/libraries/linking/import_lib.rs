@@ -73,7 +73,7 @@ pub fn link_user_lib(
 ) -> Vec<FunctionID> {
     let added = if libs_as_components {
 
-        let lib_wasm = Component::parse(lib_bytes, false).unwrap();
+        let lib_wasm = Component::parse(lib_bytes, false, true).unwrap();
 
         import_lib_fn_names_from_component(
             app_wasm,
@@ -85,7 +85,7 @@ pub fn link_user_lib(
             err
         )
     } else {
-        let lib_wasm = Module::parse(lib_bytes, false).unwrap();
+        let lib_wasm = Module::parse(lib_bytes, false, true).unwrap();
         import_lib_fn_names_from_module(
             app_wasm,
             loc,
@@ -133,7 +133,7 @@ fn import_lib_package(
     // should only import the EXPORTED contents of the lib_wasm
     let added = if libs_as_components {
         println!("HEY!!!");
-        let lib_wasm = Component::parse(lib_bytes, false).unwrap();
+        let lib_wasm = Component::parse(lib_bytes, false, true).unwrap();
 
         println!("HEY!!! -- end");
         import_lib_fn_names_from_component(
@@ -146,7 +146,7 @@ fn import_lib_package(
             err
         )
     } else {
-        let lib_wasm = Module::parse(lib_bytes, false).unwrap();
+        let lib_wasm = Module::parse(lib_bytes, false, true).unwrap();
         import_lib_fn_names_from_module(
             app_wasm,
             loc,
@@ -211,40 +211,9 @@ fn import_lib_fn_names_from_component(
         }
 
         let fn_name = export.name.0;
-        // println!("export: {:#?}", export);
         if lib_fns.contains(fn_name) {
             let ty = lib_wasm.get_type_of_exported_lift_func(ComponentExportId(i as u32));
-            // let mut fn_start_idx = 0;
-            // while !matches!(lib_wasm.canons.get(fn_start_idx), Some(CanonicalFunction::Lift {..}) | Some(CanonicalFunction::Lower {..})) {
-            //     // Handle non-lift/lower canonical functions
-            //     fn_start_idx += 1;
-            // }
-            // // println!("fn_start_idx: {}", fn_start_idx);
-            // if let Some(CanonicalFunction::Lift {type_index: ty_id, ..}) = lib_wasm.canons.get((export.index as usize + fn_start_idx) - num_exported_fns) {
-            //     let mut num_non_func_tys = 0;
-            //     while !matches!(lib_wasm.component_types.get(num_non_func_tys), Some(ComponentType::Func(..))) {
-            //         // Handle non-lift/lower canonical functions
-            //         num_non_func_tys += 1;
-            //     }
-            //     let mut i = 0;
-            //     let mut num_aliased_types = 0;
-            //     while num_aliased_types < (*ty_id as usize - num_non_func_tys) && i < lib_wasm.alias.len() {
-            //         if matches!(lib_wasm.alias.get(i), Some(ComponentAlias::InstanceExport {kind: ComponentExternalKind::Type, ..})) {
-            //             // aliased types
-            //             num_aliased_types += 1;
-            //         }
-            //         i += 1;
-            //     }
-            //     // println!("aliased types: {}", num_aliased_types);
-            //
-            //     // println!("====\n@{}->{}: {:#?}\n====\n\n", ty_id, *ty_id as usize - num_aliased_types, lib_wasm.component_types.get(*ty_id as usize - num_aliased_types));
-            //     // println!("====\ncomponent_types: {:#?}\n====\n\n", lib_wasm.component_types);
-            //     // println!("====\nalias: {:#?}\n====\n\n", lib_wasm.alias);
-            //     // println!("====\ncanons: {:#?}\n====\n\n", lib_wasm.canons);
-            //     // panic!("blah");
             if let Some(ComponentType::Func(ty)) = ty {
-                // println!("ty: {:#?}", ty);
-                // panic!("blah");
                 let mut params = vec![];
                 for (_, pty) in ty.params.iter() {
                     params.push(canon_lower(pty))
@@ -290,43 +259,6 @@ fn import_lib_fn_names_from_component(
     }
     injected_fns
 }
-
-// pub fn get_fn_type_from_component_export<'a, 'b>(lib_wasm: &'a Component<'b>, num_exported_fns: usize, export: &ComponentExport) -> Option<&'a ComponentType<'b>> {
-//     let mut fn_start_idx = 0;
-//     while !matches!(lib_wasm.canons.get(fn_start_idx), Some(CanonicalFunction::Lift {..}) | Some(CanonicalFunction::Lower {..})) {
-//         println!("item: {:#?}", lib_wasm.canons.get(fn_start_idx));
-//         // Handle non-lift/lower canonical functions
-//         fn_start_idx += 1;
-//     }
-// 
-//     // println!("fn_start_idx: {}", fn_start_idx);
-//     if let Some(CanonicalFunction::Lift {type_index: ty_id, ..}) = lib_wasm.canons.get((export.index as usize + fn_start_idx) - num_exported_fns) {
-//         let mut num_non_func_tys = 0;
-//         while !matches!(lib_wasm.component_types.get(num_non_func_tys), Some(ComponentType::Func(..))) {
-//             // Handle non-lift/lower canonical functions
-//             num_non_func_tys += 1;
-//         }
-//         let mut i = 0;
-//         let mut num_aliased_types = 0;
-//         while num_aliased_types < (*ty_id as usize - num_non_func_tys) && i < lib_wasm.alias.len() {
-//             if matches!(lib_wasm.alias.get(i), Some(ComponentAlias::InstanceExport {kind: ComponentExternalKind::Type, ..})) {
-//                 // aliased types
-//                 num_aliased_types += 1;
-//             }
-//             i += 1;
-//         }
-//         lib_wasm.component_types.get(*ty_id as usize - num_aliased_types)
-//         // println!("aliased types: {}", num_aliased_types);
-// 
-//         // println!("====\n@{}->{}: {:#?}\n====\n\n", ty_id, *ty_id as usize - num_aliased_types, lib_wasm.component_types.get(*ty_id as usize - num_aliased_types));
-//         // println!("====\ncomponent_types: {:#?}\n====\n\n", lib_wasm.component_types);
-//         // println!("====\nalias: {:#?}\n====\n\n", lib_wasm.alias);
-//         // println!("====\ncanons: {:#?}\n====\n\n", lib_wasm.canons);
-//         // panic!("blah");
-//     } else {
-//         None
-//     }
-// }
 
 fn import_lib_fn_names_from_module(
     app_wasm: &mut Module,

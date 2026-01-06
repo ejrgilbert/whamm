@@ -512,7 +512,7 @@ impl Injection {
             } => {
                 let mut body_ops = vec![];
                 for instr in body.iter() {
-                    body_ops.push(format!("{:?}", instr.op));
+                    body_ops.push(format!("{:?}", instr));
                 }
                 let reasons = get_reasons_from_tag(tag.data_mut());
                 vec![Self::Func {

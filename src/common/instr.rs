@@ -223,7 +223,7 @@ pub fn run_on_bytes_and_encode(
         }
         module.encode()
     } else {
-        let core_lib_bytes = get_core_lib(core_lib_path, Module::parse(target_wasm_bytes, true).is_ok());
+        let core_lib_bytes = get_core_lib(core_lib_path, Module::parse(target_wasm_bytes, true, true).is_ok());
 
         // add the core library just in case the script needs it
         user_lib_map.insert(WHAMM_CORE_LIB_NAME.to_string(), &core_lib_bytes);
@@ -287,7 +287,7 @@ fn run_and_encode_module_or_component(
             }
 
             fn check_is_component(name: &str, bytes: &[u8]) {
-                if Module::parse(bytes, true).is_ok() {
+                if Module::parse(bytes, true, true).is_ok() {
                     panic!("When instrumenting a component, the libraries MUST be provided as components, this library is a module: {}", name);
                 }
             }
@@ -336,9 +336,9 @@ fn run_and_encode_module_or_component(
 
 fn bytes_to_wasm(target_wasm_bytes: &[u8]) -> (Option<Module>, Option<Component>) {
     // First try to parse as a wasm module
-    if let Ok(module) = Module::parse(target_wasm_bytes, false) {
+    if let Ok(module) = Module::parse(target_wasm_bytes, false, true) {
         (Some(module), None)
-    } else if let Ok(component) = Component::parse(target_wasm_bytes, true) {
+    } else if let Ok(component) = Component::parse(target_wasm_bytes, true, true) {
         (None, Some(component))
     } else {
         (None, None)

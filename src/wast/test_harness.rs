@@ -224,7 +224,7 @@ fn generate_instrumented_bin_wast(
         let cloned_module = test_setup.target_module_wat.clone();
         let buff = wat::parse_bytes(cloned_module.as_slice())
             .expect("couldn't convert the input wat to Wasm");
-        let mut module_to_instrument = Module::parse(&buff, false).unwrap();
+        let mut module_to_instrument = Module::parse(&buff, false, true).unwrap();
         // make sure that this is a valid file by running wasm2wat through CLI
         let debug_file_path = format!(
             "{TEST_DEBUG_DIR}/{}.wasm",
