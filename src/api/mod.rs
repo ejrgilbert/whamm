@@ -9,9 +9,12 @@ include!(concat!(env!("OUT_DIR"), "/bundled.rs"));
 fn get_defs_and_lib(
     defs_path: Option<String>,
     core_lib_path: Option<String>,
-    core_lib_as_module: bool
+    core_lib_as_module: bool,
 ) -> (Vec<String>, Vec<u8>) {
-    (get_defs(defs_path), get_core_lib(core_lib_path, core_lib_as_module))
+    (
+        get_defs(defs_path),
+        get_core_lib(core_lib_path, core_lib_as_module),
+    )
 }
 pub(crate) fn get_defs(defs_path: Option<String>) -> Vec<String> {
     if let Some(defs_path) = defs_path {

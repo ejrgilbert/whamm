@@ -509,6 +509,7 @@ pub trait Guest {
     fn insert_i32_string(id: i32, key: i32, val_offset: i32, val_length: i32) -> ();
     fn insert_string_i32(id: i32, key_offset: i32, key_length: i32, val: i32) -> ();
     fn insert_i32i32tuple_i32(id: i32, key0: i32, key1: i32, value: i32) -> ();
+    fn insert_i32booltuple_i32(id: i32, key0: i32, key1: bool, value: i32) -> ();
     fn insert_i32i32i32tuple_i32(
         id: i32,
         key0: i32,
@@ -521,6 +522,7 @@ pub trait Guest {
     /// export get-i32-string: func(id: s32, key: s32) -> string;
     fn get_string_i32(id: i32, key_offset: i32, key_length: i32) -> i32;
     fn get_i32i32tuple_i32(id: i32, key0: i32, key1: i32) -> i32;
+    fn get_i32booltuple_i32(id: i32, key0: i32, key1: bool) -> i32;
     fn get_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32) -> i32;
     /// PRINT
     fn print_map(id: i32) -> ();

@@ -343,7 +343,7 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, 
                     lib_name_import_override,
                     used_fns,
                     self.emitter.table,
-                    self.err
+                    self.err,
                 ),
             );
         }

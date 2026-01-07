@@ -11,7 +11,10 @@ use crate::parser::types::Location;
 use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
 use std::collections::HashSet;
-use wasmparser::{CanonicalFunction, ComponentAlias, ComponentExport, ComponentExternalKind, ComponentFuncType, ComponentType, ComponentTypeRef, ComponentValType, ExternalKind, MemoryType, PrimitiveValType};
+use wasmparser::{
+    CanonicalFunction, ComponentAlias, ComponentExport, ComponentExternalKind, ComponentFuncType,
+    ComponentType, ComponentTypeRef, ComponentValType, ExternalKind, MemoryType, PrimitiveValType,
+};
 use wirm::ir::id::{ComponentExportId, FunctionID};
 use wirm::{Component, DataType, Module};
 
@@ -76,7 +79,6 @@ pub fn link_user_lib(
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
     let added = if libs_as_components {
-
         let lib_wasm = Component::parse(lib_bytes, false, true).unwrap();
 
         import_lib_fn_names_from_component(
@@ -86,7 +88,7 @@ pub fn link_user_lib(
             &lib_wasm,
             used_lib_fns,
             Some(table),
-            err
+            err,
         )
     } else {
         let lib_wasm = Module::parse(lib_bytes, false, true).unwrap();
@@ -97,7 +99,7 @@ pub fn link_user_lib(
             lib_name_import_override,
             &lib_wasm,
             used_lib_fns,
-            Some(table)
+            Some(table),
         )
     };
 
@@ -148,7 +150,7 @@ fn import_lib_package(
             &lib_wasm,
             &HashSet::from_iter(package.get_fn_names().iter().cloned()),
             None,
-            err
+            err,
         )
     } else {
         let lib_wasm = Module::parse(lib_bytes, false, true).unwrap();
@@ -159,7 +161,7 @@ fn import_lib_package(
             lib_name_import_override,
             &lib_wasm,
             &HashSet::from_iter(package.get_fn_names().iter().cloned()),
-            None
+            None,
         )
     };
 
@@ -177,22 +179,21 @@ fn import_lib_package(
 fn canon_lower(ty: &ComponentValType) -> DataType {
     match ty {
         ComponentValType::Primitive(pty) => match pty {
-            PrimitiveValType::Bool |
-            PrimitiveValType::S8 |
-            PrimitiveValType::U8 |
-            PrimitiveValType::S16 |
-            PrimitiveValType::U16 |
-            PrimitiveValType::S32 |
-            PrimitiveValType::U32 => DataType::I32,
-            PrimitiveValType::S64 |
-            PrimitiveValType::U64 => DataType::I64,
+            PrimitiveValType::Bool
+            | PrimitiveValType::S8
+            | PrimitiveValType::U8
+            | PrimitiveValType::S16
+            | PrimitiveValType::U16
+            | PrimitiveValType::S32
+            | PrimitiveValType::U32 => DataType::I32,
+            PrimitiveValType::S64 | PrimitiveValType::U64 => DataType::I64,
             PrimitiveValType::F32 => DataType::F32,
             PrimitiveValType::F64 => DataType::F64,
-            PrimitiveValType::Char |
-            PrimitiveValType::String |
-            PrimitiveValType::ErrorContext => todo!()
+            PrimitiveValType::Char | PrimitiveValType::String | PrimitiveValType::ErrorContext => {
+                todo!()
+            }
         },
-        ComponentValType::Type(_) => todo!()
+        ComponentValType::Type(_) => todo!(),
     }
 }
 
@@ -205,7 +206,6 @@ fn import_lib_fn_names_from_component(
     mut table: Option<&mut SymbolTable>,
     err: &mut ErrorGen,
 ) -> Vec<(String, u32)> {
-
     let mut injected_fns = vec![];
     let mut num_exported_fns = 0;
     for (i, export) in lib_wasm.exports.iter().enumerate() {

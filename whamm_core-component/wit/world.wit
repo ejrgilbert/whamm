@@ -71,6 +71,7 @@ world support-lib {
     export insert-i32-string: func(id: s32, key: s32, val-offset: s32, val-length: s32);
     export insert-string-i32: func(id: s32, key-offset: s32, key-length: s32, val: s32);
     export insert-i32i32tuple-i32: func(id: s32, key0: s32, key1: s32, value: s32);
+    export insert-i32booltuple-i32: func(id: s32, key0: s32, key1: bool, value: s32);
     export insert-i32i32i32tuple-i32: func(id: s32, key0: s32, key1: s32, key2: s32, value: s32);
     
     // GET
@@ -78,6 +79,7 @@ world support-lib {
     // export get-i32-string: func(id: s32, key: s32) -> string;
     export get-string-i32: func(id: s32, key-offset: s32, key-length: s32) -> s32;
     export get-i32i32tuple-i32: func(id: s32, key0: s32, key1: s32) -> s32;
+    export get-i32booltuple-i32: func(id: s32, key0: s32, key1: bool) -> s32;
     export get-i32i32i32tuple-i32: func(id: s32, key0: s32, key1: s32, key2: s32) -> s32;
     
     // PRINT

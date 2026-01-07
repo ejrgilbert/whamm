@@ -243,7 +243,12 @@ fn generate_instrumented_bin_wast(
         let mut metrics = Metrics::default();
 
         // handle the libraries, add the core library just in case the script needs it
-        let libs = vec![(WHAMM_CORE_LIB_NAME.to_string(), None, CORE_WASM_PATH.to_string(), core_lib_buff.clone())];
+        let libs = vec![(
+            WHAMM_CORE_LIB_NAME.to_string(),
+            None,
+            CORE_WASM_PATH.to_string(),
+            core_lib_buff.clone(),
+        )];
 
         if let Err(mut err) = run(
             core_lib_buff.as_slice(),

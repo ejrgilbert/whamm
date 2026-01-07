@@ -1,7 +1,10 @@
 #![allow(clippy::too_many_arguments)]
 
+use crate::api::{get_defs, get_defs_and_lib};
 use crate::common::error::{CodeLocation, ErrorGen, WhammError as ErrorInternal};
 use crate::common::instr;
+use crate::common::instr::run_on_module;
+use crate::common::metrics::Metrics;
 use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
 use log::error;
 use std::collections::HashMap;
@@ -9,11 +12,8 @@ use std::process::exit;
 use wirm::ir::module::module_types::Types;
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
 use wirm::ir::types::{DataType as WirmType, FuncInstrMode, InstrumentationMode};
-use wirm::Module;
 use wirm::wasmparser::{ExternalKind, TypeRef};
-use crate::api::{get_defs, get_defs_and_lib};
-use crate::common::instr::run_on_module;
-use crate::common::metrics::Metrics;
+use wirm::Module;
 
 pub const MAX_ERRORS: i32 = 15;
 
@@ -301,7 +301,7 @@ pub enum Injection {
         /// The name of the imported item.
         name: String,
         /// The type of the import.
-        type_ref: TypeRef,  // TODO
+        type_ref: TypeRef, // TODO
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
         cause: Cause,
@@ -322,7 +322,7 @@ pub enum Injection {
     /// Represents a type that has been added to the module.
     // TODO: possibly just return wat for this
     Type {
-        ty: Types,  // TODO
+        ty: Types, // TODO
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).
         cause: Cause,
@@ -374,7 +374,7 @@ pub enum Injection {
         /// The global's ID.
         id: u32, // TODO -- may not need (it's ordered in a vec)
         /// The global's type.
-        ty: WirmType,   // TODO
+        ty: WirmType, // TODO
         /// Whether the global is shared.
         shared: bool,
         /// Whether the global is mutable.
@@ -393,9 +393,9 @@ pub enum Injection {
         /// The function's name.
         fname: Option<String>,
         /// The function's signature (params, results).
-        sig: (Vec<WirmType>, Vec<WirmType>),    // TODO
+        sig: (Vec<WirmType>, Vec<WirmType>), // TODO
         /// The function's local variables
-        locals: Vec<WirmType>,  // TODO
+        locals: Vec<WirmType>, // TODO
         /// The body of the function (in WAT).
         body: Vec<String>,
 
@@ -408,7 +408,7 @@ pub enum Injection {
     Local {
         /// The ID of the function this local is inserted into.
         target_fid: u32,
-        ty: WirmType,   // TODO
+        ty: WirmType, // TODO
 
         /// Explains why this was injected (if it can be isolated to a
         /// specific Whamm script location).

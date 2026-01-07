@@ -1,4 +1,7 @@
-use crate::test_instrumentation::helper::{run_basic_instrumentation, run_core_suite, run_script, run_whamm_bin, setup_fault_injection, setup_numerics_monitors, setup_replay, setup_tests, setup_wizard_monitors, DEFAULT_DEFS_PATH};
+use crate::test_instrumentation::helper::{
+    run_basic_instrumentation, run_core_suite, run_script, run_whamm_bin, setup_fault_injection,
+    setup_numerics_monitors, setup_replay, setup_tests, setup_wizard_monitors, DEFAULT_DEFS_PATH,
+};
 use crate::util::{setup_logger, DEFAULT_CORE_LIB_PATH_MODULE};
 use std::fs;
 use whamm::api::utils::wasm2wat_on_file;
@@ -25,7 +28,7 @@ fn instrument_dfinity_with_fault_injection() {
             DEFAULT_CORE_LIB_PATH_MODULE.to_string(),
             None,
             false,
-            true
+            true,
         ) {
             println!("failed to run script due to errors: ");
             for e in errs.iter() {
@@ -108,7 +111,7 @@ fn instrument_with_wizard_monitors() {
             DEFAULT_CORE_LIB_PATH_MODULE.to_string(),
             None,
             false,
-            false
+            false,
         ) {
             println!("failed to run script due to errors: ");
             for e in errs.iter() {
@@ -143,7 +146,14 @@ fn instrument_with_branch_monitor_scripts() {
 
     // TODO -- fix wei side (THEN merge with below test)
     //   - pull `fname`, `targets`, `num_targets`, `default_target`
-    run_core_suite("branch-monitor", processed_scripts, false, true, true, false)
+    run_core_suite(
+        "branch-monitor",
+        processed_scripts,
+        false,
+        true,
+        true,
+        false,
+    )
 }
 #[test]
 fn instrument_with_branch_monitor_rewriting_scripts() {
@@ -151,7 +161,14 @@ fn instrument_with_branch_monitor_rewriting_scripts() {
     let processed_scripts = setup_tests("core_suite/branch-monitor_rewriting");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("branch-monitor_rewriting", processed_scripts, false, true, false, false)
+    run_core_suite(
+        "branch-monitor_rewriting",
+        processed_scripts,
+        false,
+        true,
+        false,
+        false,
+    )
 }
 #[test]
 fn instrument_with_bytecode_scripts() {
@@ -211,7 +228,14 @@ fn instrument_with_calls_monitor_rewriting_scripts() {
     let processed_scripts = setup_tests("core_suite/calls-monitor_rewriting");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("calls-monitor_rewriting", processed_scripts, false, true, false, false)
+    run_core_suite(
+        "calls-monitor_rewriting",
+        processed_scripts,
+        false,
+        true,
+        false,
+        false,
+    )
 }
 
 #[test]
@@ -220,5 +244,12 @@ fn components() {
     let processed_scripts = setup_tests("core_suite/components");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("core-components", processed_scripts,  true, true, false, false)
+    run_core_suite(
+        "core-components",
+        processed_scripts,
+        true,
+        true,
+        false,
+        false,
+    )
 }

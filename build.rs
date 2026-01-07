@@ -21,7 +21,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // -- bundle the whamm_core library
     let whamm_core_path_module = "whamm_core-module/target/wasm32-wasip1/release/whamm_core.wasm";
-    let whamm_core_path_component = "whamm_core-component/target/wasm32-wasip2/release/whamm_core.wasm";
+    let whamm_core_path_component =
+        "whamm_core-component/target/wasm32-wasip2/release/whamm_core.wasm";
     bundle_wasm(
         whamm_core_path_module,
         build_core_library_module,

@@ -26,7 +26,7 @@ pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k> {
     pub injected_funcs: &'i mut Vec<FunctionID>,
     pub used_fns_per_lib: HashMap<String, HashSet<String>>,
     pub user_lib_modules: &'j HashMap<String, (Option<String>, &'k [u8])>,
-    pub libs_as_components: bool
+    pub libs_as_components: bool,
 }
 impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
@@ -95,7 +95,7 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_,
                     lib_name_import_override,
                     used_fns,
                     self.emitter.table,
-                    self.err
+                    self.err,
                 ),
             );
         }

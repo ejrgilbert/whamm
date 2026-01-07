@@ -1,13 +1,13 @@
 use crate::util::{setup_logger, DEFAULT_CORE_LIB_PATH_COMPONENT, DEFAULT_CORE_LIB_PATH_MODULE};
 use glob::{glob, glob_with};
 use log::{error, warn};
+use serde::de::Expected;
 use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use serde::de::Expected;
-use wac_graph::{CompositionGraph, EncodeOptions};
 use wac_graph::types::Package;
+use wac_graph::{CompositionGraph, EncodeOptions};
 use whamm::api::instrument::{instrument_as_dry_run_rewriting, WhammError};
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
 use wirm::Module;
@@ -176,7 +176,7 @@ pub(crate) fn run_core_suite(
     as_component: bool,
     with_br: bool,
     with_wei: bool,
-    dry_run: bool
+    dry_run: bool,
 ) {
     let mut rewriting_tests = vec![];
     let mut wei_tests = vec![];
@@ -261,7 +261,7 @@ pub(crate) fn run_core_suite(
                 &outdir,
                 &instr_app_path,
                 dry_run,
-                as_component
+                as_component,
             );
         }
     }
@@ -310,7 +310,7 @@ pub(crate) fn run_core_suite(
                 &outdir,
                 &instr_app_path,
                 dry_run,
-                as_component
+                as_component,
             );
         }
     }
@@ -402,7 +402,7 @@ fn run_testcase_rewriting(
     outdir: &String,
     instr_app_path: &String,
     dry_run: bool,
-    is_component: bool
+    is_component: bool,
 ) {
     run_script(
         &script,
@@ -417,9 +417,21 @@ fn run_testcase_rewriting(
 
     // run the instrumented application on wasmtime
     if is_component {
-        run_wasmtime_component(user_libs, core_wasm_path, exp_output, outdir, instr_app_path)
+        run_wasmtime_component(
+            user_libs,
+            core_wasm_path,
+            exp_output,
+            outdir,
+            instr_app_path,
+        )
     } else {
-        run_wasmtime_module(user_libs, core_wasm_path, exp_output, outdir, instr_app_path)
+        run_wasmtime_module(
+            user_libs,
+            core_wasm_path,
+            exp_output,
+            outdir,
+            instr_app_path,
+        )
     }
 }
 
@@ -432,7 +444,7 @@ fn run_testcase_wei(
     outdir: &String,
     instr_app_path: &String,
     dry_run: bool,
-    is_component: bool
+    is_component: bool,
 ) {
     if is_component {
         todo!("Haven't supported components on wizard yet!")
@@ -472,7 +484,7 @@ fn run_testcase_wei(
         core_wasm_path.clone(),
         Some(instr_app_path.clone()),
         true,
-        dry_run
+        dry_run,
     ) {
         println!("failed to run script due to errors: ");
         for e in errs.iter() {
@@ -489,7 +501,7 @@ fn run_testcase_wei(
     let _ = fs::remove_file(out_file.clone());
     let mut cmd = Command::new(wizeng_path);
     // if matches!(exp_output, ExpectedOutput::Hash(_)) {
-        cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
+    cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
     // }
 
     // TODO -- uncomment once we figure out the OOM issue:
@@ -565,8 +577,7 @@ fn run_wasmtime_module(
         cmd.arg("--preload").arg(format!("{lib}"));
     }
 
-    cmd
-        .arg("--preload")
+    cmd.arg("--preload")
         .arg(whamm_core_lib_path)
         .arg(instr_app_path);
 
@@ -578,16 +589,19 @@ fn prep_outfile(cmd: &mut Command, outdir: &String, exp_output: &ExpectedOutput)
     let out_file = format!("{outdir}/{out_filename}");
     let _ = fs::remove_file(out_file.clone());
     // if matches!(exp_output, ExpectedOutput::Hash(_)) {
-        cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
+    cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
     // }
 
     out_file
 }
 
-fn run_and_assert(cmd: &mut Command, app_path: &String, out_file: &String, exp_output: ExpectedOutput) {
-    let res = cmd
-        .output()
-        .expect("failed to run on engine!");
+fn run_and_assert(
+    cmd: &mut Command,
+    app_path: &String,
+    out_file: &String,
+    exp_output: ExpectedOutput,
+) {
+    let res = cmd.output().expect("failed to run on engine!");
     if !res.status.success() {
         println!(
             "[ERROR] Failed to run on engine @{app_path}:\n{}\n{}",
@@ -619,20 +633,11 @@ fn wac(app_path: &String, outdir: &String, core_lib_name: &str, core_lib_path: &
     let mut graph = CompositionGraph::new();
 
     // Register the package dependencies into the graph
-    let package = Package::from_file(
-        "app",
-        None,
-        app_path,
-        graph.types_mut(),
-    ).unwrap();
+    let package = Package::from_file("app", None, app_path, graph.types_mut()).unwrap();
     let app = graph.register_package(package).unwrap();
 
-    let package = Package::from_file(
-        core_lib_name,
-        None,
-        core_lib_path,
-        graph.types_mut(),
-    ).unwrap();
+    let package =
+        Package::from_file(core_lib_name, None, core_lib_path, graph.types_mut()).unwrap();
     let whamm_core = graph.register_package(package).unwrap();
 
     // print out some helpful information about what the imports/exports are from the packages.

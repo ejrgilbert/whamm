@@ -1,4 +1,5 @@
 #![allow(clippy::too_many_arguments)]
+use crate::api::get_core_lib;
 use crate::api::instrument::Config;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::metrics::Metrics;
@@ -12,6 +13,7 @@ use crate::generator::rewriting::init_generator::InitGenerator;
 use crate::generator::rewriting::instr_generator::InstrGenerator;
 use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
+use crate::lang_features::libraries::actions::configure_component_libraries;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::io::IOPackage;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
@@ -34,8 +36,6 @@ use wirm::ir::types::{DataType as WirmType, InitExpr, Value as WirmValue};
 use wirm::opcode::Instrumenter;
 use wirm::wasmparser::MemoryType;
 use wirm::{Component, InitInstr, Module, Opcode};
-use crate::lang_features::libraries::actions::configure_component_libraries;
-use crate::api::get_core_lib;
 
 const ENGINE_BUFFER_NAME: &str = "whamm_buffer";
 const ENGINE_BUFFER_START_NAME: &str = "whamm_buffer:start";
@@ -111,7 +111,6 @@ fn dry_run_module_or_component<'a>(
     metrics: &mut Metrics,
     config: &Config,
 ) -> Result<HashMap<WirmInjectType, Vec<WirmInjection<'a>>>, Vec<WhammError>> {
-
     // handle a wasm component OR module
     match bytes_to_wasm(target_wasm_bytes) {
         (Some(mut module), None) => {
@@ -212,7 +211,10 @@ pub fn run_on_bytes_and_encode(
         )?;
         Ok(module.encode())
     } else {
-        let core_lib_bytes = get_core_lib(core_lib_path, Module::parse(target_wasm_bytes, true, true).is_ok());
+        let core_lib_bytes = get_core_lib(
+            core_lib_path,
+            Module::parse(target_wasm_bytes, true, true).is_ok(),
+        );
 
         // add the core library just in case the script needs it
         run_and_encode_module_or_component(
@@ -296,7 +298,12 @@ fn run_and_encode_module_or_component(
                     if let Some(id) = ran_on {
                         // Now that the component has been instrumented, we need to add in the support libraries
                         // so that they are linked appropriately!
-                        configure_component_libraries(id as u32, &mut component, &core_lib_bytes, &user_lib_bytes);
+                        configure_component_libraries(
+                            id as u32,
+                            &mut component,
+                            &core_lib_bytes,
+                            &user_lib_bytes,
+                        );
                     } else {
                         panic!("Could not find an instrument-able module in the target component (MUST have a main).");
                     }
@@ -343,7 +350,6 @@ fn run_on_component(
     metrics: &mut Metrics,
     config: &Config,
 ) -> Result<Option<usize>, Box<ErrorGen>> {
-
     // instrument the component's modules first
     for (i, module) in target_wasm.modules.iter_mut().enumerate() {
         if run_on_module(
@@ -470,18 +476,12 @@ pub fn run(
     for (lib_name, lib_name_import_override, path, lib_buff) in user_libs.iter() {
         user_lib_modules.insert(
             lib_name.clone(),
-            (
-                lib_name_import_override.clone(),
-                lib_buff.as_slice(),
-            ),
+            (lib_name_import_override.clone(), lib_buff.as_slice()),
         );
         user_lib_paths.insert(lib_name.clone(), path.clone());
     }
     // add the core library just in case the script needs it
-    user_lib_modules.insert(
-        WHAMM_CORE_LIB_NAME.to_string(),
-        (None, core_lib),
-    );
+    user_lib_modules.insert(WHAMM_CORE_LIB_NAME.to_string(), (None, core_lib));
 
     // Process the script
     let mut whamm = match get_script_ast(def_yamls, whamm_script, &mut err) {

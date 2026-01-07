@@ -7,7 +7,14 @@ fn branches() {
     let processed_scripts = setup_tests("paper_eval/branches");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-branches", processed_scripts, false, true, true, false)
+    run_core_suite(
+        "paper_eval-branches",
+        processed_scripts,
+        false,
+        true,
+        true,
+        false,
+    )
 }
 #[test]
 fn categories() {
@@ -15,7 +22,14 @@ fn categories() {
     let processed_scripts = setup_tests("paper_eval/categories");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-categories", processed_scripts, false, true, true, false)
+    run_core_suite(
+        "paper_eval-categories",
+        processed_scripts,
+        false,
+        true,
+        true,
+        false,
+    )
 }
 #[test]
 fn hotness() {
@@ -23,7 +37,14 @@ fn hotness() {
     let processed_scripts = setup_tests("paper_eval/hotness");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-hotness", processed_scripts, false, true, true, false)
+    run_core_suite(
+        "paper_eval-hotness",
+        processed_scripts,
+        false,
+        true,
+        true,
+        false,
+    )
 }
 #[test]
 fn ins_count() {
@@ -31,7 +52,14 @@ fn ins_count() {
     let processed_scripts = setup_tests("paper_eval/ins_count");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-ins_count", processed_scripts, false, true, true, false)
+    run_core_suite(
+        "paper_eval-ins_count",
+        processed_scripts,
+        false,
+        true,
+        true,
+        false,
+    )
 }
 
 #[test]
@@ -40,7 +68,14 @@ fn cache_sim() {
     let processed_scripts = setup_tests("paper_eval/cache_sim");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-cache_sim", processed_scripts, false, true, true, false)
+    run_core_suite(
+        "paper_eval-cache_sim",
+        processed_scripts,
+        false,
+        true,
+        true,
+        false,
+    )
 }
 
 #[test]
@@ -49,7 +84,14 @@ fn ins_coverage() {
     let processed_scripts = setup_tests("paper_eval/ins_coverage");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-ins_coverage", processed_scripts, false, false, true, false)
+    run_core_suite(
+        "paper_eval-ins_coverage",
+        processed_scripts,
+        false,
+        false,
+        true,
+        false,
+    )
 }
 
 #[test]
@@ -65,7 +107,7 @@ fn ins_coverage_dyninstr() {
         false,
         false,
         true,
-        false
+        false,
     )
 }
 
@@ -75,7 +117,14 @@ fn mem_access_tracing() {
     let processed_scripts = setup_tests("paper_eval/mem_access_tracing");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-mem_access", processed_scripts, false, true, true, false)
+    run_core_suite(
+        "paper_eval-mem_access",
+        processed_scripts,
+        false,
+        true,
+        true,
+        false,
+    )
 }
 
 #[test]
@@ -84,7 +133,14 @@ fn call_graph() {
     let processed_scripts = setup_tests("paper_eval/call_graph");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-call_graph", processed_scripts, false, true, true, false)
+    run_core_suite(
+        "paper_eval-call_graph",
+        processed_scripts,
+        false,
+        true,
+        true,
+        false,
+    )
 }
 
 #[test]
@@ -99,7 +155,7 @@ fn basic_block_profiling() {
         false,
         true,
         true,
-        false
+        false,
     )
 }
 
@@ -109,5 +165,12 @@ fn loop_tracing() {
     let processed_scripts = setup_tests("paper_eval/loop_tracer");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-loop_tracer", processed_scripts, false, true, true, false)
+    run_core_suite(
+        "paper_eval-loop_tracer",
+        processed_scripts,
+        false,
+        true,
+        true,
+        false,
+    )
 }

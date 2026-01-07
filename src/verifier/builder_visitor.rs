@@ -325,9 +325,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                         user_libs.push(lib_id);
                     }
                     _ => {
-                        unreachable!(
-                            "{UNEXPECTED_ERR_MSG}"
-                        )
+                        unreachable!("{UNEXPECTED_ERR_MSG}")
                     }
                 }
 

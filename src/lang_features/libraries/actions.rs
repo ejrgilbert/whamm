@@ -4,7 +4,11 @@ use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::generator::ast::Script;
 use crate::lang_features::libraries::core::{LibPackage, WHAMM_CORE_LIB_NAME};
 use std::collections::HashMap;
-use wasmparser::{CanonicalFunction, ComponentAlias, ComponentExport, ComponentExternalKind, ComponentImport, ComponentImportName, ComponentType, ComponentTypeRef, Export, ExternalKind, Instance, InstanceTypeDeclaration, InstantiationArg, InstantiationArgKind};
+use wasmparser::{
+    CanonicalFunction, ComponentAlias, ComponentExport, ComponentExternalKind, ComponentImport,
+    ComponentImportName, ComponentType, ComponentTypeRef, Export, ExternalKind, Instance,
+    InstanceTypeDeclaration, InstantiationArg, InstantiationArgKind,
+};
 use wirm::ir::id::{ComponentExportId, FunctionID};
 use wirm::{Component, Module};
 
@@ -40,7 +44,7 @@ pub fn configure_component_libraries<'a>(
     target_module_id: u32,
     component: &mut Component<'a>,
     core_lib: &'a [u8],
-    user_libs: &'a HashMap<String, &'a[u8]>,
+    user_libs: &'a HashMap<String, &'a [u8]>,
 ) {
     // find "wasi_snapshot_preview1" instance
     let mut wasi_instance = None;
@@ -69,13 +73,27 @@ pub fn configure_component_libraries<'a>(
             configure_lib(target_module_id, component, wasi_instance, name, bytes);
         }
         if !has_whamm_core {
-            configure_lib(target_module_id, component, wasi_instance, WHAMM_CORE_LIB_NAME, core_lib);
+            configure_lib(
+                target_module_id,
+                component,
+                wasi_instance,
+                WHAMM_CORE_LIB_NAME,
+                core_lib,
+            );
         }
     } else {
-        panic!("Target component does not already import wasi_snapshot_preview1, not supported yet.")
+        panic!(
+            "Target component does not already import wasi_snapshot_preview1, not supported yet."
+        )
     }
 
-    fn configure_lib<'a>(target_module_id: u32, wasm: &mut Component<'a>, wasi_instance_loc: usize, lib_name: &'a str, lib_bytes: &'a [u8]) {
+    fn configure_lib<'a>(
+        target_module_id: u32,
+        wasm: &mut Component<'a>,
+        wasi_instance_loc: usize,
+        lib_name: &'a str,
+        lib_bytes: &'a [u8],
+    ) {
         let wasi_name = "wasi_snapshot_preview1";
         let lib_wasm = Component::parse(lib_bytes, false, true).unwrap();
         // TODO: add libraries as *core module*s in the top-level of the component
@@ -99,7 +117,10 @@ pub fn configure_component_libraries<'a>(
             if let Some(ComponentType::Func(ty)) = comp_ty {
                 println!("  --> used");
                 decls.push(InstanceTypeDeclaration::Type(comp_ty.unwrap().clone()));
-                decls.push(InstanceTypeDeclaration::Export { name: export.name, ty: ComponentTypeRef::Func(curr_ty_id)});
+                decls.push(InstanceTypeDeclaration::Export {
+                    name: export.name,
+                    ty: ComponentTypeRef::Func(curr_ty_id),
+                });
                 curr_ty_id += 1;
             } else {
                 println!("  --> skipped, {:?}", comp_ty);
@@ -110,15 +131,29 @@ pub fn configure_component_libraries<'a>(
 
         // Import the library from an external provider
         // TODO -- switch to general case! (convert to kebab case)
-        let inst_id = wasm.add_import(ComponentImport { name: ComponentImportName("whamm-core"), ty: ComponentTypeRef::Instance(*inst_ty_id)});
+        let inst_id = wasm.add_import(ComponentImport {
+            name: ComponentImportName("whamm-core"),
+            ty: ComponentTypeRef::Instance(*inst_ty_id),
+        });
 
         // Lower the exported functions using aliases
         let mut exports = vec![];
-        for ComponentExport {name, kind, ..} in lib_wasm.exports.iter() {
-            let (alias_func_id, ..) = wasm.add_alias_func(ComponentAlias::InstanceExport {name: name.0, kind: kind.clone(), instance_index: inst_id});
-            let canon_id = wasm.add_canon_func(CanonicalFunction::Lower {func_index: *alias_func_id, options: vec![].into_boxed_slice()});
+        for ComponentExport { name, kind, .. } in lib_wasm.exports.iter() {
+            let (alias_func_id, ..) = wasm.add_alias_func(ComponentAlias::InstanceExport {
+                name: name.0,
+                kind: kind.clone(),
+                instance_index: inst_id,
+            });
+            let canon_id = wasm.add_canon_func(CanonicalFunction::Lower {
+                func_index: *alias_func_id,
+                options: vec![].into_boxed_slice(),
+            });
 
-            exports.push(Export {name: name.0, kind: ExternalKind::Func, index: *canon_id});
+            exports.push(Export {
+                name: name.0,
+                kind: ExternalKind::Func,
+                index: *canon_id,
+            });
         }
 
         // Create a core instance from the library
@@ -126,7 +161,7 @@ pub fn configure_component_libraries<'a>(
 
         // Edit the instantiation of the instrumented module to include the added library
         for inst in wasm.instances.iter_mut() {
-            if let Instance::Instantiate {module_index, args} = inst {
+            if let Instance::Instantiate { module_index, args } = inst {
                 if target_module_id == *module_index {
                     let mut uses_wasi = false;
                     let mut new_args = vec![];
@@ -138,7 +173,11 @@ pub fn configure_component_libraries<'a>(
                     }
                     assert!(uses_wasi, "Target module does not already import wasi_snapshot_preview1, not supported yet.");
 
-                    new_args.push(InstantiationArg {name: lib_name, kind: InstantiationArgKind::Instance, index: *lib_inst_id});
+                    new_args.push(InstantiationArg {
+                        name: lib_name,
+                        kind: InstantiationArgKind::Instance,
+                        index: *lib_inst_id,
+                    });
 
                     *args = new_args.into_boxed_slice();
                 }

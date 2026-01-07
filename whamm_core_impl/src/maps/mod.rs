@@ -537,6 +537,9 @@ impl TupleVariant {
             TupleVariant::i32_i32(a, b) => {
                 format!("({},{})", a, b)
             }
+            TupleVariant::i32_bool(a, b) => {
+                format!("({},{})", a, b)
+            }
             TupleVariant::i32_i32_i32(a, b, c) => {
                 format!("({},{},{})", a, b, c)
             }
@@ -927,6 +930,12 @@ pub fn insert_string_i32(id: i32, key_offset: *const u8, key_length: usize, val:
 pub fn insert_i32i32tuple_i32(id: i32, key0: i32, key1: i32, value: i32) {
     insert_tuple_i32_inner(id, TupleVariant::i32_i32(key0, key1), value);
 }
+pub fn insert_i32booltuple_i32(id: i32, key0: i32, key1: bool, value: i32) {
+    if !insert_tuple_i32_inner(id, TupleVariant::i32_bool(key0, key1), value) {
+        red(&format!("i32booltuple_i32 map DNE: {id}"));
+        panic!()
+    }
+}
 pub fn insert_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32, value: i32) {
     insert_tuple_i32_inner(id, TupleVariant::i32_i32_i32(key0, key1, key2), value);
 }
@@ -946,6 +955,9 @@ pub fn get_string_i32(id: i32, key_offset: *const u8, key_length: usize) -> i32 
 }
 pub fn get_i32i32tuple_i32(id: i32, key0: i32, key1: i32) -> i32 {
     get_i32(id, &Box::new(TupleVariant::i32_i32(key0, key1)))
+}
+pub fn get_i32booltuple_i32(id: i32, key0: i32, key1: bool) -> i32 {
+    get_i32(id, &Box::new(TupleVariant::i32_bool(key0, key1)))
 }
 pub fn get_i32i32i32tuple_i32(id: i32, key0: i32, key1: i32, key2: i32) -> i32 {
     get_i32(id, &Box::new(TupleVariant::i32_i32_i32(key0, key1, key2)))
