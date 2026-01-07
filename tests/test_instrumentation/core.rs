@@ -17,7 +17,6 @@ fn instrument_dfinity_with_fault_injection() {
     assert!(!processed_scripts.is_empty());
 
     let wasm_path = "tests/apps/dfinity/users.wasm";
-    let wasm = fs::read(wasm_path).unwrap();
 
     for (script_path, ..) in processed_scripts {
         if let Err(errs) = run_script(

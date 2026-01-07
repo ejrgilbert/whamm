@@ -12,8 +12,8 @@ use crate::verifier::types::{Record, SymbolTable};
 use log::trace;
 use std::collections::HashSet;
 use wasmparser::{
-    CanonicalFunction, ComponentAlias, ComponentExport, ComponentExternalKind, ComponentFuncType,
-    ComponentType, ComponentTypeRef, ComponentValType, ExternalKind, MemoryType, PrimitiveValType,
+    ComponentExternalKind, ComponentType, ComponentValType, ExternalKind, MemoryType,
+    PrimitiveValType,
 };
 use wirm::ir::id::{ComponentExportId, FunctionID};
 use wirm::{Component, DataType, Module};
@@ -76,7 +76,6 @@ pub fn link_user_lib(
     lib_name_import_override: &Option<String>,
     used_lib_fns: &HashSet<String>,
     table: &mut SymbolTable,
-    err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
     let added = if libs_as_components {
         let lib_wasm = Component::parse(lib_bytes, false, true).unwrap();
@@ -88,7 +87,6 @@ pub fn link_user_lib(
             &lib_wasm,
             used_lib_fns,
             Some(table),
-            err,
         )
     } else {
         let lib_wasm = Module::parse(lib_bytes, false, true).unwrap();
@@ -150,7 +148,6 @@ fn import_lib_package(
             &lib_wasm,
             &HashSet::from_iter(package.get_fn_names().iter().cloned()),
             None,
-            err,
         )
     } else {
         let lib_wasm = Module::parse(lib_bytes, false, true).unwrap();
@@ -204,10 +201,9 @@ fn import_lib_fn_names_from_component(
     lib_wasm: &Component,
     lib_fns: &HashSet<String>,
     mut table: Option<&mut SymbolTable>,
-    err: &mut ErrorGen,
 ) -> Vec<(String, u32)> {
     let mut injected_fns = vec![];
-    let mut num_exported_fns = 0;
+    // let mut num_exported_fns = 0;
     for (i, export) in lib_wasm.exports.iter().enumerate() {
         if !matches!(export.kind, ComponentExternalKind::Func) {
             // we don't care about non-function exports
@@ -259,7 +255,7 @@ fn import_lib_fn_names_from_component(
                 );
             }
         }
-        num_exported_fns += 1;
+        // num_exported_fns += 1;
     }
     injected_fns
 }

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
 use log::{debug, error, info};
-use wirm::Module;
+
 // =================
 // = Setup Logging =
 // =================
@@ -532,7 +532,8 @@ pub fn test_template() {
     err.report();
     assert!(!err.has_errors);
 }
-// #[test]
+
+#[test]
 pub fn test_expect_fatal() {
     let result = std::panic::catch_unwind(|| {
         expect_fatal_error();

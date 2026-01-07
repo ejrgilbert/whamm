@@ -64,22 +64,16 @@ pub fn configure_component_libraries<'a>(
             }
         }
     }
-    if let Some(wasi_instance) = wasi_instance {
+    if let Some(_) = wasi_instance {
         let mut has_whamm_core = false;
         for (name, bytes) in user_libs.iter() {
             if name == WHAMM_CORE_LIB_NAME {
                 has_whamm_core = true;
             }
-            configure_lib(target_module_id, component, wasi_instance, name, bytes);
+            configure_lib(target_module_id, component, name, bytes);
         }
         if !has_whamm_core {
-            configure_lib(
-                target_module_id,
-                component,
-                wasi_instance,
-                WHAMM_CORE_LIB_NAME,
-                core_lib,
-            );
+            configure_lib(target_module_id, component, WHAMM_CORE_LIB_NAME, core_lib);
         }
     } else {
         panic!(
@@ -90,7 +84,7 @@ pub fn configure_component_libraries<'a>(
     fn configure_lib<'a>(
         target_module_id: u32,
         wasm: &mut Component<'a>,
-        wasi_instance_loc: usize,
+        // wasi_instance_loc: usize,
         lib_name: &'a str,
         lib_bytes: &'a [u8],
     ) {
@@ -104,7 +98,7 @@ pub fn configure_component_libraries<'a>(
         //
         // Create an instance type that defines the library
         let mut decls = vec![];
-        let mut num_exported_fns = 0;
+        // let mut num_exported_fns = 0;
         let mut curr_ty_id = 0;
         for (i, export) in lib_wasm.exports.iter().enumerate() {
             println!("[configure_lib] component export: {}", export.name.0);
@@ -114,7 +108,7 @@ pub fn configure_component_libraries<'a>(
             }
             let comp_ty = lib_wasm.get_type_of_exported_lift_func(ComponentExportId(i as u32));
             // let comp_ty = get_fn_type_from_component_export(&lib_wasm, num_exported_fns, export);
-            if let Some(ComponentType::Func(ty)) = comp_ty {
+            if let Some(ComponentType::Func(_)) = comp_ty {
                 println!("  --> used");
                 decls.push(InstanceTypeDeclaration::Type(comp_ty.unwrap().clone()));
                 decls.push(InstanceTypeDeclaration::Export {
@@ -125,7 +119,7 @@ pub fn configure_component_libraries<'a>(
             } else {
                 println!("  --> skipped, {:?}", comp_ty);
             }
-            num_exported_fns += 1;
+            // num_exported_fns += 1;
         }
         let (inst_ty_id, ..) = wasm.add_type_instance(decls);
 

@@ -13,7 +13,6 @@ use log::trace;
 use std::collections::{HashMap, HashSet};
 use wirm::ir::id::{FunctionID, LocalID};
 use wirm::ir::types::DataType as WirmType;
-use wirm::Module;
 
 pub struct WeiGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm, 'n> {
     pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
@@ -343,7 +342,6 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, 
                     lib_name_import_override,
                     used_fns,
                     self.emitter.table,
-                    self.err,
                 ),
             );
         }

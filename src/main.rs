@@ -6,7 +6,6 @@ use cli::{Cmd, WhammCli};
 use clap::Parser;
 use cli::LibraryLinkStrategyArg;
 use std::path::PathBuf;
-use std::process::exit;
 use whamm::api::instrument::{instrument_with_config, Config, LibraryLinkStrategy};
 use whamm::api::utils::{print_info, run_wast_tests_at, write_to_file};
 

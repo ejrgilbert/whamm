@@ -7,7 +7,6 @@ use crate::common::metrics::Metrics;
 use crate::lang_features::libraries::core::WHAMM_CORE_LIB_NAME;
 use crate::parser::yml_processor::pull_all_yml_files;
 use log::{debug, error};
-use std::collections::HashMap;
 use std::fs::{remove_dir_all, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};

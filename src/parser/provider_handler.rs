@@ -15,7 +15,6 @@ use pest::Parser;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use std::process::exit;
 use termcolor::Buffer;
 
 pub fn yml_to_providers(def_yamls: &[String]) -> Result<Vec<ProviderDef>, Box<ErrorGen>> {

@@ -12,7 +12,6 @@ use log::trace;
 use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
-use std::process::exit;
 use std::str::FromStr;
 use termcolor::{BufferWriter, ColorChoice, WriteColor};
 

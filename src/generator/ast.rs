@@ -5,10 +5,8 @@ use crate::parser::types::{
     Block, DataType, Definition, Expr, Global, Location, RulePart, Statement,
 };
 use itertools::Itertools;
-use log::error;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
-use std::process::exit;
 
 #[derive(Clone, Default)]
 pub struct Script {

@@ -10,7 +10,6 @@ use crate::parser::types::{DataType, Location, Statement, Value, Whamm, WhammVis
 use crate::verifier::types::Record;
 use std::collections::{HashMap, HashSet};
 use wirm::ir::id::FunctionID;
-use wirm::Module;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -95,7 +94,6 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_,
                     lib_name_import_override,
                     used_fns,
                     self.emitter.table,
-                    self.err,
                 ),
             );
         }

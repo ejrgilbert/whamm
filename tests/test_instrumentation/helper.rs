@@ -1,7 +1,6 @@
 use crate::util::{setup_logger, DEFAULT_CORE_LIB_PATH_COMPONENT, DEFAULT_CORE_LIB_PATH_MODULE};
 use glob::{glob, glob_with};
 use log::{error, warn};
-use serde::de::Expected;
 use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -10,7 +9,6 @@ use wac_graph::types::Package;
 use wac_graph::{CompositionGraph, EncodeOptions};
 use whamm::api::instrument::{instrument_as_dry_run_rewriting, WhammError};
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
-use wirm::Module;
 
 pub const DEFAULT_DEFS_PATH: &str = "./";
 const TEST_RSC_DIR: &str = "tests/scripts/";
@@ -404,7 +402,7 @@ fn run_testcase_rewriting(
     dry_run: bool,
     is_component: bool,
 ) {
-    run_script(
+    if let Err(errs) = run_script(
         &script,
         app_path_str,
         fs::read(app_path_str).unwrap(),
@@ -413,7 +411,12 @@ fn run_testcase_rewriting(
         Some(instr_app_path.clone()),
         false,
         dry_run,
-    );
+    ) {
+        println!("failed to run script due to errors: ");
+        for e in errs.iter() {
+            println!("- {}", e.msg)
+        }
+    }
 
     // run the instrumented application on wasmtime
     if is_component {
@@ -584,7 +587,7 @@ fn run_wasmtime_module(
     run_and_assert(&mut cmd, instr_app_path, &out_file, exp_output);
 }
 
-fn prep_outfile(cmd: &mut Command, outdir: &String, exp_output: &ExpectedOutput) -> String {
+fn prep_outfile(cmd: &mut Command, outdir: &String, _exp_output: &ExpectedOutput) -> String {
     let out_filename = "instr-flush.out";
     let out_file = format!("{outdir}/{out_filename}");
     let _ = fs::remove_file(out_file.clone());

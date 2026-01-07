@@ -28,7 +28,6 @@ use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info, warn};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::process::exit;
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::FunctionID;
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
@@ -274,7 +273,7 @@ fn run_and_encode_module_or_component(
 
             let user_libs = parse_user_lib_paths(&user_lib_paths);
             let mut user_lib_bytes = HashMap::new();
-            for (name, no, path, bytes) in user_libs.iter() {
+            for (name, _, _, bytes) in user_libs.iter() {
                 check_is_component(name, bytes);
                 user_lib_bytes.insert(name.to_string(), bytes.as_slice());
             }
@@ -329,7 +328,7 @@ fn run_and_encode_module_or_component(
     Ok(res)
 }
 
-fn bytes_to_wasm(target_wasm_bytes: &[u8]) -> (Option<Module>, Option<Component>) {
+fn bytes_to_wasm(target_wasm_bytes: &[u8]) -> (Option<Module<'_>>, Option<Component<'_>>) {
     // First try to parse as a wasm module
     if let Ok(module) = Module::parse(target_wasm_bytes, false, true) {
         (Some(module), None)
