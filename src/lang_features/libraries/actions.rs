@@ -11,6 +11,7 @@ use wasmparser::{
 };
 use wirm::ir::id::{ComponentExportId, FunctionID};
 use wirm::{Component, Module};
+use wirm::ir::component::ComponentHandle;
 
 pub fn link_core_lib(
     method: LibraryLinkStrategy,
@@ -42,7 +43,7 @@ pub fn link_core_lib(
 
 pub fn configure_component_libraries<'a>(
     target_module_id: u32,
-    component: &mut Component<'a>,
+    component: &mut ComponentHandle<'a>,
     core_lib: &'a [u8],
     user_libs: &'a HashMap<String, &'a [u8]>,
 ) {
@@ -83,7 +84,7 @@ pub fn configure_component_libraries<'a>(
 
     fn configure_lib<'a>(
         target_module_id: u32,
-        wasm: &mut Component<'a>,
+        wasm: &mut ComponentHandle<'a>,
         // wasi_instance_loc: usize,
         lib_name: &'a str,
         lib_bytes: &'a [u8],
@@ -121,26 +122,34 @@ pub fn configure_component_libraries<'a>(
             }
             // num_exported_fns += 1;
         }
-        let (inst_ty_id, ..) = wasm.add_type_instance(decls);
+        let (inst_ty_id, ..) = wasm.mutate(|comp| {
+            comp.add_type_instance(decls)
+        });
 
         // Import the library from an external provider
         // TODO -- switch to general case! (convert to kebab case)
-        let inst_id = wasm.add_import(ComponentImport {
-            name: ComponentImportName("whamm-core"),
-            ty: ComponentTypeRef::Instance(*inst_ty_id),
+        let inst_id = wasm.mutate(|comp| {
+            comp.add_import(ComponentImport {
+                name: ComponentImportName("whamm-core"),
+                ty: ComponentTypeRef::Instance(*inst_ty_id),
+            })
         });
 
         // Lower the exported functions using aliases
         let mut exports = vec![];
         for ComponentExport { name, kind, .. } in lib_wasm.exports.iter() {
-            let (alias_func_id, ..) = wasm.add_alias_func(ComponentAlias::InstanceExport {
-                name: name.0,
-                kind: kind.clone(),
-                instance_index: inst_id,
+            let (alias_func_id, ..) = wasm.mutate(|comp| {
+                comp.add_alias_func(ComponentAlias::InstanceExport {
+                    name: name.0,
+                    kind: kind.clone(),
+                    instance_index: inst_id,
+                })
             });
-            let canon_id = wasm.add_canon_func(CanonicalFunction::Lower {
-                func_index: *alias_func_id,
-                options: vec![].into_boxed_slice(),
+            let canon_id = wasm.mutate(|comp| {
+                comp.add_canon_func(CanonicalFunction::Lower {
+                    func_index: *alias_func_id,
+                    options: vec![].into_boxed_slice(),
+                })
             });
 
             exports.push(Export {
@@ -151,31 +160,37 @@ pub fn configure_component_libraries<'a>(
         }
 
         // Create a core instance from the library
-        let lib_inst_id = wasm.add_core_instance(Instance::FromExports(exports.into_boxed_slice()));
+        let lib_inst_id = wasm.mutate(|comp| {
+            comp.add_core_instance(Instance::FromExports(exports.into_boxed_slice()))
+        });
 
         // Edit the instantiation of the instrumented module to include the added library
-        for inst in wasm.instances.iter_mut() {
-            if let Instance::Instantiate { module_index, args } = inst {
-                if target_module_id == *module_index {
-                    let mut uses_wasi = false;
-                    let mut new_args = vec![];
-                    for arg in args.iter() {
-                        if arg.name == wasi_name {
-                            uses_wasi = true;
+        for i in 0..wasm.instances.len() {
+            // need to intern the string so the lifetime is long enough
+            // let name = wasm.intern_str(lib_name);
+            wasm.mut_instance_at(i, |inst| {
+                if let Instance::Instantiate { module_index, args } = inst {
+                    if target_module_id == *module_index {
+                        let mut uses_wasi = false;
+                        let mut new_args = vec![];
+                        for arg in args.iter() {
+                            if arg.name == wasi_name {
+                                uses_wasi = true;
+                            }
+                            new_args.push(arg.clone());
                         }
-                        new_args.push(arg.clone());
+                        assert!(uses_wasi, "Target module does not already import wasi_snapshot_preview1, not supported yet.");
+
+                        new_args.push(InstantiationArg {
+                            name: lib_name,
+                            kind: InstantiationArgKind::Instance,
+                            index: *lib_inst_id,
+                        });
+
+                        *args = new_args.into_boxed_slice();
                     }
-                    assert!(uses_wasi, "Target module does not already import wasi_snapshot_preview1, not supported yet.");
-
-                    new_args.push(InstantiationArg {
-                        name: lib_name,
-                        kind: InstantiationArgKind::Instance,
-                        index: *lib_inst_id,
-                    });
-
-                    *args = new_args.into_boxed_slice();
                 }
-            }
+            })
         }
     }
 }

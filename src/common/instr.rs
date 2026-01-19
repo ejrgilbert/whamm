@@ -35,6 +35,7 @@ use wirm::ir::types::{DataType as WirmType, InitExpr, Value as WirmValue};
 use wirm::opcode::Instrumenter;
 use wirm::wasmparser::MemoryType;
 use wirm::{Component, InitInstr, Module, Opcode};
+use wirm::ir::component::ComponentHandle;
 
 const ENGINE_BUFFER_NAME: &str = "whamm_buffer";
 const ENGINE_BUFFER_START_NAME: &str = "whamm_buffer:start";
@@ -328,7 +329,7 @@ fn run_and_encode_module_or_component(
     Ok(res)
 }
 
-fn bytes_to_wasm(target_wasm_bytes: &[u8]) -> (Option<Module<'_>>, Option<Component<'_>>) {
+fn bytes_to_wasm(target_wasm_bytes: &[u8]) -> (Option<Module<'_>>, Option<ComponentHandle<'_>>) {
     // First try to parse as a wasm module
     if let Ok(module) = Module::parse(target_wasm_bytes, false, true) {
         (Some(module), None)
@@ -342,7 +343,7 @@ fn bytes_to_wasm(target_wasm_bytes: &[u8]) -> (Option<Module<'_>>, Option<Compon
 fn run_on_component(
     core_lib: &[u8],
     def_yamls: &Vec<String>,
-    target_wasm: &mut Component,
+    target_wasm: &mut ComponentHandle,
     script_path: &String,
     user_lib_paths: &Vec<String>,
     max_errors: i32,
@@ -350,34 +351,38 @@ fn run_on_component(
     config: &Config,
 ) -> Result<Option<usize>, Box<ErrorGen>> {
     // instrument the component's modules first
-    for (i, module) in target_wasm.modules.iter_mut().enumerate() {
-        if run_on_module(
-            core_lib,
-            def_yamls,
-            module,
-            script_path,
-            user_lib_paths,
-            true,
-            max_errors,
-            metrics,
-            config,
-        )? {
+    for i in 0..target_wasm.modules.len() {
+        if target_wasm.mut_module_at(i, |module| -> Result<bool, Box<ErrorGen>> {
+            run_on_module(
+                core_lib,
+                def_yamls,
+                module,
+                script_path,
+                user_lib_paths,
+                true,
+                max_errors,
+                metrics,
+                config,
+            )
+        })? {
             return Ok(Some(i));
         }
     }
 
     // then visit the component's components
-    for component in target_wasm.components.iter_mut() {
-        if let Ok(id) = run_on_component(
-            core_lib,
-            def_yamls,
-            component,
-            script_path,
-            user_lib_paths,
-            max_errors,
-            metrics,
-            config,
-        ) {
+    for i in 0..target_wasm.components.len() {
+        if let Ok(id) = target_wasm.mut_component_at(i, |component|-> Result<Option<usize>, Box<ErrorGen>> {
+            run_on_component(
+                core_lib,
+                def_yamls,
+                component,
+                script_path,
+                user_lib_paths,
+                max_errors,
+                metrics,
+                config,
+            )
+        }) {
             return Ok(id);
         }
     }
