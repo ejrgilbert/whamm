@@ -15,7 +15,7 @@ lazy_static = "1.4.0"
 itertools = "0.14.0"
 wirm = { path = "../wirm-COMP/wirm" }
 #wirm = "=1.0.2"
-wasmparser = "0.243.0"
+wasmparser = "0.244.0"
 
 # For the wasmtime embedding for @static
 wasmtime = "38.0.3"

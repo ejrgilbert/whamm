@@ -137,10 +137,7 @@ fn import_lib_package(
 
     // should only import the EXPORTED contents of the lib_wasm
     let added = if libs_as_components {
-        println!("HEY!!!");
         let lib_wasm = Component::parse(lib_bytes, false, true).unwrap();
-
-        println!("HEY!!! -- end");
         import_lib_fn_names_from_component(
             app_wasm,
             loc,
