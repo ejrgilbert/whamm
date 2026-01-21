@@ -111,22 +111,22 @@ pub fn configure_component_libraries<'a>(
 
         // Import the library from an external provider
         let inst_id = wasm.add_import(ComponentImport {
-                name: ComponentImportName("whamm-core"),
-                ty: ComponentTypeRef::Instance(*inst_ty_id),
-            });
+            name: ComponentImportName("whamm-core"),
+            ty: ComponentTypeRef::Instance(*inst_ty_id),
+        });
 
         // Lower the exported functions using aliases
         let mut exports = vec![];
         for ComponentExport { name, kind, .. } in lib_wasm.exports.iter() {
             let (alias_func_id, ..) = wasm.add_alias_func(ComponentAlias::InstanceExport {
-                    name: name.0,
-                    kind: kind.clone(),
-                    instance_index: inst_id,
-                });
+                name: name.0,
+                kind: kind.clone(),
+                instance_index: inst_id,
+            });
             let canon_id = wasm.add_canon_func(CanonicalFunction::Lower {
-                    func_index: *alias_func_id,
-                    options: vec![].into_boxed_slice(),
-                });
+                func_index: *alias_func_id,
+                options: vec![].into_boxed_slice(),
+            });
 
             exports.push(Export {
                 name: name.0,

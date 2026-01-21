@@ -369,14 +369,14 @@ fn run_on_component(
     // then visit the component's components
     for component in target_wasm.components.iter_mut() {
         if let Ok(id) = run_on_component(
-                core_lib,
-                def_yamls,
-                component,
-                script_path,
-                user_lib_paths,
-                max_errors,
-                metrics,
-                config,
+            core_lib,
+            def_yamls,
+            component,
+            script_path,
+            user_lib_paths,
+            max_errors,
+            metrics,
+            config,
         ) {
             return Ok(id);
         }
