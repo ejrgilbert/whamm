@@ -3,10 +3,13 @@
 use crate::api::{get_defs, get_defs_and_lib};
 use crate::common::error::{CodeLocation, ErrorGen, WhammError as ErrorInternal};
 use crate::common::instr;
-use crate::common::instr::run_on_module;
+use crate::common::instr::{parse_user_lib_paths, run_on_module};
 use crate::common::metrics::Metrics;
 use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
 use std::collections::HashMap;
+use std::fs;
+use wac_graph::{CompositionGraph, EncodeOptions};
+use wac_graph::types::Package;
 use wirm::ir::module::module_types::Types;
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
 use wirm::ir::types::{DataType as WirmType, FuncInstrMode, InstrumentationMode};
@@ -25,12 +28,12 @@ pub const MAX_ERRORS: i32 = 15;
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn instrument_with_config(
     app_wasm_path: String,
-    script_path: String,
-    user_lib_paths: Vec<String>,
+    script_path: &String,
+    user_lib_paths: &Vec<String>,
     config: Config,
-    core_lib_path: Option<String>,
-    defs_path: Option<String>,
-) -> Result<Vec<u8>, Box<ErrorGen>> {
+    core_lib_path: &Option<String>,
+    defs_path: &Option<String>,
+) -> Result<(bool, Vec<u8>), Box<ErrorGen>> {
     let def_yamls = get_defs(defs_path);
     instr::run_with_path(
         core_lib_path,
@@ -52,11 +55,11 @@ pub fn instrument_with_config(
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn instrument_with_rewriting(
     app_wasm_path: String,
-    script_path: String,
-    user_lib_paths: Vec<String>,
-    core_lib_path: Option<String>,
-    defs_path: Option<String>,
-) -> Result<Vec<u8>, Box<ErrorGen>> {
+    script_path: &String,
+    user_lib_paths: &Vec<String>,
+    core_lib_path: &Option<String>,
+    defs_path: &Option<String>,
+) -> Result<(bool, Vec<u8>), Box<ErrorGen>> {
     instrument_with_config(
         app_wasm_path,
         script_path,
@@ -76,11 +79,11 @@ pub fn instrument_with_rewriting(
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn instrument_bytes_with_rewriting(
     target_wasm_bytes: Vec<u8>,
-    script_path: String,
-    user_lib_paths: Vec<String>,
-    core_lib_path: Option<String>,
-    defs_path: Option<String>,
-) -> Result<Vec<u8>, Vec<WhammError>> {
+    script_path: &String,
+    user_lib_paths: &Vec<String>,
+    core_lib_path: &Option<String>,
+    defs_path: &Option<String>,
+) -> Result<(bool, Vec<u8>), Vec<WhammError>> {
     let def_yamls = get_defs(defs_path);
     match instr::run_on_bytes_and_encode(
         core_lib_path,
@@ -105,11 +108,11 @@ pub fn instrument_bytes_with_rewriting(
 /// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn generate_monitor_module(
-    script_path: String,
-    user_lib_paths: Vec<String>,
-    core_lib_path: Option<String>,
-    defs_path: Option<String>,
-) -> Result<Vec<u8>, Vec<WhammError>> {
+    script_path: &String,
+    user_lib_paths: &Vec<String>,
+    core_lib_path: &Option<String>,
+    defs_path: &Option<String>,
+) -> Result<(bool, Vec<u8>), Vec<WhammError>> {
     match instrument_with_config(
         "".to_string(),
         script_path,
@@ -133,10 +136,10 @@ pub fn generate_monitor_module(
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn instrument_as_dry_run_rewriting(
     app_wasm_path: String,
-    script_path: String,
-    user_lib_paths: Vec<String>,
-    core_lib_path: Option<String>,
-    defs_path: Option<String>,
+    script_path: &String,
+    user_lib_paths: &Vec<String>,
+    core_lib_path: &Option<String>,
+    defs_path: &Option<String>,
 ) -> Result<HashMap<WirmInjectType, Vec<Injection>>, Vec<WhammError>> {
     let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path, true);
     let bytes = if let Ok(bytes) = std::fs::read(&app_wasm_path) {
@@ -164,10 +167,10 @@ pub fn instrument_as_dry_run_rewriting(
 /// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn instrument_as_dry_run_wei(
-    script_path: String,
-    user_lib_paths: Vec<String>,
-    core_lib_path: Option<String>,
-    defs_path: Option<String>,
+    script_path: &String,
+    user_lib_paths: &Vec<String>,
+    core_lib_path: &Option<String>,
+    defs_path: &Option<String>,
 ) -> Result<HashMap<WirmInjectType, Vec<Injection>>, Vec<WhammError>> {
     let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path, true);
 
@@ -207,6 +210,73 @@ fn handle_dry_run_response(
         }
         Err(errs) => Err(WhammError::from_errs(errs)),
     }
+}
+
+// FOR COMPONENTS
+const RUN_FUNC_PREFIX: &str = "wasi:cli/run@";
+pub fn wac(app_path: &String, outpath: &String, user_lib_paths: &Vec<String>) {
+    assert_eq!(1, user_lib_paths.len());
+    let user_libs = parse_user_lib_paths(user_lib_paths);
+    let (core_lib_name, core_lib_name_override, core_lib_path, _) = user_libs.first().unwrap();
+    let (core_lib_name, core_lib_path) = (
+        core_lib_name_override.as_ref().unwrap_or_else(|| core_lib_name).clone(),
+        core_lib_path
+    );
+
+    let mut graph = CompositionGraph::new();
+
+    // Register the package dependencies into the graph
+    let package = Package::from_file("app", None, app_path, graph.types_mut()).unwrap();
+    let app = graph.register_package(package).unwrap();
+
+    let package =
+        Package::from_file(&core_lib_name, None, core_lib_path, graph.types_mut()).unwrap();
+    let whamm_core = graph.register_package(package).unwrap();
+
+    // print out some helpful information about what the imports/exports are from the packages.
+    println!("LIB EXPORTS:");
+    for (name, ty) in &graph.types()[graph[whamm_core].ty()].exports {
+        println!("- {name}: {:?}", ty);
+    }
+    println!("APP IMPORTS");
+    for (name, ty) in &graph.types()[graph[app].ty()].imports {
+        println!("- {name}: {:?}", ty);
+    }
+    println!("APP EXPORTS");
+    let mut run_func_name = None;
+    for (name, ty) in &graph.types()[graph[app].ty()].exports {
+        if name.starts_with(RUN_FUNC_PREFIX) {
+            run_func_name = Some(name.clone());
+        }
+        println!("- {name}: {:?}", ty);
+    }
+
+    // Instantiate the whamm_core instance which does not have any arguments
+    let whamm_core_instance = graph.instantiate(whamm_core);
+
+    // Instantiate the app instance which has a single argument "whamm-core"
+    // which is an instance of `whamm_core`
+    let app_instance = graph.instantiate(app);
+
+    // plug in the instance of `whamm_core` into the `app` import.
+    graph
+        .set_instantiation_argument(app_instance, &core_lib_name, whamm_core_instance)
+        .unwrap();
+
+    // Export the "run" function from the app
+    if let Some(run_name) = run_func_name {
+        let run_export = graph
+            .alias_instance_export(app_instance, &run_name)
+            .unwrap();
+        graph.export(run_export, &run_name).unwrap();
+    } else {
+        panic!("Could not find an exported main function from the component, should start with: {RUN_FUNC_PREFIX}")
+    }
+
+    // Encode the graph into a WASM binary
+    let encoding = graph.encode(EncodeOptions::default()).unwrap();
+    // let composed_path = format!("{outdir}/{}", out_name.unwrap_or_else(|| "composition.wasm".to_string()));
+    fs::write(outpath, encoding).unwrap();
 }
 
 /// The instrumentation configuration

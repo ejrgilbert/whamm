@@ -49,14 +49,14 @@ pub(crate) fn try_path(path: &String) {
 }
 
 pub fn run_with_path(
-    core_lib_path: Option<String>,
+    core_lib_path: &Option<String>,
     def_yamls: &Vec<String>,
     app_wasm_path: String,
-    script_path: String,
-    user_lib_paths: Vec<String>,
+    script_path: &String,
+    user_lib_paths: &Vec<String>,
     max_errors: i32,
     config: Config,
-) -> Result<Vec<u8>, Box<ErrorGen>> {
+) -> Result<(bool, Vec<u8>), Box<ErrorGen>> {
     let bytes = if !config.as_monitor_module {
         if let Ok(bytes) = std::fs::read(&app_wasm_path) {
             bytes
@@ -82,8 +82,8 @@ pub fn dry_run_on_bytes<'a>(
     core_lib: &[u8],
     def_yamls: &Vec<String>,
     target_wasm_bytes: &'a [u8],
-    script_path: String,
-    user_lib_paths: Vec<String>,
+    script_path: &String,
+    user_lib_paths: &Vec<String>,
     max_errors: i32,
     config: Config,
 ) -> Result<HashMap<WirmInjectType, Vec<WirmInjection<'a>>>, Vec<WhammError>> {
@@ -180,14 +180,14 @@ pub fn parse_user_lib_paths(paths: &Vec<String>) -> Vec<(String, Option<String>,
 }
 
 pub fn run_on_bytes_and_encode(
-    core_lib_path: Option<String>,
+    core_lib_path: &Option<String>,
     def_yamls: &Vec<String>,
     target_wasm_bytes: &[u8],
-    script_path: String,
-    user_libs: Vec<String>,
+    script_path: &String,
+    user_libs: &Vec<String>,
     max_errors: i32,
     config: Config,
-) -> Result<Vec<u8>, Box<ErrorGen>> {
+) -> Result<(bool, Vec<u8>), Box<ErrorGen>> {
     let mut metrics = Metrics::default();
 
     let res = if config.as_monitor_module {
@@ -208,7 +208,7 @@ pub fn run_on_bytes_and_encode(
             &mut metrics,
             &config,
         )?;
-        Ok(module.encode())
+        Ok((false, module.encode()))
     } else {
         let core_lib_bytes = get_core_lib(
             core_lib_path,
@@ -237,11 +237,11 @@ fn run_and_encode_module_or_component(
     core_lib_bytes: &[u8],
     def_yamls: &Vec<String>,
     script_path: &String,
-    user_lib_paths: Vec<String>,
+    user_lib_paths: &Vec<String>,
     max_errors: i32,
     metrics: &mut Metrics,
     config: &Config,
-) -> Result<Vec<u8>, Box<ErrorGen>> {
+) -> Result<(bool, Vec<u8>), Box<ErrorGen>> {
     // handle a wasm component OR module
     let res = match bytes_to_wasm(target_wasm_bytes) {
         (Some(mut module), None) => {
@@ -265,7 +265,7 @@ fn run_and_encode_module_or_component(
                     return Err(err);
                 }
             }
-            module.encode()
+            (false, module.encode())
         }
         (None, Some(mut component)) => {
             // make sure none of the user libraries are provided as modules
@@ -312,7 +312,7 @@ fn run_and_encode_module_or_component(
                 }
             }
 
-            component.encode()
+            (true, component.encode())
         }
         (None, None) => {
             // error, couldn't parse
@@ -437,12 +437,12 @@ pub fn run_on_module(
     )
 }
 
-pub fn write_to_file(module: Vec<u8>, output_wasm_path: String) {
-    try_path(&output_wasm_path);
-    if let Err(e) = std::fs::write(&output_wasm_path, module) {
+pub fn write_to_file(module: Vec<u8>, output_wasm_path: &String) {
+    try_path(output_wasm_path);
+    if let Err(e) = std::fs::write(output_wasm_path, module) {
         unreachable!(
             "Failed to dump instrumented wasm to {} from error: {}",
-            &output_wasm_path, e
+            output_wasm_path, e
         )
     }
 }

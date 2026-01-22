@@ -16,7 +16,7 @@ use std::process::Command;
 /// * `print_functions`: Whether to print the bound functions for the match rule
 pub fn print_info(
     rule: String,
-    defs_path: Option<String>,
+    defs_path: &Option<String>,
     print_vars: bool,
     print_functions: bool,
 ) -> Result<(), Box<ErrorGen>> {
@@ -36,7 +36,7 @@ pub fn print_info(
 ///
 /// * `module`: The module to write to the file.
 /// * `output_wasm_path`: Where to write the module to.
-pub fn write_to_file(module: Vec<u8>, output_wasm_path: String) {
+pub fn write_to_file(module: Vec<u8>, output_wasm_path: &String) {
     instr::write_to_file(module, output_wasm_path);
 }
 

@@ -12,6 +12,8 @@ use wasmparser::{
 use wirm::ir::id::{ComponentExportId, FunctionID};
 use wirm::{Component, Module};
 
+pub const WHAMM_CORE_COMPONENT_NAME: &str = "whamm-core";
+
 pub fn link_core_lib(
     method: LibraryLinkStrategy,
     ast: &[Script],
@@ -111,7 +113,7 @@ pub fn configure_component_libraries<'a>(
 
         // Import the library from an external provider
         let inst_id = wasm.add_import(ComponentImport {
-            name: ComponentImportName("whamm-core"),
+            name: ComponentImportName(WHAMM_CORE_COMPONENT_NAME),
             ty: ComponentTypeRef::Instance(*inst_ty_id),
         });
 

@@ -19,7 +19,7 @@ fn instrument_dfinity_with_fault_injection() {
     let wasm_path = "tests/apps/dfinity/users.wasm";
 
     for (script_path, ..) in processed_scripts {
-        if let Err(errs) = run_script(
+        match run_script(
             &script_path,
             wasm_path,
             fs::read(wasm_path).unwrap(),
@@ -29,9 +29,13 @@ fn instrument_dfinity_with_fault_injection() {
             false,
             true,
         ) {
-            println!("failed to run script due to errors: ");
-            for e in errs.iter() {
-                println!("- {}", e.msg)
+            Ok(was_component) => assert!(!was_component),
+            Err(errs) => {
+                println!("failed to run script due to errors: ");
+                for e in errs.iter() {
+                    println!("- {}", e.msg)
+                }
+                panic!()
             }
         }
     }
@@ -102,7 +106,7 @@ fn instrument_with_wizard_monitors() {
     assert!(!processed_scripts.is_empty());
 
     for (script_path, ..) in processed_scripts {
-        if let Err(errs) = run_script(
+        match run_script(
             &script_path,
             APP_WASM_PATH,
             fs::read(APP_WASM_PATH).unwrap(),
@@ -112,9 +116,13 @@ fn instrument_with_wizard_monitors() {
             false,
             false,
         ) {
-            println!("failed to run script due to errors: ");
-            for e in errs.iter() {
-                println!("- {}", e.msg)
+            Ok(was_component) => assert!(!was_component),
+            Err(errs) => {
+                println!("failed to run script due to errors: ");
+                for e in errs.iter() {
+                    println!("- {}", e.msg)
+                }
+                panic!()
             }
         }
     }

@@ -5,9 +5,7 @@ use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use wac_graph::types::Package;
-use wac_graph::{CompositionGraph, EncodeOptions};
-use whamm::api::instrument::{instrument_as_dry_run_rewriting, WhammError};
+use whamm::api::instrument::{instrument_as_dry_run_rewriting, wac, WhammError};
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
 
 pub const DEFAULT_DEFS_PATH: &str = "./";
@@ -15,8 +13,6 @@ const TEST_RSC_DIR: &str = "tests/scripts/";
 const MM_PATTERN: &str = "*.mm";
 const TODO: &str = "*.TODO";
 
-// FOR COMPONENTS
-const RUN_FUNC_PREFIX: &str = "wasi:cli/run@";
 
 fn get_test_scripts(sub_dir: &str) -> Vec<(PathBuf, String)> {
     let mut scripts = vec![];
@@ -354,31 +350,31 @@ pub(crate) fn run_script(
     output_path: Option<String>,
     target_wei: bool,
     dry_run: bool,
-) -> Result<(), Vec<WhammError>> {
+) -> Result<bool, Vec<WhammError>> {
     let script_path_str = script_path.to_str().unwrap().replace("\"", "");
-    let wasm_result = if target_wei {
+    let (was_component, wasm_result) = if target_wei {
         whamm::api::instrument::generate_monitor_module(
-            script_path_str,
-            user_libs.clone(),
-            Some(core_wasm_path.clone()),
-            Some("./".to_string()),
+            &script_path_str,
+            &user_libs,
+            &Some(core_wasm_path.clone()),
+            &Some("./".to_string()),
         )
     } else {
         whamm::api::instrument::instrument_bytes_with_rewriting(
             target_wasm_bytes,
-            script_path_str,
-            user_libs.clone(),
-            Some(core_wasm_path.clone()),
-            Some("./".to_string()),
+            &script_path_str,
+            &user_libs,
+            &Some(core_wasm_path.clone()),
+            &Some("./".to_string()),
         )
     }?;
     if dry_run && !target_wei {
         let _side_effects = instrument_as_dry_run_rewriting(
             wasm_path.to_string(),
-            script_path.to_str().unwrap().to_string(),
-            user_libs,
-            Some(core_wasm_path),
-            Some("./".to_string()),
+            &script_path.to_str().unwrap().to_string(),
+            &user_libs,
+            &Some(core_wasm_path),
+            &Some("./".to_string()),
         )
         .expect("Failed to run dry-run");
 
@@ -386,9 +382,9 @@ pub(crate) fn run_script(
         // print_side_effects(&_side_effects);
     }
     if let Some(path) = output_path {
-        write_to_file(wasm_result, path);
+        write_to_file(wasm_result, &path);
     }
-    Ok(())
+    Ok(was_component)
 }
 
 fn run_testcase_rewriting(
@@ -402,7 +398,7 @@ fn run_testcase_rewriting(
     dry_run: bool,
     is_component: bool,
 ) {
-    if let Err(errs) = run_script(
+    match run_script(
         &script,
         app_path_str,
         fs::read(app_path_str).unwrap(),
@@ -412,9 +408,13 @@ fn run_testcase_rewriting(
         false,
         dry_run,
     ) {
-        println!("failed to run script due to errors: ");
-        for e in errs.iter() {
-            println!("- {}", e.msg)
+        Ok(was_component) => assert_eq!(was_component, is_component),
+        Err(errs) => {
+            println!("failed to run script due to errors: ");
+            for e in errs.iter() {
+                println!("- {}", e.msg)
+            }
+            panic!()
         }
     }
 
@@ -479,7 +479,7 @@ fn run_testcase_wei(
     }
 
     // run the script on configured application
-    if let Err(errs) = run_script(
+    match run_script(
         script,
         app_path_str,
         vec![],
@@ -489,11 +489,14 @@ fn run_testcase_wei(
         true,
         dry_run,
     ) {
-        println!("failed to run script due to errors: ");
-        for e in errs.iter() {
-            println!("- {}", e.msg)
+        Ok(was_component) => assert_eq!(was_component, is_component),
+        Err(errs) => {
+            println!("failed to run script due to errors: ");
+            for e in errs.iter() {
+                println!("- {}", e.msg)
+            }
+            panic!()
         }
-        panic!()
     }
 
     // run the instrumented application on wizard
@@ -550,7 +553,12 @@ fn run_wasmtime_component(
     outdir: &String,
     instr_app_path: &String,
 ) {
-    let composed_app_path = wac(instr_app_path, outdir, "whamm-core", &core_wasm_path);
+    let composed_app_path = format!("{outdir}/composition.wasm");
+    wac(
+        instr_app_path,
+        &composed_app_path,
+        &vec![format!("whamm-core={core_wasm_path}")]
+    );
 
     let mut cmd = Command::new("wasmtime");
     let out_file = prep_outfile(&mut cmd, outdir, &exp_output);
@@ -630,65 +638,6 @@ fn run_and_assert(
             }
         };
     }
-}
-
-fn wac(app_path: &String, outdir: &String, core_lib_name: &str, core_lib_path: &str) -> String {
-    let mut graph = CompositionGraph::new();
-
-    // Register the package dependencies into the graph
-    let package = Package::from_file("app", None, app_path, graph.types_mut()).unwrap();
-    let app = graph.register_package(package).unwrap();
-
-    let package =
-        Package::from_file(core_lib_name, None, core_lib_path, graph.types_mut()).unwrap();
-    let whamm_core = graph.register_package(package).unwrap();
-
-    // print out some helpful information about what the imports/exports are from the packages.
-    println!("LIB EXPORTS:");
-    for (name, ty) in &graph.types()[graph[whamm_core].ty()].exports {
-        println!("- {name}: {:?}", ty);
-    }
-    println!("APP IMPORTS");
-    for (name, ty) in &graph.types()[graph[app].ty()].imports {
-        println!("- {name}: {:?}", ty);
-    }
-    println!("APP EXPORTS");
-    let mut run_func_name = None;
-    for (name, ty) in &graph.types()[graph[app].ty()].exports {
-        if name.starts_with(RUN_FUNC_PREFIX) {
-            run_func_name = Some(name.clone());
-        }
-        println!("- {name}: {:?}", ty);
-    }
-
-    // Instantiate the whamm_core instance which does not have any arguments
-    let whamm_core_instance = graph.instantiate(whamm_core);
-
-    // Instantiate the app instance which has a single argument "whamm-core"
-    // which is an instance of `whamm_core`
-    let app_instance = graph.instantiate(app);
-
-    // plug in the instance of `whamm_core` into the `app` import.
-    graph
-        .set_instantiation_argument(app_instance, core_lib_name, whamm_core_instance)
-        .unwrap();
-
-    // Export the "run" function from the app
-    if let Some(run_name) = run_func_name {
-        let run_export = graph
-            .alias_instance_export(app_instance, &run_name)
-            .unwrap();
-        graph.export(run_export, &run_name).unwrap();
-    } else {
-        panic!("Could not find an exported main function from the component, should start with: {RUN_FUNC_PREFIX}")
-    }
-
-    // Encode the graph into a WASM binary
-    let encoding = graph.encode(EncodeOptions::default()).unwrap();
-    let composed_path = format!("{outdir}/composition.wasm");
-    fs::write(&composed_path, encoding).unwrap();
-
-    composed_path
 }
 
 struct TestCase {
