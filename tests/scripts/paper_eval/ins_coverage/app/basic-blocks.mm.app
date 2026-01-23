@@ -1,1 +1,1 @@
-tests/apps/core_suite/handwritten/branches.wasm
+tests/apps/core_suite/handwritten/branches-core.wasm

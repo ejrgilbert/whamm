@@ -6,7 +6,7 @@ use crate::util::{setup_logger, DEFAULT_CORE_LIB_PATH_MODULE};
 use std::fs;
 use whamm::api::utils::wasm2wat_on_file;
 
-const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic.wasm";
+const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic-core.wasm";
 
 /// This test just confirms that a wasm module can be instrumented with the preconfigured
 /// scripts without errors occurring.
@@ -44,13 +44,11 @@ fn instrument_dfinity_with_fault_injection() {
 #[test]
 fn instrument_handwritten_wasm_call() {
     setup_logger();
-    let original_wat_path = "tests/apps/core_suite/handwritten/add.wat";
-    let original_wasm_path = "tests/apps/core_suite/handwritten/add.wasm";
+    let original_wasm_path = "tests/apps/core_suite/handwritten/add-core.wasm";
     let monitor_path = "tests/scripts/instr.mm";
     let instrumented_wasm_path = "output/tests/integration-handwritten_add.wasm";
 
     run_basic_instrumentation(
-        original_wat_path,
         original_wasm_path,
         monitor_path,
         instrumented_wasm_path,
@@ -60,35 +58,15 @@ fn instrument_handwritten_wasm_call() {
 #[test]
 fn instrument_no_matches() {
     setup_logger();
-    let original_wat_path = "tests/apps/core_suite/handwritten/no_matched_events.wat";
-    let original_wasm_path = "tests/apps/core_suite/handwritten/no_matched_events.wasm";
+    let original_wasm_path = "tests/apps/core_suite/handwritten/no_matched_events-core.wasm";
     let monitor_path = "tests/scripts/instr.mm";
-    let instrumented_wasm_path = "output/tests/integration-no_matched_events.wasm";
+    let instrumented_wasm_path = "output/tests/integration-no_matched_events-core.wasm";
 
     run_basic_instrumentation(
-        original_wat_path,
         original_wasm_path,
         monitor_path,
         instrumented_wasm_path,
     );
-}
-
-#[test]
-fn instrument_control_flow() {
-    setup_logger();
-
-    let monitor_path = "tests/scripts/instr.mm";
-    let original_wasm_path = "tests/apps/core_suite/rust/cf.wasm";
-    let instrumented_wasm_path = "output/tests/integration-control_flow.wasm";
-
-    run_whamm_bin(
-        original_wasm_path,
-        monitor_path,
-        instrumented_wasm_path,
-        DEFAULT_DEFS_PATH,
-        DEFAULT_CORE_LIB_PATH_MODULE,
-    );
-    wasm2wat_on_file(instrumented_wasm_path);
 }
 
 #[test]

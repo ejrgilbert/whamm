@@ -1,0 +1,50 @@
+==== CALC ====
+calc(9, 0) -> 9
+calc(8, 1) -> 9
+calc(7, 2) -> 9
+calc(6, 3) -> 9
+calc(5, 4) -> 20
+calc(4, 5) -> 20
+calc(3, 6) -> 18
+calc(2, 7) -> 14
+calc(1, 8) -> 8
+calc(0, 9) -> 0
+
+==== PRINT ====
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hi world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+hello world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+'sup world!
+
+================================= REPORT CSV FLUSH ====================================
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
+4, memaddr, count, u32, i32, script0, main, 44, 595, 0_wasm:opcode:call:before, 2
+36, memaddr, count, u32, i32, script0, main, 44, 1122, 0_wasm:opcode:call:before, 0
+68, memaddr, count, u32, i32, script0, main, 44, 1162, 0_wasm:opcode:call:before, 1
+100, memaddr, count, u32, i32, script0, main, 44, 1202, 0_wasm:opcode:call:before, 0

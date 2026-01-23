@@ -1,1 +1,1 @@
-tests/apps/core_suite/handwritten/for_numerics-skip_ExprFolder.wasm
+tests/apps/core_suite/handwritten/for_numerics-skip_exprFolder-core.wasm

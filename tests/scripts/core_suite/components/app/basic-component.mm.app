@@ -1,1 +1,1 @@
-tests/apps/core_suite/components/cf.wasm
+tests/apps/core_suite/rust/cf-$ENCODING.wasm

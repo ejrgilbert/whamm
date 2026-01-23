@@ -1,1 +1,1 @@
-tests/apps/core_suite/handwritten/mem-ops2.wasm
+tests/apps/core_suite/handwritten/mem-ops2-core.wasm

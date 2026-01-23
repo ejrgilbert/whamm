@@ -81,12 +81,10 @@ pub fn run_whamm_bin(
 }
 
 pub fn run_basic_instrumentation(
-    original_wat_path: &str,
     original_wasm_path: &str,
     monitor_path: &str,
     instrumented_wasm_path: &str,
 ) {
-    wat2wasm_on_file(original_wat_path, original_wasm_path);
     run_whamm_bin(
         original_wasm_path,
         monitor_path,
@@ -95,23 +93,6 @@ pub fn run_basic_instrumentation(
         DEFAULT_CORE_LIB_PATH_MODULE,
     );
     wasm2wat_on_file(instrumented_wasm_path);
-}
-
-pub fn wat2wasm_on_file(original_wat_path: &str, original_wasm_path: &str) {
-    let res = Command::new("wasm-tools")
-        .arg("parse")
-        .arg(original_wat_path)
-        .arg("-o")
-        .arg(original_wasm_path)
-        .output()
-        .expect("failed to execute process");
-    if !res.status.success() {
-        error!(
-            "'wasm-tools parse' failed:\n{}\n{}",
-            String::from_utf8(res.stdout).unwrap(),
-            String::from_utf8(res.stderr).unwrap()
-        );
-    }
 }
 
 pub fn setup_fault_injection(variation: &str) -> Vec<(PathBuf, String)> {
@@ -189,18 +170,18 @@ pub(crate) fn run_core_suite(
             .join("wei")
             .join(format!("{}.exp", fname));
 
-        rewriting_tests.push(TestCase {
-            script: script_path.clone(),
-            app: app.clone(),
-            libs: libs.clone(),
-            exp: rewriting_exp,
-        });
-        wei_tests.push(TestCase {
-            script: script_path.clone(),
+        rewriting_tests.push(TestCase::new(
+            script_path.clone(),
+            app.clone(),
+            libs.clone(),
+            rewriting_exp,
+        ));
+        wei_tests.push(TestCase::new(
+            script_path.clone(),
             app,
             libs,
-            exp: wei_exp,
-        });
+            wei_exp,
+        ));
     }
 
     let outdir = format!("output/tests/{suite_name}");
@@ -216,19 +197,19 @@ pub(crate) fn run_core_suite(
     if with_br {
         for TestCase {
             script,
-            app,
-            libs,
-            exp,
-            ..
+            app_core,
+            app_comp,
+            libs_core,
+            libs_comp,
+            exp_core,
+            exp_comp,
         } in rewriting_tests.iter()
         {
             println!(
                 "[REWRITE] Running test case with monitor at the following path: {:#?}",
                 script
             );
-            let app_path_str = fs::read_to_string(app)
-                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
-            let libs_path_str = if let Ok(res) = fs::read_to_string(libs) {
+            let libs_path_str = if let Ok(res) = fs::read_to_string(libs_core) {
                 let mut libs = vec![];
                 for lib in res.split('\n') {
                     libs.push(lib.to_string());
@@ -237,35 +218,64 @@ pub(crate) fn run_core_suite(
             } else {
                 vec![]
             };
-            let metadata = fs::metadata(exp).expect("Failed to load expected output file metadata");
+            let metadata = fs::metadata(exp_core).expect("Failed to load expected output file metadata");
             let exp_out = if metadata.len() > MAX_EXP_OUT_SIZE {
-                ExpectedOutput::hash(exp)
+                ExpectedOutput::hash(exp_core)
             } else {
                 ExpectedOutput::Str(
-                    fs::read_to_string(exp)
-                        .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp)),
+                    fs::read_to_string(exp_core)
+                        .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp_core)),
                 )
             };
             run_testcase_rewriting(
                 script,
-                &app_path_str,
-                libs_path_str,
+                app_core,
+                &libs_path_str,
                 core_lib_path.clone(),
-                exp_out,
+                &exp_out,
                 &outdir,
                 &instr_app_path,
                 dry_run,
                 as_component,
             );
+
+            if let Some(comp) = app_comp {
+                println!("\t[COMP] Running test case with component");
+                let exp_out = if exp_comp.as_ref().unwrap().exists() {
+                    let metadata = fs::metadata(exp_comp.as_ref().unwrap()).expect("Failed to load expected output file metadata");
+                    if metadata.len() > MAX_EXP_OUT_SIZE {
+                        ExpectedOutput::hash(exp_comp.as_ref().unwrap())
+                    } else {
+                        ExpectedOutput::Str(
+                            fs::read_to_string(exp_comp.as_ref().unwrap())
+                                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp_comp.as_ref().unwrap())),
+                        )
+                    }
+                } else {
+                    exp_out
+                };
+
+                run_testcase_rewriting(
+                    script,
+                    comp,
+                    &libs_path_str,
+                    DEFAULT_CORE_LIB_PATH_COMPONENT.to_string(),
+                    &exp_out,
+                    &outdir,
+                    &instr_app_path,
+                    dry_run,
+                    true,
+                );
+            }
         }
     }
 
     if with_wei {
         for TestCase {
             script,
-            app,
-            libs,
-            exp,
+            app_core,
+            libs_core,
+            exp_core,
             ..
         } in wei_tests.iter()
         {
@@ -273,9 +283,7 @@ pub(crate) fn run_core_suite(
                 "[WEI] Running test case with monitor at the following path: {:#?}",
                 script
             );
-            let app_path_str = fs::read_to_string(app)
-                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
-            let libs_path_str = if let Ok(res) = fs::read_to_string(libs) {
+            let libs_path_str = if let Ok(res) = fs::read_to_string(libs_core) {
                 let mut libs = vec![];
                 for lib in res.split('\n') {
                     libs.push(lib.to_string());
@@ -284,20 +292,20 @@ pub(crate) fn run_core_suite(
             } else {
                 vec![]
             };
-            let metadata = fs::metadata(exp).unwrap_or_else(|_| {
-                panic!("Failed to load expected output file metadata at: {:?}", exp)
+            let metadata = fs::metadata(exp_core).unwrap_or_else(|_| {
+                panic!("Failed to load expected output file metadata at: {:?}", exp_core)
             });
             let exp_out = if metadata.len() > MAX_EXP_OUT_SIZE {
-                ExpectedOutput::hash(exp)
+                ExpectedOutput::hash(exp_core)
             } else {
                 ExpectedOutput::Str(
-                    fs::read_to_string(exp)
-                        .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp)),
+                    fs::read_to_string(exp_core)
+                        .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp_core)),
                 )
             };
             run_testcase_wei(
                 script,
-                &app_path_str,
+                &app_core,
                 libs_path_str,
                 core_lib_path.clone(),
                 exp_out,
@@ -390,9 +398,9 @@ pub(crate) fn run_script(
 fn run_testcase_rewriting(
     script: &Path,
     app_path_str: &str,
-    user_libs: Vec<String>,
+    user_libs: &Vec<String>,
     core_wasm_path: String,
-    exp_output: ExpectedOutput,
+    exp_output: &ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
     dry_run: bool,
@@ -547,9 +555,9 @@ fn run_testcase_wei(
 }
 
 fn run_wasmtime_component(
-    user_libs: Vec<String>,
+    user_libs: &Vec<String>,
     core_wasm_path: String,
-    exp_output: ExpectedOutput,
+    exp_output: &ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
 ) {
@@ -573,9 +581,9 @@ fn run_wasmtime_component(
 }
 
 fn run_wasmtime_module(
-    user_libs: Vec<String>,
+    user_libs: &Vec<String>,
     core_wasm_path: String,
-    exp_output: ExpectedOutput,
+    exp_output: &ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
 ) {
@@ -610,7 +618,7 @@ fn run_and_assert(
     cmd: &mut Command,
     app_path: &String,
     out_file: &String,
-    exp_output: ExpectedOutput,
+    exp_output: &ExpectedOutput,
 ) {
     let res = cmd.output().expect("failed to run on engine!");
     if !res.status.success() {
@@ -634,15 +642,73 @@ fn run_and_assert(
             }
             ExpectedOutput::Hash(exp_hash) => {
                 let hash = file_hash(&PathBuf::from(out_file));
-                assert_eq!(hash, exp_hash);
+                assert_eq!(hash, *exp_hash);
             }
         };
     }
 }
 
+const ENCODING_PLACEHOLDER: &str = "$ENCODING";
+const ENCODING_CORE: &str = "core";
+const ENCODING_COMP: &str = "comp";
 struct TestCase {
     script: PathBuf,
-    app: PathBuf,
-    libs: PathBuf,
-    exp: PathBuf,
+    app_core: String,
+    app_comp: Option<String>,
+    libs_core: PathBuf,
+    libs_comp: Option<String>,
+    exp_core: PathBuf,
+    exp_comp: Option<PathBuf>,
+}
+impl TestCase {
+    fn new(script: PathBuf, app: PathBuf, libs: PathBuf, exp: PathBuf) -> Self {
+        let app_path_str = fs::read_to_string(app.clone())
+            .unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
+        let parts: Vec<&str> = app_path_str.split(ENCODING_PLACEHOLDER).collect();
+        let (app_core, app_comp) = if parts.len() == 1 {
+            // this doesn't have a placeholder to run as a core module OR a component
+            (parts[0].to_string(), None)
+        } else {
+            assert_eq!(2, parts.len());
+            let app_core = format!("{}{ENCODING_CORE}{}", parts[0], parts[1]);
+            let app_comp = format!("{}{ENCODING_COMP}{}", parts[0], parts[1]);
+
+            (app_core, Some(app_comp))
+        };
+
+        let exp_comp = if app_comp.is_some() {
+            exp.to_str().map(|s| {
+                PathBuf::from(s.replace(".exp", ".comp.exp"))
+            })
+        } else {
+            None
+        };
+
+
+        // let libs_path_str = if let Ok(res) = fs::read_to_string(libs) {
+        //     let mut libs = vec![];
+        //     let had_encoding_variant = false;
+        //     for lib in res.split('\n') {
+        //         libs.push(lib.to_string());
+        //     }
+        //
+        //     if app_comp.is_some() && !had_encoding_variant {
+        //         panic!("If you're enabling running in core AND component variations, you must supply libraries in both formats.")
+        //     }
+        //
+        //     libs
+        // } else {
+        //     vec![]
+        // };
+
+        Self {
+            script,
+            app_core,
+            app_comp,
+            libs_core: libs,
+            libs_comp: None,
+            exp_core: exp,
+            exp_comp
+        }
+    }
 }

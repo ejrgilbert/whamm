@@ -13,7 +13,7 @@ use whamm::api::instrument::{
 #[test]
 fn dry_run() {
     setup_logger();
-    let wasm_path = "tests/apps/core_suite/rust/cf.wasm";
+    let wasm_path = "tests/apps/core_suite/rust/cf-core.wasm";
     let script_path =
         "tests/scripts/core_suite/branch-monitor_rewriting/branch-br__br_if__br_table.mm";
     let side_effects = instrument_as_dry_run_rewriting(
@@ -47,7 +47,7 @@ fn dry_run_wei() {
 #[test]
 fn dry_run_errs() {
     setup_logger();
-    let wasm_path = "tests/apps/core_suite/rust/cf.wasm";
+    let wasm_path = "tests/apps/core_suite/rust/cf-core.wasm";
     let script_path = "tests/scripts/error/bad.mm";
     let errs = instrument_as_dry_run_rewriting(
         wasm_path.to_string(),

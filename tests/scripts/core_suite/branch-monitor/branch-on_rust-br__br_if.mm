@@ -1,6 +1,6 @@
 wasm::br:before /
-    fid == 27 ||        // calc
-    fid == 28           // print_x
+    fname == "calc" ||
+    fname == "print_x"
 / {
     report unshared var taken: i32;
     // branch always taken for `br`
@@ -8,8 +8,8 @@ wasm::br:before /
 }
 
 wasm::br_if:before /
-    fid == 27 ||        // calc
-    fid == 28           // print_x
+    fname == "calc" ||
+    fname == "print_x"
 / {
     report unshared var taken: i32;
     report unshared var not_taken: i32;

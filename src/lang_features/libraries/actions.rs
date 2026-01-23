@@ -48,39 +48,21 @@ pub fn configure_component_libraries<'a>(
     core_lib: &'a [u8],
     user_libs: &'a HashMap<String, &'a [u8]>,
 ) {
-    // find "wasi_snapshot_preview1" instance
-    let mut wasi_instance = None;
-    let wasi_exports = ["fd_write", "environ_get", "environ_sizes_get", "proc_exit"];
-    for (i, inst) in component.instances.iter().enumerate() {
-        if let Instance::FromExports(exports) = inst {
-            let mut found_count = 0;
-            for export in exports.iter() {
-                if wasi_exports.contains(&export.name) {
-                    found_count += 1;
-                }
-            }
-
-            if found_count == wasi_exports.len() {
-                wasi_instance = Some(i);
-                break;
-            }
-        }
-    }
-    if let Some(_) = wasi_instance {
-        let mut has_whamm_core = false;
-        for (name, bytes) in user_libs.iter() {
-            if name == WHAMM_CORE_LIB_NAME {
-                has_whamm_core = true;
-            }
-            configure_lib(target_module_id, component, name, bytes);
-        }
-        if !has_whamm_core {
-            configure_lib(target_module_id, component, WHAMM_CORE_LIB_NAME, core_lib);
-        }
-    } else {
+    if find_wasi_instance(component).is_none() {
         panic!(
             "Target component does not already import wasi_snapshot_preview1, not supported yet."
         )
+    }
+
+    let mut has_whamm_core = false;
+    for (name, bytes) in user_libs.iter() {
+        if name == WHAMM_CORE_LIB_NAME {
+            has_whamm_core = true;
+        }
+        configure_lib(target_module_id, component, name, bytes);
+    }
+    if !has_whamm_core {
+        configure_lib(target_module_id, component, WHAMM_CORE_LIB_NAME, core_lib);
     }
 
     fn configure_lib<'a>(
@@ -165,4 +147,27 @@ pub fn configure_component_libraries<'a>(
             }
         }
     }
+}
+
+fn find_wasi_instance(component: &mut Component) -> Option<usize> {
+    // TODO: Make this more robust! (if it doesn't import what's needed, generate code that does)
+    let mut wasi_instance = None;
+    let wasi_exports = ["fd_write", "environ_get", "environ_sizes_get", "proc_exit"];
+    for (i, inst) in component.instances.iter().enumerate() {
+        if let Instance::FromExports(exports) = inst {
+            let mut found_count = 0;
+            for export in exports.iter() {
+                if wasi_exports.contains(&export.name) {
+                    found_count += 1;
+                }
+            }
+
+            if found_count == wasi_exports.len() {
+                wasi_instance = Some(i);
+                break;
+            }
+        }
+    }
+
+    wasi_instance
 }

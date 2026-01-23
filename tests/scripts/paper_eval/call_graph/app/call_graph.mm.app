@@ -1,1 +1,1 @@
-tests/apps/core_suite/handwritten/calls.wasm
+tests/apps/core_suite/handwritten/calls-core.wasm
