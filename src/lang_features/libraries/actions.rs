@@ -119,6 +119,19 @@ pub fn configure_component_libraries<'a>(
             });
         }
 
+        for alias in lib_wasm.alias.items.iter() {
+            if let ComponentAlias::CoreInstanceExport {name, kind, ..} = alias {
+                if *name == "memory" && matches!(kind, ExternalKind::Memory) {
+                    // see in component/whamm_core.wat:
+                    //   (alias core export 11 "memory" (core memory (;0;)))
+                    //   (core instance (;12;)
+                    //     (export "memory" (memory 0))
+                    //   )
+                    todo!("I need to add this to the imports!!")
+                }
+            }
+        }
+
         // Create a core instance from the library
         let lib_inst_id = wasm.add_core_instance(Instance::FromExports(exports.into_boxed_slice()));
 

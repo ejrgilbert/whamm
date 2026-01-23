@@ -13,6 +13,7 @@ use std::collections::{HashMap, HashSet};
 use wirm::ir::id::FunctionID;
 use wirm::wasmparser::ExternalKind;
 use wirm::Module;
+use crate::lang_features::libraries::core::WHAMM_CORE_LIB_NAME;
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
 
@@ -297,8 +298,11 @@ impl SymbolTableBuilder<'_, '_, '_> {
         // script. Not having a scope for the Library supports this!
 
         if let Some((_, lib_bytes)) = self.user_libs.get(lib_name) {
-            if self.libs_as_components {
-                unimplemented!("Have not implemented support for component libraries.")
+            if self.libs_as_components && lib_name != WHAMM_CORE_LIB_NAME {
+                if lib_name != WHAMM_CORE_LIB_NAME {
+                    unimplemented!("Have not implemented support for component libraries. Tried to use: {lib_name}")
+                }
+                todo!("Need to add component support here! (for parsing the core lib at least)")
             } else {
                 let lib_module = Module::parse(lib_bytes, false, true).unwrap();
 
