@@ -26,6 +26,7 @@ demo/**/*.wasm
 output/
 output.wasm
 output.wat
+composition.wasm
 
 # Ignore the wasm playground files
 wasm_playground/**/*.wat

@@ -1,1 +1,1 @@
-cache=tests/libs/cache/cache.wasm
+cache=tests/libs/module/cache/cache.wasm

@@ -1,1 +1,1 @@
-tests/apps/core_suite/handwritten/proc_exit.wasm
+tests/apps/core_suite/handwritten/proc_exit-core.wasm

@@ -1,4 +1,4 @@
 [toolchain]
-channel = "nightly"
+channel = "1.87.0" # This version ensures that the correct wasi imports are retained in the component
 components = ["rustc", "cargo", "rustfmt", "clippy"]
-targets = [ "wasm32-wasip1" ]
+targets = [ "wasm32-wasip1", "wasm32-wasip2" ]

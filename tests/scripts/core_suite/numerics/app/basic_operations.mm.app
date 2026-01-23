@@ -1,1 +1,1 @@
-tests/apps/core_suite/handwritten/for_numerics.wasm
+tests/apps/core_suite/handwritten/for_numerics-core.wasm

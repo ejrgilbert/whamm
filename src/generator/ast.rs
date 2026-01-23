@@ -5,10 +5,8 @@ use crate::parser::types::{
     Block, DataType, Definition, Expr, Global, Location, RulePart, Statement,
 };
 use itertools::Itertools;
-use log::error;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
-use std::process::exit;
 
 #[derive(Clone, Default)]
 pub struct Script {
@@ -274,8 +272,7 @@ impl WhammParams {
         }
         if let Some(n) = param.n_for("res") {
             if !matches!(mode, ModeKind::After) {
-                error!("we haven't supported bound resN variables in non-after probes yet!");
-                exit(1)
+                panic!("we haven't supported bound resN variables in non-after probes yet!");
             }
             self.requested_results.push(n);
         }

@@ -10,7 +10,6 @@ use crate::parser::types::{DataType, Location, Statement, Value, Whamm, WhammVis
 use crate::verifier::types::Record;
 use std::collections::{HashMap, HashSet};
 use wirm::ir::id::FunctionID;
-use wirm::Module;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.
@@ -19,15 +18,16 @@ use wirm::Module;
 /// emit some compiler-defined functions and user-defined globals.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the Emitter field.
-pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
+pub struct InitGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k> {
     pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
     pub context_name: String,
     pub err: &'h mut ErrorGen,
     pub injected_funcs: &'i mut Vec<FunctionID>,
     pub used_fns_per_lib: HashMap<String, HashSet<String>>,
-    pub user_lib_modules: HashMap<String, (Option<String>, Module<'j>)>,
+    pub user_lib_modules: &'j HashMap<String, (Option<String>, &'k [u8])>,
+    pub libs_as_components: bool,
 }
-impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         whamm: &mut Whamm,
@@ -46,7 +46,7 @@ impl InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 }
 
-impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn add_internal_error(&mut self, message: &str, loc: &Option<Location>) {
         self.err.add_internal_error(message, loc);
     }
@@ -89,6 +89,7 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_>
                     self.emitter.app_wasm,
                     loc,
                     lib_wasm,
+                    self.libs_as_components,
                     lib_name.to_string(),
                     lib_name_import_override,
                     used_fns,

@@ -12,7 +12,6 @@ use log::trace;
 use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
-use std::process::exit;
 use std::str::FromStr;
 use termcolor::{BufferWriter, ColorChoice, WriteColor};
 
@@ -151,7 +150,7 @@ fn to_ast(
         Rule::script => {
             if let Err(mut e) = parser_entry_point(def_yamls, &mut whamm, script_count, pair, err) {
                 e.report();
-                exit(1);
+                panic!();
             }
         }
         rule => {

@@ -1,1 +1,1 @@
-dyninstr(whamm:dyninstr)=tests/libs/whamm_dyninstr/whamm:dyninstr.wasm
+dyninstr(whamm:dyninstr)=tests/libs/module/whamm_dyninstr/whamm:dyninstr.wasm

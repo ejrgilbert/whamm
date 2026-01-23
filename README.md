@@ -13,7 +13,9 @@
 [^silent-h]: The 'h' is silent.
 
 ## Getting Started ##
-Take a look at the official [`whamm!` book](https://ejrgilbert.github.io/whamm/intro.html) for how to get started with this tool.
+For a **hands-on demo** of the tool, follow the instructions in `./demo/README.md`.
+
+If you would like to read more on how to use Whamm in your own context, take a look at the official [`whamm!` book](https://ejrgilbert.github.io/whamm/intro.html) for how to get started.
 
 ### Build ###
 

@@ -1,14 +1,12 @@
-use clap::{Args, Parser, Subcommand};
-
 /// `whamm` instruments a Wasm application with the Probes defined in the specified Script.
-#[derive(Debug, Parser)]
+#[derive(Debug, clap::Parser)]
 #[clap(author, version, about, long_about = None)]
 pub struct WhammCli {
     #[command(subcommand)]
     pub command: Cmd,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, clap::Subcommand)]
 pub enum Cmd {
     /// To provide the bound variables and functions for the given probe match rule.
     /// To use this option, simply follow the command with a full or partial match rule
@@ -38,9 +36,43 @@ pub enum Cmd {
 
     /// To instrument a Wasm application.
     Instr(InstrArgs),
+
+    /// To compose multiple components together.
+    /// This is helpful if you've instrumented a component and now need to compose the
+    /// instrumented component with the library dependencies into a single, runnable
+    /// component.
+    Wac(WacArgs)
+}
+impl std::fmt::Display for WhammCli {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("whamm ")?;
+        match &self.command {
+            Cmd::Wac(WacArgs {
+                app, output_path, user_libs
+            }) => {
+                f.write_str("wac ")?;
+                f.write_fmt(format_args!("--app {} ", app))?;
+                f.write_fmt(format_args!("--output-path {} ", output_path))?;
+                if !user_libs.is_empty() {
+                    f.write_str("--user-libs ")?;
+                    let mut is_first = true;
+                    for lib in user_libs.iter() {
+                        if !is_first { f.write_str(",")?; }
+                        f.write_str(lib)?;
+                        is_first = false
+                    }
+                }
+
+                Ok(())
+            }
+            Cmd::Wast { .. }
+            | Cmd::Instr(_)
+            | Cmd::Info { .. } => Ok(())
+        }
+    }
 }
 
-#[derive(Debug, Args)]
+#[derive(Debug, clap::Args)]
 pub struct InstrArgs {
     /// The path to the application's Wasm module we want to instrument.
     #[arg(short, long, value_parser)]
@@ -48,7 +80,7 @@ pub struct InstrArgs {
     /// The path to the Script containing the instrumentation Probe definitions.
     #[arg(short, long, value_parser)]
     pub script: String,
-    /// The path to provider definition yaml configs.
+    /// The path to provider definition YAML configs.
     #[arg(short, long, value_parser)]
     pub defs_path: Option<String>,
     /// The path to the core Whamm library Wasm module.
@@ -93,6 +125,21 @@ pub struct InstrArgs {
     // pub mem_offset: Option<u32>
 }
 
+#[derive(Debug, clap::Args)]
+pub struct WacArgs {
+    /// The path to the application's Wasm module we want to instrument.
+    #[arg(short, long, value_parser)]
+    pub app: String,
+    /// The path that the composed component should be output to.
+    #[arg(short, long, value_parser, default_value = "./composition.wasm")]
+    pub output_path: String,
+    /// The component libraries to use during the composition.
+    /// These should satisfy all dependencies introduced by instrumentation.
+    /// These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
+    #[arg(short, long, value_delimiter = ',', num_args = 1..)]
+    pub user_libs: Vec<String>,
+}
+
 /// Options for handling instrumentation library.
 #[derive(clap::ValueEnum, Clone, Debug)]
 pub enum LibraryLinkStrategyArg {
@@ -102,4 +149,19 @@ pub enum LibraryLinkStrategyArg {
     /// Link the library through Wasm imports into `app.wasm` (target VM must support dynamic linking).
     /// Naturally, the instrumentation memory will reside in its own module instantiation.
     Imported,
+}
+
+pub const WHAMM_CORE_COMPONENT_NAME: &str = "whamm-core";
+pub const DEFAULT_WHAMM_CORE_COMPONENT_PATH: &str = "whamm_core-component/target/wasm32-wasip2/release/whamm_core.wasm";
+impl From<&InstrArgs> for WacArgs {
+    fn from(value: &InstrArgs) -> Self {
+        let mut user_libs = value.user_libs.clone();
+        user_libs.insert(0, format!("{WHAMM_CORE_COMPONENT_NAME}={DEFAULT_WHAMM_CORE_COMPONENT_PATH}"));
+
+        Self {
+            app: value.output_path.clone(),
+            output_path: "./composition.wasm".to_string(),
+            user_libs
+        }
+    }
 }

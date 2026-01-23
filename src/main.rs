@@ -6,9 +6,11 @@ use cli::{Cmd, WhammCli};
 use clap::Parser;
 use cli::LibraryLinkStrategyArg;
 use std::path::PathBuf;
-use std::process::exit;
-use whamm::api::instrument::{instrument_with_config, Config, LibraryLinkStrategy};
+use whamm::api::instrument::{instrument_with_config, wac, Config, LibraryLinkStrategy};
 use whamm::api::utils::{print_info, run_wast_tests_at, write_to_file};
+use crate::cli::{InstrArgs, WacArgs};
+
+use colored::Colorize;
 
 const ENABLE_WEI_ALT: bool = false;
 
@@ -22,8 +24,7 @@ pub fn main() {
         for c in e.iter_chain().skip(1) {
             eprintln!("  caused by {}", c);
         }
-        eprintln!("{}", e.backtrace());
-        exit(1)
+        panic!("{}", e.backtrace());
     }
 }
 
@@ -40,17 +41,17 @@ fn try_main() -> Result<(), failure::Error> {
             functions,
             defs_path,
         } => {
-            if let Err(mut err) = print_info(rule, defs_path, vars, functions) {
+            if let Err(mut err) = print_info(rule, &defs_path, vars, functions) {
                 err.report();
-                exit(1);
+                panic!();
             }
         }
         Cmd::Wast { wast_path } => {
             run_wast_tests_at(&vec![PathBuf::from(wast_path)]);
         }
         Cmd::Instr(args) => {
-            let app_path = if let Some(app_path) = args.app {
-                app_path
+            let app_path = if let Some(app_path) = &args.app {
+                app_path.clone()
             } else if !args.wei {
                 panic!("When performing bytecode rewriting (not the wei target), a path to the target application is required!\nSee `whamm instr --help`")
             } else {
@@ -58,8 +59,8 @@ fn try_main() -> Result<(), failure::Error> {
             };
             match instrument_with_config(
                 app_path,
-                args.script,
-                args.user_libs,
+                &args.script,
+                &args.user_libs,
                 Config::new(
                     args.wei,
                     ENABLE_WEI_ALT,
@@ -69,22 +70,41 @@ fn try_main() -> Result<(), failure::Error> {
                     args.no_pred,
                     args.no_report,
                     args.testing,
-                    args.link_strategy.map(|s| s.into()),
+                    args.link_strategy.clone().map(|s| s.into()),
                 ),
-                args.core_lib,
-                args.defs_path,
+                &args.core_lib,
+                &args.defs_path,
             ) {
-                Ok(res) => write_to_file(res, args.output_path),
+                Ok((was_component, res)) => process_instr_result(was_component, res, &args),
                 Err(mut e) => {
                     e.report();
-                    exit(1)
+                    panic!();
                 }
             }
         }
+        Cmd::Wac(args) => wac(
+            &args.app,
+            &args.output_path,
+            &args.user_libs
+        )
     }
 
     Ok(())
 }
+
+fn process_instr_result(was_component: bool, bytes: Vec<u8>, instr_args: &InstrArgs) {
+    println!("{}", "\n\nYour wasm binary has been instrumented successfully!".green());
+    write_to_file(bytes, &instr_args.output_path);
+
+    if was_component {
+        // print the `wac` command that should be run!
+        println!("{}", "Run the following command to produce a single component containing all introduced library dependencies:".blue());
+        println!("{}", format!("{}", WhammCli {
+            command: Cmd::Wac(WacArgs::from(instr_args))
+        }).blue());
+    }
+}
+
 impl From<LibraryLinkStrategyArg> for LibraryLinkStrategy {
     fn from(val: LibraryLinkStrategyArg) -> Self {
         match val {

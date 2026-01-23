@@ -1,14 +1,12 @@
 use crate::test_instrumentation::helper::{
     run_basic_instrumentation, run_core_suite, run_script, run_whamm_bin, setup_fault_injection,
-    setup_numerics_monitors, setup_replay, setup_tests, setup_wizard_monitors,
-    DEFAULT_CORE_LIB_PATH, DEFAULT_DEFS_PATH,
+    setup_numerics_monitors, setup_replay, setup_tests, setup_wizard_monitors, DEFAULT_DEFS_PATH,
 };
-use crate::util::setup_logger;
+use crate::util::{setup_logger, DEFAULT_CORE_LIB_PATH_MODULE};
 use std::fs;
 use whamm::api::utils::wasm2wat_on_file;
-use wirm::Module;
 
-const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic.wasm";
+const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic-core.wasm";
 
 /// This test just confirms that a wasm module can be instrumented with the preconfigured
 /// scripts without errors occurring.
@@ -19,21 +17,25 @@ fn instrument_dfinity_with_fault_injection() {
     assert!(!processed_scripts.is_empty());
 
     let wasm_path = "tests/apps/dfinity/users.wasm";
-    let wasm = fs::read(wasm_path).unwrap();
 
     for (script_path, ..) in processed_scripts {
-        let mut module_to_instrument = Module::parse(&wasm, false, true).unwrap();
-        if let Err(errs) = run_script(
+        match run_script(
             &script_path,
             wasm_path,
-            &mut module_to_instrument,
+            fs::read(wasm_path).unwrap(),
             vec![],
+            DEFAULT_CORE_LIB_PATH_MODULE.to_string(),
             None,
             false,
+            true,
         ) {
-            println!("failed to run script due to errors: ");
-            for e in errs.iter() {
-                println!("- {}", e.msg)
+            Ok(was_component) => assert!(!was_component),
+            Err(errs) => {
+                println!("failed to run script due to errors: ");
+                for e in errs.iter() {
+                    println!("- {}", e.msg)
+                }
+                panic!()
             }
         }
     }
@@ -42,13 +44,11 @@ fn instrument_dfinity_with_fault_injection() {
 #[test]
 fn instrument_handwritten_wasm_call() {
     setup_logger();
-    let original_wat_path = "tests/apps/core_suite/handwritten/add.wat";
-    let original_wasm_path = "tests/apps/core_suite/handwritten/add.wasm";
+    let original_wasm_path = "tests/apps/core_suite/handwritten/add-core.wasm";
     let monitor_path = "tests/scripts/instr.mm";
     let instrumented_wasm_path = "output/tests/integration-handwritten_add.wasm";
 
     run_basic_instrumentation(
-        original_wat_path,
         original_wasm_path,
         monitor_path,
         instrumented_wasm_path,
@@ -58,35 +58,15 @@ fn instrument_handwritten_wasm_call() {
 #[test]
 fn instrument_no_matches() {
     setup_logger();
-    let original_wat_path = "tests/apps/core_suite/handwritten/no_matched_events.wat";
-    let original_wasm_path = "tests/apps/core_suite/handwritten/no_matched_events.wasm";
+    let original_wasm_path = "tests/apps/core_suite/handwritten/no_matched_events-core.wasm";
     let monitor_path = "tests/scripts/instr.mm";
-    let instrumented_wasm_path = "output/tests/integration-no_matched_events.wasm";
+    let instrumented_wasm_path = "output/tests/integration-no_matched_events-core.wasm";
 
     run_basic_instrumentation(
-        original_wat_path,
         original_wasm_path,
         monitor_path,
         instrumented_wasm_path,
     );
-}
-
-#[test]
-fn instrument_control_flow() {
-    setup_logger();
-
-    let monitor_path = "tests/scripts/instr.mm";
-    let original_wasm_path = "tests/apps/core_suite/rust/cf.wasm";
-    let instrumented_wasm_path = "output/tests/integration-control_flow.wasm";
-
-    run_whamm_bin(
-        original_wasm_path,
-        monitor_path,
-        instrumented_wasm_path,
-        DEFAULT_DEFS_PATH,
-        DEFAULT_CORE_LIB_PATH,
-    );
-    wasm2wat_on_file(instrumented_wasm_path);
 }
 
 #[test]
@@ -103,20 +83,24 @@ fn instrument_with_wizard_monitors() {
     let processed_scripts = setup_wizard_monitors();
     assert!(!processed_scripts.is_empty());
 
-    let wasm = fs::read(APP_WASM_PATH).unwrap();
     for (script_path, ..) in processed_scripts {
-        let mut module_to_instrument = Module::parse(&wasm, false, true).unwrap();
-        if let Err(errs) = run_script(
+        match run_script(
             &script_path,
             APP_WASM_PATH,
-            &mut module_to_instrument,
+            fs::read(APP_WASM_PATH).unwrap(),
             vec![],
+            DEFAULT_CORE_LIB_PATH_MODULE.to_string(),
             None,
             false,
+            false,
         ) {
-            println!("failed to run script due to errors: ");
-            for e in errs.iter() {
-                println!("- {}", e.msg)
+            Ok(was_component) => assert!(!was_component),
+            Err(errs) => {
+                println!("failed to run script due to errors: ");
+                for e in errs.iter() {
+                    println!("- {}", e.msg)
+                }
+                panic!()
             }
         }
     }
@@ -136,7 +120,7 @@ fn instrument_with_numerics_scripts() {
     let processed_scripts = setup_numerics_monitors();
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("numerics", processed_scripts, true, true)
+    run_core_suite("numerics", processed_scripts, false, true, true, false)
 }
 
 #[test]
@@ -147,7 +131,14 @@ fn instrument_with_branch_monitor_scripts() {
 
     // TODO -- fix wei side (THEN merge with below test)
     //   - pull `fname`, `targets`, `num_targets`, `default_target`
-    run_core_suite("branch-monitor", processed_scripts, true, true)
+    run_core_suite(
+        "branch-monitor",
+        processed_scripts,
+        false,
+        true,
+        true,
+        false,
+    )
 }
 #[test]
 fn instrument_with_branch_monitor_rewriting_scripts() {
@@ -155,7 +146,14 @@ fn instrument_with_branch_monitor_rewriting_scripts() {
     let processed_scripts = setup_tests("core_suite/branch-monitor_rewriting");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("branch-monitor_rewriting", processed_scripts, true, false)
+    run_core_suite(
+        "branch-monitor_rewriting",
+        processed_scripts,
+        false,
+        true,
+        false,
+        false,
+    )
 }
 #[test]
 fn instrument_with_bytecode_scripts() {
@@ -163,7 +161,7 @@ fn instrument_with_bytecode_scripts() {
     let processed_scripts = setup_tests("core_suite/bytecode");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("bytecode", processed_scripts, true, true)
+    run_core_suite("bytecode", processed_scripts, false, true, true, false)
 }
 #[test]
 fn instrument_with_overlap_scripts() {
@@ -171,7 +169,7 @@ fn instrument_with_overlap_scripts() {
     let processed_scripts = setup_tests("core_suite/overlap");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("overlap", processed_scripts, true, true)
+    run_core_suite("overlap", processed_scripts, false, true, true, false)
 }
 #[test]
 fn instrument_with_local_n_scripts() {
@@ -179,7 +177,7 @@ fn instrument_with_local_n_scripts() {
     let processed_scripts = setup_tests("core_suite/localN");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("localN", processed_scripts, true, true)
+    run_core_suite("localN", processed_scripts, false, true, true, false)
 }
 #[test]
 fn instrument_with_res0_scripts() {
@@ -188,7 +186,7 @@ fn instrument_with_res0_scripts() {
     assert!(!processed_scripts.is_empty());
 
     // TODO -- make this work with Wizard!
-    run_core_suite("res0", processed_scripts, true, false)
+    run_core_suite("res0", processed_scripts, false, true, false, false)
 }
 #[test]
 fn instrument_with_at_static_scripts() {
@@ -196,7 +194,7 @@ fn instrument_with_at_static_scripts() {
     let processed_scripts = setup_tests("core_suite/@static");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("at_static", processed_scripts, true, true)
+    run_core_suite("at_static", processed_scripts, false, true, true, false)
 }
 
 #[test]
@@ -207,7 +205,7 @@ fn instrument_with_calls_monitor_scripts() {
 
     // TODO -- fix wei side (THEN merge with below test)
     //   - pull `fname`
-    run_core_suite("calls-monitor", processed_scripts, true, true)
+    run_core_suite("calls-monitor", processed_scripts, false, true, true, false)
 }
 #[test]
 fn instrument_with_calls_monitor_rewriting_scripts() {
@@ -215,5 +213,28 @@ fn instrument_with_calls_monitor_rewriting_scripts() {
     let processed_scripts = setup_tests("core_suite/calls-monitor_rewriting");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("calls-monitor_rewriting", processed_scripts, true, false)
+    run_core_suite(
+        "calls-monitor_rewriting",
+        processed_scripts,
+        false,
+        true,
+        false,
+        false,
+    )
+}
+
+#[test]
+fn components() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/components");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite(
+        "core-components",
+        processed_scripts,
+        true,
+        true,
+        false,
+        false,
+    )
 }

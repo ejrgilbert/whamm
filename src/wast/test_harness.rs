@@ -4,6 +4,7 @@ use crate::api::instrument::{Config, LibraryLinkStrategy};
 use crate::api::utils::wasm2wat_on_file;
 use crate::common::instr::{run, try_path};
 use crate::common::metrics::Metrics;
+use crate::lang_features::libraries::core::WHAMM_CORE_LIB_NAME;
 use crate::parser::yml_processor::pull_all_yml_files;
 use log::{debug, error};
 use std::fs::{remove_dir_all, File};
@@ -12,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use wirm::Module;
 
-const CORE_WASM_PATH: &str = "tests/libs/whamm_core.wasm";
+const CORE_WASM_PATH: &str = "tests/libs/module/whamm_core.wasm";
 const DEFS_PATH: &str = "./";
 const TEST_DEBUG_DIR: &str = "output/tests/debug_me/";
 const OUTPUT_DIR: &str = "output/tests/wast_suite";
@@ -230,7 +231,7 @@ fn generate_instrumented_bin_wast(
         );
         let wast_path_str = wast_path.to_str().unwrap().replace("\"", "");
 
-        let core_lib = std::fs::read(CORE_WASM_PATH).unwrap_or_else(|_| {
+        let core_lib_buff = std::fs::read(CORE_WASM_PATH).unwrap_or_else(|_| {
             panic!(
                 "Could not read the core wasm module expected to be at location: {}",
                 CORE_WASM_PATH
@@ -239,16 +240,26 @@ fn generate_instrumented_bin_wast(
         let def_yamls = pull_all_yml_files(DEFS_PATH);
 
         let mut metrics = Metrics::default();
+
+        // handle the libraries, add the core library just in case the script needs it
+        let libs = vec![(
+            WHAMM_CORE_LIB_NAME.to_string(),
+            None,
+            CORE_WASM_PATH.to_string(),
+            core_lib_buff.clone(),
+        )];
+
         if let Err(mut err) = run(
-            &core_lib,
+            core_lib_buff.as_slice(),
             &def_yamls,
             &mut module_to_instrument,
             &test_case.whamm_script,
             &wast_path_str,
-            vec![],
+            libs,
+            false,
             0,
             &mut metrics,
-            Config {
+            &Config {
                 as_monitor_module: false,
                 enable_wei_alt: false,
                 metrics: false,

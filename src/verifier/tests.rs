@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
 use log::{debug, error, info};
-use wirm::Module;
+
 // =================
 // = Setup Logging =
 // =================
@@ -17,7 +17,7 @@ pub fn setup_logger() {
 // = Helper Functions =
 // ====================
 
-const TOGGLE_PATH: &str = "./tests/libs/toggle/toggle.wasm";
+const TOGGLE_PATH: &str = "./tests/libs/module/toggle/toggle.wasm";
 const VALID_SCRIPTS: &[&str] = &[
     "wasm:opcode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
     r#"
@@ -453,7 +453,7 @@ pub fn test_build_table() {
 
     for script in VALID_SCRIPTS {
         let mut ast = tests::get_ast(script, &mut err);
-        let table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
+        let table = verifier::build_symbol_table(&mut ast, &HashMap::default(), false, &mut err);
         debug!("{:#?}", table);
     }
 }
@@ -474,7 +474,7 @@ wasm::call:alt /
     let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
 
     let mut ast = tests::get_ast(script, &mut err);
-    let table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
+    let table = verifier::build_symbol_table(&mut ast, &HashMap::default(), false, &mut err);
     debug!("{:#?}", table);
 
     // 7 scopes: whamm, strcmp, drop_args, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt, probe itself
@@ -492,7 +492,7 @@ wasm::call:alt /
 
 fn is_valid_script(script: &str, err: &mut ErrorGen) -> bool {
     let mut ast = tests::get_ast(script, err);
-    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), err);
+    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), false, err);
     verifier::type_check(&mut ast, &mut table, err).0
 }
 
@@ -527,11 +527,12 @@ pub fn test_template() {
         }
     "#;
     let mut ast = tests::get_ast(script, &mut err);
-    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), false, &mut err);
     verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(!err.has_errors);
 }
+
 #[test]
 pub fn test_expect_fatal() {
     let result = std::panic::catch_unwind(|| {
@@ -564,7 +565,7 @@ pub fn expect_fatal_error() {
         }
     "#;
     let mut ast = tests::get_ast(script, &mut err);
-    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), false, &mut err);
     verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(err.has_errors);
@@ -586,7 +587,7 @@ pub fn test_recursive_calls() {
         }
     "#;
     let mut ast = tests::get_ast(script, &mut err);
-    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), false, &mut err);
     verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(!err.has_errors);
@@ -605,7 +606,7 @@ pub fn testing_map() {
     "#;
 
     let mut ast = tests::get_ast(script, &mut err);
-    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), false, &mut err);
     verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(!err.has_errors);
@@ -621,7 +622,7 @@ pub fn test_report_decl() {
             report var b: bool;
         }"#;
     let mut ast = tests::get_ast(script, &mut err);
-    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), false, &mut err);
     verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(!err.has_errors);
@@ -651,12 +652,10 @@ wasm:opcode:*:before / toggle.should_inject(fid as i32, @static toggle.get_value
             TOGGLE_PATH
         )
     });
-    let toggle_lib: HashMap<String, (Option<String>, Module)> = HashMap::from([(
-        "toggle".to_string(),
-        (None, Module::parse(&toggle_bytes, true, false).unwrap()),
-    )]);
+    let toggle_lib: HashMap<String, (Option<String>, &[u8])> =
+        HashMap::from([("toggle".to_string(), (None, toggle_bytes.as_slice()))]);
 
-    let mut table = verifier::build_symbol_table(&mut ast, &toggle_lib, &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &toggle_lib, false, &mut err);
     verifier::type_check(&mut ast, &mut table, &mut err);
     err.report();
     assert!(err.has_errors);

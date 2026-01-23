@@ -11,7 +11,6 @@ use crate::verifier::types::{Record, SymbolTable};
 use pest::error::LineColLocation;
 use std::collections::{HashMap, HashSet};
 use std::vec;
-use wirm::Module;
 
 const UNEXPECTED_ERR_MSG: &str =
     "TypeChecker: Looks like you've found a bug...please report this behavior! Exiting now...";
@@ -27,12 +26,14 @@ pub fn type_check(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> 
 
 pub fn build_symbol_table(
     ast: &mut Whamm,
-    user_libs: &HashMap<String, (Option<String>, Module)>,
+    user_libs: &HashMap<String, (Option<String>, &[u8])>,
+    libs_as_components: bool,
     err: &mut ErrorGen,
 ) -> SymbolTable {
     let mut visitor = SymbolTableBuilder {
         table: SymbolTable::new(),
         user_libs,
+        libs_as_components,
         err,
         curr_whamm: None,
         curr_script: None,
