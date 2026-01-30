@@ -40,7 +40,9 @@ fn init() {
             *ran_init = true;
         }
     });
-    if ran { return }
+    if ran {
+        return;
+    }
 
     init_to_console();
     init_outfile();
@@ -89,12 +91,14 @@ fn init_outfile() {
                                 Ok(file) => Some(file),
                             };
                         } else {
-                            *outfile = Some(OpenOptions::new()
-                                .append(true)
-                                .open(outpath.clone())
-                                .unwrap_or_else(|_| panic!("cannot open file at: {}", outpath)));
+                            *outfile = Some(
+                                OpenOptions::new()
+                                    .append(true)
+                                    .open(outpath.clone())
+                                    .unwrap_or_else(|_| panic!("cannot open file at: {}", outpath)),
+                            );
                         }
-                    },
+                    }
                     Err(e) => {
                         println!("Could not open file due to error: {:?}", e);
                         panic!("exiting...");
@@ -118,8 +122,7 @@ fn print(str: &str) {
                 };
 
                 // Write to a file
-                out.write_all(str.as_bytes())
-                    .expect("write failed");
+                out.write_all(str.as_bytes()).expect("write failed");
             });
         }
     });
