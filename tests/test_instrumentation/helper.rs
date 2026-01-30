@@ -1,11 +1,11 @@
-use crate::util::{setup_logger, CORE_WASM_PATH};
+use crate::util::{CORE_WASM_PATH, setup_logger};
 use glob::{glob, glob_with};
 use log::{error, warn};
 use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use whamm::api::instrument::{instrument_as_dry_run_rewriting, WhammError};
+use whamm::api::instrument::{WhammError, instrument_as_dry_run_rewriting};
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
 use wirm::Module;
 
@@ -477,7 +477,11 @@ fn run_testcase_wei(
         {
             continue;
         }
-        assert_eq!(2, parts.len(), "A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm");
+        assert_eq!(
+            2,
+            parts.len(),
+            "A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm"
+        );
         libs_to_link += &format!("+{}", parts.get(1).unwrap());
     }
 

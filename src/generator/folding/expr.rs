@@ -1,7 +1,7 @@
 use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::parser::types::{
-    expr_to_val, BinOp, DataType, Definition, Expr, Location, NumLit, UnOp, Value,
+    BinOp, DataType, Definition, Expr, Location, NumLit, UnOp, Value, expr_to_val,
 };
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::{Record, SymbolTable};

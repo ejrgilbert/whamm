@@ -3,8 +3,8 @@ use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::utils::{
-    emit_body, emit_expr, emit_global_getter, emit_probes, emit_stmt, whamm_type_to_wasm_global,
-    EmitCtx,
+    EmitCtx, emit_body, emit_expr, emit_global_getter, emit_probes, emit_stmt,
+    whamm_type_to_wasm_global,
 };
 use crate::emitter::{Emitter, InjectStrategy};
 use crate::generator::ast::{Probe, Script, WhammParams};
@@ -16,6 +16,7 @@ use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Location, Stat
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use log::debug;
 use std::collections::HashSet;
+use wirm::InitInstr;
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::{FunctionID, LocalID};
 use wirm::ir::module::Module;
@@ -25,7 +26,6 @@ use wirm::ir::types::{
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{Instrumenter, Opcode};
 use wirm::wasmparser::MemArg;
-use wirm::InitInstr;
 
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
@@ -111,10 +111,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                     self.emit_bound_fn(context, f)
                 } else {
                     unreachable!(
-                            "{} \
+                        "{} \
                         Provided fn, but could not find a context to provide the definition, context: {}",
-                            UNEXPECTED_ERR_MSG, context
-                        );
+                        UNEXPECTED_ERR_MSG, context
+                    );
                 }
             }
             Definition::CompilerStatic => None, // already handled
@@ -294,7 +294,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         if context == "whamm" && f.name.name == "strcmp" {
             self.emit_whamm_strcmp_fn(f)
         } else {
-            panic!("Provided function, but could not find a context to provide the definition, context: {context}");
+            panic!(
+                "Provided function, but could not find a context to provide the definition, context: {context}"
+            );
         }
     }
 
@@ -661,11 +663,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         );
         start.finish_instr();
 
-        if was_created {
-            Some(start_fid)
-        } else {
-            None
-        }
+        if was_created { Some(start_fid) } else { None }
     }
 
     // =============================

@@ -1,9 +1,9 @@
 use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
+use crate::emitter::Emitter;
 use crate::emitter::rewriting::rules::{LocInfo, MatchState, ProbeRule, StackVal};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
-use crate::emitter::Emitter;
 use crate::generator::ast::Probe;
 use crate::generator::folding::expr::ExprFolder;
 use crate::generator::rewriting::simple_ast::SimpleAST;
@@ -466,7 +466,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
 
     fn emit_body(&mut self) -> bool {
         if let Some((state_init, body, ..)) = &mut self.curr_probe {
-            if let Some(ref mut body) = body {
+            if let Some(body) = body {
                 self.emitter.init_probe_state(state_init, self.err);
                 self.emitter.emit_body(body, self.err)
             } else {
@@ -498,7 +498,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_probe_as_if(&mut self) -> bool {
-        if let Some((state_init, Some(ref mut body), Some(ref mut pred))) = &mut self.curr_probe {
+        if let Some((state_init, Some(body), Some(pred))) = &mut self.curr_probe {
             match (self.config.no_body, self.config.no_pred) {
                 // emit as normal
                 (false, false) => {
@@ -532,7 +532,7 @@ impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 
     fn emit_probe_as_if_else(&mut self) -> bool {
-        if let Some((state_init, Some(ref mut body), Some(ref mut pred))) = &mut self.curr_probe {
+        if let Some((state_init, Some(body), Some(pred))) = &mut self.curr_probe {
             match (self.config.no_body, self.config.no_pred) {
                 // normal
                 (false, false) => {

@@ -1,17 +1,17 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{long_line, magenta, white};
-use crate::parser::provider_handler::{get_matches, yml_to_providers, PrintInfo, ProviderDef};
+use crate::parser::provider_handler::{PrintInfo, ProviderDef, get_matches, yml_to_providers};
 use crate::parser::types;
 use crate::parser::types::Statement::LibImport;
 use crate::parser::types::{
-    print_bound_vars, print_fns, Annotation, BinOp, Block, DataType, Definition, Expr, FnId,
-    Location, NumFmt, NumLit, ProbeRule, Rule, RulePart, Script, Statement, UnOp, Value, Whamm,
-    WhammParser, PRATT_PARSER,
+    Annotation, BinOp, Block, DataType, Definition, Expr, FnId, Location, NumFmt, NumLit,
+    PRATT_PARSER, ProbeRule, Rule, RulePart, Script, Statement, UnOp, Value, Whamm, WhammParser,
+    print_bound_vars, print_fns,
 };
 use log::trace;
+use pest::Parser;
 use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
-use pest::Parser;
 use std::process::exit;
 use std::str::FromStr;
 use termcolor::{BufferWriter, ColorChoice, WriteColor};
@@ -316,11 +316,7 @@ pub fn handle_probe_def(
             let this_body = if matches!(n.as_rule(), Rule::block) {
                 let loc = LineColLocation::from(n.as_span());
                 let block = handle_body(&mut n.into_inner(), loc, err);
-                if block.is_empty() {
-                    None
-                } else {
-                    Some(block)
-                }
+                if block.is_empty() { None } else { Some(block) }
             } else {
                 None
             };
@@ -1620,7 +1616,7 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                 Some(LineColLocation::from(pair.as_span())),
                 vec![Rule::int_hex, Rule::int_bin, Rule::int],
                 vec![rule],
-            )])
+            )]);
         }
     };
 

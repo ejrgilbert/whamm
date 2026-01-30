@@ -578,7 +578,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     match (ret_ty_conseq, ret_ty_alt) {
                         (None, _) | (_, None) => return None,
                         (Some(DataType::AssumeGood), _) | (_, Some(DataType::AssumeGood)) => {
-                            return Some(DataType::AssumeGood)
+                            return Some(DataType::AssumeGood);
                         }
                         (conseq, _) if conseq == empty_tuple.clone() => return empty_tuple.clone(),
                         (_, alt) if alt == empty_tuple.clone() => return empty_tuple.clone(),

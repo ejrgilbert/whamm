@@ -4,7 +4,7 @@ use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::{StringAddr, VAR_BLOCK_BASE_VAR};
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::tag_handler::get_tag_for;
-use crate::emitter::utils::{emit_stmt, EmitCtx};
+use crate::emitter::utils::{EmitCtx, emit_stmt};
 use crate::generator::ast::{UnsharedVar, WhammParams};
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::lang_features::report_vars::ReportVars;

@@ -7,7 +7,7 @@ use clap::Parser;
 use cli::LibraryLinkStrategyArg;
 use std::path::PathBuf;
 use std::process::exit;
-use whamm::api::instrument::{instrument_with_config, Config, LibraryLinkStrategy};
+use whamm::api::instrument::{Config, LibraryLinkStrategy, instrument_with_config};
 use whamm::api::utils::{print_info, run_wast_tests_at, write_to_file};
 
 const ENABLE_WEI_ALT: bool = false;
@@ -52,7 +52,9 @@ fn try_main() -> Result<(), failure::Error> {
             let app_path = if let Some(app_path) = args.app {
                 app_path
             } else if !args.wei {
-                panic!("When performing bytecode rewriting (not the wei target), a path to the target application is required!\nSee `whamm instr --help`")
+                panic!(
+                    "When performing bytecode rewriting (not the wei target), a path to the target application is required!\nSee `whamm instr --help`"
+                )
             } else {
                 "".to_string()
             };

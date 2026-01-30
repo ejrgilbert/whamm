@@ -10,9 +10,9 @@ use itertools::Itertools;
 use log::trace;
 use parser_types::{Block, DataType, Expr, Fn, Script, Statement, Value, Whamm};
 use std::collections::{HashMap, HashSet};
+use wirm::Module;
 use wirm::ir::id::FunctionID;
 use wirm::wasmparser::ExternalKind;
-use wirm::Module;
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
 
@@ -233,7 +233,9 @@ impl SymbolTableBuilder<'_, '_, '_> {
                     modes.push(id);
                 }
                 _ => {
-                    unreachable!("{UNEXPECTED_ERR_MSG} Should be able to find the current event in the symbol table.");
+                    unreachable!(
+                        "{UNEXPECTED_ERR_MSG} Should be able to find the current event in the symbol table."
+                    );
                 }
             }
 
@@ -257,7 +259,9 @@ impl SymbolTableBuilder<'_, '_, '_> {
             // need to use this as the probe's scope ID
             probes.len()
         } else {
-            unreachable!("{UNEXPECTED_ERR_MSG} Should be able to find the probe kind in the symbol table (already visited that scope)!");
+            unreachable!(
+                "{UNEXPECTED_ERR_MSG} Should be able to find the probe kind in the symbol table (already visited that scope)!"
+            );
         };
         probe.scope_id = probe_scope_id;
         let probe_name = probe_scope_id.to_string();
@@ -279,7 +283,9 @@ impl SymbolTableBuilder<'_, '_, '_> {
             // add probe to the current mode
             probes.push(id);
         } else {
-            unreachable!("{UNEXPECTED_ERR_MSG} Should be able to find the probe kind in the symbol table (already visited that scope)!");
+            unreachable!(
+                "{UNEXPECTED_ERR_MSG} Should be able to find the probe kind in the symbol table (already visited that scope)!"
+            );
         };
 
         self.curr_probe = Some(id);
@@ -404,7 +410,8 @@ impl SymbolTableBuilder<'_, '_, '_> {
                     }
                     //case for curr not having a loc -> shouldn't happen: either user def without a loc or 2 comp def with same name
                     (None, _) => {
-                        unreachable!("No location found for function conflicting with compiler def function. User-def fn has no location, or 2 compiler-def functions with same ID"
+                        unreachable!(
+                            "No location found for function conflicting with compiler def function. User-def fn has no location, or 2 compiler-def functions with same ID"
                         );
                     }
                 }

@@ -141,7 +141,9 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
             // only will emit one alt probe!
             // The last alt probe in the list will be emitted.
             if probes.len() > 1 {
-                warn!("Detected multiple `alt` probes, will only emit the last one and ignore the rest!")
+                warn!(
+                    "Detected multiple `alt` probes, will only emit the last one and ignore the rest!"
+                )
             }
             if let Some(probe) = probes.last_mut() {
                 is_success &= self.visit_probe(probe);

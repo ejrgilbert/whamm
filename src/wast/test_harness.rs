@@ -6,7 +6,7 @@ use crate::common::instr::{run, try_path};
 use crate::common::metrics::Metrics;
 use crate::parser::yml_processor::pull_all_yml_files;
 use log::{debug, error};
-use std::fs::{remove_dir_all, File};
+use std::fs::{File, remove_dir_all};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -85,10 +85,13 @@ fn setup(wast_tests: &Vec<PathBuf>) -> Result<(Vec<String>, Vec<String>), std::i
 
 fn run_wast_tests(wast_should_fail: Vec<String>, wast_should_pass: Vec<String>) {
     let inters = get_available_interpreters();
-    assert!(!inters.is_empty(), "No supported interpreters are configured, fail!\n\
+    assert!(
+        !inters.is_empty(),
+        "No supported interpreters are configured, fail!\n\
         To fix, add an executable binary under {INT_PATH} for one of the following interpreter options:\n\
         1. the wizeng interpreter, named '{WIZENG_SPEC_INT}'. https://github.com/titzer/wizard-engine/tree/master\n\
-        2. the Wasm reference interpreter, named '{WASM_REF_INT}'. https://github.com/WebAssembly/spec/tree/main/interpreter\n");
+        2. the Wasm reference interpreter, named '{WASM_REF_INT}'. https://github.com/WebAssembly/spec/tree/main/interpreter\n"
+    );
 
     println!("\n>>> Running wast on the following available interpreters:");
     for (i, (inter, _args)) in inters.iter().enumerate() {
@@ -107,7 +110,9 @@ fn run_wast_tests_that_should_fail(inters: &[(String, Vec<String>)], wast_files:
         for wast in wast_files.iter() {
             let res = run_wast_test(inter, args, wast);
             if res.status.success() {
-                error!("The following command should have FAILED (ran un-instrumented): '{inter} {wast}'");
+                error!(
+                    "The following command should have FAILED (ran un-instrumented): '{inter} {wast}'"
+                );
             }
             assert!(!res.status.success());
         }

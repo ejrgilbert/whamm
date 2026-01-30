@@ -1,9 +1,10 @@
 [workspace]
 members = ["whamm_core", "wasmtime-runner", "wasm_playground/control_flow"]
+resolver = "3"
 
 [workspace.package]
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [workspace.dependencies]
 failure = "0.1.8"

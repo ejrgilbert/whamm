@@ -1,6 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::emitter::rewriting::rules::{
-    get_loc_info_for_active_probes, get_ty_info_for_instr, LocInfo, MatchState, ProbeRule, StackVal,
+    LocInfo, MatchState, ProbeRule, StackVal, get_loc_info_for_active_probes, get_ty_info_for_instr,
 };
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use std::collections::HashMap;
@@ -10,9 +10,9 @@ use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::utils::{
-    block_type_to_wasm, emit_expr, emit_probes, emit_stack_vals, emit_stmt, EmitCtx,
+    EmitCtx, block_type_to_wasm, emit_expr, emit_probes, emit_stack_vals, emit_stmt,
 };
-use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
+use crate::emitter::{Emitter, InjectStrategy, configure_flush_routines};
 use crate::generator::ast::UnsharedVar;
 use crate::generator::folding::expr::ExprFolder;
 use crate::generator::rewriting::simple_ast::SimpleAST;
@@ -27,6 +27,7 @@ use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use itertools::Itertools;
 use log::warn;
 use std::iter::Iterator;
+use wirm::Location;
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::{FunctionID, LocalID, TypeID};
 use wirm::ir::module::Module;
@@ -35,7 +36,6 @@ use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as WirmIter
 use wirm::iterator::module_iterator::ModuleIterator;
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{Instrumenter, MacroOpcode, Opcode};
-use wirm::Location;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -721,7 +721,9 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
             } else {
                 // neither exists, unsure how to support this...this would be a library instead of an application I guess?
                 // Maybe the answer is to expose query functions that can give a status update of the `report` vars?
-                unimplemented!("Your target Wasm has no main or start function...we do not support report variables in this scenario.")
+                unimplemented!(
+                    "Your target Wasm has no main or start function...we do not support report variables in this scenario."
+                )
             };
             let mut main = self.app_iter.module.functions.get_fn_modifier(fid).unwrap();
 

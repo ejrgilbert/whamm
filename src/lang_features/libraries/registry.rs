@@ -1,7 +1,7 @@
 use crate::common::error::ErrorGen;
 use std::collections::{HashMap, HashSet};
-use wasi_common::sync::{add_to_linker, WasiCtxBuilder};
 use wasi_common::WasiCtx;
+use wasi_common::sync::{WasiCtxBuilder, add_to_linker};
 use wasmtime::*;
 
 pub(crate) struct WasmService {

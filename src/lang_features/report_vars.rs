@@ -601,7 +601,9 @@ impl ReportVars {
         err: &mut ErrorGen,
     ) -> u32 {
         let Some(flush_metadata_fid) = self.flush_tracker.flush_var_metadata_fid else {
-            unreachable!("Should have the flush variable metadata function ID, but it's not been generated yet.");
+            unreachable!(
+                "Should have the flush variable metadata function ID, but it's not been generated yet."
+            );
         };
         let mem_arg = MemArg {
             align: 0,

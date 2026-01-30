@@ -7,14 +7,14 @@ use crate::verifier::types::VarAddr;
 use log::warn;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
+use wirm::Location;
 use wirm::ir::id::{FunctionID, GlobalID, TypeID};
+use wirm::ir::module::Module;
 use wirm::ir::module::module_functions::{FuncKind, ImportedFunction};
 use wirm::ir::module::module_globals::{GlobalKind, ImportedGlobal, LocalGlobal};
 use wirm::ir::module::module_types::Types;
-use wirm::ir::module::Module;
 use wirm::ir::types::{DataType as WirmType, InstrumentationMode};
 use wirm::wasmparser::{BlockType, BrTable, GlobalType, MemArg, Operator};
-use wirm::Location;
 
 pub fn get_loc_info_for_active_probes(
     app_wasm: &Module,
@@ -1827,7 +1827,7 @@ fn define_imm0_u32_imm1_u32(
 fn define_imm0<T>(
     value: T,
     _dt: DataType,
-    gen: &dyn Fn(T) -> Value,
+    r#gen: &dyn Fn(T) -> Value,
     loc_info: &mut LocInfo,
     all_params: &[WhammParam],
 ) {
@@ -1836,7 +1836,7 @@ fn define_imm0<T>(
             assert_eq!(n, 0);
             assert!(matches!(&param.ty, _dt));
 
-            define_imm_n(0, Some(gen(value)), loc_info);
+            define_imm_n(0, Some(r#gen(value)), loc_info);
             return;
         }
     }
@@ -3141,7 +3141,9 @@ impl LocInfo {
             if !other.args.is_empty() {
                 // assert that args are equivalent
                 if !self.args.iter().all(|item| other.args.contains(item)) {
-                    panic!("Emitter rules found different values for instruction args, please report this bug!");
+                    panic!(
+                        "Emitter rules found different values for instruction args, please report this bug!"
+                    );
                 }
             }
             // just keep self args the way it is (other clearly doesn't populate them)
@@ -3155,7 +3157,9 @@ impl LocInfo {
             if !other.results.is_empty() {
                 // assert that results are equivalent
                 if !self.results.iter().all(|item| other.results.contains(item)) {
-                    panic!("Emitter rules found different values for instruction results, please report this bug!");
+                    panic!(
+                        "Emitter rules found different values for instruction results, please report this bug!"
+                    );
                 }
             }
             // just keep self results the way it is (other clearly doesn't populate them)

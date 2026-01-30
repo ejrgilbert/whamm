@@ -3,8 +3,8 @@ use crate::parser::tests::setup_logger;
 use crate::parser::types::{Expr, NumLit, Rule, Value, WhammParser};
 use crate::parser::whamm_parser::{handle_float, handle_int};
 use log::error;
-use pest::iterators::Pair;
 use pest::Parser;
+use pest::iterators::Pair;
 
 #[test]
 #[rustfmt::skip]

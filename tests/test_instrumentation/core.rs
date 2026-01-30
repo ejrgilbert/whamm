@@ -1,7 +1,7 @@
 use crate::test_instrumentation::helper::{
-    run_basic_instrumentation, run_core_suite, run_script, run_whamm_bin, setup_fault_injection,
-    setup_numerics_monitors, setup_replay, setup_tests, setup_wizard_monitors,
-    DEFAULT_CORE_LIB_PATH, DEFAULT_DEFS_PATH,
+    DEFAULT_CORE_LIB_PATH, DEFAULT_DEFS_PATH, run_basic_instrumentation, run_core_suite,
+    run_script, run_whamm_bin, setup_fault_injection, setup_numerics_monitors, setup_replay,
+    setup_tests, setup_wizard_monitors,
 };
 use crate::util::setup_logger;
 use std::fs;

@@ -2,20 +2,20 @@
 use crate::api::instrument::Config;
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::metrics::Metrics;
+use crate::emitter::InjectStrategy;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
-use crate::emitter::InjectStrategy;
 use crate::generator::metadata_collector::MetadataCollector;
 use crate::generator::rewriting::init_generator::InitGenerator;
 use crate::generator::rewriting::instr_generator::InstrGenerator;
 use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
-use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::io::IOPackage;
-use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::MapLibPackage;
+use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::libraries::core::{LibPackage, WHAMM_CORE_LIB_NAME};
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::report_vars::ReportVars;
@@ -110,7 +110,11 @@ pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, Option<String>, 
     let mut res = vec![];
     for path in paths.iter() {
         let parts = path.split('=').collect::<Vec<&str>>();
-        assert_eq!(2, parts.len(), "A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm");
+        assert_eq!(
+            2,
+            parts.len(),
+            "A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm"
+        );
 
         let lib_name_chunk = parts.first().unwrap().to_string();
         let name_parts = lib_name_chunk.split('(').collect::<Vec<&str>>();
@@ -415,7 +419,7 @@ fn run_instr_wei(
         crate::lang_features::alloc_vars::wei::UnsharedVarHandler::new(target_wasm);
     let mut registry = WasmRegistry::default();
 
-    let mut gen = crate::generator::wei::WeiGenerator {
+    let mut r#gen = crate::generator::wei::WeiGenerator {
         emitter: ModuleEmitter::new(
             InjectStrategy::Wei,
             target_wasm,
@@ -436,7 +440,7 @@ fn run_instr_wei(
         curr_script_id: u8::MAX,
         unshared_var_handler: &mut wei_unshared_var_handler,
     };
-    gen.run(
+    r#gen.run(
         wiz_ast,
         used_funcs,
         used_report_dts,
@@ -530,11 +534,7 @@ fn run_instr_rewrite(
         metrics.end(&match_time);
     }
 
-    if err.has_errors {
-        Err(())
-    } else {
-        Ok(())
-    }
+    if err.has_errors { Err(()) } else { Ok(()) }
 }
 pub fn configure_init_func<'a>(
     init_func: FunctionBuilder<'a>,

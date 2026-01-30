@@ -1,6 +1,6 @@
-use crate::util::{print_side_effects, setup_logger, CORE_WASM_PATH};
+use crate::util::{CORE_WASM_PATH, print_side_effects, setup_logger};
 use whamm::api::instrument::{
-    instrument_as_dry_run_rewriting, instrument_as_dry_run_wei, WhammError,
+    WhammError, instrument_as_dry_run_rewriting, instrument_as_dry_run_wei,
 };
 
 // TODO add tests for:

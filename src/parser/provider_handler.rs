@@ -10,8 +10,8 @@ use crate::parser::types::{
 use crate::parser::whamm_parser::{expr_from_pair, handle_param, type_from_rule};
 use glob::Pattern;
 use log::error;
-use pest::iterators::Pair;
 use pest::Parser;
+use pest::iterators::Pair;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};

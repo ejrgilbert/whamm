@@ -3,15 +3,15 @@
 use crate::api::get_defs_and_lib;
 use crate::common::error::{CodeLocation, ErrorGen, WhammError as ErrorInternal};
 use crate::common::instr;
-use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
+use crate::emitter::tag_handler::{LineCol, Reason, get_reasons_from_tag};
 use log::error;
 use std::collections::HashMap;
 use std::process::exit;
+use wirm::Module;
 use wirm::ir::module::module_types::Types;
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
 use wirm::ir::types::{DataType as WirmType, FuncInstrMode, InstrumentationMode};
 use wirm::wasmparser::{ExternalKind, TypeRef};
-use wirm::Module;
 
 pub const MAX_ERRORS: i32 = 15;
 
@@ -252,7 +252,9 @@ impl Config {
         }
 
         if no_bundle && (!no_body || !no_pred) {
-            panic!("Cannot disable argument bundling without also disabling body and predicate emitting! Otherwise invalid Wasm would be generated.")
+            panic!(
+                "Cannot disable argument bundling without also disabling body and predicate emitting! Otherwise invalid Wasm would be generated."
+            )
         }
         Self {
             as_monitor_module,

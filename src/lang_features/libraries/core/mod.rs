@@ -4,8 +4,8 @@ pub mod maps;
 use crate::common::error::ErrorGen;
 use crate::generator::ast::AstVisitor;
 use std::collections::HashMap;
-use wirm::ir::id::FunctionID;
 use wirm::Module;
+use wirm::ir::id::FunctionID;
 
 pub const WHAMM_CORE_LIB_NAME: &str = "whamm_core";
 pub const WHAMM_CORE_LIB_MEM_NAME: &str = "memory";
@@ -22,13 +22,13 @@ pub trait LibPackage: AstVisitor<bool> {
     fn set_adapter_usage(&mut self, is_used: bool);
     fn set_global_adapter_usage(&mut self, is_used: bool);
     fn define_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen)
-        -> Vec<FunctionID>;
+    -> Vec<FunctionID>;
 }
 pub trait LibAdapter {
     fn get_funcs(&self) -> &HashMap<String, u32>;
     fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32>;
     fn define_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen)
-        -> Vec<FunctionID>;
+    -> Vec<FunctionID>;
     fn get_fn_names(&self) -> Vec<String> {
         self.get_funcs().keys().cloned().collect()
     }

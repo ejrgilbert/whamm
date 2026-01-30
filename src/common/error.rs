@@ -56,11 +56,7 @@ impl ErrorGen {
             self.add_error(error);
         }
 
-        if self.too_many {
-            Err(())
-        } else {
-            Ok(())
-        }
+        if self.too_many { Err(()) } else { Ok(()) }
     }
 
     pub fn set_script_text(&mut self, script_text: String) {
@@ -489,7 +485,7 @@ impl CodeLocation {
         if let Some(line) = &self.line_str {
             // define common vars for printing
             let (ls, _) = self.start();
-            if let (LineColLocation::Span(_, (le, _)), Some(ref line2)) =
+            if let (LineColLocation::Span(_, (le, _)), Some(line2)) =
                 (&self.line_col, &self.line2_str)
             {
                 let has_line_gap = le - ls > 1;
@@ -568,15 +564,16 @@ impl CodeLocation {
 
         let mut start_col = *start_col;
         let end = match &self.line_col {
-            LineColLocation::Span(_, (_, mut end)) => {
-                let inverted_cols = start_col > end;
+            LineColLocation::Span(_, (_, end)) => {
+                let mut end_inner = *end;
+                let inverted_cols = start_col > end_inner;
                 if inverted_cols {
-                    mem::swap(&mut start_col, &mut end);
+                    mem::swap(&mut start_col, &mut end_inner.clone());
                     start_col -= 1;
-                    end += 1;
+                    end_inner += 1;
                 }
 
-                Some(end)
+                Some(end_inner)
             }
             _ => None,
         };
@@ -856,7 +853,7 @@ impl WarnType {
     }
     pub fn message(&self) -> Cow<'_, str> {
         match self {
-            WarnType::ProbeWarning { ref message } | WarnType::TypeCheckWarning { ref message } => {
+            WarnType::ProbeWarning { message } | WarnType::TypeCheckWarning { message } => {
                 Cow::Borrowed(message)
             }
         }
@@ -915,27 +912,27 @@ impl ErrorType {
     }
     pub fn message(&self) -> Cow<'_, str> {
         match self {
-            ErrorType::UnimplementedError { ref message }
-            | ErrorType::InternalError { ref message }
-            | ErrorType::ArithmeticError { ref message }
-            | ErrorType::InstrumentationError { ref message } => Cow::Borrowed(message),
+            ErrorType::UnimplementedError { message }
+            | ErrorType::InternalError { message }
+            | ErrorType::ArithmeticError { message }
+            | ErrorType::InstrumentationError { message } => Cow::Borrowed(message),
             ErrorType::ParsingError {
-                ref positives,
-                ref negatives,
-                ref message,
+                positives,
+                negatives,
+                message,
             } => Cow::Owned(Self::parsing_error_message(
                 message,
                 positives,
                 negatives,
                 |r| format!("{:?}", r),
             )),
-            ErrorType::TypeCheckError { ref message } | ErrorType::WeiError { ref message } => {
+            ErrorType::TypeCheckError { message } | ErrorType::WeiError { message } => {
                 Cow::Borrowed(message)
             }
-            ErrorType::DuplicateIdentifierError { ref duplicated_id } => {
+            ErrorType::DuplicateIdentifierError { duplicated_id } => {
                 Cow::Owned(format!("duplicate definitions with name `{duplicated_id}`"))
             }
-            ErrorType::Error { ref message } => {
+            ErrorType::Error { message } => {
                 if let Some(msg) = message {
                     Cow::Borrowed(msg)
                 } else {

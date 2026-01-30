@@ -1,22 +1,18 @@
 use std::iter::zip;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn calc(a: i32, b: i32) -> i32 {
-    if a > 5 {
-        a + b
-    } else {
-        a * b
-    }
+    if a > 5 { a + b } else { a * b }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn print_x(opt: Opt, x: u32) {
     for _ in 0..x {
         println!("{} world!", opt_str(&opt))
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn opt_str(opt: &Opt) -> String {
     match opt {
         Opt::Hi => "hi".to_string(),
@@ -25,7 +21,7 @@ fn opt_str(opt: &Opt) -> String {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn main() {
     println!("==== CALC ====");
     let times = 10;

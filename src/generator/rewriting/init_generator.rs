@@ -4,13 +4,13 @@
 
 use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::ModuleEmitter;
-use crate::generator::{emit_needed_funcs, GeneratingVisitor};
+use crate::generator::{GeneratingVisitor, emit_needed_funcs};
 use crate::lang_features::report_vars::LocationData;
 use crate::parser::types::{DataType, Location, Statement, Value, Whamm, WhammVisitorMut};
 use crate::verifier::types::Record;
 use std::collections::{HashMap, HashSet};
-use wirm::ir::id::FunctionID;
 use wirm::Module;
+use wirm::ir::id::FunctionID;
 
 /// Serves as the first phase of instrumenting a module by setting up
 /// the groundwork.

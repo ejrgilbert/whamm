@@ -5,7 +5,7 @@ use crate::emitter::memory_allocator::{MemoryAllocator, StringAddr, WASM_PAGE_SI
 use crate::emitter::utils::whamm_type_to_wasm_global;
 use crate::generator::ast::UnsharedVar;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
-use crate::lang_features::report_vars::{Metadata, ReportVars, NULL_PTR_IN_MEM};
+use crate::lang_features::report_vars::{Metadata, NULL_PTR_IN_MEM, ReportVars};
 use crate::parser::types::{DataType, Location, Value};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use std::collections::HashMap;

@@ -3,7 +3,7 @@ use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::generator::ast::{Probe, Script, WhammParams};
-use crate::generator::{create_curr_loc, emit_needed_funcs, GeneratingVisitor};
+use crate::generator::{GeneratingVisitor, create_curr_loc, emit_needed_funcs};
 use crate::lang_features::alloc_vars::wei::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::LocationData;
@@ -11,9 +11,9 @@ use crate::parser::types::{Block, DataType, Expr, Location, Statement, Value, Wh
 use crate::verifier::types::Record;
 use log::trace;
 use std::collections::{HashMap, HashSet};
+use wirm::Module;
 use wirm::ir::id::{FunctionID, LocalID};
 use wirm::ir::types::DataType as WirmType;
-use wirm::Module;
 
 pub struct WeiGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm> {
     pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,

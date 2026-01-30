@@ -17,7 +17,10 @@ pub fn pull_all_yml_files(base_dir_tmp: &str) -> Vec<String> {
     pull_yml(&mut yml_files, &format!("{base_dir}/providers"));
 
     if yml_files.is_empty() {
-        panic!("[ERROR] Could not load provider definitions from base directory: {}\n\tPlease make sure you follow the expected directory structure!\n\tExiting now...", base_dir);
+        panic!(
+            "[ERROR] Could not load provider definitions from base directory: {}\n\tPlease make sure you follow the expected directory structure!\n\tExiting now...",
+            base_dir
+        );
     }
     yml_files
 }

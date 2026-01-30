@@ -503,7 +503,9 @@ impl Scope {
 
     pub fn next_child(&mut self) -> Option<&usize> {
         if !self.has_next() {
-            unreachable!("{UNEXPECTED_ERR_MSG} Scope::next_child() should never be called without first checking that there is one.");
+            unreachable!(
+                "{UNEXPECTED_ERR_MSG} Scope::next_child() should never be called without first checking that there is one."
+            );
         }
 
         let next_child = self.children.get(self.next).unwrap();

@@ -10,7 +10,7 @@ use crate::common::error::ErrorGen;
 use crate::common::terminal::{green, grey_italics, magenta, white, yellow};
 use crate::generator::ast::StackReq;
 use crate::parser::provider_handler::{
-    get_matches, BoundVar, Event, Package, Probe, Provider, ProviderDef,
+    BoundVar, Event, Package, Probe, Provider, ProviderDef, get_matches,
 };
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
@@ -1078,11 +1078,7 @@ impl Value {
                             Err(e) => msg = e, // ignore (might be able to cast other indices of the tuple)
                         }
                     }
-                    if !success {
-                        Err(msg)
-                    } else {
-                        Ok(())
-                    }
+                    if !success { Err(msg) } else { Ok(()) }
                 } else {
                     Err(format!("{ty} to {target}"))
                 }
