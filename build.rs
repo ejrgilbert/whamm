@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     bundle_defs(defs_dir, &mut out_file, "DEF_YAMLS");
 
     // -- bundle the whamm_core library
-    let whamm_core_path = "whamm_core/target/wasm32-wasip1/release/whamm_core.wasm";
+    let whamm_core_path = "target/wasm32-wasip1/release/whamm_core.wasm";
     bundle_wasm(
         whamm_core_path,
         build_core_library,
