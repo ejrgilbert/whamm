@@ -3,7 +3,6 @@
 echo "[INFO] Build"
 cargo build
 
-
 echo "[INFO] Run fmt"
 cargo fmt --all -- --check
 

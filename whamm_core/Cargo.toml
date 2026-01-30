@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-once_cell = "1.3.1"
-wasm-bindgen = "0.2"
-log = "0.4.20"
-itertools = "0.14.0"
+once_cell = { workspace = true }
+wasm-bindgen = { workspace = true }
+log = { workspace = true }
+itertools = { workspace = true }
