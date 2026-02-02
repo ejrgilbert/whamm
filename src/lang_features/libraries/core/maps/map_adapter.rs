@@ -11,6 +11,7 @@ use wirm::ir::types::DataType as WirmType;
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{Instrumenter, MacroOpcode};
 use wirm::{Location as WirmLocation, Module, Opcode};
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 
 const UNEXPECTED_ERR_MSG: &str =
     "MapLibAdapter: Looks like you've found a bug...please report this behavior!";
@@ -45,7 +46,10 @@ impl LibAdapter for MapLibAdapter {
     fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32> {
         &mut self.funcs
     }
-    fn define_helper_funcs(&mut self, app_wasm: &mut Module, _: &mut ErrorGen) -> Vec<FunctionID> {
+    fn define_helper_funcs(&mut self,
+                           _: &UtilsAdapter,
+                           _: &mut MemoryAllocator,
+                           app_wasm: &mut Module, _: &mut ErrorGen) -> Vec<FunctionID> {
         self.emit_helper_funcs(app_wasm)
     }
 }
@@ -158,6 +162,7 @@ impl MapLibAdapter {
         func: &mut T,
         mem_allocator: &MemoryAllocator,
     ) -> LocalID {
+        // todo
         let (Some(curr_str_offset), Some(curr_str_len)) = (self.curr_str_offset, self.curr_str_len)
         else {
             panic!("Expected the offset and len to be set for the key String!");
@@ -169,15 +174,17 @@ impl MapLibAdapter {
         func.u32_const(curr_str_offset).local_set(src_offset);
         func.u32_const(curr_str_len).local_set(src_len);
 
-        mem_allocator.copy_to_mem_and_save(
-            self.instr_mem as u32,
-            src_offset,
-            src_len,
-            self.lib_mem as u32,
-            MAP_LIB_MEM_OFFSET,
-            func,
-        );
-        src_len
+        // todo
+        todo!()
+        // mem_allocator.copy_to_mem_and_save(
+        //     self.instr_mem as u32,
+        //     src_offset,
+        //     src_len,
+        //     self.lib_mem as u32,
+        //     MAP_LIB_MEM_OFFSET,
+        //     func,
+        // );
+        // src_len
     }
 
     fn handle_string_key_after_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -186,7 +193,9 @@ impl MapLibAdapter {
         func: &mut T,
         mem_allocator: &MemoryAllocator,
     ) {
-        mem_allocator.copy_back_saved_mem(src_len, self.lib_mem as u32, MAP_LIB_MEM_OFFSET, func);
+        // todo
+        todo!()
+        // mem_allocator.copy_back_saved_mem(src_len, self.lib_mem as u32, MAP_LIB_MEM_OFFSET, func);
     }
 
     pub fn map_insert<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(

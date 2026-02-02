@@ -33,6 +33,8 @@ use wirm::ir::types::{DataType as WirmType, InitExpr, Value as WirmValue};
 use wirm::opcode::Instrumenter;
 use wirm::wasmparser::MemoryType;
 use wirm::{InitInstr, Module, Opcode};
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
+use crate::lang_features::libraries::core::utils::UtilsPackage;
 
 const ENGINE_BUFFER_NAME: &str = "whamm_buffer";
 const ENGINE_BUFFER_START_NAME: &str = "whamm_buffer:start";
@@ -283,12 +285,14 @@ pub fn run(
     });
     let mut io_package = IOPackage::new(*mem_allocator.mem_tracker_global);
     let mut core_packages: Vec<&mut dyn LibPackage> = vec![&mut map_package, &mut io_package];
+    let mut utils_pkg = UtilsPackage::new(*mem_allocator.mem_tracker_global);
     let mut injected_core_lib_funcs = crate::lang_features::libraries::actions::link_core_lib(
         config.library_strategy,
         &metadata_collector.ast,
         target_wasm,
         core_lib,
         &mut mem_allocator,
+        &mut utils_pkg,
         &mut core_packages,
         metadata_collector.err,
     );

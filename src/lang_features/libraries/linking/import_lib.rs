@@ -14,6 +14,9 @@ use std::collections::HashSet;
 use wirm::ir::id::FunctionID;
 use wirm::wasmparser::{ExternalKind, MemoryType};
 use wirm::{DataType, Module};
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
+use crate::lang_features::libraries::core::utils::UtilsPackage;
+
 // Some documentation on why it's difficult to only import the *used* functions.
 //
 // TLDR; Rust ownership.
@@ -32,15 +35,37 @@ pub fn link_core_lib(
     app_wasm: &mut Module,
     core_lib: &[u8],
     mem_allocator: &mut MemoryAllocator,
+    utils: &mut UtilsPackage,
     packages: &mut [&mut dyn LibPackage],
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
     let mut injected_funcs = vec![];
+
+    let mut used_a_pkg = false;
+    let mut should_use = vec![];
     for package in packages.iter_mut() {
         package.visit_ast(ast);
         package.set_adapter_usage(package.is_used());
         package.set_global_adapter_usage(package.is_used_in_global_scope());
-        if package.is_used() {
+        used_a_pkg |= package.is_used();
+
+        should_use.push(package.is_used());
+    }
+
+    if used_a_pkg {
+        let core_lib = Module::parse(core_lib, false, false).unwrap();
+        import_lib_package(
+            app_wasm,
+            &None,
+            WHAMM_CORE_LIB_NAME.to_string(),
+            &None,
+            &core_lib,
+            utils,
+        )
+    }
+
+    for (package, is_used) in packages.iter_mut().zip(should_use.iter()) {
+        if *is_used {
             let core_lib = Module::parse(core_lib, false, false).unwrap();
             if package.import_memory() {
                 let lib_mem_id =
@@ -48,12 +73,18 @@ pub fn link_core_lib(
                 package.set_lib_mem_id(lib_mem_id);
             }
             package.set_instr_mem_id(mem_allocator.mem_id as i32);
-            injected_funcs.extend(import_lib_package(
+            import_lib_package(
                 app_wasm,
                 &None,
                 WHAMM_CORE_LIB_NAME.to_string(),
                 &None,
                 &core_lib,
+                *package
+            );
+            injected_funcs.extend(gen_package_helpers(
+                app_wasm,
+                mem_allocator,
+                &utils.adapter,
                 *package,
                 err,
             ));
@@ -103,17 +134,25 @@ fn import_lib_memory(app_wasm: &mut Module, loc: &Option<Location>, lib_name: St
     mem_id as i32
 }
 
+fn gen_package_helpers(
+    app_wasm: &mut Module,
+    mem_allocator: &mut MemoryAllocator,
+    utils: &UtilsAdapter,
+    package: &mut dyn LibPackage,
+    err: &mut ErrorGen,
+) -> Vec<FunctionID> {
+    // enable the library to define in-module helper functions
+    package.define_helper_funcs(utils, mem_allocator, app_wasm, err)
+}
+
 fn import_lib_package(
     app_wasm: &mut Module,
     loc: &Option<Location>,
     lib_name: String,
     lib_name_import_override: &Option<String>,
     lib_wasm: &Module,
-    package: &mut dyn LibPackage,
-    err: &mut ErrorGen,
-) -> Vec<FunctionID> {
-    trace!("Enter import_lib");
-
+    package: &mut dyn LibPackage
+) {
     // should only import the EXPORTED contents of the lib_wasm
     let added = import_lib_fn_names(
         app_wasm,
@@ -129,12 +168,6 @@ fn import_lib_package(
         // save the FID
         package.add_fid_to_adapter(name.as_str(), *fid);
     }
-
-    // enable the library to define in-module helper functions
-    let injected_funcs = package.define_helper_funcs(app_wasm, err);
-
-    trace!("Exit import_lib");
-    injected_funcs
 }
 
 fn import_lib_fn_names(

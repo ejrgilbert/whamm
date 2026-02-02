@@ -7,10 +7,11 @@ use crate::lang_features::libraries::core::LibAdapter;
 use std::collections::HashMap;
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::{FunctionID, LocalID};
-use wirm::ir::types::{BlockType, DataType as WirmType};
+use wirm::ir::types::DataType as WirmType;
 use wirm::module_builder::AddLocal;
 use wirm::opcode::MacroOpcode;
 use wirm::{Module, Opcode};
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 
 // FROM LIB
 pub const PUTS: &str = "puts";
@@ -30,7 +31,7 @@ pub const PUTBOOL: &str = "putbool";
 // HELPER FUNCTIONS
 
 pub const PUTS_INTERNAL: &str = "puts_internal";
-pub const INTRUSIVE_PUTS: &str = "intrusive_puts";
+// pub const SAFE_PUTS: &str = "safe_puts";
 pub const INTRUSIVE_PUTS_MAX: u32 = 100;
 
 // //this is the code that knows which functions to call in lib.rs based on what is in the AST -> will be in emitter folder eventually
@@ -52,10 +53,12 @@ impl LibAdapter for IOAdapter {
     }
     fn define_helper_funcs(
         &mut self,
+        utils: &UtilsAdapter,
+        mem_allocator: &mut MemoryAllocator,
         app_wasm: &mut Module,
         err: &mut ErrorGen,
     ) -> Vec<FunctionID> {
-        self.emit_helper_funcs(app_wasm, err)
+        self.emit_helper_funcs(utils, mem_allocator, app_wasm, err)
     }
 }
 impl IOAdapter {
@@ -85,82 +88,45 @@ impl IOAdapter {
         }
     }
 
-    fn emit_helper_funcs(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> Vec<FunctionID> {
-        vec![self.emit_puts_internal(app_wasm, err)]
+    fn emit_helper_funcs(&mut self, utils: &UtilsAdapter, mem_allocator: &mut MemoryAllocator, app_wasm: &mut Module, err: &mut ErrorGen) -> Vec<FunctionID> {
+        vec![self.emit_puts_internal(utils, mem_allocator, app_wasm, err)]
     }
-    fn emit_puts_internal(&mut self, app_wasm: &mut Module, err: &mut ErrorGen) -> FunctionID {
-        let start_addr = LocalID(0);
-        let len = LocalID(1);
-        let mut puts = FunctionBuilder::new(&[WirmType::I32, WirmType::I32], &[]);
-
-        let i = puts.add_local(WirmType::I32);
-
-        #[rustfmt::skip]
-        puts.loop_stmt(BlockType::Empty)
-            // Check if we've reached the end of the string
-            .local_get(i)
-            .local_get(len)
-            .i32_lt_unsigned()
-            .i32_eqz()
-            .br_if(1)
-
-            // get next char
-            .local_get(start_addr)
-            .local_get(i)
-            .i32_add()
-            // load a byte from memory
-            .i32_load8_u(
-                wirm::wasmparser::MemArg {
-                    align: 0,
-                    max_align: 0,
-                    offset: 0,
-                    memory: self.instr_mem as u32
-                }
-            );
-
-        self.call_putc(&mut puts, err);
-
-        // Increment i and continue loop
-        puts.local_get(i)
-            .i32_const(1)
-            .i32_add()
-            .local_set(i)
-            .br(0) // (;3;)
-            .end();
-
-        let puts_fid = puts.finish_module_with_tag(app_wasm, get_tag_for(&None));
-        app_wasm.set_fn_name(puts_fid, PUTS_INTERNAL.to_string());
-        self.add_fid(PUTS_INTERNAL, *puts_fid);
-
-        puts_fid
-    }
-    fn emit_intrusive_puts(
+    fn emit_puts_internal(
         &mut self,
+        utils: &UtilsAdapter,
         mem_allocator: &mut MemoryAllocator,
         app_wasm: &mut Module,
         err: &mut ErrorGen,
     ) -> FunctionID {
+        assert!(self.lib_mem >= 0 && self.instr_mem >= 0);
         let str_addr = LocalID(0);
         let len = LocalID(1);
         let mut puts = FunctionBuilder::new(&[WirmType::I32, WirmType::I32], &[]);
+        let alloc_ptr = puts.add_local(WirmType::I32);
 
-        mem_allocator.copy_to_mem_and_save(
+        // alloc memory
+        utils.mem_alloc_from_local(len, &mut puts, err);
+        puts.local_set(alloc_ptr);
+
+        // write to allocated memory
+        mem_allocator.copy_to_lib_mem(
             self.instr_mem as u32,
             str_addr,
             len,
             self.lib_mem as u32,
-            0,
+            alloc_ptr,
             &mut puts,
         );
 
-        puts.local_get(str_addr).local_get(len);
+        puts.local_get(alloc_ptr).local_get(len);
         self.call_puts(&mut puts, err);
 
-        mem_allocator.copy_back_saved_mem(len, self.lib_mem as u32, 0, &mut puts);
+        // free memory
+        utils.mem_free_from_local(alloc_ptr, &mut puts, err);
 
         let puts_fid = puts.finish_module_with_tag(app_wasm, get_tag_for(&None));
-        app_wasm.set_fn_name(puts_fid, INTRUSIVE_PUTS.to_string());
-        self.add_fid(INTRUSIVE_PUTS, *puts_fid);
+        app_wasm.set_fn_name(puts_fid, PUTS_INTERNAL.to_string());
+        self.add_fid(PUTS_INTERNAL, *puts_fid);
 
         puts_fid
     }
