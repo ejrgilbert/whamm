@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use crate::api::instrument::LibraryLinkStrategy;
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;

@@ -18,6 +18,7 @@ use crate::generator::folding::expr::ExprFolder;
 use crate::generator::rewriting::simple_ast::SimpleAST;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser;
@@ -40,7 +41,7 @@ use wirm::Location;
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
+pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k> {
     pub strategy: InjectStrategy,
     pub app_iter: ModuleIterator<'a, 'b>,
     pub init_func: &'c mut FunctionBuilder<'d>,
@@ -49,19 +50,20 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> {
     pub table: &'e mut SymbolTable,
     pub mem_allocator: &'f mut MemoryAllocator,
     pub locals_tracker: LocalsTracker,
-    pub map_lib_adapter: &'g mut MapLibAdapter,
-    pub io_adapter: &'h mut IOAdapter,
-    pub(crate) report_vars: &'i mut ReportVars,
-    pub(crate) unshared_var_handler: &'i mut UnsharedVarHandler,
+    pub utils_adapter: &'g mut UtilsAdapter,
+    pub map_lib_adapter: &'h mut MapLibAdapter,
+    pub io_adapter: &'i mut IOAdapter,
+    pub(crate) report_vars: &'j mut ReportVars,
+    pub(crate) unshared_var_handler: &'j mut UnsharedVarHandler,
     instr_created_args: Vec<(String, usize)>,
     instr_created_results: Vec<(String, usize)>,
     pub curr_unshared: Vec<UnsharedVar>,
 
-    pub registry: &'j mut WasmRegistry,
+    pub registry: &'k mut WasmRegistry,
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
-    VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
+    VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
 {
     // note: only used in integration test
     pub fn new(
@@ -71,11 +73,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
         injected_funcs: &Vec<FunctionID>,
         table: &'e mut SymbolTable,
         mem_allocator: &'f mut MemoryAllocator,
-        map_lib_adapter: &'g mut MapLibAdapter,
-        io_adapter: &'h mut IOAdapter,
-        report_vars: &'i mut ReportVars,
-        unshared_var_handler: &'i mut UnsharedVarHandler,
-        registry: &'j mut WasmRegistry,
+        utils_adapter: &'g mut UtilsAdapter,
+        map_lib_adapter: &'h mut MapLibAdapter,
+        io_adapter: &'i mut IOAdapter,
+        report_vars: &'j mut ReportVars,
+        unshared_var_handler: &'j mut UnsharedVarHandler,
+        registry: &'k mut WasmRegistry,
     ) -> Self {
         Self {
             strategy,
@@ -85,6 +88,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
             table,
             mem_allocator,
             locals_tracker: LocalsTracker::default(),
+            utils_adapter,
             map_lib_adapter,
             io_adapter,
             report_vars,
@@ -212,6 +216,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
                         self.table,
                         self.mem_allocator,
                         &mut self.locals_tracker,
+                        self.utils_adapter,
                         self.map_lib_adapter,
                         UNEXPECTED_ERR_MSG,
                         err,
@@ -240,6 +245,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,
+                self.utils_adapter,
                 self.map_lib_adapter,
                 UNEXPECTED_ERR_MSG,
                 err,
@@ -325,6 +331,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,
+                self.utils_adapter,
                 self.map_lib_adapter,
                 UNEXPECTED_ERR_MSG,
                 err,
@@ -646,6 +653,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
                             self.table,
                             self.mem_allocator,
                             &mut self.locals_tracker,
+                            self.utils_adapter,
                             self.map_lib_adapter,
                             UNEXPECTED_ERR_MSG,
                             err,
@@ -680,6 +688,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
                             self.table,
                             self.mem_allocator,
                             &mut self.locals_tracker,
+                            self.utils_adapter,
                             self.map_lib_adapter,
                             UNEXPECTED_ERR_MSG,
                             err,
@@ -877,7 +886,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
         }
     }
 }
-impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn reset_locals_for_probe(&mut self) {
         self.locals_tracker.reset_probe(&mut self.app_iter);
     }
@@ -923,6 +932,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             self.table,
             self.mem_allocator,
             &mut self.locals_tracker,
+            self.utils_adapter,
             self.map_lib_adapter,
             UNEXPECTED_ERR_MSG,
             err,
@@ -944,6 +954,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,
+                self.utils_adapter,
                 self.map_lib_adapter,
                 UNEXPECTED_ERR_MSG,
                 err,

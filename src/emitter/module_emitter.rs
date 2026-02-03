@@ -10,6 +10,7 @@ use crate::emitter::{Emitter, InjectStrategy};
 use crate::generator::ast::{Probe, Script, WhammParams};
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Location, Statement, Value};
@@ -30,29 +31,31 @@ use wirm::InitInstr;
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
     pub strategy: InjectStrategy,
     pub app_wasm: &'a mut Module<'b>,
     pub emitting_func: Option<FunctionBuilder<'b>>,
     pub table: &'c mut SymbolTable,
     pub mem_allocator: &'d mut MemoryAllocator,
     pub locals_tracker: LocalsTracker,
-    pub map_lib_adapter: &'e mut MapLibAdapter,
-    pub report_vars: &'f mut ReportVars,
-    pub registry: &'g mut WasmRegistry,
+    pub utils_adapter: &'e mut UtilsAdapter,
+    pub map_lib_adapter: &'f mut MapLibAdapter,
+    pub report_vars: &'g mut ReportVars,
+    pub registry: &'h mut WasmRegistry,
     fn_providing_contexts: Vec<String>,
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
     // note: only used in integration test
     pub fn new(
         strategy: InjectStrategy,
         app_wasm: &'a mut Module<'b>,
         table: &'c mut SymbolTable,
         mem_allocator: &'d mut MemoryAllocator,
-        map_lib_adapter: &'e mut MapLibAdapter,
-        report_vars: &'f mut ReportVars,
-        registry: &'g mut WasmRegistry,
+        utils_adapter: &'e mut UtilsAdapter,
+        map_lib_adapter: &'f mut MapLibAdapter,
+        report_vars: &'g mut ReportVars,
+        registry: &'h mut WasmRegistry,
     ) -> Self {
         Self {
             strategy,
@@ -60,6 +63,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             emitting_func: None,
             mem_allocator,
             locals_tracker: LocalsTracker::default(),
+            utils_adapter,
             map_lib_adapter,
             report_vars,
             table,
@@ -340,6 +344,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                             self.table,
                             self.mem_allocator,
                             &mut self.locals_tracker,
+                            self.utils_adapter,
                             self.map_lib_adapter,
                             UNEXPECTED_ERR_MSG,
                             err,
@@ -644,6 +649,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,
+                self.utils_adapter,
                 self.map_lib_adapter,
                 UNEXPECTED_ERR_MSG,
                 err,
@@ -694,7 +700,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
         (fid, was_created)
     }
 }
-impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
+impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_, '_> {
     fn reset_locals_for_probe(&mut self) {
         if let Some(func) = &mut self.emitting_func {
             self.locals_tracker.reset_probe(func);
@@ -715,6 +721,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                     self.table,
                     self.mem_allocator,
                     &mut self.locals_tracker,
+                    self.utils_adapter,
                     self.map_lib_adapter,
                     UNEXPECTED_ERR_MSG,
                     err,
@@ -736,6 +743,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                     self.table,
                     self.mem_allocator,
                     &mut self.locals_tracker,
+                    self.utils_adapter,
                     self.map_lib_adapter,
                     UNEXPECTED_ERR_MSG,
                     err,
@@ -757,6 +765,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_> {
                     self.table,
                     self.mem_allocator,
                     &mut self.locals_tracker,
+                    self.utils_adapter,
                     self.map_lib_adapter,
                     UNEXPECTED_ERR_MSG,
                     err,

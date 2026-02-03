@@ -315,6 +315,7 @@ pub fn run(
             static_libs.insert(used_lib.clone());
         }
     }
+    let mut utils_adapter = utils_pkg.adapter;
     let mut map_lib_adapter = map_package.adapter;
     let mut io_adapter = io_package.adapter;
     let mut report_vars = ReportVars::new();
@@ -332,6 +333,7 @@ pub fn run(
             target_wasm,
             &mut mem_allocator,
             &mut io_adapter,
+            &mut utils_adapter,
             &mut map_lib_adapter,
             &mut report_vars,
         );
@@ -359,6 +361,7 @@ pub fn run(
             target_wasm,
             has_reports,
             &mut mem_allocator,
+            &mut utils_adapter,
             &mut io_adapter,
             &mut map_lib_adapter,
             &mut report_vars,
@@ -402,6 +405,7 @@ fn run_instr_wei(
     target_wasm: &mut Module,
     mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
+    utils_adapter: &mut UtilsAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
 ) {
@@ -425,6 +429,7 @@ fn run_instr_wei(
             target_wasm,
             table,
             mem_allocator,
+            utils_adapter,
             map_lib_adapter,
             report_vars,
             // shouldn't need this for `wei`!
@@ -461,6 +466,7 @@ fn run_instr_rewrite(
     target_wasm: &mut Module,
     has_reports: bool,
     mem_allocator: &mut MemoryAllocator,
+    utils_adapter: &mut UtilsAdapter,
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
@@ -484,6 +490,7 @@ fn run_instr_rewrite(
             target_wasm,
             table,
             mem_allocator,
+            utils_adapter,
             map_lib_adapter,
             report_vars,
             &mut registry,
@@ -512,6 +519,7 @@ fn run_instr_rewrite(
             injected_funcs,
             table,
             mem_allocator,
+            utils_adapter,
             map_lib_adapter,
             io_adapter,
             report_vars,

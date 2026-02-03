@@ -111,7 +111,7 @@ impl IOAdapter {
         let alloc_ptr = puts.add_local(WirmType::I32);
 
         // alloc memory
-        utils.mem_alloc_from_local(len, &mut puts, err);
+        utils.mem_alloc(len, &mut puts, err);
         puts.local_set(alloc_ptr);
 
         // write to allocated memory
@@ -128,7 +128,7 @@ impl IOAdapter {
         self.call_puts(&mut puts, err);
 
         // free memory
-        utils.mem_free_from_local(alloc_ptr, &mut puts, err);
+        utils.mem_free(alloc_ptr, &mut puts, err);
 
         let puts_fid = puts.finish_module_with_tag(app_wasm, get_tag_for(&None));
         app_wasm.set_fn_name(puts_fid, PUTS_INTERNAL.to_string());

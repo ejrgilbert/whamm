@@ -48,16 +48,6 @@ impl UtilsAdapter {
 
     pub fn mem_alloc<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &self,
-        len: i32,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        func.i32_const(len);
-        self.call_mem_alloc(func, err);
-    }
-
-    pub fn mem_alloc_from_local<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &self,
         local: LocalID,
         func: &mut T,
         err: &mut ErrorGen,
@@ -75,16 +65,6 @@ impl UtilsAdapter {
     }
 
     pub fn mem_free<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &self,
-        ptr: i32,
-        func: &mut T,
-        err: &mut ErrorGen,
-    ) {
-        func.i32_const(ptr);
-        self.call_mem_free(func, err);
-    }
-
-    pub fn mem_free_from_local<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &self,
         local: LocalID,
         func: &mut T,

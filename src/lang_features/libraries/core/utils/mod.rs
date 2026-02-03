@@ -9,13 +9,6 @@ use wirm::Module;
 
 pub mod utils_adapter;
 
-pub fn configure_utils_package() -> Vec<FunctionID> {
-    // this is a special case since other packages leverage THIS one!
-    let mut injected_funcs = vec![];
-
-    injected_funcs
-}
-
 pub struct UtilsPackage {
     is_used: bool,
     pub adapter: UtilsAdapter,
@@ -65,43 +58,43 @@ impl LibPackage for UtilsPackage {
     }
 }
 impl AstVisitor<bool> for UtilsPackage {
-    fn visit_ast(&mut self, ast: &[Script]) -> bool {
+    fn visit_ast(&mut self, _: &[Script]) -> bool {
         unreachable!()
     }
 
-    fn visit_script(&mut self, script: &Script) -> bool {
+    fn visit_script(&mut self, _: &Script) -> bool {
         unreachable!()
     }
 
-    fn visit_probe(&mut self, probe: &Probe) -> bool {
+    fn visit_probe(&mut self, _: &Probe) -> bool {
         unreachable!()
     }
 
-    fn visit_metadata(&mut self, metadata: &Metadata) -> bool {
+    fn visit_metadata(&mut self, _: &Metadata) -> bool {
         unreachable!()
     }
 
-    fn visit_whamm_param(&mut self, param: &WhammParam) -> bool {
+    fn visit_whamm_param(&mut self, _: &WhammParam) -> bool {
         unreachable!()
     }
 
-    fn visit_fn(&mut self, f: &crate::parser::types::Fn) -> bool {
+    fn visit_fn(&mut self, _: &crate::parser::types::Fn) -> bool {
         unreachable!()
     }
 
-    fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> bool {
+    fn visit_formal_param(&mut self, _: &(Expr, DataType)) -> bool {
         unreachable!()
     }
 
-    fn visit_block(&mut self, block: &Block) -> bool {
+    fn visit_block(&mut self, _: &Block) -> bool {
         unreachable!()
     }
 
-    fn visit_stmt(&mut self, stmt: &Statement) -> bool {
+    fn visit_stmt(&mut self, _: &Statement) -> bool {
         unreachable!()
     }
 
-    fn visit_datatype(&mut self, datatype: &DataType) -> bool {
+    fn visit_datatype(&mut self, _: &DataType) -> bool {
         unreachable!()
     }
 }

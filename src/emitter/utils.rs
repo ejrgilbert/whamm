@@ -8,6 +8,7 @@ use crate::generator::ast::Probe;
 use crate::generator::folding::expr::ExprFolder;
 use crate::generator::folding::stmt::StmtFolder;
 use crate::lang_features::libraries::core::maps::map_adapter::{MapLibAdapter, MAP_LIB_MEM_OFFSET};
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
@@ -19,7 +20,6 @@ use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmVa
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{MacroOpcode, Opcode};
 use wirm::{InitInstr, Module};
-
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -30,26 +30,28 @@ use wirm::{InitInstr, Module};
 // ==================================================================
 // ==================================================================
 
-pub struct EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
+pub struct EmitCtx<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     registry: &'a mut WasmRegistry,
     table: &'b mut SymbolTable,
     mem_allocator: &'c MemoryAllocator,
     locals_tracker: &'d mut LocalsTracker,
     in_map_op: bool,
     in_lib_call_to: Option<String>,
-    map_lib_adapter: &'e mut MapLibAdapter,
+    utils_adapter: &'e mut UtilsAdapter,
+    map_lib_adapter: &'f mut MapLibAdapter,
     err_msg: String,
-    err: &'f mut ErrorGen,
+    err: &'g mut ErrorGen,
 }
-impl<'a, 'b, 'c, 'd, 'e, 'f> EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
+impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> EmitCtx<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     pub fn new(
         registry: &'a mut WasmRegistry,
         table: &'b mut SymbolTable,
         mem_allocator: &'c MemoryAllocator,
         locals_tracker: &'d mut LocalsTracker,
-        map_lib_adapter: &'e mut MapLibAdapter,
+        utils_adapter: &'e mut UtilsAdapter,
+        map_lib_adapter: &'f mut MapLibAdapter,
         err_msg: &str,
-        err: &'f mut ErrorGen,
+        err: &'g mut ErrorGen,
     ) -> Self {
         Self {
             registry,
@@ -58,6 +60,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f> EmitCtx<'a, 'b, 'c, 'd, 'e, 'f> {
             locals_tracker,
             in_map_op: false,
             in_lib_call_to: None,
+            utils_adapter,
             map_lib_adapter,
             err_msg: err_msg.to_string(),
             err,
@@ -332,8 +335,14 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         };
         emit_expr(key, strategy, injector, ctx);
         emit_expr(val, strategy, injector, ctx);
-        ctx.map_lib_adapter
-            .map_insert(key_ty, val_ty, injector, ctx.mem_allocator, ctx.err);
+        ctx.map_lib_adapter.map_insert(
+            key_ty,
+            val_ty,
+            injector,
+            ctx.utils_adapter,
+            ctx.mem_allocator,
+            ctx.err,
+        );
     } else {
         unreachable!(
             "{} \
@@ -1976,6 +1985,7 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         key_ty,
                         val_ty,
                         injector,
+                        ctx.utils_adapter,
                         ctx.mem_allocator,
                         ctx.err,
                     );

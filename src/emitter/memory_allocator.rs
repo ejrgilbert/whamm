@@ -309,6 +309,25 @@ impl MemoryAllocator {
         );
     }
 
+    pub fn copy_to_mem_u32_ptr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &self,
+        src_mem_id: u32,
+        src_offset: LocalID,
+        src_len: LocalID,
+        dst_mem_id: u32,
+        dst_mem_ptr: u32,
+        func: &mut T,
+    ) {
+        self.copy_to_mem(
+            src_mem_id,
+            src_offset,
+            src_len,
+            dst_mem_id,
+            |func| func.u32_const(dst_mem_ptr),
+            func,
+        );
+    }
+
     // =====================
     // ==== Allocations ====
     // =====================

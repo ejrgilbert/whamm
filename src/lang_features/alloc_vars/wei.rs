@@ -297,6 +297,7 @@ impl UnsharedVarHandler {
                         emitter.table,
                         emitter.mem_allocator,
                         &mut emitter.locals_tracker,
+                        emitter.utils_adapter,
                         emitter.map_lib_adapter,
                         "UnsharedVarHandler: Looks like you've found a bug...please report this behavior!",
                         err,
