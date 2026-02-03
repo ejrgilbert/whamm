@@ -212,7 +212,7 @@ impl MemoryAllocator {
         };
     }
 
-    pub fn copy_mem<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn copy_to_mem_global_ptr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &self,
         src_mem_id: u32,
         src_offset: LocalID,
@@ -221,48 +221,14 @@ impl MemoryAllocator {
         dst_mem_tracker: GlobalID,
         func: &mut T,
     ) {
-        let i = func.add_local(WirmType::I32);
-        let tmp = func.add_local(WirmType::I32);
-
-        let src_mem = MemArg {
-            align: 0,
-            max_align: 0,
-            offset: 0,
-            memory: src_mem_id,
-        };
-        let dst_mem = MemArg {
-            align: 0,
-            max_align: 0,
-            offset: 0,
-            memory: dst_mem_id,
-        };
-
-        #[rustfmt::skip]
-        func.loop_stmt(BlockType::Empty)
-            // write new data
-            .local_get(src_offset)
-            .local_get(i)
-            .i32_add()
-            .i32_load8_u(src_mem) // load new char
-            .local_set(tmp)
-            .global_get(dst_mem_tracker)
-            .local_get(i)
-            .i32_add()
-            .local_get(tmp)
-            .i32_store8(dst_mem) // store new char
-
-            // update i
-            .i32_const(1)
-            .local_get(i)
-            .i32_add()
-            .local_set(i)
-
-            // continue loop if we're still less than the length of the string
-            .local_get(i)
-            .local_get(src_len)
-            .i32_lt_signed()
-            .br_if(0)
-        .end();
+        self.copy_to_mem(
+            src_mem_id,
+            src_offset,
+            src_len,
+            dst_mem_id,
+            |func| func.global_get(dst_mem_tracker),
+            func,
+        );
 
         // update the destination memory's tracker
         func.local_get(src_len)
@@ -271,16 +237,17 @@ impl MemoryAllocator {
             .global_set(dst_mem_tracker);
     }
 
-    pub fn copy_to_lib_mem<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    fn copy_to_mem<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal, F>(
         &self,
         src_mem_id: u32,
         src_offset: LocalID,
         src_len: LocalID,
         dst_mem_id: u32,
-        dst_mem_ptr: LocalID,
+        get_ptr: F,
         func: &mut T,
-    ) {
-        // TODO: Unify with above func!!
+    ) where
+        F: Fn(&mut T) -> &mut T,
+    {
         let i = func.add_local(WirmType::I32);
         let tmp = func.add_local(WirmType::I32);
 
@@ -304,25 +271,42 @@ impl MemoryAllocator {
             .local_get(i)
             .i32_add()
             .i32_load8_u(src_mem) // load new char
-            .local_set(tmp)
-            .local_get(dst_mem_ptr)
+            .local_set(tmp);
+        get_ptr(func)
             .local_get(i)
             .i32_add()
             .local_get(tmp)
             .i32_store8(dst_mem) // store new char
-
             // update i
             .i32_const(1)
             .local_get(i)
             .i32_add()
             .local_set(i)
-
             // continue loop if we're still less than the length of the string
             .local_get(i)
             .local_get(src_len)
             .i32_lt_signed()
             .br_if(0)
-        .end();
+            .end();
+    }
+
+    pub fn copy_to_mem_local_ptr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &self,
+        src_mem_id: u32,
+        src_offset: LocalID,
+        src_len: LocalID,
+        dst_mem_id: u32,
+        dst_mem_ptr: LocalID,
+        func: &mut T,
+    ) {
+        self.copy_to_mem(
+            src_mem_id,
+            src_offset,
+            src_len,
+            dst_mem_id,
+            |func| func.local_get(dst_mem_ptr),
+            func,
+        );
     }
 
     // =====================

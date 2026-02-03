@@ -4,6 +4,8 @@ use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::generator::ast::Script;
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
+use crate::lang_features::libraries::core::utils::UtilsPackage;
 use crate::lang_features::libraries::core::{
     LibPackage, WHAMM_CORE_LIB_MEM_NAME, WHAMM_CORE_LIB_NAME,
 };
@@ -14,8 +16,6 @@ use std::collections::HashSet;
 use wirm::ir::id::FunctionID;
 use wirm::wasmparser::{ExternalKind, MemoryType};
 use wirm::{DataType, Module};
-use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
-use crate::lang_features::libraries::core::utils::UtilsPackage;
 
 // Some documentation on why it's difficult to only import the *used* functions.
 //
@@ -79,7 +79,7 @@ pub fn link_core_lib(
                 WHAMM_CORE_LIB_NAME.to_string(),
                 &None,
                 &core_lib,
-                *package
+                *package,
             );
             injected_funcs.extend(gen_package_helpers(
                 app_wasm,
@@ -151,7 +151,7 @@ fn import_lib_package(
     lib_name: String,
     lib_name_import_override: &Option<String>,
     lib_wasm: &Module,
-    package: &mut dyn LibPackage
+    package: &mut dyn LibPackage,
 ) {
     // should only import the EXPORTED contents of the lib_wasm
     let added = import_lib_fn_names(

@@ -1,11 +1,11 @@
-use std::collections::HashMap;
-use wirm::ir::id::{FunctionID, LocalID};
-use wirm::{Module, Opcode};
-use wirm::module_builder::AddLocal;
-use wirm::opcode::MacroOpcode;
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::lang_features::libraries::core::LibAdapter;
+use std::collections::HashMap;
+use wirm::ir::id::{FunctionID, LocalID};
+use wirm::module_builder::AddLocal;
+use wirm::opcode::MacroOpcode;
+use wirm::{Module, Opcode};
 
 pub const MEM_ALLOC: &str = "mem_alloc";
 pub const MEM_FREE: &str = "mem_free";
@@ -35,13 +35,10 @@ impl LibAdapter for UtilsAdapter {
 }
 impl UtilsAdapter {
     pub fn new() -> Self {
-        let funcs = HashMap::from([
-            (MEM_ALLOC.to_string(), 0),
-            (MEM_FREE.to_string(), 0),
-        ]);
+        let funcs = HashMap::from([(MEM_ALLOC.to_string(), 0), (MEM_FREE.to_string(), 0)]);
         Self {
             is_used: false,
-            funcs
+            funcs,
         }
     }
     pub fn emit_helper_funcs(&mut self, _: &mut Module) -> Vec<FunctionID> {

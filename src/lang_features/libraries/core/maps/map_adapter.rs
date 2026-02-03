@@ -2,6 +2,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_probe_tag_data;
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::core::LibAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{DataType, Location};
@@ -11,7 +12,6 @@ use wirm::ir::types::DataType as WirmType;
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{Instrumenter, MacroOpcode};
 use wirm::{Location as WirmLocation, Module, Opcode};
-use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 
 const UNEXPECTED_ERR_MSG: &str =
     "MapLibAdapter: Looks like you've found a bug...please report this behavior!";
@@ -46,10 +46,13 @@ impl LibAdapter for MapLibAdapter {
     fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32> {
         &mut self.funcs
     }
-    fn define_helper_funcs(&mut self,
-                           _: &UtilsAdapter,
-                           _: &mut MemoryAllocator,
-                           app_wasm: &mut Module, _: &mut ErrorGen) -> Vec<FunctionID> {
+    fn define_helper_funcs(
+        &mut self,
+        _: &UtilsAdapter,
+        _: &mut MemoryAllocator,
+        app_wasm: &mut Module,
+        _: &mut ErrorGen,
+    ) -> Vec<FunctionID> {
         self.emit_helper_funcs(app_wasm)
     }
 }

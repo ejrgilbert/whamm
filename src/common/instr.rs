@@ -16,6 +16,8 @@ use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::io::IOPackage;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::libraries::core::maps::MapLibPackage;
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
+use crate::lang_features::libraries::core::utils::UtilsPackage;
 use crate::lang_features::libraries::core::{LibPackage, WHAMM_CORE_LIB_NAME};
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::report_vars::ReportVars;
@@ -33,8 +35,6 @@ use wirm::ir::types::{DataType as WirmType, InitExpr, Value as WirmValue};
 use wirm::opcode::Instrumenter;
 use wirm::wasmparser::MemoryType;
 use wirm::{InitInstr, Module, Opcode};
-use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
-use crate::lang_features::libraries::core::utils::UtilsPackage;
 
 const ENGINE_BUFFER_NAME: &str = "whamm_buffer";
 const ENGINE_BUFFER_START_NAME: &str = "whamm_buffer:start";

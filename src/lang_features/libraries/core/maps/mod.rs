@@ -1,16 +1,16 @@
 pub mod map_adapter;
 
 use crate::common::error::ErrorGen;
+use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::InjectStrategy;
 use crate::generator::ast::{AstVisitor, Metadata, Probe, Script, WhammParam};
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::core::{LibAdapter, LibPackage};
 use crate::parser::types::{Block, DataType, Expr, Statement};
 use log::debug;
 use wirm::ir::id::FunctionID;
 use wirm::Module;
-use crate::emitter::memory_allocator::MemoryAllocator;
-use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 
 pub struct MapLibPackage {
     strategy: InjectStrategy,
@@ -46,8 +46,12 @@ impl LibPackage for MapLibPackage {
     fn set_instr_mem_id(&mut self, mem_id: i32) {
         self.adapter.instr_mem = mem_id;
     }
-    fn get_adapter(&self) -> &dyn LibAdapter { &self.adapter }
-    fn get_adapter_mut(&mut self) -> &mut dyn LibAdapter { &mut self.adapter }
+    fn get_adapter(&self) -> &dyn LibAdapter {
+        &self.adapter
+    }
+    fn get_adapter_mut(&mut self) -> &mut dyn LibAdapter {
+        &mut self.adapter
+    }
     fn set_adapter_usage(&mut self, is_used: bool) {
         self.adapter.is_used = is_used;
     }
@@ -62,7 +66,8 @@ impl LibPackage for MapLibPackage {
         app_wasm: &mut Module,
         err: &mut ErrorGen,
     ) -> Vec<FunctionID> {
-        self.adapter.define_helper_funcs(utils, mem_allocator, app_wasm, err)
+        self.adapter
+            .define_helper_funcs(utils, mem_allocator, app_wasm, err)
     }
 }
 impl AstVisitor<bool> for MapLibPackage {

@@ -1,19 +1,17 @@
-use wirm::ir::id::FunctionID;
-use wirm::Module;
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::generator::ast::{AstVisitor, Metadata, Probe, Script, WhammParam};
-use crate::lang_features::libraries::core::{LibAdapter, LibPackage};
 use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
+use crate::lang_features::libraries::core::{LibAdapter, LibPackage};
 use crate::parser::types::{Block, DataType, Expr, Statement};
+use wirm::ir::id::FunctionID;
+use wirm::Module;
 
 pub mod utils_adapter;
-
 
 pub fn configure_utils_package() -> Vec<FunctionID> {
     // this is a special case since other packages leverage THIS one!
     let mut injected_funcs = vec![];
-
 
     injected_funcs
 }
@@ -41,10 +39,14 @@ impl LibPackage for UtilsPackage {
     fn import_memory(&self) -> bool {
         false
     }
-    fn set_lib_mem_id(&mut self, _: i32) { }
-    fn set_instr_mem_id(&mut self, _: i32) { }
-    fn get_adapter(&self) -> &dyn LibAdapter { &self.adapter }
-    fn get_adapter_mut(&mut self) -> &mut dyn LibAdapter { &mut self.adapter }
+    fn set_lib_mem_id(&mut self, _: i32) {}
+    fn set_instr_mem_id(&mut self, _: i32) {}
+    fn get_adapter(&self) -> &dyn LibAdapter {
+        &self.adapter
+    }
+    fn get_adapter_mut(&mut self) -> &mut dyn LibAdapter {
+        &mut self.adapter
+    }
     fn set_adapter_usage(&mut self, is_used: bool) {
         self.adapter.is_used = is_used;
     }
@@ -58,7 +60,8 @@ impl LibPackage for UtilsPackage {
         app_wasm: &mut Module,
         err: &mut ErrorGen,
     ) -> Vec<FunctionID> {
-        self.adapter.define_helper_funcs(utils, mem_allocator, app_wasm, err)
+        self.adapter
+            .define_helper_funcs(utils, mem_allocator, app_wasm, err)
     }
 }
 impl AstVisitor<bool> for UtilsPackage {

@@ -3,6 +3,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_tag_for;
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::core::LibAdapter;
 use std::collections::HashMap;
 use wirm::ir::function::FunctionBuilder;
@@ -11,7 +12,6 @@ use wirm::ir::types::DataType as WirmType;
 use wirm::module_builder::AddLocal;
 use wirm::opcode::MacroOpcode;
 use wirm::{Module, Opcode};
-use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 
 // FROM LIB
 pub const PUTS: &str = "puts";
@@ -88,7 +88,13 @@ impl IOAdapter {
         }
     }
 
-    fn emit_helper_funcs(&mut self, utils: &UtilsAdapter, mem_allocator: &mut MemoryAllocator, app_wasm: &mut Module, err: &mut ErrorGen) -> Vec<FunctionID> {
+    fn emit_helper_funcs(
+        &mut self,
+        utils: &UtilsAdapter,
+        mem_allocator: &mut MemoryAllocator,
+        app_wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> Vec<FunctionID> {
         vec![self.emit_puts_internal(utils, mem_allocator, app_wasm, err)]
     }
     fn emit_puts_internal(
@@ -109,7 +115,7 @@ impl IOAdapter {
         puts.local_set(alloc_ptr);
 
         // write to allocated memory
-        mem_allocator.copy_to_lib_mem(
+        mem_allocator.copy_to_mem_local_ptr(
             self.instr_mem as u32,
             str_addr,
             len,

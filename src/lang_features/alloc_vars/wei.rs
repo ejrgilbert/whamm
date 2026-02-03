@@ -395,7 +395,7 @@ impl UnsharedVarHandler {
             .local_set(new_fname_ptr.id);
 
         // save off the fname to the Strings memory
-        emitter.mem_allocator.copy_mem(
+        emitter.mem_allocator.copy_to_mem_global_ptr(
             engine_mem,
             fname_ptr.id,
             fname_len.id,

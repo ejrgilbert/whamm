@@ -3,12 +3,12 @@ pub mod maps;
 pub mod utils;
 
 use crate::common::error::ErrorGen;
+use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::generator::ast::AstVisitor;
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use std::collections::HashMap;
 use wirm::ir::id::FunctionID;
 use wirm::Module;
-use crate::emitter::memory_allocator::MemoryAllocator;
-use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 
 pub const WHAMM_CORE_LIB_NAME: &str = "whamm_core";
 pub const WHAMM_CORE_LIB_MEM_NAME: &str = "memory";
@@ -30,20 +30,24 @@ pub trait LibPackage: AstVisitor<bool> {
     }
     fn set_adapter_usage(&mut self, is_used: bool);
     fn set_global_adapter_usage(&mut self, is_used: bool);
-    fn define_helper_funcs(&mut self,
-                           utils: &UtilsAdapter,
-                           mem_allocator: &mut MemoryAllocator,
-                           app_wasm: &mut Module, err: &mut ErrorGen)
-        -> Vec<FunctionID>;
+    fn define_helper_funcs(
+        &mut self,
+        utils: &UtilsAdapter,
+        mem_allocator: &mut MemoryAllocator,
+        app_wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> Vec<FunctionID>;
 }
 pub trait LibAdapter {
     fn get_funcs(&self) -> &HashMap<String, u32>;
     fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32>;
-    fn define_helper_funcs(&mut self,
-                           utils: &UtilsAdapter,
-                           mem_allocator: &mut MemoryAllocator,
-                           app_wasm: &mut Module, err: &mut ErrorGen)
-        -> Vec<FunctionID>;
+    fn define_helper_funcs(
+        &mut self,
+        utils: &UtilsAdapter,
+        mem_allocator: &mut MemoryAllocator,
+        app_wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> Vec<FunctionID>;
     fn get_fn_names(&self) -> Vec<String> {
         self.get_funcs().keys().cloned().collect()
     }
