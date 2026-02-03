@@ -16,6 +16,8 @@ use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::io::IOPackage;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::libraries::core::maps::MapLibPackage;
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
+use crate::lang_features::libraries::core::utils::UtilsPackage;
 use crate::lang_features::libraries::core::{LibPackage, WHAMM_CORE_LIB_NAME};
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::report_vars::ReportVars;
@@ -283,12 +285,14 @@ pub fn run(
     });
     let mut io_package = IOPackage::new(*mem_allocator.mem_tracker_global);
     let mut core_packages: Vec<&mut dyn LibPackage> = vec![&mut map_package, &mut io_package];
+    let mut utils_pkg = UtilsPackage::new(*mem_allocator.mem_tracker_global);
     let mut injected_core_lib_funcs = crate::lang_features::libraries::actions::link_core_lib(
         config.library_strategy,
         &metadata_collector.ast,
         target_wasm,
         core_lib,
         &mut mem_allocator,
+        &mut utils_pkg,
         &mut core_packages,
         metadata_collector.err,
     );
@@ -311,6 +315,7 @@ pub fn run(
             static_libs.insert(used_lib.clone());
         }
     }
+    let mut utils_adapter = utils_pkg.adapter;
     let mut map_lib_adapter = map_package.adapter;
     let mut io_adapter = io_package.adapter;
     let mut report_vars = ReportVars::new();
@@ -328,6 +333,7 @@ pub fn run(
             target_wasm,
             &mut mem_allocator,
             &mut io_adapter,
+            &mut utils_adapter,
             &mut map_lib_adapter,
             &mut report_vars,
         );
@@ -355,6 +361,7 @@ pub fn run(
             target_wasm,
             has_reports,
             &mut mem_allocator,
+            &mut utils_adapter,
             &mut io_adapter,
             &mut map_lib_adapter,
             &mut report_vars,
@@ -398,6 +405,7 @@ fn run_instr_wei(
     target_wasm: &mut Module,
     mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
+    utils_adapter: &mut UtilsAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
 ) {
@@ -421,6 +429,7 @@ fn run_instr_wei(
             target_wasm,
             table,
             mem_allocator,
+            utils_adapter,
             map_lib_adapter,
             report_vars,
             // shouldn't need this for `wei`!
@@ -457,6 +466,7 @@ fn run_instr_rewrite(
     target_wasm: &mut Module,
     has_reports: bool,
     mem_allocator: &mut MemoryAllocator,
+    utils_adapter: &mut UtilsAdapter,
     io_adapter: &mut IOAdapter,
     map_lib_adapter: &mut MapLibAdapter,
     report_vars: &mut ReportVars,
@@ -480,6 +490,7 @@ fn run_instr_rewrite(
             target_wasm,
             table,
             mem_allocator,
+            utils_adapter,
             map_lib_adapter,
             report_vars,
             &mut registry,
@@ -508,6 +519,7 @@ fn run_instr_rewrite(
             injected_funcs,
             table,
             mem_allocator,
+            utils_adapter,
             map_lib_adapter,
             io_adapter,
             report_vars,

@@ -15,22 +15,22 @@ use wirm::ir::id::{FunctionID, LocalID};
 use wirm::ir::types::DataType as WirmType;
 use wirm::Module;
 
-pub struct WeiGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm> {
-    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g>,
-    pub io_adapter: &'h mut IOAdapter,
+pub struct WeiGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm, 'n> {
+    pub emitter: ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h>,
+    pub io_adapter: &'i mut IOAdapter,
     pub context_name: String,
-    pub err: &'i mut ErrorGen,
-    pub injected_funcs: &'j mut Vec<FunctionID>,
-    pub config: &'k Config,
+    pub err: &'j mut ErrorGen,
+    pub injected_funcs: &'k mut Vec<FunctionID>,
+    pub config: &'l Config,
     pub used_fns_per_lib: HashMap<String, HashSet<String>>,
-    pub user_lib_modules: HashMap<String, (Option<String>, Module<'l>)>,
+    pub user_lib_modules: HashMap<String, (Option<String>, Module<'m>)>,
 
     // tracking
     pub curr_script_id: u8,
-    pub unshared_var_handler: &'m mut UnsharedVarHandler,
+    pub unshared_var_handler: &'n mut UnsharedVarHandler,
 }
 
-impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     pub fn run(
         &mut self,
         mut ast: Vec<Script>,
@@ -294,7 +294,7 @@ impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     }
 }
 
-impl GeneratingVisitor for WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl GeneratingVisitor for WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     // TODO -- these are all duplicates, try to factor out
     fn add_internal_error(&mut self, message: &str, loc: &Option<Location>) {
         self.err.add_internal_error(message, loc);

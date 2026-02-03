@@ -2,6 +2,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_probe_tag_data;
+use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::core::LibAdapter;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{DataType, Location};
@@ -45,7 +46,13 @@ impl LibAdapter for MapLibAdapter {
     fn get_funcs_mut(&mut self) -> &mut HashMap<String, u32> {
         &mut self.funcs
     }
-    fn define_helper_funcs(&mut self, app_wasm: &mut Module, _: &mut ErrorGen) -> Vec<FunctionID> {
+    fn define_helper_funcs(
+        &mut self,
+        _: &UtilsAdapter,
+        _: &mut MemoryAllocator,
+        app_wasm: &mut Module,
+        _: &mut ErrorGen,
+    ) -> Vec<FunctionID> {
         self.emit_helper_funcs(app_wasm)
     }
 }
@@ -133,12 +140,13 @@ impl MapLibAdapter {
         key: DataType,
         val: DataType,
         func: &mut T,
+        utils: &UtilsAdapter,
         mem_allocator: &MemoryAllocator,
         err: &mut ErrorGen,
     ) {
         let fname = self.map_get_fname(&key, &val, err);
         let src_len = if matches!(key, DataType::Str) {
-            Some(self.handle_string_key_before_call(func, mem_allocator))
+            Some(self.handle_string_key_before_call(func, utils, mem_allocator, err))
         } else {
             None
         };
@@ -146,17 +154,19 @@ impl MapLibAdapter {
         self.call(&fname, func, err);
 
         if matches!(key, DataType::Str) {
-            let Some(src_len) = src_len else {
+            let Some(alloc_ptr) = src_len else {
                 panic!("Expected src_len of String to be set!")
             };
-            self.handle_string_key_after_call(src_len, func, mem_allocator);
+            self.handle_string_key_after_call(alloc_ptr, func, utils, err);
         }
     }
 
     fn handle_string_key_before_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &self,
         func: &mut T,
+        utils: &UtilsAdapter,
         mem_allocator: &MemoryAllocator,
+        err: &mut ErrorGen,
     ) -> LocalID {
         let (Some(curr_str_offset), Some(curr_str_len)) = (self.curr_str_offset, self.curr_str_len)
         else {
@@ -169,7 +179,13 @@ impl MapLibAdapter {
         func.u32_const(curr_str_offset).local_set(src_offset);
         func.u32_const(curr_str_len).local_set(src_len);
 
-        mem_allocator.copy_to_mem_and_save(
+        let alloc_ptr = func.add_local(WirmType::I32);
+
+        // alloc memory
+        utils.mem_alloc(src_len, func, err);
+        func.local_set(alloc_ptr);
+
+        mem_allocator.copy_to_mem_u32_ptr(
             self.instr_mem as u32,
             src_offset,
             src_len,
@@ -177,16 +193,18 @@ impl MapLibAdapter {
             MAP_LIB_MEM_OFFSET,
             func,
         );
-        src_len
+        alloc_ptr
     }
 
     fn handle_string_key_after_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &self,
-        src_len: LocalID,
+        alloc_ptr: LocalID,
         func: &mut T,
-        mem_allocator: &MemoryAllocator,
+        utils: &UtilsAdapter,
+        err: &mut ErrorGen,
     ) {
-        mem_allocator.copy_back_saved_mem(src_len, self.lib_mem as u32, MAP_LIB_MEM_OFFSET, func);
+        // free memory
+        utils.mem_free(alloc_ptr, func, err);
     }
 
     pub fn map_insert<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -194,12 +212,13 @@ impl MapLibAdapter {
         key: DataType,
         val: DataType,
         func: &mut T,
+        utils: &UtilsAdapter,
         mem_allocator: &MemoryAllocator,
         err: &mut ErrorGen,
     ) {
         let fname = self.map_insert_fname(&key, &val, err);
         let src_len = if matches!(&key, DataType::Str) {
-            Some(self.handle_string_key_before_call(func, mem_allocator))
+            Some(self.handle_string_key_before_call(func, utils, mem_allocator, err))
         } else {
             None
         };
@@ -207,10 +226,10 @@ impl MapLibAdapter {
         self.call(&fname, func, err);
 
         if matches!(&key, DataType::Str) {
-            let Some(src_len) = src_len else {
+            let Some(alloc_ptr) = src_len else {
                 panic!("Expected src_len of String to be set!")
             };
-            self.handle_string_key_after_call(src_len, func, mem_allocator);
+            self.handle_string_key_after_call(alloc_ptr, func, utils, err);
         }
     }
 

@@ -1,7 +1,10 @@
+#![allow(clippy::too_many_arguments)]
+
 use crate::api::instrument::LibraryLinkStrategy;
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::generator::ast::Script;
+use crate::lang_features::libraries::core::utils::UtilsPackage;
 use crate::lang_features::libraries::core::LibPackage;
 use wirm::ir::id::FunctionID;
 use wirm::Module;
@@ -12,6 +15,7 @@ pub fn link_core_lib(
     app_wasm: &mut Module,
     core_lib: &[u8],
     mem_allocator: &mut MemoryAllocator,
+    utils: &mut UtilsPackage,
     packages: &mut [&mut dyn LibPackage],
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
@@ -22,6 +26,7 @@ pub fn link_core_lib(
                 app_wasm,
                 core_lib,
                 mem_allocator,
+                utils,
                 packages,
                 err,
             )

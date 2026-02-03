@@ -297,6 +297,7 @@ impl UnsharedVarHandler {
                         emitter.table,
                         emitter.mem_allocator,
                         &mut emitter.locals_tracker,
+                        emitter.utils_adapter,
                         emitter.map_lib_adapter,
                         "UnsharedVarHandler: Looks like you've found a bug...please report this behavior!",
                         err,
@@ -395,7 +396,7 @@ impl UnsharedVarHandler {
             .local_set(new_fname_ptr.id);
 
         // save off the fname to the Strings memory
-        emitter.mem_allocator.copy_mem(
+        emitter.mem_allocator.copy_to_mem_global_ptr(
             engine_mem,
             fname_ptr.id,
             fname_len.id,
