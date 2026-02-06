@@ -500,13 +500,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 self.assign_ty = None;
 
                 if let Expr::Primitive {val, ..} = expr {
-                    let Expr::VarId {name, ..} = var_id else {
-                        panic!()
-                    };
-                    let Some(Record::Var { value, .. }) = self.table.lookup_var_mut(name, true) else {
-                        unreachable!("unexpected type");
-                    };
-                    *value = Some(val.clone());
+                    if let Expr::VarId {name, ..} = var_id {
+                        if let Some(Record::Var { value, .. }) = self.table.lookup_var_mut(name, false) {
+                            *value = Some(val.clone());
+                        }
+                    }
                 }
 
                 res
