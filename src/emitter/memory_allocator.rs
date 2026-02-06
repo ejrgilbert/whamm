@@ -1,7 +1,7 @@
 use crate::common::error::ErrorGen;
 use crate::common::instr::ENGINE_BUFFER_MAX_SIZE;
 use crate::emitter::tag_handler::get_tag_for;
-use crate::parser::types::DataType;
+use crate::parser::types::{DataType, Expr};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use std::collections::HashMap;
 use wirm::ir::function::FunctionBuilder;
@@ -12,6 +12,8 @@ use wirm::module_builder::AddLocal;
 use wirm::opcode::MacroOpcode;
 use wirm::wasmparser::MemArg;
 use wirm::{DataSegment, DataSegmentKind, InitInstr, Module, Opcode};
+use crate::emitter::InjectStrategy;
+use crate::emitter::utils::{emit_expr, EmitCtx};
 
 pub const WASM_PAGE_SIZE: u32 = 65_536;
 pub const VAR_BLOCK_BASE_VAR: &str = "var_block_base_offset";
@@ -149,12 +151,13 @@ impl MemoryAllocator {
                 offset: var_offset as u64,
                 memory: mem_id,
             }),
-            DataType::Null
-            | DataType::Str
+            DataType::Str
             | DataType::Tuple { .. }
-            | DataType::Map { .. }
+            | DataType::Map { .. } => todo!(),
+            DataType::Null
+            | DataType::Lib
             | DataType::AssumeGood
-            | DataType::Unknown => unimplemented!(),
+            | DataType::Unknown => unreachable!(),
         };
     }
 
@@ -203,12 +206,13 @@ impl MemoryAllocator {
                 offset: var_offset as u64,
                 memory: mem_id,
             }),
-            DataType::Null
-            | DataType::Str
+            DataType::Str
             | DataType::Tuple { .. }
-            | DataType::Map { .. }
+            | DataType::Map { .. } => todo!(),
+            DataType::Null
+            | DataType::Lib
             | DataType::AssumeGood
-            | DataType::Unknown => unimplemented!(),
+            | DataType::Unknown => unreachable!(),
         };
     }
 
@@ -243,10 +247,10 @@ impl MemoryAllocator {
         src_offset: LocalID,
         src_len: LocalID,
         dst_mem_id: u32,
-        get_ptr: F,
+        mut get_ptr: F,
         func: &mut T,
     ) where
-        F: Fn(&mut T) -> &mut T,
+        F: FnMut(&mut T) -> &mut T,
     {
         let i = func.add_local(WirmType::I32);
         let tmp = func.add_local(WirmType::I32);
@@ -288,6 +292,27 @@ impl MemoryAllocator {
             .i32_lt_signed()
             .br_if(0)
             .end();
+    }
+
+    pub fn copy_to_mem_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &self,
+        src_mem_id: u32,
+        src_offset: LocalID,
+        src_len: LocalID,
+        dst_mem_id: u32,
+        dst_mem_ptr: &mut Expr,
+        inject_strategy: InjectStrategy,
+        ctx: &mut EmitCtx,
+        func: &mut T,
+    ) {
+        self.copy_to_mem(
+            src_mem_id,
+            src_offset,
+            src_len,
+            dst_mem_id,
+            |func| { emit_expr(dst_mem_ptr, inject_strategy, func, ctx); func },
+            func,
+        );
     }
 
     pub fn copy_to_mem_local_ptr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(

@@ -107,6 +107,7 @@ pub enum DataType {
         key_ty: Box<DataType>,
         val_ty: Box<DataType>,
     },
+    Lib,
     Unknown,
     AssumeGood,
 }
@@ -127,6 +128,7 @@ impl Hash for DataType {
             | DataType::Boolean
             | DataType::Null
             | DataType::Str
+            | DataType::Lib
             | DataType::AssumeGood
             | DataType::Unknown => {
                 state.write_u8(self.id() as u8);
@@ -161,6 +163,7 @@ impl PartialEq for DataType {
             | (DataType::Boolean, DataType::Boolean)
             | (DataType::Null, DataType::Null)
             | (DataType::Str, DataType::Str)
+            | (DataType::Lib, DataType::Lib)
             | (DataType::Unknown, DataType::Unknown)
             | (_, DataType::AssumeGood)
             | (DataType::AssumeGood, _) => true,
@@ -202,6 +205,7 @@ impl Display for DataType {
             DataType::Boolean => write!(f, "bool"),
             DataType::Null => write!(f, "null"),
             DataType::Str => write!(f, "str"),
+            DataType::Lib => write!(f, "lib"),
             DataType::Tuple { ty_info } => {
                 let mut s = "".to_string();
                 s += "(";
@@ -251,6 +255,7 @@ impl DataType {
             | DataType::F64
             | DataType::Null
             | DataType::Str
+            | DataType::Lib
             | DataType::AssumeGood
             | DataType::Unknown
             | DataType::Tuple { .. }
@@ -280,8 +285,9 @@ impl DataType {
             DataType::Null => unimplemented!(),
             DataType::Str => vec![WirmType::I32, WirmType::I32],
             DataType::Tuple { .. } => unimplemented!(),
-            DataType::Unknown => unimplemented!(),
-            DataType::AssumeGood => unimplemented!(),
+            DataType::Lib { .. } => unreachable!(),
+            DataType::Unknown => unreachable!(),
+            DataType::AssumeGood => unreachable!(),
         }
     }
     pub fn from_wasm_type(ty: &WirmType) -> Self {
@@ -349,6 +355,7 @@ impl DataType {
             | DataType::Str
             // | DataType::Tuple { .. }
             | DataType::Map { .. }
+            | DataType::Lib
             | DataType::AssumeGood => false,
         }
     }
@@ -369,8 +376,9 @@ impl DataType {
             DataType::Str => 12,
             DataType::Tuple { .. } => 13,
             DataType::Map { .. } => 14,
-            DataType::AssumeGood => 15,
-            DataType::Unknown => 16,
+            DataType::Lib => 15,
+            DataType::AssumeGood => 16,
+            DataType::Unknown => 17,
         }
     }
     pub fn num_bytes(&self) -> Option<usize> {
@@ -395,8 +403,10 @@ impl DataType {
             }
             DataType::Str |
             DataType::Null |
+            DataType::Lib |
             DataType::AssumeGood |
             DataType::Unknown => {
+                // todo
                 // TODO -- is this okay for AssumeGood?
                 // size should be determined respective to the context!
                 None
@@ -444,6 +454,9 @@ impl DataType {
             }
             DataType::Str => {
                 yellow(true, "str".to_string(), buffer);
+            }
+            DataType::Lib => {
+                yellow(true, "lib".to_string(), buffer);
             }
             DataType::Tuple { ty_info } => {
                 white(true, "(".to_string(), buffer);
@@ -497,6 +510,7 @@ impl DataType {
                 res
             }
             DataType::Null |
+            DataType::Lib |
             DataType::Unknown |
             DataType::AssumeGood => unreachable!()
         }
@@ -1292,6 +1306,24 @@ impl Statement {
     pub fn line_col(&self) -> Option<LineColLocation> {
         self.loc().as_ref().map(|loc| loc.line_col.clone())
     }
+
+    pub fn get_inner_exprs_mut(&mut self) -> Vec<&mut Expr> {
+        match self {
+            Statement::Decl { var_id, .. } => vec![var_id],
+            Statement::Assign { var_id, expr, .. } => vec![var_id, expr],
+            Statement::SetMap { map, key, val, .. } => vec![map, key, val],
+            Statement::Expr { expr, .. } => vec![expr],
+            Statement::Return { expr, .. } => vec![expr],
+            Statement::If { cond, .. } => vec![cond],
+            Statement::UnsharedDecl {decl, .. } => decl.get_inner_exprs_mut(),
+            Statement::UnsharedDeclInit { decl, init, .. } => {
+                let mut exprs = decl.get_inner_exprs_mut();
+                exprs.extend(init.get_inner_exprs_mut());
+                exprs
+            },
+            Statement::LibImport { .. } => vec![]
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1424,6 +1456,47 @@ impl Expr {
             | Expr::VarId { loc, .. }
             | Expr::MapGet { loc, .. }
             | Expr::Primitive { loc, .. } => loc,
+        }
+    }
+    pub fn get_primitive_i32(&self) -> Option<i32> {
+        if let Expr::Primitive {
+            val:
+            Value::Number {
+                val: NumLit::I32 { val },
+                ..
+            },
+            ..
+        } = self {
+            Some(*val)
+        } else {
+            None
+        }
+    }
+    pub fn get_primitive_u32(&self) -> Option<u32> {
+        if let Expr::Primitive {
+            val:
+            Value::Number {
+                val: NumLit::U32 { val },
+                ..
+            },
+            ..
+        } = self {
+            Some(*val)
+        } else {
+            None
+        }
+    }
+    pub fn get_primitive_str(&self) -> Option<String> {
+        if let Expr::Primitive {
+            val:
+            Value::Str {
+                val
+            },
+            ..
+        } = self {
+            Some(val.clone())
+        } else {
+            None
         }
     }
 }
@@ -1606,6 +1679,9 @@ impl Whamm {
     }
 
     pub(crate) fn get_bound_fns() -> Vec<BoundFunction> {
+        vec![Self::def_strcmp(), Self::def_len(), Self::def_mem(), Self::def_write_str()]
+    }
+    fn def_strcmp() -> BoundFunction {
         let strcmp_params = vec![
             (
                 Expr::VarId {
@@ -1627,16 +1703,93 @@ impl Whamm {
             ),
         ];
 
-        let strcmp = BoundFunction::new(
+        BoundFunction::new(
             "strcmp".to_string(),
             "Compare two wasm strings and return whether they are equivalent.".to_string(),
             strcmp_params,
             DataType::Boolean,
             false,
             StackReq::None,
-        );
+        )
+    }
+    fn def_len() -> BoundFunction {
+        let len_params = vec![
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "s".to_string(),
+                    loc: None,
+                },
+                DataType::Str
+            )
+        ];
 
-        vec![strcmp]
+        BoundFunction::new(
+            "len".to_string(),
+            "Get the length of a string.".to_string(),
+            len_params,
+            DataType::U32,
+            true,
+            StackReq::None,
+        )
+    }
+    fn def_mem() -> BoundFunction {
+        let mem_params = vec![
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "lib".to_string(),
+                    loc: None,
+                },
+                DataType::Lib
+            )
+        ];
+
+        BoundFunction::new(
+            "mem".to_string(),
+            "Get the memory assigned to an imported library.".to_string(),
+            mem_params,
+            DataType::U32,
+            true,
+            StackReq::None,
+        )
+    }
+    fn def_write_str() -> BoundFunction {
+        let write_params = vec![
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "target_mem".to_string(),
+                    loc: None,
+                },
+                DataType::U32
+            ),
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "ptr".to_string(),
+                    loc: None,
+                },
+                DataType::I32
+            ),
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "s".to_string(),
+                    loc: None,
+                },
+                DataType::Str
+            )
+        ];
+
+        BoundFunction::new(
+            "write_str".to_string(),
+            "Write a string to the target ptr address of the specified memory.".to_string(),
+            write_params,
+            DataType::Tuple { ty_info: vec![] },
+            true,
+            StackReq::None,
+        )
     }
 
     pub(crate) fn get_bound_vars() -> Vec<BoundVar> {

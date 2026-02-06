@@ -311,7 +311,8 @@ impl SymbolTableBuilder<'_, '_, '_> {
             let lib_id = self.table.put(
                 lib_name.clone(),
                 Record::Library {
-                    fns: Default::default(),
+                    mem_id: Default::default(),
+                    fns: Default::default()
                 },
             );
             match self.table.get_record_mut(self.curr_script.unwrap()) {

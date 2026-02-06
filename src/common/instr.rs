@@ -294,6 +294,7 @@ pub fn run(
         &mut mem_allocator,
         &mut utils_pkg,
         &mut core_packages,
+        metadata_collector.table,
         metadata_collector.err,
     );
     // If there were any errors encountered, report and exit!

@@ -141,6 +141,7 @@ impl UnsharedVarHandler {
 
             if matches!(var.ty, DataType::Str) {
                 // handle variables that are strings
+                // todo
                 todo!()
             }
 

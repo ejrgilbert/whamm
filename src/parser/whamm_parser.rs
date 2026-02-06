@@ -1762,7 +1762,44 @@ fn handle_bool(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 }
 
 fn handle_string(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
-    let mut val: String = pair.as_str().to_string();
+    let span = pair.as_span();
+
+    let mut val = String::new();
+
+    for p in pair.into_inner() {
+        match p.as_rule() {
+            Rule::normal_char => val.push_str(p.as_str()),
+            Rule::escape => {
+                let inner = p.into_inner().next().unwrap();
+                match inner.as_rule() {
+                    Rule::predefined_escape => match inner.as_str() {
+                        "n" => val.push('\n'),
+                        "r" => val.push('\r'),
+                        "t" => val.push('\t'),
+                        "\"" => val.push('"'),
+                        "'" => val.push('\''),
+                        "\\" => val.push('\\'),
+                        "0" => val.push('\0'),
+                        _ => unreachable!(),
+                    },
+                    Rule::hex_escape => {
+                        let hex = &inner.as_str()[1..];
+                        let byte = u8::from_str_radix(hex, 16).unwrap();
+                        val.push(byte as char);
+                    },
+                    Rule::unicode_escape => {
+                        let s = inner.as_str();
+                        let hex = &s[2..s.len() - 1];
+                        let codepoint = u32::from_str_radix(hex, 16).unwrap();
+                        val.push(char::from_u32(codepoint).unwrap());
+                    },
+                    _ => unreachable!(),
+                }
+            },
+            _ => unreachable!(),
+        }
+    }
+
     if val.starts_with('\"') {
         val = val
             .strip_prefix('\"')
@@ -1779,7 +1816,7 @@ fn handle_string(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     Ok(Expr::Primitive {
         val: Value::Str { val },
         loc: Some(Location {
-            line_col: LineColLocation::from(pair.as_span()),
+            line_col: LineColLocation::from(span),
             path: None,
         }),
     })

@@ -735,8 +735,11 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
 }
 
 fn get_def(name: &str, table: &SymbolTable) -> (Definition, DataType, Option<Location>) {
-    if let Some(Record::Var { def, ty, loc, .. }) = table.lookup_var(name, false) {
+    let var = table.lookup_var(name, false);
+    if let Some(Record::Var { def, ty, loc, .. }) = var {
         (def.clone(), ty.clone(), loc.clone())
+    } else if let Some(Record::Library { .. }) = var {
+        (Definition::User, DataType::Lib, None)
     } else {
         unreachable!("unexpected type");
     }

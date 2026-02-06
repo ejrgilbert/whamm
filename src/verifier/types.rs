@@ -297,7 +297,9 @@ impl SymbolTable {
             if matches!(rec, Record::Var { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(rec, "Var");
+                if panic_if_missing {
+                    Self::no_match(rec, "Var");
+                }
                 None
             }
         } else if panic_if_missing {
@@ -308,10 +310,12 @@ impl SymbolTable {
     }
     pub fn lookup_var(&self, key: &str, fail_on_miss: bool) -> Option<&Record> {
         if let Some(rec) = self.lookup_rec(key) {
-            if matches!(rec, Record::Var { .. }) {
+            if matches!(rec, Record::Var { .. } | Record::Library { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(rec, "Var");
+                if fail_on_miss {
+                    Self::no_match(rec, "Var");
+                }
                 None
             }
         } else {
@@ -339,7 +343,9 @@ impl SymbolTable {
             if matches!(rec, Record::Fn { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(rec, "Fn");
+                if fail_on_miss {
+                    Self::no_match(rec, "Fn");
+                }
                 None
             }
         } else {
@@ -588,6 +594,7 @@ pub enum Record {
         providers: Vec<usize>,
     },
     Library {
+        mem_id: Option<u32>,
         fns: HashMap<String, usize>,
     },
     Provider {
