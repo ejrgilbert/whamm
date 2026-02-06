@@ -419,6 +419,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 //allow declarations and assignment
                 Statement::Decl { .. } | Statement::Assign { .. } | Statement::LibImport { .. } => {
                 }
+                // allow function calls
+                Statement::Expr { expr: Expr::LibCall {..} | Expr::Call {..}, .. } => {}
                 Statement::UnsharedDecl { is_report, .. } => {
                     if *is_report {
                         self.has_reports = true;
@@ -433,7 +435,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
                 _ => {
                     self.err.type_check_error(
-                        format!("Only variable declarations, user lib imports, and assignment are allowed in the global scope, found: {:?}", stmt),
+                        format!("Only variable declarations, user lib imports, function calls, library function calls, and assignment are allowed in the global scope, found: {:?}", stmt),
                         &stmt.loc().clone().map(|l| l.line_col),
                     );
                     return None;
@@ -496,6 +498,17 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 };
                 self.outer_cast_fixes_assign = false;
                 self.assign_ty = None;
+
+                if let Expr::Primitive {val, ..} = expr {
+                    let Expr::VarId {name, ..} = var_id else {
+                        panic!()
+                    };
+                    let Some(Record::Var { value, .. }) = self.table.lookup_var_mut(name, true) else {
+                        unreachable!("unexpected type");
+                    };
+                    *value = Some(val.clone());
+                }
+
                 res
             }
             Statement::UnsharedDeclInit { decl, init, .. } => {
@@ -1004,6 +1017,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 };
                             }
                             return Some(ty.clone());
+                        } else if let Record::Library {..} = rec {
+                            return Some(DataType::Lib)
                         } else {
                             // unexpected record type
                             unreachable!("{} Expected Var type", UNEXPECTED_ERR_MSG)

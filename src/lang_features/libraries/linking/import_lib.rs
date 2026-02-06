@@ -7,11 +7,10 @@ use crate::generator::ast::Script;
 use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::core::utils::UtilsPackage;
 use crate::lang_features::libraries::core::{
-    LibPackage, WHAMM_CORE_LIB_MEM_NAME, WHAMM_CORE_LIB_NAME,
+    LibPackage, ASSUMED_LIB_MEM_NAME, WHAMM_CORE_LIB_NAME,
 };
 use crate::parser::types::Location;
 use crate::verifier::types::{Record, SymbolTable};
-use log::trace;
 use std::collections::HashSet;
 use wirm::ir::id::FunctionID;
 use wirm::wasmparser::{ExternalKind, MemoryType};
@@ -37,6 +36,7 @@ pub fn link_core_lib(
     mem_allocator: &mut MemoryAllocator,
     utils: &mut UtilsPackage,
     packages: &mut [&mut dyn LibPackage],
+    table: &mut SymbolTable,
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
     let mut injected_funcs = vec![];
@@ -61,6 +61,7 @@ pub fn link_core_lib(
             &None,
             &core_lib,
             utils,
+            table
         )
     }
 
@@ -69,7 +70,7 @@ pub fn link_core_lib(
             let core_lib = Module::parse(core_lib, false, false).unwrap();
             if package.import_memory() {
                 let lib_mem_id =
-                    import_lib_memory(app_wasm, &None, WHAMM_CORE_LIB_NAME.to_string());
+                    import_lib_memory(app_wasm, &None, WHAMM_CORE_LIB_NAME, table);
                 package.set_lib_mem_id(lib_mem_id);
             }
             package.set_instr_mem_id(mem_allocator.mem_id as i32);
@@ -80,6 +81,7 @@ pub fn link_core_lib(
                 &None,
                 &core_lib,
                 *package,
+                table,
             );
             injected_funcs.extend(gen_package_helpers(
                 app_wasm,
@@ -105,12 +107,14 @@ pub fn link_user_lib(
     let added = import_lib_fn_names(
         app_wasm,
         loc,
-        lib_name,
+        &lib_name,
         lib_name_import_override,
         lib_wasm,
         used_lib_fns,
-        Some(table),
+        table,
     );
+
+    import_lib_memory(app_wasm, loc, &lib_name, table);
 
     let mut injected_funcs = vec![];
     for (_, fid) in added.iter() {
@@ -120,18 +124,33 @@ pub fn link_user_lib(
     injected_funcs
 }
 
-fn import_lib_memory(app_wasm: &mut Module, loc: &Option<Location>, lib_name: String) -> i32 {
-    trace!("Enter import_lib_memory");
-    let mem_id = import_memory(
-        lib_name.as_str(),
-        WHAMM_CORE_LIB_MEM_NAME,
-        "lib_mem",
-        loc,
-        app_wasm,
-    );
+fn import_lib_memory(app_wasm: &mut Module, loc: &Option<Location>, lib_name: &str,
+                     table: &mut SymbolTable) -> i32 {
+    let Some(Record::Library { mem_id, .. }) =
+        table.lookup_lib_mut(&lib_name)
+    else {
+        panic!("unexpected type");
+    };
+    let id = match mem_id {
+        Some(id) => *id,
+        None => {
+            // memory for this library hasn't been imported yet, fix that!
+            let id = import_memory(
+                lib_name,
+                ASSUMED_LIB_MEM_NAME,
+                &format!("{lib_name}_lib_mem"),
+                loc,
+                app_wasm,
+            );
 
-    trace!("Exit import_lib");
-    mem_id as i32
+            // save the MEM_ID to the symbol table
+            *mem_id = Some(id);
+            id
+        }
+    };
+
+
+    id as i32
 }
 
 fn gen_package_helpers(
@@ -152,16 +171,17 @@ fn import_lib_package(
     lib_name_import_override: &Option<String>,
     lib_wasm: &Module,
     package: &mut dyn LibPackage,
+    table: &mut SymbolTable,
 ) {
     // should only import the EXPORTED contents of the lib_wasm
     let added = import_lib_fn_names(
         app_wasm,
         loc,
-        lib_name,
+        &lib_name,
         lib_name_import_override,
         lib_wasm,
         &HashSet::from_iter(package.get_fn_names().iter().cloned()),
-        None,
+        table
     );
 
     for (name, fid) in added.iter() {
@@ -173,12 +193,18 @@ fn import_lib_package(
 fn import_lib_fn_names(
     app_wasm: &mut Module,
     loc: &Option<Location>,
-    lib_name: String,
+    lib_name: &str,
     lib_name_import_override: &Option<String>,
     lib_wasm: &Module,
     lib_fns: &HashSet<String>,
-    mut table: Option<&mut SymbolTable>,
+    table: &mut SymbolTable,
 ) -> Vec<(String, u32)> {
+    let import_name = if let Some(name_override) = lib_name_import_override {
+        name_override.as_str()
+    } else {
+        lib_name
+    };
+
     let mut injected_fns = vec![];
     for export in lib_wasm.exports.iter() {
         // we don't care about non-function exports
@@ -186,11 +212,6 @@ fn import_lib_fn_names(
             if lib_fns.contains(&export.name) {
                 let func = lib_wasm.functions.get(FunctionID(export.index));
                 if let Some(ty) = lib_wasm.types.get(func.get_type_id()) {
-                    let import_name = if let Some(name_override) = lib_name_import_override {
-                        name_override.as_str()
-                    } else {
-                        lib_name.as_str()
-                    };
                     let fn_name = export.name.as_str();
 
                     let fid = import_func(
@@ -202,15 +223,13 @@ fn import_lib_fn_names(
                         app_wasm,
                     );
                     // save the FID to the symbol table
-                    if let Some(table) = table.as_mut() {
-                        let Some(Record::LibFn { addr, .. }) =
-                            table.lookup_lib_fn_mut(&lib_name, fn_name)
-                        else {
-                            panic!("unexpected type");
-                        };
+                    let Some(Record::LibFn { addr, .. }) =
+                        table.lookup_lib_fn_mut(&lib_name, fn_name)
+                    else {
+                        panic!("unexpected type");
+                    };
 
-                        *addr = Some(fid);
-                    }
+                    *addr = Some(fid);
 
                     // save the FID as an injected function
                     injected_fns.push((export.name.clone(), fid));

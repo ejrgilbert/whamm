@@ -229,7 +229,14 @@ BOOL = @{
     | "false"
 }
 
-STRING = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+// strings
+
+predefined_escape = { "n" | "r" | "t" | "\"" | "'" | "\\" | "0" }
+hex_escape        = { "x" ~ HEX_DIGIT{2} }
+unicode_escape    = { "u{" ~ HEX_DIGIT+ ~ "}" }
+escape            = { "\\" ~ (predefined_escape | hex_escape | unicode_escape) }
+normal_char       = { !("\"" | "\\") ~ ANY }
+STRING            = ${ "\"" ~ (escape | normal_char)* ~ "\"" }
 
 // ===========================
 // ---- Reserved Keywords ----

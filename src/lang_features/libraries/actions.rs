@@ -8,6 +8,7 @@ use crate::lang_features::libraries::core::utils::UtilsPackage;
 use crate::lang_features::libraries::core::LibPackage;
 use wirm::ir::id::FunctionID;
 use wirm::Module;
+use crate::verifier::types::SymbolTable;
 
 pub fn link_core_lib(
     method: LibraryLinkStrategy,
@@ -17,6 +18,7 @@ pub fn link_core_lib(
     mem_allocator: &mut MemoryAllocator,
     utils: &mut UtilsPackage,
     packages: &mut [&mut dyn LibPackage],
+    table: &mut SymbolTable,
     err: &mut ErrorGen,
 ) -> Vec<FunctionID> {
     match method {
@@ -28,6 +30,7 @@ pub fn link_core_lib(
                 mem_allocator,
                 utils,
                 packages,
+                table,
                 err,
             )
         }

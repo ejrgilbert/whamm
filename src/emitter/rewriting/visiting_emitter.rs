@@ -569,16 +569,66 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
         true
     }
 
+    fn handle_write_str(&mut self, args: &mut [Expr], err: &mut ErrorGen) -> bool {
+        // usage: `write_str(target_mem: u32, ptr: i32, s: str) -> ()`
+        let target_mem = args[0].get_primitive_u32().unwrap_or_else(|| unreachable!());
+        let s = args[2].get_primitive_str().unwrap_or_else(|| unreachable!());
+
+        let Some(str_addr) = self.mem_allocator.emitted_strings.get(&s) else {
+            unreachable!()
+        };
+        let str_ptr = self.app_iter.add_local(WirmType::I32);
+        self.app_iter.u32_const(str_addr.mem_offset as u32);
+        self.app_iter.local_set(str_ptr);
+
+        let str_len = self.app_iter.add_local(WirmType::I32);
+        self.app_iter.u32_const(str_addr.len as u32);
+        self.app_iter.local_set(str_len);
+
+        self.mem_allocator.copy_to_mem_expr(
+            self.mem_allocator.mem_id,
+            str_ptr,
+            str_len,
+            target_mem,
+            &mut args[1],
+            self.strategy,
+            &mut EmitCtx::new(
+                self.registry,
+                self.table,
+                self.mem_allocator,
+                &mut self.locals_tracker,
+                self.utils_adapter,
+                self.map_lib_adapter,
+                UNEXPECTED_ERR_MSG,
+                err,
+            ),
+            &mut self.app_iter
+        );
+        true
+    }
+
     fn handle_special_fn_call(
         &mut self,
         target_fn_name: String,
         args: &mut [Expr],
         err: &mut ErrorGen,
     ) -> bool {
+        let mut folded_args = vec![];
+        for arg in args.iter() {
+            folded_args.push(ExprFolder::fold_expr(
+                arg,
+                self.registry,
+                self.strategy.as_monitor_module(),
+                self.table,
+                err
+            ));
+        }
+
         match target_fn_name.as_str() {
-            "alt_call_by_name" => self.handle_alt_call_by_name(args, err),
-            "alt_call_by_id" => self.handle_alt_call_by_id(args, err),
+            "alt_call_by_name" => self.handle_alt_call_by_name(&mut folded_args, err),
+            "alt_call_by_id" => self.handle_alt_call_by_id(&mut folded_args, err),
             "drop_args" => self.handle_drop_args(err),
+            "write_str" => self.handle_write_str(&mut folded_args, err),
             _ => {
                 unreachable!(
                     "{} Could not find handler for static function with name: {}",

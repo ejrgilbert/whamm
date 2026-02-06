@@ -86,6 +86,7 @@ impl UnsharedVarHandler {
 
             if matches!(var.ty, DataType::Str) {
                 // handle variables that are strings
+                // todo
                 todo!()
             }
             // (once they're emitted, the addresses will be available in MemoryAllocator::emitted_strings)
