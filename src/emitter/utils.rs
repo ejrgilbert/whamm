@@ -154,6 +154,7 @@ fn handle_special_fn_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             unreachable!("static function call should already be handled: {target_fn_name}")
         }
         "write_str" => handle_write_str(&mut folded_args, strategy, injector, ctx),
+        "read_str" => handle_read_str(&mut folded_args, strategy, injector, ctx),
         _ => {
             unreachable!(
                 "{} Could not find handler for static function with name: {}",
@@ -173,20 +174,13 @@ fn handle_write_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     let target_mem = args[0]
         .get_primitive_u32()
         .unwrap_or_else(|| unreachable!());
-    let s = args[2]
-        .get_primitive_str()
-        .unwrap_or_else(|| unreachable!());
 
-    let Some(str_addr) = ctx.mem_allocator.emitted_strings.get(&s) else {
-        unreachable!()
-    };
-    let str_ptr = injector.add_local(WirmType::I32);
-    injector.u32_const(str_addr.mem_offset as u32);
-    injector.local_set(str_ptr);
-
-    let str_len = injector.add_local(WirmType::I32);
-    injector.u32_const(str_addr.len as u32);
+    // handle the string parameter
+    emit_expr(&mut args[2], strategy, injector, ctx);
+    let str_len = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
     injector.local_set(str_len);
+    let str_ptr = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
+    injector.local_set(str_ptr);
 
     ctx.mem_allocator.copy_to_mem_expr(
         ctx.mem_allocator.mem_id,
@@ -198,6 +192,45 @@ fn handle_write_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         ctx,
         injector,
     );
+    true
+}
+
+fn handle_read_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    args: &mut [Expr],
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) -> bool {
+    // usage: `read_str(src_mem: u32, ptr: i32, l: u32) -> ()`
+    let src_mem = args[0]
+        .get_primitive_u32()
+        .unwrap_or_else(|| unreachable!());
+
+    let str_ptr = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
+    emit_expr(&mut args[1], strategy, injector, ctx);
+    injector.local_set(str_ptr);
+
+    let str_len = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
+    emit_expr(&mut args[2], strategy, injector, ctx);
+    injector.local_set(str_len);
+
+    let dst_ptr = ctx.mem_allocator.mem_tracker_global;
+    ctx.mem_allocator.copy_to_mem_global_ptr(
+        src_mem,
+        str_ptr,
+        str_len,
+        ctx.mem_allocator.mem_id,
+        dst_ptr,
+        injector,
+    );
+
+    // return the string's (ptr, len)
+    injector
+        .local_get(str_len)
+        .global_get(dst_ptr)
+        .local_get(str_len)
+        .i32_sub();
+
     true
 }
 
@@ -814,6 +847,24 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             // first save off current context's state on whether we're in a lib call
             let in_lib_call_to = ctx.in_lib_call_to.clone();
 
+            let addr = if let Some(lib_name) = &ctx.in_lib_call_to {
+                let Some(Record::LibFn { addr, .. }) = ctx.table.lookup_lib_fn(lib_name, &fn_name)
+                else {
+                    unreachable!("unexpected type");
+                };
+                *addr
+            } else {
+                let Some(Record::Fn { def, addr, .. }) = ctx.table.lookup_fn(&fn_name, true) else {
+                    unreachable!("unexpected type");
+                };
+                // Check if this is calling a bound, static function!
+                if matches!(def, Definition::CompilerStatic) {
+                    // We want to handle this as unique logic rather than a simple function call to be emitted
+                    return handle_special_fn_call(fn_name, args, strategy, injector, ctx);
+                }
+                *addr
+            };
+
             // emit the arguments
             let mut is_success = true;
             for arg in args.iter_mut() {
@@ -822,19 +873,6 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
             // now that we've emitted the arguments, restore the original lib call tracking
             ctx.in_lib_call_to = in_lib_call_to;
-
-            let addr = if let Some(lib_name) = &ctx.in_lib_call_to {
-                let Some(Record::LibFn { addr, .. }) = ctx.table.lookup_lib_fn(lib_name, &fn_name)
-                else {
-                    unreachable!("unexpected type");
-                };
-                *addr
-            } else {
-                let Some(Record::Fn { addr, .. }) = ctx.table.lookup_fn(&fn_name, true) else {
-                    unreachable!("unexpected type");
-                };
-                *addr
-            };
 
             if let Some(f_id) = addr {
                 injector.call(FunctionID(f_id));

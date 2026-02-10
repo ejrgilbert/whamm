@@ -1,0 +1,19 @@
+use gen;
+
+// allocate some space in memory to store the library's string
+var MAX: i32 = 100;
+var ptr: i32 = gen.mem_alloc(MAX);
+
+// write a string to memory, return the length of the string written
+// (should also get flushed at the end of execution)
+report var len: i32 = gen.write_alphabet(ptr, MAX);
+
+// read the string from the library's memory
+// (should also get flushed at the end of execution)
+report var s: str = read_str(memid(gen), ptr, len);
+
+wasm:opcode:drop:before {
+    // read the string from the library's memory that should still be live
+    // (should also get flushed at the end of execution)
+    report var s1: str = read_str(memid(gen), ptr, len);
+}
