@@ -35,6 +35,7 @@ fn instrument_dfinity_with_fault_injection() {
             for e in errs.iter() {
                 println!("- {}", e.msg)
             }
+            panic!();
         }
     }
 }
@@ -118,6 +119,7 @@ fn instrument_with_wizard_monitors() {
             for e in errs.iter() {
                 println!("- {}", e.msg)
             }
+            panic!();
         }
     }
 }
