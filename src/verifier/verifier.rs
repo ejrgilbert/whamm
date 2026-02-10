@@ -1026,7 +1026,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             return Some(DataType::Lib);
                         } else {
                             // unexpected record type
-                            unreachable!("{} Expected Var type, got: {rec:?}", UNEXPECTED_ERR_MSG)
+                            // TODO: make this look up the local-most var (overshadowing should work)
+                            unreachable!("{} Expected Var type, got: {rec:?}\nHave you overshadowed some bound variable?", UNEXPECTED_ERR_MSG)
                         }
                     }
                 }

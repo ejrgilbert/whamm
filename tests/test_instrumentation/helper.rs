@@ -396,6 +396,7 @@ fn run_testcase_rewriting(
         for e in errs.iter() {
             println!("- {}", e.msg)
         }
+        panic!();
     }
 
     // run the instrumented application on wasmtime
