@@ -575,6 +575,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
         false
     }
 
+    fn handle_read_str(&mut self) -> bool {
+        // this is handled in the shared emitter utils
+        false
+    }
+
     fn handle_special_fn_call(
         &mut self,
         target_fn_name: String,
@@ -597,6 +602,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
             "alt_call_by_id" => self.handle_alt_call_by_id(&mut folded_args, err),
             "drop_args" => self.handle_drop_args(err),
             "write_str" => self.handle_write_str(),
+            "read_str" => self.handle_read_str(),
             _ => {
                 unreachable!(
                     "{} Could not find handler for static function with name: {}",

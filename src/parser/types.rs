@@ -1455,17 +1455,6 @@ impl Expr {
             None
         }
     }
-    pub fn get_primitive_str(&self) -> Option<String> {
-        if let Expr::Primitive {
-            val: Value::Str { val },
-            ..
-        } = self
-        {
-            Some(val.clone())
-        } else {
-            None
-        }
-    }
 }
 impl Display for Expr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -1651,6 +1640,7 @@ impl Whamm {
             Self::def_len(),
             Self::def_mem(),
             Self::def_write_str(),
+            Self::def_read_str(),
         ]
     }
     fn def_strcmp() -> BoundFunction {
@@ -1755,6 +1745,44 @@ impl Whamm {
             "Write a string to the target ptr address of the specified memory.".to_string(),
             write_params,
             DataType::Tuple { ty_info: vec![] },
+            true,
+            StackReq::None,
+        )
+    }
+    fn def_read_str() -> BoundFunction {
+        let write_params = vec![
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "src_mem".to_string(),
+                    loc: None,
+                },
+                DataType::U32,
+            ),
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "ptr".to_string(),
+                    loc: None,
+                },
+                DataType::I32,
+            ),
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "l".to_string(),
+                    loc: None,
+                },
+                DataType::U32,
+            ),
+        ];
+
+        BoundFunction::new(
+            "read_str".to_string(),
+            "Read a string of length, l, from the target ptr address of the specified memory."
+                .to_string(),
+            write_params,
+            DataType::Str,
             true,
             StackReq::None,
         )
