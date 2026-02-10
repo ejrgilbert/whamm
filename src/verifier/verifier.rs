@@ -1010,7 +1010,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 if let Some(id) = self.table.lookup(name) {
                     if let Some(rec) = self.table.get_record(id) {
                         if let Record::Var { ty, def, value, .. } = rec {
-                            *definition = def.clone();
+                            *definition = *def;
                             // println!("{name}: {ty}");
                             if let Some(val) = value {
                                 // overwrite with a primitive value expression!

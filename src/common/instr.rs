@@ -306,10 +306,7 @@ pub fn run(
     let mut used_exports_per_lib: HashMap<String, (bool, HashSet<String>)> = HashMap::default();
     let mut static_libs: HashSet<String> = HashSet::default();
     for ((used_lib, used_fn), is_static) in metadata_collector.used_user_library_fns.funcs.iter() {
-        let used_mem = metadata_collector
-            .used_user_library_mems
-            .get(used_lib)
-            .is_some();
+        let used_mem = metadata_collector.used_user_library_mems.contains(used_lib);
         used_exports_per_lib
             .entry(used_lib.clone())
             .and_modify(|(mem, set)| {
