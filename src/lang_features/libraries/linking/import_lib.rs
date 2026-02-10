@@ -143,7 +143,7 @@ fn import_lib_memory(
         lib_name
     };
     let id = if let Some(table) = table.as_mut() {
-        let Some(Record::Library { mem_id, .. }) = table.lookup_lib_mut(&lib_name) else {
+        let Some(Record::Library { mem_id, .. }) = table.lookup_lib_mut(lib_name) else {
             panic!("unexpected type");
         };
 
@@ -250,7 +250,7 @@ fn import_lib_fn_names(
                     // save the FID to the symbol table
                     if let Some(table) = table.as_mut() {
                         let Some(Record::LibFn { addr, .. }) =
-                            table.lookup_lib_fn_mut(&lib_name, fn_name)
+                            table.lookup_lib_fn_mut(lib_name, fn_name)
                         else {
                             panic!("unexpected type");
                         };

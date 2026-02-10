@@ -285,7 +285,7 @@ impl DataType {
             DataType::Null => unimplemented!(),
             DataType::Str => vec![WirmType::I32, WirmType::I32],
             DataType::Tuple { .. } => unimplemented!(),
-            DataType::Lib { .. } => unreachable!(),
+            DataType::Lib => unreachable!(),
             DataType::Unknown => unreachable!(),
             DataType::AssumeGood => unreachable!(),
         }
@@ -1306,24 +1306,6 @@ impl Statement {
     pub fn line_col(&self) -> Option<LineColLocation> {
         self.loc().as_ref().map(|loc| loc.line_col.clone())
     }
-
-    pub fn get_inner_exprs_mut(&mut self) -> Vec<&mut Expr> {
-        match self {
-            Statement::Decl { var_id, .. } => vec![var_id],
-            Statement::Assign { var_id, expr, .. } => vec![var_id, expr],
-            Statement::SetMap { map, key, val, .. } => vec![map, key, val],
-            Statement::Expr { expr, .. } => vec![expr],
-            Statement::Return { expr, .. } => vec![expr],
-            Statement::If { cond, .. } => vec![cond],
-            Statement::UnsharedDecl { decl, .. } => decl.get_inner_exprs_mut(),
-            Statement::UnsharedDeclInit { decl, init, .. } => {
-                let mut exprs = decl.get_inner_exprs_mut();
-                exprs.extend(init.get_inner_exprs_mut());
-                exprs
-            }
-            Statement::LibImport { .. } => vec![],
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -1456,21 +1438,6 @@ impl Expr {
             | Expr::VarId { loc, .. }
             | Expr::MapGet { loc, .. }
             | Expr::Primitive { loc, .. } => loc,
-        }
-    }
-    pub fn get_primitive_i32(&self) -> Option<i32> {
-        if let Expr::Primitive {
-            val:
-                Value::Number {
-                    val: NumLit::I32 { val },
-                    ..
-                },
-            ..
-        } = self
-        {
-            Some(*val)
-        } else {
-            None
         }
     }
     pub fn get_primitive_u32(&self) -> Option<u32> {

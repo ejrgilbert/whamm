@@ -418,7 +418,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
         // create record
         let fn_rec = Record::Fn {
             name: f.name.clone(),
-            def: f.def.clone(),
+            def: f.def,
             params: vec![],
             ret_ty: f.results.clone(),
             addr: None,
@@ -561,13 +561,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                     aliases.insert(name.clone(), alias.clone());
                 } else if let Expr::Primitive { val, .. } = derived_from {
                     // This is a simple value that can be folded away
-                    self.add_global(
-                        ty.clone(),
-                        name.clone(),
-                        Some(val.clone()),
-                        lifetime.clone(),
-                        None,
-                    );
+                    self.add_global(ty.clone(), name.clone(), Some(val.clone()), *lifetime, None);
                 } else {
                     // Add derived globals to the probe body itself (to calculate the value)
                     derived.insert(name.clone(), (ty.clone(), derived_from.clone()));
@@ -578,7 +572,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                     ty.clone(),
                     name.clone(),
                     None, // todo this is just made up
-                    lifetime.clone(),
+                    *lifetime,
                     None,
                 );
             }
@@ -906,13 +900,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                     } = &var_id
                     {
                         // Add symbol to table
-                        self.add_global(
-                            ty.clone(),
-                            name.clone(),
-                            None,
-                            definition.clone(),
-                            loc.clone(),
-                        );
+                        self.add_global(ty.clone(), name.clone(), None, *definition, loc.clone());
                     } else {
                         panic!(
                             "{} \
