@@ -1443,7 +1443,8 @@ impl<'a> ExprFolder<'a> {
         // Check if this is calling a bound, static function!
         if let Expr::Call {
             fn_target, args, ..
-        } = call {
+        } = call
+        {
             let fn_name = match &**fn_target {
                 Expr::VarId { name, .. } => name.clone(),
                 _ => return call.clone(),
@@ -1459,7 +1460,14 @@ impl<'a> ExprFolder<'a> {
         call.clone()
     }
 
-    fn handle_special_fn_call(&mut self, call: &Expr, target_fn_name: &str, args: &[Expr], table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+    fn handle_special_fn_call(
+        &mut self,
+        call: &Expr,
+        target_fn_name: &str,
+        args: &[Expr],
+        table: &SymbolTable,
+        err: &mut ErrorGen,
+    ) -> Expr {
         let mut folded_args = vec![];
         for arg in args.iter() {
             folded_args.push(ExprFolder::fold_expr(
@@ -1467,14 +1475,14 @@ impl<'a> ExprFolder<'a> {
                 self.registry,
                 self.as_monitor_module,
                 table,
-                err
+                err,
             ));
         }
 
         match target_fn_name {
             "len" => self.handle_len(&mut folded_args, table, err),
-            "mem" => self.handle_mem(&mut folded_args, table),
-            _ => call.clone()
+            "memid" => self.handle_mem(&mut folded_args, table),
+            _ => call.clone(),
         }
     }
 

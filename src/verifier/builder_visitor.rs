@@ -312,7 +312,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 lib_name.clone(),
                 Record::Library {
                     mem_id: Default::default(),
-                    fns: Default::default()
+                    fns: Default::default(),
                 },
             );
             match self.table.get_record_mut(self.curr_script.unwrap()) {
@@ -479,8 +479,10 @@ impl SymbolTableBuilder<'_, '_, '_> {
     }
 
     fn add_param(&mut self, var_id: &Expr, ty: &DataType) {
-        let name = match var_id {
-            Expr::VarId { name, .. } => name,
+        let (name, def) = match var_id {
+            Expr::VarId {
+                name, definition, ..
+            } => (name, *definition),
             _ => {
                 unreachable!("{}", UNEXPECTED_ERR_MSG)
             }
@@ -490,8 +492,9 @@ impl SymbolTableBuilder<'_, '_, '_> {
         let param_rec = Record::Var {
             ty: ty.clone(),
             value: None,
-            def: Definition::User,
+            def,
             addr: None,
+            times_set: 0,
             loc: var_id.loc().clone(),
         };
 
@@ -532,6 +535,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 value,
                 def: definition,
                 addr: None,
+                times_set: 0,
                 loc,
             },
         );

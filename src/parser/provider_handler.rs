@@ -784,6 +784,7 @@ pub struct BoundFunc {
 }
 impl CheckedFrom<BoundFuncYml> for BoundFunc {
     fn from(value: BoundFuncYml) -> Result<Self, Box<ErrorGen>> {
+        let def = Definition::from(value.lifetime.as_str());
         let params = match WhammParser::parse(Rule::fn_params, &value.params) {
             Ok(mut pairs) => {
                 let mut err = ErrorGen::new("".to_string(), "".to_string(), 15);
@@ -791,7 +792,7 @@ impl CheckedFrom<BoundFuncYml> for BoundFunc {
                 let mut next = pairs.next();
                 while let Some(n) = &next {
                     if matches!(n.as_rule(), Rule::param) {
-                        if let Some(param) = handle_param(n.clone().into_inner(), &mut err) {
+                        if let Some(param) = handle_param(n.clone().into_inner(), def, &mut err) {
                             params.push(param)
                         }
                         next = pairs.next();
@@ -818,7 +819,7 @@ impl CheckedFrom<BoundFuncYml> for BoundFunc {
 
         Ok(Self {
             func: WhammFn {
-                def: Definition::from(value.lifetime.as_str()),
+                def,
                 name: FnId {
                     name: value.name.to_owned(),
                     loc: None,

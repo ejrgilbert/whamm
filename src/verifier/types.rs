@@ -651,6 +651,7 @@ pub enum Record {
         def: Definition,
         /// The address of this var post-injection
         addr: Option<Vec<VarAddr>>,
+        times_set: u32,
         loc: Option<Location>,
     },
 }
@@ -666,6 +667,12 @@ impl Record {
         match self {
             Record::Fn { def, .. } | Record::Var { def, .. } => def.is_comp_defined(),
             _ => true,
+        }
+    }
+    pub fn val_is_stable(&self) -> bool {
+        match self {
+            Record::Var { times_set, .. } => *times_set <= 1,
+            _ => unreachable!("cannot call this function on a non-var record."),
         }
     }
 }

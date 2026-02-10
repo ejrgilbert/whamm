@@ -233,6 +233,7 @@ impl UnsharedVarHandler {
                     value: None,
                     def: Definition::User,
                     addr: Some(vec![var_addr]),
+                    times_set: 0,
                     loc: None,
                 },
             );
@@ -265,6 +266,7 @@ impl UnsharedVarHandler {
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![addr_fid]),
+                    times_set: 0,
                     loc: None,
                 },
             );
@@ -275,6 +277,7 @@ impl UnsharedVarHandler {
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![addr_pc]),
+                    times_set: 0,
                     loc: None,
                 },
             );
@@ -285,6 +288,7 @@ impl UnsharedVarHandler {
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![addr_offset]),
+                    times_set: 0,
                     loc: None,
                 },
             );

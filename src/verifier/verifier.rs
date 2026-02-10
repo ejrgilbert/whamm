@@ -156,6 +156,7 @@ impl<'a> TypeChecker<'a> {
                 value: None,
                 def: definition,
                 addr: None,
+                times_set: 0,
                 loc: loc.clone(),
             },
         );
@@ -208,6 +209,7 @@ impl<'a> TypeChecker<'a> {
                             value: None,
                             def: CompilerDynamic,
                             addr: None,
+                            times_set: 0,
                             loc: loc.clone(),
                         },
                     );
@@ -420,7 +422,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 Statement::Decl { .. } | Statement::Assign { .. } | Statement::LibImport { .. } => {
                 }
                 // allow function calls
-                Statement::Expr { expr: Expr::LibCall {..} | Expr::Call {..}, .. } => {}
+                Statement::Expr {
+                    expr: Expr::LibCall { .. } | Expr::Call { .. },
+                    ..
+                } => {}
                 Statement::UnsharedDecl { is_report, .. } => {
                     if *is_report {
                         self.has_reports = true;
@@ -499,13 +504,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 self.outer_cast_fixes_assign = false;
                 self.assign_ty = None;
 
-                if let Expr::Primitive {val, ..} = expr {
-                    if let Expr::VarId {name, ..} = var_id {
-                        if let Some(Record::Var { value, .. }) = self.table.lookup_var_mut(name, false) {
-                            *value = Some(val.clone());
-                        }
-                    }
-                }
+                // if let Expr::Primitive {val, ..} = expr {
+                //     if let Expr::VarId {name, ..} = var_id {
+                //         if let Some(Record::Var { value, .. }) = self.table.lookup_var_mut(name, false) {
+                //             *value = Some(val.clone());
+                //         }
+                //     }
+                // }
 
                 res
             }
@@ -1015,11 +1020,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 };
                             }
                             return Some(ty.clone());
-                        } else if let Record::Library {..} = rec {
-                            return Some(DataType::Lib)
+                        } else if let Record::Library { .. } = rec {
+                            return Some(DataType::Lib);
                         } else {
                             // unexpected record type
-                            unreachable!("{} Expected Var type", UNEXPECTED_ERR_MSG)
+                            unreachable!("{} Expected Var type, got: {rec:?}", UNEXPECTED_ERR_MSG)
                         }
                     }
                 }

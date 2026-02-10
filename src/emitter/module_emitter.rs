@@ -160,6 +160,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, '
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![VarAddr::Local { addr: *alloc }]),
+                    times_set: 0,
                     loc: None,
                 },
             );
@@ -176,6 +177,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, '
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![VarAddr::Local { addr: local_id }]),
+                    times_set: 0,
                     loc: None,
                 },
             );
@@ -228,6 +230,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, '
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(addrs),
+                    times_set: 0,
                     loc: None,
                 },
             );
