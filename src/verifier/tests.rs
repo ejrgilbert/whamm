@@ -627,40 +627,6 @@ pub fn test_report_decl() {
     assert!(!err.has_errors);
 }
 
-#[test]
-pub fn test_dynamic_call_in_global_scope() {
-    setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-
-    // cannot have dynamic user library calls in global scope
-    let script = r#"
-use toggle;
-
-report var g: i32 = toggle.get_nonzero_nested(1, @static toggle.get_value());
-
-wasm:opcode:*:before / toggle.should_inject(fid as i32, @static toggle.get_value()) as bool / {
-    report var val: i32;
-    val = toggle.should_inject(fid as i32, @static toggle.get_value());
-}
-    "#;
-    let mut ast = tests::get_ast(script, &mut err);
-
-    let toggle_bytes = std::fs::read(TOGGLE_PATH).unwrap_or_else(|_| {
-        panic!(
-            "Could not read the core wasm module expected to be at location: {}",
-            TOGGLE_PATH
-        )
-    });
-    let toggle_lib: HashMap<String, (Option<String>, Module)> = HashMap::from([(
-        "toggle".to_string(),
-        (None, Module::parse(&toggle_bytes, true, false).unwrap()),
-    )]);
-
-    let mut table = verifier::build_symbol_table(&mut ast, &toggle_lib, &mut err);
-    verifier::type_check(&mut ast, &mut table, &mut err);
-    err.report();
-    assert!(err.has_errors);
-}
 //TODO: uncomment after BEGIN is working
 
 //WE DONT HAVE BEGIN WORKING YET

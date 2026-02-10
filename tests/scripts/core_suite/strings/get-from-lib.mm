@@ -12,9 +12,8 @@ wasm:opcode:drop:before {
     // TODO: make report var l work!
 
     // read the string from the library's memory
-    // (should also get flushed at the end of execution)
-    var s: str = read_str(memid(alpha), ptr, l as u32);
     // TODO: make `report var string` work!
+    var s: str = read_str(memid(alpha), ptr, l as u32);
 
     // free the memory we've just used
     alpha.mem_free(ptr);
