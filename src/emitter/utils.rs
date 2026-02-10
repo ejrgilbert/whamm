@@ -153,6 +153,7 @@ fn handle_special_fn_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
             unreachable!("static function call should already be handled: {target_fn_name}")
         }
+        "len" => handle_len(&mut folded_args, strategy, injector, ctx),
         "write_str" => handle_write_str(&mut folded_args, strategy, injector, ctx),
         "read_str" => handle_read_str(&mut folded_args, strategy, injector, ctx),
         _ => {
@@ -162,6 +163,22 @@ fn handle_special_fn_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             );
         }
     }
+}
+
+fn handle_len<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    args: &mut [Expr],
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) -> bool {
+    // handle the string parameter
+    emit_expr(&mut args[0], strategy, injector, ctx);
+    let str_len = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
+    injector.local_set(str_len);
+    injector.drop(); // I don't care about the addr pointer, just the len!
+
+    injector.local_get(str_len); // bring back up the string len value to ToS
+    true
 }
 
 fn handle_write_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -226,10 +243,10 @@ fn handle_read_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
     // return the string's (ptr, len)
     injector
-        .local_get(str_len)
         .global_get(dst_ptr)
         .local_get(str_len)
-        .i32_sub();
+        .i32_sub()
+        .local_get(str_len);
 
     true
 }
@@ -511,58 +528,65 @@ pub fn whamm_type_to_wasm_global(
     ty: &DataType,
     loc: &Option<Location>,
     init_expr: Option<InitExpr>,
-) -> (GlobalID, WirmType) {
+) -> Vec<(GlobalID, WirmType)> {
     let wirm_ty = ty.to_wasm_type();
 
-    if wirm_ty.len() == 1 {
-        match wirm_ty.first().unwrap() {
+    let mut globals = vec![];
+    for ty in wirm_ty.iter() {
+        match ty {
             WirmType::I32 => {
                 let global_id = app_wasm.add_global_with_tag(
-                    init_expr.unwrap_or(InitExpr::new(vec![InitInstr::Value(WirmValue::I32(0))])),
+                    init_expr
+                        .clone()
+                        .unwrap_or(InitExpr::new(vec![InitInstr::Value(WirmValue::I32(0))])),
                     WirmType::I32,
                     true,
                     false,
                     get_tag_for(loc),
                 );
-                (global_id, WirmType::I32)
+                globals.push((global_id, WirmType::I32));
             }
             WirmType::I64 => {
                 let global_id = app_wasm.add_global_with_tag(
-                    init_expr.unwrap_or(InitExpr::new(vec![InitInstr::Value(WirmValue::I64(0))])),
+                    init_expr
+                        .clone()
+                        .unwrap_or(InitExpr::new(vec![InitInstr::Value(WirmValue::I64(0))])),
                     WirmType::I64,
                     true,
                     false,
                     get_tag_for(loc),
                 );
-                (global_id, WirmType::I64)
+                globals.push((global_id, WirmType::I64));
             }
             WirmType::F32 => {
                 let global_id = app_wasm.add_global_with_tag(
                     init_expr
+                        .clone()
                         .unwrap_or(InitExpr::new(vec![InitInstr::Value(WirmValue::F32(0f32))])),
                     WirmType::F32,
                     true,
                     false,
                     get_tag_for(loc),
                 );
-                (global_id, WirmType::F32)
+                globals.push((global_id, WirmType::F32));
             }
             WirmType::F64 => {
                 let global_id = app_wasm.add_global_with_tag(
                     init_expr
+                        .clone()
                         .unwrap_or(InitExpr::new(vec![InitInstr::Value(WirmValue::F64(0f64))])),
                     WirmType::F64,
                     true,
                     false,
                     get_tag_for(loc),
                 );
-                (global_id, WirmType::F64)
+                globals.push((global_id, WirmType::F64));
             }
             _ => unimplemented!(),
         }
-    } else {
-        unimplemented!()
     }
+
+    globals
 }
 
 pub fn emit_global_getter(
@@ -643,7 +667,7 @@ fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 
         // this will be different based on if this is a global or local var
         if let Some(addrs) = addr {
-            for addr in addrs.iter() {
+            for addr in addrs.iter().rev() {
                 match addr {
                     VarAddr::Global { addr } => {
                         injector.global_set(GlobalID(*addr));

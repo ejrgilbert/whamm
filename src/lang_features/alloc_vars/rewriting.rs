@@ -82,7 +82,7 @@ impl UnsharedVarHandler {
                     mem_offset, loc, ..
                 }) = self.allocated_vars.get(*first_var as usize)
                 {
-                    let (global_id, _) = whamm_type_to_wasm_global(
+                    let globals = whamm_type_to_wasm_global(
                         wasm,
                         &DataType::I32,
                         loc,
@@ -90,7 +90,9 @@ impl UnsharedVarHandler {
                             *mem_offset as i32,
                         ))])),
                     );
-                    global_trackers.insert(ty.clone(), *global_id);
+                    assert_eq!(globals.len(), 1);
+                    let (global_id, ..) = globals.first().unwrap();
+                    global_trackers.insert(ty.clone(), **global_id);
                 } else {
                     panic!("First var not found in allocated_vars list!");
                 }

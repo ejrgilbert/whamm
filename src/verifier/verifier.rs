@@ -506,8 +506,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
                 // if let Expr::Primitive {val, ..} = expr {
                 //     if let Expr::VarId {name, ..} = var_id {
-                //         if let Some(Record::Var { value, .. }) = self.table.lookup_var_mut(name, false) {
-                //             *value = Some(val.clone());
+                //         if let Some(Record::Var { value, def, .. }) = self.table.lookup_var_mut(name, false) {
+                //             if !def.is_comp_defined() {
+                //                 *value = Some(val.clone());
+                //             }
                 //         }
                 //     }
                 // }
@@ -1207,11 +1209,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 if let Some((_, is_static)) = curr_lib {
                     //disallow (non-static) user-function calls when the in the global state of the script
                     if self.in_script_global && !is_static {
-                        self.err.type_check_error(
-                            "Non-static calls to libraries are not allowed in the global state of the script"
-                                .to_owned(),
-                            &loc.clone().map(|l| l.line_col),
-                        );
+                        // self.err.type_check_error(
+                        //     "Non-static calls to libraries are not allowed in the global state of the script"
+                        //         .to_owned(),
+                        //     &loc.clone().map(|l| l.line_col),
+                        // );
                     }
                 } else if self.in_script_global
                     && !(*def == CompilerDynamic || *def == CompilerStatic)

@@ -609,21 +609,32 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, '
                 None
             }
             _ => {
-                let (global_id, global_ty) =
-                    whamm_type_to_wasm_global(self.app_wasm, ty, loc, None);
-                *addr = Some(vec![VarAddr::Global { addr: *global_id }]);
-                //now save off the global variable metadata
-                if report_mode {
-                    self.report_vars
-                        .put_global_metadata(*global_id, name.clone(), ty);
+                let globals = whamm_type_to_wasm_global(self.app_wasm, ty, loc, None);
+
+                let mut addrs = vec![];
+                let only_one = globals.len() == 1;
+                let mut getter = None;
+                for (global_id, global_ty) in globals.iter() {
+                    addrs.push(VarAddr::Global { addr: **global_id });
+
+                    //now save off the global variable metadata
+                    if report_mode {
+                        // todo -- i don't think this works for global strings.
+                        self.report_vars
+                            .put_global_metadata(**global_id, name.clone(), ty);
+                    }
+                    if only_one {
+                        getter = Some(emit_global_getter(
+                            self.app_wasm,
+                            global_id,
+                            name.clone(),
+                            *global_ty,
+                            loc,
+                        ));
+                    }
                 }
-                Some(emit_global_getter(
-                    self.app_wasm,
-                    &global_id,
-                    name,
-                    global_ty,
-                    loc,
-                ))
+                *addr = Some(addrs);
+                getter
             }
         }
     }

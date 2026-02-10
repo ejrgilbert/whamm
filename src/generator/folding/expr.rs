@@ -1480,13 +1480,19 @@ impl<'a> ExprFolder<'a> {
         }
 
         match target_fn_name {
-            "len" => self.handle_len(&mut folded_args, table, err),
+            "len" => self.handle_len(call, &mut folded_args, table, err),
             "memid" => self.handle_mem(&mut folded_args, table),
             _ => call.clone(),
         }
     }
 
-    fn handle_len(&mut self, args: &mut [Expr], table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+    fn handle_len(
+        &mut self,
+        orig_call: &Expr,
+        args: &mut [Expr],
+        table: &SymbolTable,
+        err: &mut ErrorGen,
+    ) -> Expr {
         // Assume the correct args since we've gone through typechecking at this point!
         let arg0 = self.fold_expr_inner(&args[0], table, err);
         let s = match arg0 {
@@ -1494,7 +1500,7 @@ impl<'a> ExprFolder<'a> {
                 val: Value::Str { val, .. },
                 ..
             } => val.clone(),
-            _ => unreachable!("Expected a string literal, got: {:?}", arg0),
+            _ => return orig_call.clone(),
         };
 
         Expr::Primitive {
