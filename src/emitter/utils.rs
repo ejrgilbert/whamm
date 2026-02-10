@@ -20,6 +20,7 @@ use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmVa
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{MacroOpcode, Opcode};
 use wirm::{InitInstr, Module};
+
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -104,10 +105,100 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     let mut folded_stmt =
         StmtFolder::fold_stmt(stmt, strategy.as_monitor_module(), ctx.table, ctx.err);
     for s in folded_stmt.stmts.iter_mut() {
+        // Check if this is calling a bound, static function!
+        if let Statement::Expr {
+            expr: Expr::Call {
+                fn_target, args, ..
+            },
+            ..
+        } = s
+        {
+            let fn_name = match &**fn_target {
+                Expr::VarId { name, .. } => name.clone(),
+                _ => return false,
+            };
+            let Some(Record::Fn { def, .. }) = ctx.table.lookup_fn(fn_name.as_str(), true) else {
+                unreachable!("unexpected type");
+            };
+            if matches!(def, Definition::CompilerStatic) {
+                // We want to handle this as unique logic rather than a simple function call to be emitted
+                return handle_special_fn_call(fn_name, args, strategy, injector, ctx);
+            }
+        }
         is_success &= emit_stmt_inner(s, strategy, injector, ctx);
     }
 
     is_success
+}
+
+fn handle_special_fn_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    target_fn_name: String,
+    args: &mut [Expr],
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) -> bool {
+    let mut folded_args = vec![];
+    for arg in args.iter() {
+        folded_args.push(ExprFolder::fold_expr(
+            arg,
+            ctx.registry,
+            strategy.as_monitor_module(),
+            ctx.table,
+            ctx.err,
+        ));
+    }
+
+    match target_fn_name.as_str() {
+        "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
+            unreachable!("static function call should already be handled: {target_fn_name}")
+        }
+        "write_str" => handle_write_str(&mut folded_args, strategy, injector, ctx),
+        _ => {
+            unreachable!(
+                "{} Could not find handler for static function with name: {}",
+                ctx.err_msg, target_fn_name
+            );
+        }
+    }
+}
+
+fn handle_write_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    args: &mut [Expr],
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) -> bool {
+    // usage: `write_str(target_mem: u32, ptr: i32, s: str) -> ()`
+    let target_mem = args[0]
+        .get_primitive_u32()
+        .unwrap_or_else(|| unreachable!());
+    let s = args[2]
+        .get_primitive_str()
+        .unwrap_or_else(|| unreachable!());
+
+    let Some(str_addr) = ctx.mem_allocator.emitted_strings.get(&s) else {
+        unreachable!()
+    };
+    let str_ptr = injector.add_local(WirmType::I32);
+    injector.u32_const(str_addr.mem_offset as u32);
+    injector.local_set(str_ptr);
+
+    let str_len = injector.add_local(WirmType::I32);
+    injector.u32_const(str_addr.len as u32);
+    injector.local_set(str_len);
+
+    ctx.mem_allocator.copy_to_mem_expr(
+        ctx.mem_allocator.mem_id,
+        str_ptr,
+        str_len,
+        target_mem,
+        &mut args[1],
+        strategy,
+        ctx,
+        injector,
+    );
+    true
 }
 
 fn emit_stmt_inner<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -164,6 +255,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                                 value: None,
                                 def: Definition::User,
                                 addr: None,
+                                times_set: 0,
                                 loc: None,
                             },
                         )
@@ -261,12 +353,38 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         Statement::Assign { var_id, expr, .. } => {
             // Save off primitives to symbol table
             if let Expr::VarId { name, .. } = &var_id {
-                let Some(Record::Var { def, .. }) = ctx.table.lookup_var_mut(name, true) else {
-                    unreachable!("unexpected type");
-                };
+                let rec = ctx.table.lookup_var_mut(name, true);
+                if let Some(rec) = rec {
+                    let is_stable = rec.val_is_stable();
+                    let Record::Var {
+                        def, value, addr, ..
+                    } = rec
+                    else {
+                        unreachable!("unexpected type");
+                    };
 
-                if def.is_comp_defined() {
-                    return true;
+                    let mut locally_bound = false;
+                    if let Some(a) = addr {
+                        locally_bound = true;
+                        for part in a.iter() {
+                            locally_bound &= matches!(part, VarAddr::Local { .. });
+                        }
+                    }
+                    if is_stable && locally_bound && !def.is_comp_defined() {
+                        // We can only do this shortcut if the assignment is:
+                        // - stable: only happens once
+                        // - bound to local function state: does not have side effects on program state (memory, globals, etc.)
+                        // - is self-contained in the probe body: cannot interact with the application (e.g. through bound variables)
+                        if let Expr::Primitive { val, .. } = expr {
+                            *value = Some(val.clone());
+                            // TODO: Dynamic string building will break this
+                            return true;
+                        }
+                    }
+
+                    // if def.is_comp_defined() {
+                    //     return true;
+                    // }
                 }
             }
 
@@ -476,7 +594,7 @@ fn possibly_emit_memaddr_calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLo
         }
         true
     } else {
-        unreachable!("{} Expected VarId.", ctx.err_msg);
+        unreachable!("{} Expected VarId, got: {var_id:?}", ctx.err_msg);
     }
 }
 
@@ -1316,7 +1434,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support right shift for {done_on}")
                 }
-                DataType::Lib | DataType::F32 | DataType::F64 | DataType::AssumeGood | DataType::Unknown => {
+                DataType::Lib
+                | DataType::F32
+                | DataType::F64
+                | DataType::AssumeGood
+                | DataType::Unknown => {
                     unreachable!("Attempted right shift for {done_on}")
                 }
             };
@@ -1334,7 +1456,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support bitwise AND for {done_on}")
                 }
-                DataType::Lib | DataType::F32 | DataType::F64 | DataType::AssumeGood | DataType::Unknown => {
+                DataType::Lib
+                | DataType::F32
+                | DataType::F64
+                | DataType::AssumeGood
+                | DataType::Unknown => {
                     unreachable!("Attempted bitwise AND for {done_on}")
                 }
             };
@@ -1352,7 +1478,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support bitwise OR for {done_on}")
                 }
-                DataType::Lib | DataType::F32 | DataType::F64 | DataType::AssumeGood | DataType::Unknown => {
+                DataType::Lib
+                | DataType::F32
+                | DataType::F64
+                | DataType::AssumeGood
+                | DataType::Unknown => {
                     unreachable!("Attempted bitwise OR for {done_on}")
                 }
             };
@@ -1787,7 +1917,9 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
             DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                 unimplemented!("We do not support NOT for {done_on}")
             }
-            DataType::Lib | DataType::AssumeGood | DataType::Unknown => unreachable!("Attempted NOT for {done_on}"),
+            DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                unreachable!("Attempted NOT for {done_on}")
+            }
         },
         UnOp::BitwiseNot => {
             match done_on {
@@ -1824,7 +1956,11 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                 DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                     unimplemented!("We do not support bitwise NOT for {done_on}")
                 }
-                DataType::Lib | DataType::F32 | DataType::F64 | DataType::AssumeGood | DataType::Unknown => {
+                DataType::Lib
+                | DataType::F32
+                | DataType::F64
+                | DataType::AssumeGood
+                | DataType::Unknown => {
                     unreachable!("Attempted bitwise NOT for {done_on}")
                 }
             };

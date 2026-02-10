@@ -1,6 +1,8 @@
 use crate::common::error::ErrorGen;
 use crate::common::instr::ENGINE_BUFFER_MAX_SIZE;
 use crate::emitter::tag_handler::get_tag_for;
+use crate::emitter::utils::{emit_expr, EmitCtx};
+use crate::emitter::InjectStrategy;
 use crate::parser::types::{DataType, Expr};
 use crate::verifier::types::{Record, SymbolTable, VarAddr};
 use std::collections::HashMap;
@@ -12,8 +14,6 @@ use wirm::module_builder::AddLocal;
 use wirm::opcode::MacroOpcode;
 use wirm::wasmparser::MemArg;
 use wirm::{DataSegment, DataSegmentKind, InitInstr, Module, Opcode};
-use crate::emitter::InjectStrategy;
-use crate::emitter::utils::{emit_expr, EmitCtx};
 
 pub const WASM_PAGE_SIZE: u32 = 65_536;
 pub const VAR_BLOCK_BASE_VAR: &str = "var_block_base_offset";
@@ -151,13 +151,10 @@ impl MemoryAllocator {
                 offset: var_offset as u64,
                 memory: mem_id,
             }),
-            DataType::Str
-            | DataType::Tuple { .. }
-            | DataType::Map { .. } => todo!(),
-            DataType::Null
-            | DataType::Lib
-            | DataType::AssumeGood
-            | DataType::Unknown => unreachable!(),
+            DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => todo!(),
+            DataType::Null | DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                unreachable!()
+            }
         };
     }
 
@@ -206,13 +203,10 @@ impl MemoryAllocator {
                 offset: var_offset as u64,
                 memory: mem_id,
             }),
-            DataType::Str
-            | DataType::Tuple { .. }
-            | DataType::Map { .. } => todo!(),
-            DataType::Null
-            | DataType::Lib
-            | DataType::AssumeGood
-            | DataType::Unknown => unreachable!(),
+            DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => todo!(),
+            DataType::Null | DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                unreachable!()
+            }
         };
     }
 
@@ -310,7 +304,10 @@ impl MemoryAllocator {
             src_offset,
             src_len,
             dst_mem_id,
-            |func| { emit_expr(dst_mem_ptr, inject_strategy, func, ctx); func },
+            |func| {
+                emit_expr(dst_mem_ptr, inject_strategy, func, ctx);
+                func
+            },
             func,
         );
     }

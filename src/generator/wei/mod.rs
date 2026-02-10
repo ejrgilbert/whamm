@@ -22,7 +22,7 @@ pub struct WeiGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm, 'n> 
     pub err: &'j mut ErrorGen,
     pub injected_funcs: &'k mut Vec<FunctionID>,
     pub config: &'l Config,
-    pub used_fns_per_lib: HashMap<String, HashSet<String>>,
+    pub used_exports_per_lib: HashMap<String, (bool, HashSet<String>)>,
     pub user_lib_modules: HashMap<String, (Option<String>, Module<'m>)>,
 
     // tracking
@@ -327,7 +327,7 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, 
 
     fn link_user_lib(&mut self, lib_name: &str, loc: &Option<Location>) {
         // Perform import now! (we'll be in the right table scope at this point)
-        if let Some(used_fns) = self.used_fns_per_lib.get(lib_name) {
+        if let Some((used_mem, used_fns)) = self.used_exports_per_lib.get(lib_name) {
             let Some((lib_name_import_override, lib_wasm)) = self.user_lib_modules.get(lib_name)
             else {
                 panic!("Could not find wasm module for library '{lib_name}'");
@@ -339,6 +339,7 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, 
                     lib_wasm,
                     lib_name.to_string(),
                     lib_name_import_override,
+                    *used_mem,
                     used_fns,
                     self.emitter.table,
                 ),

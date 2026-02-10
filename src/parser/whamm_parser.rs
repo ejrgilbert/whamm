@@ -353,7 +353,7 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
     let mut next = pairs.next();
     while let Some(n) = &next {
         if matches!(n.as_rule(), Rule::param) {
-            if let Some(param) = handle_param(n.clone().into_inner(), err) {
+            if let Some(param) = handle_param(n.clone().into_inner(), Definition::User, err) {
                 params.push(param)
             }
             next = pairs.next();
@@ -519,7 +519,7 @@ fn handle_decl(pair: &mut Pairs<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     trace!("Exiting declaration");
     vec![Statement::Decl {
         ty,
-        var_id: handle_id(var_id_rule),
+        var_id: handle_id(var_id_rule, Definition::User),
         loc: Some(Location::from(&var_id_line_col, &type_line_col, None)),
     }]
 }
@@ -997,10 +997,14 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 }
 // EXPRESSIONS
 
-pub fn handle_param(mut pairs: Pairs<Rule>, err: &mut ErrorGen) -> Option<(Expr, DataType)> {
+pub fn handle_param(
+    mut pairs: Pairs<Rule>,
+    definition: Definition,
+    err: &mut ErrorGen,
+) -> Option<(Expr, DataType)> {
     if let Some(id_rule) = pairs.next() {
         // process the name
-        let id = handle_id(id_rule);
+        let id = handle_id(id_rule, definition);
         // process the type
         let ty = type_from_rule_handler(pairs.next().unwrap(), err);
         Some((id, ty))
@@ -1059,7 +1063,7 @@ fn handle_fn_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
     let fn_rule = pairs.next().unwrap();
     let fn_target_line_col = LineColLocation::from(fn_rule.as_span());
-    let fn_target = handle_id(fn_rule);
+    let fn_target = handle_id(fn_rule, Definition::User);
 
     // handle args
     let mut args = vec![];
@@ -1337,7 +1341,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     match pair.as_rule() {
         Rule::lib_call => handle_lib_call(pair),
         Rule::fn_call => handle_fn_call(pair),
-        Rule::ID => Ok(handle_id(pair)),
+        Rule::ID => Ok(handle_id(pair, Definition::User)),
         Rule::tuple => handle_tuple(pair),
         Rule::INT => handle_int(pair),
         Rule::FLOAT => handle_float(pair),
@@ -1402,7 +1406,9 @@ fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
                 let mut next_param = param_pairs.next();
                 while let Some(n) = &next_param {
                     if matches!(n.as_rule(), Rule::param) {
-                        if let Some(param) = handle_param(n.clone().into_inner(), err) {
+                        if let Some(param) =
+                            handle_param(n.clone().into_inner(), Definition::CompilerDynamic, err)
+                        {
                             params.push(param)
                         }
                         next_param = param_pairs.next();
@@ -1536,9 +1542,9 @@ pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
 
 // EXPRESSIONS
 
-fn handle_id(pair: Pair<Rule>) -> Expr {
+fn handle_id(pair: Pair<Rule>, definition: Definition) -> Expr {
     Expr::VarId {
-        definition: Definition::User,
+        definition,
         name: pair.as_str().parse().unwrap(),
         loc: Some(Location {
             line_col: LineColLocation::from(pair.as_span()),
@@ -1786,16 +1792,16 @@ fn handle_string(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                         let hex = &inner.as_str()[1..];
                         let byte = u8::from_str_radix(hex, 16).unwrap();
                         val.push(byte as char);
-                    },
+                    }
                     Rule::unicode_escape => {
                         let s = inner.as_str();
                         let hex = &s[2..s.len() - 1];
                         let codepoint = u32::from_str_radix(hex, 16).unwrap();
                         val.push(char::from_u32(codepoint).unwrap());
-                    },
+                    }
                     _ => unreachable!(),
                 }
-            },
+            }
             _ => unreachable!(),
         }
     }

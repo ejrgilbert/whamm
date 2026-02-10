@@ -49,6 +49,7 @@ pub struct MetadataCollector<'a, 'b, 'c> {
 
     // misc. trackers
     pub used_user_library_fns: UserLibs,
+    pub used_user_library_mems: HashSet<String>,
     pub used_bound_fns: HashSet<(String, String)>,
     pub used_report_var_dts: HashSet<DataType>,
     pub check_strcmp: bool,
@@ -78,6 +79,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             err,
             config,
             ast: Default::default(),
+            used_user_library_mems: Default::default(),
             used_user_library_fns: Default::default(),
             curr_user_lib: Default::default(),
             used_bound_fns: Default::default(),
@@ -370,6 +372,12 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                         // will need to possibly define arguments!
                         self.combine_req_args(req_args.clone());
                     }
+                } else if matches!(def, Definition::CompilerStatic) && fn_name == "memid" {
+                    let target_lib = args.first().unwrap();
+                    let Expr::VarId { name, .. } = target_lib else {
+                        panic!("not supported")
+                    };
+                    self.used_user_library_mems.insert(name.clone());
                 }
 
                 let mut new_args = vec![];
@@ -507,6 +515,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             Statement::Assign { var_id, expr, loc } => {
                 if let Expr::VarId { name, .. } = var_id {
                     let (def, _ty, loc) = get_def(name, self.table);
+                    incr_times_set(name, self.table);
                     if def.is_comp_defined()
                         && self.config.as_monitor_module
                         && !self.config.enable_wei_alt
@@ -740,6 +749,15 @@ fn get_def(name: &str, table: &SymbolTable) -> (Definition, DataType, Option<Loc
         (def.clone(), ty.clone(), loc.clone())
     } else if let Some(Record::Library { .. }) = var {
         (Definition::User, DataType::Lib, None)
+    } else {
+        unreachable!("unexpected type");
+    }
+}
+
+fn incr_times_set(name: &str, table: &mut SymbolTable) {
+    let var = table.lookup_var_mut(name, false);
+    if let Some(Record::Var { times_set, .. }) = var {
+        *times_set += 1;
     } else {
         unreachable!("unexpected type");
     }

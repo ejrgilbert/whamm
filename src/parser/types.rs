@@ -1315,13 +1315,13 @@ impl Statement {
             Statement::Expr { expr, .. } => vec![expr],
             Statement::Return { expr, .. } => vec![expr],
             Statement::If { cond, .. } => vec![cond],
-            Statement::UnsharedDecl {decl, .. } => decl.get_inner_exprs_mut(),
+            Statement::UnsharedDecl { decl, .. } => decl.get_inner_exprs_mut(),
             Statement::UnsharedDeclInit { decl, init, .. } => {
                 let mut exprs = decl.get_inner_exprs_mut();
                 exprs.extend(init.get_inner_exprs_mut());
                 exprs
-            },
-            Statement::LibImport { .. } => vec![]
+            }
+            Statement::LibImport { .. } => vec![],
         }
     }
 }
@@ -1461,12 +1461,13 @@ impl Expr {
     pub fn get_primitive_i32(&self) -> Option<i32> {
         if let Expr::Primitive {
             val:
-            Value::Number {
-                val: NumLit::I32 { val },
-                ..
-            },
+                Value::Number {
+                    val: NumLit::I32 { val },
+                    ..
+                },
             ..
-        } = self {
+        } = self
+        {
             Some(*val)
         } else {
             None
@@ -1475,12 +1476,13 @@ impl Expr {
     pub fn get_primitive_u32(&self) -> Option<u32> {
         if let Expr::Primitive {
             val:
-            Value::Number {
-                val: NumLit::U32 { val },
-                ..
-            },
+                Value::Number {
+                    val: NumLit::U32 { val },
+                    ..
+                },
             ..
-        } = self {
+        } = self
+        {
             Some(*val)
         } else {
             None
@@ -1488,12 +1490,10 @@ impl Expr {
     }
     pub fn get_primitive_str(&self) -> Option<String> {
         if let Expr::Primitive {
-            val:
-            Value::Str {
-                val
-            },
+            val: Value::Str { val },
             ..
-        } = self {
+        } = self
+        {
             Some(val.clone())
         } else {
             None
@@ -1581,7 +1581,7 @@ impl Fn {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Definition {
     User,
     CompilerStatic,
@@ -1679,7 +1679,12 @@ impl Whamm {
     }
 
     pub(crate) fn get_bound_fns() -> Vec<BoundFunction> {
-        vec![Self::def_strcmp(), Self::def_len(), Self::def_mem(), Self::def_write_str()]
+        vec![
+            Self::def_strcmp(),
+            Self::def_len(),
+            Self::def_mem(),
+            Self::def_write_str(),
+        ]
     }
     fn def_strcmp() -> BoundFunction {
         let strcmp_params = vec![
@@ -1713,16 +1718,14 @@ impl Whamm {
         )
     }
     fn def_len() -> BoundFunction {
-        let len_params = vec![
-            (
-                Expr::VarId {
-                    definition: Definition::CompilerStatic,
-                    name: "s".to_string(),
-                    loc: None,
-                },
-                DataType::Str
-            )
-        ];
+        let len_params = vec![(
+            Expr::VarId {
+                definition: Definition::CompilerStatic,
+                name: "s".to_string(),
+                loc: None,
+            },
+            DataType::Str,
+        )];
 
         BoundFunction::new(
             "len".to_string(),
@@ -1734,20 +1737,18 @@ impl Whamm {
         )
     }
     fn def_mem() -> BoundFunction {
-        let mem_params = vec![
-            (
-                Expr::VarId {
-                    definition: Definition::CompilerStatic,
-                    name: "lib".to_string(),
-                    loc: None,
-                },
-                DataType::Lib
-            )
-        ];
+        let mem_params = vec![(
+            Expr::VarId {
+                definition: Definition::CompilerStatic,
+                name: "lib".to_string(),
+                loc: None,
+            },
+            DataType::Lib,
+        )];
 
         BoundFunction::new(
-            "mem".to_string(),
-            "Get the memory assigned to an imported library.".to_string(),
+            "memid".to_string(),
+            "Get the ID of the memory assigned to an imported library.".to_string(),
             mem_params,
             DataType::U32,
             true,
@@ -1762,7 +1763,7 @@ impl Whamm {
                     name: "target_mem".to_string(),
                     loc: None,
                 },
-                DataType::U32
+                DataType::U32,
             ),
             (
                 Expr::VarId {
@@ -1770,7 +1771,7 @@ impl Whamm {
                     name: "ptr".to_string(),
                     loc: None,
                 },
-                DataType::I32
+                DataType::I32,
             ),
             (
                 Expr::VarId {
@@ -1778,8 +1779,8 @@ impl Whamm {
                     name: "s".to_string(),
                     loc: None,
                 },
-                DataType::Str
-            )
+                DataType::Str,
+            ),
         ];
 
         BoundFunction::new(
