@@ -50,6 +50,7 @@ pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k> {
     pub table: &'e mut SymbolTable,
     pub mem_allocator: &'f mut MemoryAllocator,
     pub locals_tracker: LocalsTracker,
+    pub init_func_locals_tracker: LocalsTracker,
     pub utils_adapter: &'g mut UtilsAdapter,
     pub map_lib_adapter: &'h mut MapLibAdapter,
     pub io_adapter: &'i mut IOAdapter,
@@ -88,6 +89,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
             table,
             mem_allocator,
             locals_tracker: LocalsTracker::default(),
+            init_func_locals_tracker: LocalsTracker::default(),
             utils_adapter,
             map_lib_adapter,
             io_adapter,
@@ -300,19 +302,27 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
         locals.iter().for_each(|(name, local_id)| {
             // emit an opcode in the event to assign the ToS to this new local
             self.app_iter.local_set(LocalID(*local_id));
+            let new_addr = Some(vec![VarAddr::Local { addr: *local_id }]);
 
             // place in symbol table with var addr for future reference
-            let id = self.table.put(
-                name.to_string(),
-                Record::Var {
-                    ty: DataType::I32, // TODO we only support integers right now.
-                    value: None,
-                    def: Definition::CompilerDynamic,
-                    addr: Some(vec![VarAddr::Local { addr: *local_id }]),
-                    times_set: 0,
-                    loc: None,
-                },
-            );
+            let rec = self.table.lookup_var_with_id_mut(name, false);
+            let id = if let Some((id, Record::Var { addr, .. })) = rec {
+                *addr = new_addr;
+                id
+            } else {
+                self.table.put(
+                    name.to_string(),
+                    Record::Var {
+                        ty: DataType::I32, // TODO we only support integers right now. Need an abstract interpreter!
+                        value: None,
+                        def: Definition::CompilerDynamic,
+                        addr: new_addr,
+                        times_set: 0,
+                        loc: None,
+                    },
+                )
+            };
+
             recs.insert(0, (name.to_string(), id));
         });
 
@@ -958,7 +968,11 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
             self.registry,
             self.table,
             self.mem_allocator,
-            &mut self.locals_tracker,
+            if self.in_init {
+                &mut self.init_func_locals_tracker
+            } else {
+                &mut self.locals_tracker
+            },
             self.utils_adapter,
             self.map_lib_adapter,
             UNEXPECTED_ERR_MSG,
@@ -974,6 +988,7 @@ impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
     fn emit_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {
         emit_expr(
             expr,
+            None,
             self.strategy,
             &mut self.app_iter,
             &mut EmitCtx::new(

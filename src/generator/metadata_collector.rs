@@ -1,7 +1,7 @@
 use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
 use crate::generator::ast::{Probe, Script, StackReq, WhammParam, WhammParams};
-use crate::lang_features::report_vars::{BytecodeLoc, Metadata as ReportMetadata};
+use crate::lang_features::report_vars::{BytecodeLoc, LocationData, Metadata as ReportMetadata};
 use crate::parser::provider_handler::{Event, ModeKind, Package, Probe as ParserProbe, Provider};
 use crate::parser::types::{
     Annotation, BinOp, Block, DataType, Definition, Expr, Location, Script as ParserScript,
@@ -476,23 +476,15 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                         // keep track of the used report var datatypes across the whole AST
                         self.used_report_var_dts.insert(ty.clone());
                         // this needs to also add report_var_metadata (if is_report)!
-                        let wasm_ty = if ty.to_wasm_type().len() > 1 {
-                            self.err.add_unimplemented_error(
-                                "We don't support multiple wasm types for an unshared var",
-                                loc,
-                            );
-                            return stmt.clone();
-                        } else {
-                            *ty.to_wasm_type().first().unwrap()
-                        };
-                        Some(ReportMetadata::Local {
-                            name: name.clone(),
-                            whamm_ty: ty.clone(),
-                            wasm_ty,
-                            script_id: self.script_num,
-                            bytecode_loc: BytecodeLoc::new(0, 0), // (unused)
-                            probe_id: self.curr_probe.to_string(),
-                        })
+                        Some(ReportMetadata::new(
+                            name.clone(),
+                            ty.clone(),
+                            &LocationData::Local {
+                                script_id: self.script_num,
+                                bytecode_loc: BytecodeLoc::new(0, 0), // (unused)
+                                probe_id: self.curr_probe.to_string(),
+                            },
+                        ))
                     } else {
                         None
                     };
