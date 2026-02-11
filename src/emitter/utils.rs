@@ -172,7 +172,7 @@ fn handle_len<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     // handle the string parameter
-    emit_expr(&mut args[0], strategy, injector, ctx);
+    emit_expr(&mut args[0], None, strategy, injector, ctx);
     let str_len = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
     injector.local_set(str_len);
     injector.drop(); // I don't care about the addr pointer, just the len!
@@ -193,7 +193,7 @@ fn handle_write_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         .unwrap_or_else(|| unreachable!());
 
     // handle the string parameter
-    emit_expr(&mut args[2], strategy, injector, ctx);
+    emit_expr(&mut args[2], None, strategy, injector, ctx);
     let str_len = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
     injector.local_set(str_len);
     let str_ptr = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
@@ -224,11 +224,11 @@ fn handle_read_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         .unwrap_or_else(|| unreachable!());
 
     let str_ptr = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
-    emit_expr(&mut args[1], strategy, injector, ctx);
+    emit_expr(&mut args[1], None, strategy, injector, ctx);
     injector.local_set(str_ptr);
 
     let str_len = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
-    emit_expr(&mut args[2], strategy, injector, ctx);
+    emit_expr(&mut args[2], None, strategy, injector, ctx);
     injector.local_set(str_len);
 
     let dst_ptr = ctx.mem_allocator.mem_tracker_global;
@@ -262,7 +262,7 @@ fn emit_stmt_inner<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         Statement::Decl { .. } => emit_decl_stmt(stmt, injector, ctx),
         Statement::Assign { .. } => emit_assign_stmt(stmt, strategy, injector, ctx),
         Statement::Expr { expr, .. } | Statement::Return { expr, .. } => {
-            emit_expr(expr, strategy, injector, ctx)
+            emit_expr(expr, None, strategy, injector, ctx)
         }
 
         Statement::If {
@@ -402,51 +402,74 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     match stmt {
         Statement::Assign { var_id, expr, .. } => {
             // Save off primitives to symbol table
-            if let Expr::VarId { name, .. } = &var_id {
-                let rec = ctx.table.lookup_var_mut(name, true);
-                if let Some(rec) = rec {
-                    let is_stable = rec.val_is_stable();
-                    let Record::Var {
-                        def, value, addr, ..
-                    } = rec
-                    else {
-                        unreachable!("unexpected type");
-                    };
+            let part_tys = if let Expr::VarId { name, .. } = &var_id {
+                let rec = ctx.table.lookup_var_mut(name, true).unwrap();
+                let is_stable = rec.val_is_stable();
+                let Record::Var {
+                    def,
+                    value,
+                    ty,
+                    addr,
+                    ..
+                } = rec
+                else {
+                    unreachable!("unexpected type");
+                };
 
-                    let mut locally_bound = false;
-                    if let Some(a) = addr {
-                        locally_bound = true;
-                        for part in a.iter() {
-                            locally_bound &= matches!(part, VarAddr::Local { .. });
-                        }
+                let mut locally_bound = false;
+                if let Some(a) = addr {
+                    locally_bound = true;
+                    for part in a.iter() {
+                        locally_bound &= matches!(part, VarAddr::Local { .. });
                     }
-                    if is_stable && locally_bound && !def.is_comp_defined() {
-                        // We can only do this shortcut if the assignment is:
-                        // - stable: only happens once
-                        // - bound to local function state: does not have side effects on program state (memory, globals, etc.)
-                        // - is self-contained in the probe body: cannot interact with the application (e.g. through bound variables)
-                        if let Expr::Primitive { val, .. } = expr {
-                            *value = Some(val.clone());
-                            // TODO: Dynamic string building will break this
-                            return true;
-                        }
-                    }
-
-                    // if def.is_comp_defined() {
-                    //     return true;
-                    // }
                 }
-            }
+                if is_stable && locally_bound && !def.is_comp_defined() {
+                    // We can only do this shortcut if the assignment is:
+                    // - stable: only happens once
+                    // - bound to local function state: does not have side effects on program state (memory, globals, etc.)
+                    // - is self-contained in the probe body: cannot interact with the application (e.g. through bound variables)
+                    if let Expr::Primitive { val, .. } = expr {
+                        *value = Some(val.clone());
+                        // TODO: Dynamic string building will break this
+                        return true;
+                    }
+                }
 
-            // memory offset goes BEFORE the value to store
-            possibly_emit_memaddr_calc_offset(var_id, injector, ctx);
+                // if def.is_comp_defined() {
+                //     return true;
+                // }
+                ty.to_wasm_type()
+            } else {
+                unreachable!("{} Expected VarId.", ctx.err_msg);
+            };
 
-            if !emit_expr(expr, strategy, injector, ctx) {
+            let mut is_success = true;
+            if !emit_expr(expr, None, strategy, injector, ctx) {
                 return false;
             }
+            // now the full expression is on the stack
+            // save the parts to local values so we can store 1-by-1
+            let mut part_locals = vec![];
+            for ty in part_tys.iter() {
+                let local = LocalID(ctx.locals_tracker.use_local(*ty, injector));
+                part_locals.push(local);
 
-            // Emit the instruction that sets the variable's value to the emitted expression
-            emit_set(var_id, injector, ctx)
+                injector.local_set(local);
+            }
+
+            // part_locals is in REVERSE from the assumed order.
+            // e.g. stack is: [ptr, len] -> part_locals: [len, ptr]
+            for (idx, local) in part_locals.iter().rev().enumerate() {
+                // memory offset goes BEFORE the value to store
+                possibly_emit_memaddr_calc_offset(var_id, injector, ctx);
+
+                // the VALUE goes next
+                injector.local_get(*local);
+
+                // Emit the instruction that sets the variable's value to the emitted expression
+                is_success &= emit_set(var_id, Some(idx), injector, ctx);
+            }
+            is_success
         }
         _ => {
             unreachable!(
@@ -500,8 +523,8 @@ fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
             other => unreachable!("Did not expect this address type: {:?}", other),
         };
-        emit_expr(key, strategy, injector, ctx);
-        emit_expr(val, strategy, injector, ctx);
+        emit_expr(key, None, strategy, injector, ctx);
+        emit_expr(val, None, strategy, injector, ctx);
         ctx.map_lib_adapter.map_insert(
             key_ty,
             val_ty,
@@ -657,52 +680,67 @@ fn possibly_emit_memaddr_calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLo
 
 fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     var_id: &mut Expr,
+    idx: Option<usize>, // optionally specify a specific part of the expression to set
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
     if let Expr::VarId { name, .. } = var_id {
-        let Some(Record::Var { addr, loc, .. }) = ctx.table.lookup_var_mut(name, true) else {
+        let Some(Record::Var { addr, loc, .. }) = ctx.table.lookup_var(name, true) else {
             unreachable!("unexpected type");
         };
 
         // this will be different based on if this is a global or local var
         if let Some(addrs) = addr {
-            for addr in addrs.iter().rev() {
-                match addr {
-                    VarAddr::Global { addr } => {
-                        injector.global_set(GlobalID(*addr));
-                    }
-                    VarAddr::MemLoc {
-                        mem_id,
-                        ty,
-                        var_offset,
-                        ..
-                    } => {
-                        ctx.mem_allocator
-                            .set_in_mem(*var_offset, *mem_id, &ty.clone(), injector);
-                    }
-                    VarAddr::Local { addr } => {
-                        injector.local_set(LocalID(*addr));
-                    }
-                    VarAddr::MapId { .. } => {
-                        ctx.err.type_check_error(
-                            format!("Attempted to assign a var to Map: {}", name),
-                            &line_col_from_loc(loc),
-                        );
-                        return false;
-                    }
+            if let Some(idx) = idx {
+                if let Some(addr) = addrs.get(idx) {
+                    addr_set(addr, None, name, injector, ctx);
+                    return true;
                 }
             }
+
+            for addr in addrs.iter().rev() {
+                addr_set(addr, idx, name, injector, ctx);
+            }
+
+            true
         } else {
             ctx.err.type_check_error(
                 format!("Variable assigned before declared: {}", name),
                 &line_col_from_loc(loc),
             );
-            return false;
+            false
         }
-        true
     } else {
         unreachable!("{} Expected VarId.", ctx.err_msg);
+    }
+}
+
+fn addr_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    addr: &VarAddr,
+    idx: Option<usize>, // optionally specify a specific part of the expression to set
+    name: &str,
+    injector: &mut T,
+    ctx: &EmitCtx,
+) {
+    match addr {
+        VarAddr::Global { addr } => {
+            injector.global_set(GlobalID(*addr));
+        }
+        VarAddr::MemLoc {
+            mem_id,
+            ty,
+            var_offset,
+            ..
+        } => {
+            ctx.mem_allocator
+                .set_in_mem(*var_offset, *mem_id, &ty.clone(), idx, injector);
+        }
+        VarAddr::Local { addr } => {
+            injector.local_set(LocalID(*addr));
+        }
+        VarAddr::MapId { .. } => {
+            unreachable!("This should have been caught during type checking. Attempted to assign a var to Map: {}", name)
+        }
     }
 }
 
@@ -716,7 +754,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     let mut is_success = true;
 
     // emit the condition of the `if` expression
-    is_success &= emit_expr(condition, strategy, injector, ctx);
+    is_success &= emit_expr(condition, None, strategy, injector, ctx);
     // emit the beginning of the if block
     injector.if_stmt(block_type_to_wasm(conseq));
     // emit the consequent body
@@ -785,6 +823,7 @@ fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 // TODO: emit_expr has two mutable references to the name object, the injector has module data in it
 pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     expr: &mut Expr,
+    idx: Option<usize>, // optionally specify a specific part of the expression to emit
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -801,7 +840,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         Expr::UnOp {
             op, expr, done_on, ..
         } => {
-            let mut is_success = emit_expr(&mut *expr, strategy, injector, ctx);
+            let mut is_success = emit_expr(&mut *expr, None, strategy, injector, ctx);
             is_success &= emit_unop(op, done_on, injector);
             is_success
         }
@@ -812,8 +851,8 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             done_on,
             ..
         } => {
-            let mut is_success = emit_expr(&mut *lhs, strategy, injector, ctx);
-            is_success &= emit_expr(&mut *rhs, strategy, injector, ctx);
+            let mut is_success = emit_expr(&mut *lhs, None, strategy, injector, ctx);
+            is_success &= emit_expr(&mut *rhs, None, strategy, injector, ctx);
             is_success &= emit_binop(op, done_on, injector, ctx);
             is_success
         }
@@ -855,7 +894,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         Expr::LibCall { lib_name, call, .. } => {
             ctx.in_lib_call_to = Some(lib_name.clone());
-            let is_success = emit_expr(&mut *call, strategy, injector, ctx);
+            let is_success = emit_expr(&mut *call, None, strategy, injector, ctx);
 
             ctx.in_lib_call_to = None;
             is_success
@@ -892,7 +931,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             // emit the arguments
             let mut is_success = true;
             for arg in args.iter_mut() {
-                is_success = emit_expr(arg, strategy, injector, ctx);
+                is_success = emit_expr(arg, None, strategy, injector, ctx);
             }
 
             // now that we've emitted the arguments, restore the original lib call tracking
@@ -914,14 +953,19 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         Expr::VarId { name, .. } => {
             // TODO -- support string vars (unimplemented)
-            let Some(Record::Var { addr, def, .. }) = ctx.table.lookup_var_mut(name, true) else {
+            let addr = if let Some(Record::Var { addr, def, .. }) =
+                ctx.table.lookup_var_mut(name, true)
+            {
+                if matches!(def, Definition::CompilerStatic) && addr.is_none() {
+                    unreachable!("{} \
+                    Variable is bound statically by the compiler, it should've been folded by this point: {}", ctx.err_msg,
+                                 name);
+                }
+                // this is done to avoid two mutable borrows of `ctx.table`
+                addr.clone()
+            } else {
                 unreachable!("unexpected type");
             };
-            if matches!(def, Definition::CompilerStatic) && addr.is_none() {
-                unreachable!("{} \
-                    Variable is bound statically by the compiler, it should've been folded by this point: {}", ctx.err_msg,
-                        name);
-            }
             // this will be different based on if this is a global or local var
             if let Some(addrs) = addr {
                 let is_success = true;
@@ -964,7 +1008,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 );
             }
         }
-        Expr::Primitive { val, .. } => emit_value(val, strategy, injector, ctx),
+        Expr::Primitive { val, .. } => emit_value(val, idx, strategy, injector, ctx),
         Expr::MapGet { .. } => emit_map_get(expr, strategy, injector, ctx),
     }
 }
@@ -2033,6 +2077,7 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
 
 fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     val: &mut Value,
+    idx: Option<usize>, // optionally specify a specific part of the expression to emit
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -2093,7 +2138,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             // 2. app_iter
 
             if let Some(str_addr) = ctx.mem_allocator.emitted_strings.get(val) {
-                if ctx.in_map_op {
+                let to_emit = if ctx.in_map_op {
                     // If in the context of a map operation, we will likely have to send
                     // this emitted string over to the MapLibrary through interfacing
                     // with its memory. Let's save this string's address in the MapLibAdapter
@@ -2101,12 +2146,17 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     ctx.map_lib_adapter.curr_str_offset = Some(str_addr.mem_offset as u32);
                     ctx.map_lib_adapter.curr_str_len = Some(str_addr.len as u32);
 
-                    injector.u32_const(MAP_LIB_MEM_OFFSET);
-                    injector.u32_const(str_addr.len as u32);
+                    vec![MAP_LIB_MEM_OFFSET, str_addr.len as u32]
                 } else {
-                    // emit Wasm instructions for the memory address and string length
-                    injector.u32_const(str_addr.mem_offset as u32);
-                    injector.u32_const(str_addr.len as u32);
+                    vec![str_addr.mem_offset as u32, str_addr.len as u32]
+                };
+                // emit Wasm instructions for the memory address and string length
+                if let Some(idx) = idx {
+                    injector.u32_const(to_emit[idx]);
+                } else {
+                    for i in to_emit.iter() {
+                        injector.u32_const(*i);
+                    }
                 }
                 is_success &= true;
             } else {
@@ -2118,7 +2168,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         Value::Tuple { vals, .. } => {
             for val in vals.iter_mut() {
-                is_success &= emit_expr(val, strategy, injector, ctx);
+                is_success &= emit_expr(val, None, strategy, injector, ctx);
             }
         }
         Value::Boolean { val, .. } => {
@@ -2179,7 +2229,7 @@ fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         }
                         other => unreachable!("Did not expect this address type: {:?}", other),
                     };
-                    emit_expr(key, strategy, injector, ctx);
+                    emit_expr(key, None, strategy, injector, ctx);
                     ctx.map_lib_adapter.map_get(
                         key_ty,
                         val_ty,

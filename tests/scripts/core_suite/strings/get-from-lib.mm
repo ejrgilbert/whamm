@@ -8,12 +8,13 @@ wasm:opcode:drop:before {
 
     // write a string to memory, return the length of the string written
     // (should also get flushed at the end of execution)
-    var l: i32 = alpha.write_alphabet(ptr, MAX);
-    // TODO: make report var l work!
+    report var l: i32;
+    l = alpha.write_alphabet(ptr, MAX);
 
     // read the string from the library's memory
-    // TODO: make `report var string` work!
-    var s: str = read_str(memid(alpha), ptr, l as u32);
+    // (should also get flushed at the end of execution)
+    report var s: str;
+    s = read_str(memid(alpha), ptr, l as u32);
 
     // free the memory we've just used
     alpha.mem_free(ptr);

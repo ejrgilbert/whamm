@@ -1,4 +1,5 @@
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_tag_for;
@@ -23,7 +24,7 @@ pub const NULL_PTR_IN_MEM: i32 = -1;
 pub const NULL_PTR_IN_GLOBAL: i32 = -1;
 
 pub struct ReportVars {
-    pub variable_metadata: HashMap<VarAddr, (WirmType, Metadata)>,
+    pub variable_metadata: HashMap<Vec<VarAddr>, (Vec<WirmType>, Metadata)>,
     pub all_metadata: HashSet<Metadata>,
     pub all_used_report_dts: HashSet<DataType>,
     pub curr_location: LocationData,
@@ -53,7 +54,12 @@ impl ReportVars {
             },
         }
     }
-    pub fn put_global_metadata(&mut self, gid: u32, name: String, whamm_ty: &DataType) -> bool {
+    pub fn put_global_metadata(
+        &mut self,
+        addrs: Vec<VarAddr>,
+        name: String,
+        whamm_ty: &DataType,
+    ) -> bool {
         if !matches!(self.curr_location, LocationData::Global { .. }) {
             unreachable!(
                 "Expected global location data, but got: {:?}",
@@ -62,12 +68,13 @@ impl ReportVars {
         }
         self.all_used_report_dts.insert(whamm_ty.clone());
         let metadata = Metadata::new(name.clone(), whamm_ty.clone(), &self.curr_location);
-        self.variable_metadata.insert(
-            VarAddr::Global { addr: gid },
-            (metadata.get_wasm_ty(), metadata.clone()),
-        );
+
+        let wasm_tys = metadata.get_wasm_tys();
+        assert_eq!(wasm_tys.len(), addrs.len());
+        self.variable_metadata
+            .insert(addrs, (wasm_tys.clone(), metadata.clone()));
         if !self.all_metadata.insert(metadata) {
-            unreachable!("Duplicate metadata for map with name: {}", name);
+            unreachable!("Duplicate metadata for global with name: {}", name);
         }
         true
     }
@@ -75,8 +82,8 @@ impl ReportVars {
         self.all_used_report_dts.insert(ty.clone());
         let metadata = Metadata::new(name.clone(), ty, &self.curr_location);
         self.variable_metadata.insert(
-            VarAddr::MapId { addr: map_id },
-            (metadata.get_wasm_ty(), metadata.clone()),
+            vec![VarAddr::MapId { addr: map_id }],
+            (metadata.get_wasm_tys().clone(), metadata.clone()),
         );
         if !self.all_metadata.insert(metadata) {
             unreachable!("Duplicate metadata for map with name: {}", name);
@@ -92,14 +99,18 @@ impl ReportVars {
         let mut sorted_variable_metadata: Vec<_> = self.variable_metadata.iter().collect();
         sorted_variable_metadata.sort_by_key(|&(key, _)| key);
 
-        for (key, value) in sorted_variable_metadata {
-            match key {
-                VarAddr::Local { addr } => info += &format!("LocalID: {} -> {:?}", addr, value),
-                VarAddr::Global { addr } => info += &format!("GlobalID: {} -> {:?}", addr, value),
-                VarAddr::MapId { addr } => info += &format!("MapID: {} -> {:?}", addr, value),
-                VarAddr::MemLoc {
-                    mem_id, var_offset, ..
-                } => info += &format!("MemAddr: ({}@{}) -> {:?}", mem_id, var_offset, value),
+        for (keys, value) in sorted_variable_metadata {
+            for key in keys {
+                match key {
+                    VarAddr::Local { addr } => info += &format!("LocalID: {} -> {:?}", addr, value),
+                    VarAddr::Global { addr } => {
+                        info += &format!("GlobalID: {} -> {:?}", addr, value)
+                    }
+                    VarAddr::MapId { addr } => info += &format!("MapID: {} -> {:?}", addr, value),
+                    VarAddr::MemLoc {
+                        mem_id, var_offset, ..
+                    } => info += &format!("MemAddr: ({}@{}) -> {:?}", mem_id, var_offset, value),
+                }
             }
         }
 
@@ -120,7 +131,7 @@ impl ReportVars {
         &mut self,
         wasm: &mut Module,
         memory_allocator: &mut MemoryAllocator,
-    ) -> HashMap<VarAddr, (DataType, (u32, u32))> {
+    ) -> HashMap<Vec<VarAddr>, (DataType, (u32, u32))> {
         // this needs to be a separate function to not have multiple
         // mutable references to the Wasm module at once.
 
@@ -133,13 +144,7 @@ impl ReportVars {
 
         for dt in self.all_used_report_dts.iter() {
             memory_allocator.emit_string(wasm, &mut format!("{dt}, "));
-            let wasm_tys = dt.to_wasm_type();
-            let wasm_ty_str = if wasm_tys.len() > 1 {
-                // todo support tuples, strings, etc.
-                unimplemented!()
-            } else {
-                get_wasm_ty_str(wasm_tys.first().unwrap())
-            };
+            let wasm_ty_str = get_wasm_tys_str(&dt.to_wasm_type());
             memory_allocator.emit_string(wasm, &mut format!("{wasm_ty_str}, "));
         }
 
@@ -150,16 +155,38 @@ impl ReportVars {
         &mut self,
         wasm: &mut Module,
         memory_allocator: &mut MemoryAllocator,
-    ) -> HashMap<VarAddr, (DataType, (u32, u32))> {
+    ) -> HashMap<Vec<VarAddr>, (DataType, (u32, u32))> {
         self.variable_metadata
             .iter()
-            .map(|(key, (_, value))| {
-                let mut s = format!("{key}, {}, ", value.to_csv(&key.ty()));
+            .map(|(keys, (_, value))| {
+                let mut addr_vals = String::new();
+                let mut addr_tys = String::new();
+                if keys.len() > 1 {
+                    addr_vals.push('(');
+                    addr_tys.push('(');
+                }
+
+                let mut first = true;
+                for key in keys {
+                    if !first {
+                        addr_vals.push_str(", ");
+                        addr_tys.push_str(", ");
+                    }
+                    addr_vals.push_str(key.to_string().as_str());
+                    addr_tys.push_str(&key.ty());
+                    first = false;
+                }
+                if keys.len() > 1 {
+                    addr_vals.push(')');
+                    addr_tys.push(')');
+                }
+
+                let mut s = format!("{addr_vals}, {}, ", value.to_csv(&addr_tys));
                 memory_allocator.emit_string(wasm, &mut s);
                 let addr = memory_allocator.emitted_strings.get(&s).unwrap();
 
                 (
-                    key.clone(),
+                    keys.clone(),
                     (
                         value.get_whamm_ty(),
                         (addr.mem_offset as u32, addr.len as u32),
@@ -171,7 +198,7 @@ impl ReportVars {
     pub fn emit_flush_logic(
         &mut self,
         func: &mut FunctionBuilder,
-        var_meta: &HashMap<VarAddr, (DataType, (u32, u32))>,
+        var_meta: &HashMap<Vec<VarAddr>, (DataType, (u32, u32))>,
         mem_allocator: &MemoryAllocator,
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
@@ -255,48 +282,55 @@ impl ReportVars {
     pub fn emit_globals_flush(
         &self,
         func: &mut FunctionBuilder,
-        var_meta_str: &HashMap<VarAddr, (DataType, (u32, u32))>,
+        var_meta_str: &HashMap<Vec<VarAddr>, (DataType, (u32, u32))>,
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
         err: &mut ErrorGen,
     ) {
         // for each of the report globals, emit the printing logic
         let sorted_metadata = var_meta_str.iter().sorted_by_key(|data| data.0);
-        for (addr, (whamm_ty, (str_addr, str_len))) in sorted_metadata.into_iter() {
+        for (addrs, (whamm_ty, (str_addr, str_len))) in sorted_metadata.into_iter() {
             io_adapter.puts(*str_addr, *str_len, func, err);
 
-            match addr {
-                VarAddr::Local { .. } => panic!("Shouldn't be trying to flush a local variable..."),
-                VarAddr::MemLoc { .. } => {
-                    panic!("Shouldn't be trying to flush a memaddr in this function...")
-                }
-                VarAddr::Global { addr } => {
-                    // get the value of this report global
-                    func.global_get(GlobalID(*addr));
-                    match whamm_ty {
-                        DataType::U8 => io_adapter.call_putu8(func, err),
-                        DataType::I8 => io_adapter.call_puti8(func, err),
-                        DataType::U16 => io_adapter.call_putu16(func, err),
-                        DataType::I16 => io_adapter.call_puti16(func, err),
-                        DataType::I32 => io_adapter.call_puti32(func, err),
-                        // special case for unsigned integers (so the print is correctly signed)
-                        DataType::U32 => io_adapter.call_putu32(func, err),
-                        DataType::I64 => io_adapter.call_puti64(func, err),
-                        DataType::U64 => io_adapter.call_putu64(func, err),
-                        DataType::F32 => io_adapter.call_putf32(func, err),
-                        DataType::F64 => io_adapter.call_putf64(func, err),
-                        DataType::Boolean => io_adapter.call_putbool(func, err),
-                        other => unimplemented!(
-                            "printing for this type has not been implemented: {}",
-                            other
-                        ),
+            let wasm_tys = whamm_ty.to_wasm_type();
+            assert_eq!(addrs.len(), wasm_tys.len());
+
+            for addr in addrs.iter() {
+                match addr {
+                    VarAddr::Global { addr } => {
+                        func.global_get(GlobalID(*addr));
+                    }
+                    VarAddr::MapId { addr } => {
+                        func.u32_const(*addr);
+                    }
+                    VarAddr::Local { .. } => {
+                        panic!("Shouldn't be trying to flush a local variable...")
+                    }
+                    VarAddr::MemLoc { .. } => {
+                        panic!("Shouldn't be trying to flush a memaddr in this function...")
                     }
                 }
-                VarAddr::MapId { addr } => {
-                    // print the value(s) of this map
-                    map_lib_adapter.print_map(*addr, func, err);
+            }
+            match whamm_ty {
+                DataType::U8 => io_adapter.call_putu8(func, err),
+                DataType::I8 => io_adapter.call_puti8(func, err),
+                DataType::U16 => io_adapter.call_putu16(func, err),
+                DataType::I16 => io_adapter.call_puti16(func, err),
+                DataType::I32 => io_adapter.call_puti32(func, err),
+                // special case for unsigned integers (so the print is correctly signed)
+                DataType::U32 => io_adapter.call_putu32(func, err),
+                DataType::I64 => io_adapter.call_puti64(func, err),
+                DataType::U64 => io_adapter.call_putu64(func, err),
+                DataType::F32 => io_adapter.call_putf32(func, err),
+                DataType::F64 => io_adapter.call_putf64(func, err),
+                DataType::Boolean => io_adapter.call_putbool(func, err),
+                DataType::Map { .. } => map_lib_adapter.print_map(func, err),
+                DataType::Str => io_adapter.call_puts_internal(func, err),
+                other => {
+                    unimplemented!("printing for this type has not been implemented: {}", other)
                 }
             }
+
             io_adapter.putln(func, err);
         }
     }
@@ -375,6 +409,11 @@ impl ReportVars {
                 DataType::Map { .. } => {
                     let fid =
                         self.emit_flush_map_fn(dt, io_adapter, map_lib_adapter, mem_id, wasm, err);
+                    func.call(FunctionID(fid));
+                }
+                DataType::Str => {
+                    let fid =
+                        self.emit_flush_str_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
                     func.call(FunctionID(fid));
                 }
                 dt => {
@@ -572,14 +611,8 @@ impl ReportVars {
             .if_stmt(BlockType::Empty);
         let (addr, len) = mem_allocator.lookup_emitted_string(&format!("{dt}, "));
         io_adapter.puts(addr, len, flush_fn, err);
-        let wasm_tys = dt.to_wasm_type();
-        let wasm_ty = if wasm_tys.len() > 1 {
-            // todo support tuples, strings, etc.
-            unimplemented!()
-        } else {
-            get_wasm_ty_str(wasm_tys.first().unwrap())
-        };
-        let (addr, len) = mem_allocator.lookup_emitted_string(&format!("{wasm_ty}, "));
+        let wasm_ty_str = get_wasm_tys_str(&dt.to_wasm_type());
+        let (addr, len) = mem_allocator.lookup_emitted_string(&format!("{wasm_ty_str}, "));
         io_adapter.puts(addr, len, flush_fn, err);
     }
 
@@ -588,6 +621,7 @@ impl ReportVars {
         &self,
         flush_dt: &dyn Fn(
             &mut FunctionBuilder,
+            LocalID,
             &MemArg,
             &mut IOAdapter,
             &mut MapLibAdapter,
@@ -682,7 +716,14 @@ impl ReportVars {
 
         // print the value(s), uses returned curr_addr that is now pointing to
         // the true location of the value in memory
-        flush_dt(&mut flush_fn, &mem_arg, io_adapter, map_lib_adapter, err);
+        flush_dt(
+            &mut flush_fn,
+            curr_addr,
+            &mem_arg,
+            io_adapter,
+            map_lib_adapter,
+            err,
+        );
 
         // check if we should loop
         // while next_addr != NULL_PTR: curr_addr = next_addr; continue;
@@ -727,6 +768,7 @@ impl ReportVars {
 
     fn flush_u8(
         flush_fn: &mut FunctionBuilder,
+        _: LocalID,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
         _map_lib_adapter: &mut MapLibAdapter,
@@ -758,6 +800,7 @@ impl ReportVars {
 
     fn flush_i8(
         flush_fn: &mut FunctionBuilder,
+        _: LocalID,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
         _map_lib_adapter: &mut MapLibAdapter,
@@ -789,6 +832,7 @@ impl ReportVars {
 
     fn flush_u16(
         flush_fn: &mut FunctionBuilder,
+        _: LocalID,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
         _map_lib_adapter: &mut MapLibAdapter,
@@ -820,6 +864,7 @@ impl ReportVars {
 
     fn flush_i16(
         flush_fn: &mut FunctionBuilder,
+        _: LocalID,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
         _map_lib_adapter: &mut MapLibAdapter,
@@ -851,6 +896,7 @@ impl ReportVars {
 
     fn flush_u32(
         flush_fn: &mut FunctionBuilder,
+        _: LocalID,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
         _map_lib_adapter: &mut MapLibAdapter,
@@ -882,6 +928,7 @@ impl ReportVars {
 
     fn flush_i32(
         flush_fn: &mut FunctionBuilder,
+        _: LocalID,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
         _map_lib_adapter: &mut MapLibAdapter,
@@ -913,6 +960,7 @@ impl ReportVars {
 
     fn flush_u64(
         flush_fn: &mut FunctionBuilder,
+        _: LocalID,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
         _map_lib_adapter: &mut MapLibAdapter,
@@ -944,6 +992,7 @@ impl ReportVars {
 
     fn flush_i64(
         flush_fn: &mut FunctionBuilder,
+        _: LocalID,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
         _map_lib_adapter: &mut MapLibAdapter,
@@ -975,6 +1024,7 @@ impl ReportVars {
 
     fn flush_f32(
         flush_fn: &mut FunctionBuilder,
+        _: LocalID,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
         _map_lib_adapter: &mut MapLibAdapter,
@@ -1006,6 +1056,7 @@ impl ReportVars {
 
     fn flush_f64(
         flush_fn: &mut FunctionBuilder,
+        _: LocalID,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
         _map_lib_adapter: &mut MapLibAdapter,
@@ -1037,6 +1088,7 @@ impl ReportVars {
 
     fn flush_bool(
         flush_fn: &mut FunctionBuilder,
+        _: LocalID,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
         _map_lib_adapter: &mut MapLibAdapter,
@@ -1069,6 +1121,7 @@ impl ReportVars {
 
     fn flush_map(
         flush_fn: &mut FunctionBuilder,
+        _: LocalID,
         mem_arg: &MemArg,
         io_adapter: &mut IOAdapter,
         map_lib_adapter: &mut MapLibAdapter,
@@ -1076,6 +1129,45 @@ impl ReportVars {
     ) {
         flush_fn.i32_load(*mem_arg);
         map_lib_adapter.call_print_map(flush_fn, err);
+        io_adapter.putln(flush_fn, err);
+    }
+
+    fn emit_flush_str_fn(
+        &self,
+        io_adapter: &mut IOAdapter,
+        map_lib_adapter: &mut MapLibAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        self.emit_flush_fn(
+            &Self::flush_str,
+            DataType::Str,
+            io_adapter,
+            map_lib_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
+    }
+
+    fn flush_str(
+        flush_fn: &mut FunctionBuilder,
+        curr_addr: LocalID,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        _map_lib_adapter: &mut MapLibAdapter,
+        err: &mut ErrorGen,
+    ) {
+        // load ptr
+        flush_fn.i32_load(*mem_arg);
+
+        // load len
+        let mut len_mem_arg = *mem_arg;
+        len_mem_arg.offset += 4;
+        flush_fn.local_get(curr_addr).i32_load(len_mem_arg);
+
+        io_adapter.call_puts_internal(flush_fn, err);
         io_adapter.putln(flush_fn, err);
     }
 
@@ -1238,13 +1330,13 @@ pub enum Metadata {
     Global {
         name: String,
         whamm_ty: DataType,
-        wasm_ty: WirmType,
+        wasm_tys: Vec<WirmType>,
         script_id: u8,
     },
     Local {
         name: String,
         whamm_ty: DataType,
-        wasm_ty: WirmType,
+        wasm_tys: Vec<WirmType>,
         script_id: u8,
         bytecode_loc: BytecodeLoc,
         probe_id: String,
@@ -1261,7 +1353,7 @@ impl From<&LocationData> for Metadata {
             } => Self::Local {
                 name: "".to_string(),
                 whamm_ty: DataType::I32,
-                wasm_ty: WirmType::I32,
+                wasm_tys: vec![WirmType::I32],
                 script_id: *script_id,
                 bytecode_loc: bytecode_loc.clone(),
                 probe_id: probe_id.clone(),
@@ -1269,7 +1361,7 @@ impl From<&LocationData> for Metadata {
             LocationData::Global { script_id } => Self::Global {
                 name: "".to_string(),
                 whamm_ty: DataType::I32,
-                wasm_ty: WirmType::I32,
+                wasm_tys: vec![WirmType::I32],
                 script_id: *script_id,
             },
         }
@@ -1279,12 +1371,8 @@ impl Metadata {
     pub fn new(name: String, whamm_ty: DataType, loc: &LocationData) -> Self {
         let mut meta = Self::from(loc);
         meta.set_name(name);
-        let wasm_ty = whamm_ty.to_wasm_type();
-        if wasm_ty.len() > 1 {
-            unimplemented!()
-        } else {
-            meta.set_wasm_ty(*wasm_ty.first().unwrap());
-        }
+        let wasm_tys = whamm_ty.to_wasm_type();
+        meta.set_wasm_tys(wasm_tys);
         meta.set_whamm_ty(whamm_ty);
         meta
     }
@@ -1303,14 +1391,14 @@ impl Metadata {
             Self::Local { whamm_ty, .. } | Self::Global { whamm_ty, .. } => whamm_ty.clone(),
         }
     }
-    pub fn set_wasm_ty(&mut self, new_ty: WirmType) {
+    pub fn set_wasm_tys(&mut self, new_tys: Vec<WirmType>) {
         match self {
-            Self::Local { wasm_ty, .. } | Self::Global { wasm_ty, .. } => *wasm_ty = new_ty,
+            Self::Local { wasm_tys, .. } | Self::Global { wasm_tys, .. } => *wasm_tys = new_tys,
         }
     }
-    pub fn get_wasm_ty(&self) -> WirmType {
+    pub fn get_wasm_tys(&self) -> &Vec<WirmType> {
         match self {
-            Self::Local { wasm_ty, .. } | Self::Global { wasm_ty, .. } => *wasm_ty,
+            Self::Local { wasm_tys, .. } | Self::Global { wasm_tys, .. } => wasm_tys,
         }
     }
     pub fn setup_csv_header(wasm: &mut Module, mem_allocator: &mut MemoryAllocator) -> (u32, u32) {
@@ -1326,12 +1414,12 @@ impl Metadata {
             Metadata::Global {
                 name,
                 whamm_ty,
-                wasm_ty,
+                wasm_tys,
                 script_id,
             } => (
                 name.as_str(),
                 whamm_ty.to_string(),
-                get_wasm_ty_str(wasm_ty),
+                get_wasm_tys_str(wasm_tys),
                 *script_id,
                 // skip: fname, pc, fid
                 ", , ",
@@ -1340,14 +1428,14 @@ impl Metadata {
             Metadata::Local {
                 name,
                 whamm_ty,
-                wasm_ty,
+                wasm_tys,
                 script_id,
                 bytecode_loc,
                 probe_id,
             } => (
                 name.as_str(),
                 whamm_ty.to_string(),
-                get_wasm_ty_str(wasm_ty),
+                get_wasm_tys_str(wasm_tys),
                 *script_id,
                 &*bytecode_loc.to_string(),
                 probe_id.as_str(),
@@ -1394,6 +1482,29 @@ struct ReportAllocTracker {
 }
 struct FlushTracker {
     flush_var_metadata_fid: Option<u32>,
+}
+
+fn get_wasm_tys_str(wasm_tys: &[WirmType]) -> String {
+    let mut res = String::new();
+    if wasm_tys.len() > 1 {
+        res.push('(');
+    }
+
+    let mut first = true;
+    for ty in wasm_tys.iter() {
+        if !first {
+            res.push_str(", ");
+        }
+        let s = get_wasm_ty_str(ty);
+        res.push_str(&s);
+
+        first = false;
+    }
+
+    if wasm_tys.len() > 1 {
+        res.push(')');
+    }
+    res
 }
 
 fn get_wasm_ty_str(wasm_ty: &WirmType) -> String {

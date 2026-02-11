@@ -255,10 +255,10 @@ impl SymbolTable {
         }
         None
     }
-    pub fn lookup_rec_mut(&mut self, key: &str) -> Option<&mut Record> {
+    pub fn lookup_rec_mut(&mut self, key: &str) -> Option<(usize, &mut Record)> {
         let id = self.lookup(key)?;
         if let Some(rec) = self.get_record_mut(id) {
-            return Some(rec);
+            return Some((id, rec));
         }
         None
     }
@@ -280,7 +280,7 @@ impl SymbolTable {
         }
     }
     pub fn lookup_lib_mut(&mut self, key: &str) -> Option<&mut Record> {
-        if let Some(rec) = self.lookup_rec_mut(key) {
+        if let Some((_, rec)) = self.lookup_rec_mut(key) {
             if matches!(rec, Record::Library { .. }) {
                 Some(rec)
             } else {
@@ -293,9 +293,21 @@ impl SymbolTable {
     }
 
     pub fn lookup_var_mut(&mut self, key: &str, panic_if_missing: bool) -> Option<&mut Record> {
-        if let Some(rec) = self.lookup_rec_mut(key) {
+        if let Some((_, rec)) = self.lookup_var_with_id_mut(key, panic_if_missing) {
+            Some(rec)
+        } else {
+            None
+        }
+    }
+
+    pub fn lookup_var_with_id_mut(
+        &mut self,
+        key: &str,
+        panic_if_missing: bool,
+    ) -> Option<(usize, &mut Record)> {
+        if let Some((id, rec)) = self.lookup_rec_mut(key) {
             if matches!(rec, Record::Var { .. }) {
-                Some(rec)
+                Some((id, rec))
             } else {
                 if panic_if_missing {
                     Self::no_match(rec, "Var");
@@ -308,6 +320,7 @@ impl SymbolTable {
             None
         }
     }
+
     pub fn lookup_var(&self, key: &str, fail_on_miss: bool) -> Option<&Record> {
         if let Some(rec) = self.lookup_rec(key) {
             if matches!(rec, Record::Var { .. } | Record::Library { .. }) {
@@ -356,7 +369,7 @@ impl SymbolTable {
         }
     }
     pub fn lookup_fn_mut(&mut self, key: &str) -> Option<&mut Record> {
-        if let Some(rec) = self.lookup_rec_mut(key) {
+        if let Some((_, rec)) = self.lookup_rec_mut(key) {
             if matches!(rec, Record::Fn { .. }) {
                 Some(rec)
             } else {

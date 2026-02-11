@@ -22,9 +22,15 @@ wasm:opcode:drop:before {
     // read the string from the library's memory that should still be live
     // (should also get flushed at the end of execution)
     report var s1: str = read_str(memid(alpha), ptr, l as u32);
-
     core_ptr = whamm_core.mem_alloc(l as i32);
     write_str(memid(whamm_core), core_ptr, s1);
     whamm_core.puts(core_ptr, l as i32);
+    whamm_core.mem_free(core_ptr);
+
+    report var s2: str = "hello";
+    var l2: u32 = len(s2);
+    core_ptr = whamm_core.mem_alloc(l2 as i32);
+    write_str(memid(whamm_core), core_ptr, s2);
+    whamm_core.puts(core_ptr, l2 as i32);
     whamm_core.mem_free(core_ptr);
 }

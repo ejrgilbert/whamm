@@ -141,11 +141,11 @@ impl UnsharedVarHandler {
             mem_allocator.emit_string(wasm, &mut name.clone());
             mem_allocator.emit_string(wasm, &mut probe_id.clone());
 
-            if matches!(var.ty, DataType::Str) {
-                // handle variables that are strings
-                // todo
-                todo!()
-            }
+            // if matches!(var.ty, DataType::Str) {
+            //     // handle variables that are strings
+            //     // todo
+            //     todo!()
+            // }
 
             // (once they're emitted, the addresses will be available in MemoryAllocator::emitted_strings)
         }

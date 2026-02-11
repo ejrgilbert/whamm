@@ -617,12 +617,6 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, '
                 for (global_id, global_ty) in globals.iter() {
                     addrs.push(VarAddr::Global { addr: **global_id });
 
-                    //now save off the global variable metadata
-                    if report_mode {
-                        // todo -- i don't think this works for global strings.
-                        self.report_vars
-                            .put_global_metadata(**global_id, name.clone(), ty);
-                    }
                     if only_one {
                         getter = Some(emit_global_getter(
                             self.app_wasm,
@@ -632,6 +626,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, '
                             loc,
                         ));
                     }
+                }
+                //now save off the global variable metadata
+                if report_mode {
+                    // todo -- i don't think this works for global strings.
+                    self.report_vars
+                        .put_global_metadata(addrs.clone(), name.clone(), ty);
                 }
                 *addr = Some(addrs);
                 getter
@@ -772,6 +772,7 @@ impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_, '_> {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_expr(
                 expr,
+                None,
                 self.strategy,
                 emitting_func,
                 &mut EmitCtx::new(

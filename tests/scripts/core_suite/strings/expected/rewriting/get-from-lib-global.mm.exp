@@ -1,6 +1,26 @@
 abcdefghijklmnopqrstuvwxyz
 abcdefghijklmnopqrstuvwxyz
-abcdefghijklmnopqrstuvwxyz
-abcdefghijklmnopqrstuvwxyz
-abcdefghijklmnopqrstuvwxyz
-abcdefghijklmnopqrstuvwxyz
+helloabcdefghijklmnopqrstuvwxyz
+helloabcdefghijklmnopqrstuvwxyz
+helloabcdefghijklmnopqrstuvwxyz
+helloabcdefghijklmnopqrstuvwxyz
+hello
+================================= REPORT CSV FLUSH ====================================
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
+4, memaddr, s1, str, (i32, i32), script0, main, 5, 47, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz
+
+40, memaddr, s2, str, (i32, i32), script0, main, 5, 47, 0_wasm:opcode:drop:before, hello
+76, memaddr, s1, str, (i32, i32), script0, main, 5, 52, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz
+
+112, memaddr, s2, str, (i32, i32), script0, main, 5, 52, 0_wasm:opcode:drop:before, hello
+148, memaddr, s1, str, (i32, i32), script0, main, 5, 57, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz
+
+184, memaddr, s2, str, (i32, i32), script0, main, 5, 57, 0_wasm:opcode:drop:before, hello
+220, memaddr, s1, str, (i32, i32), script0, main, 5, 62, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz
+
+256, memaddr, s2, str, (i32, i32), script0, main, 5, 62, 0_wasm:opcode:drop:before, hello
+292, memaddr, s1, str, (i32, i32), script0, main, 5, 67, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz
+
+328, memaddr, s2, str, (i32, i32), script0, main, 5, 67, 0_wasm:opcode:drop:before, hello
+6, global_id, l, i32, i32, script0, , , , , 27
+(8, 9), (global_id, global_id), s, str, (i32, i32), script0, , , , , abcdefghijklmnopqrstuvwxyz

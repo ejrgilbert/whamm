@@ -151,7 +151,25 @@ impl MemoryAllocator {
                 offset: var_offset as u64,
                 memory: mem_id,
             }),
-            DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => todo!(),
+            DataType::Str => {
+                injector.i32_load(MemArg {
+                    align: 0,
+                    max_align: 0,
+                    offset: var_offset as u64,
+                    memory: mem_id,
+                });
+
+                // load len
+                self.emit_addr(table, injector);
+                injector.i32_load(MemArg {
+                    align: 0,
+                    max_align: 0,
+                    // shift by 4 bytes to load len
+                    offset: var_offset as u64 + 4,
+                    memory: mem_id,
+                })
+            }
+            DataType::Tuple { .. } | DataType::Map { .. } => todo!(),
             DataType::Null | DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
                 unreachable!()
             }
@@ -163,6 +181,7 @@ impl MemoryAllocator {
         var_offset: u32,
         mem_id: u32,
         ty: &DataType,
+        idx: Option<usize>, // optionally specify a specific part of the expression to set
         injector: &mut T,
     ) {
         // perform the correct store based on the type of data at this memory location
@@ -203,7 +222,27 @@ impl MemoryAllocator {
                 offset: var_offset as u64,
                 memory: mem_id,
             }),
-            DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => todo!(),
+            DataType::Str => {
+                let offset = if let Some(idx) = idx {
+                    if idx == 0 {
+                        // store ptr
+                        var_offset as u64
+                    } else {
+                        // store len
+                        var_offset as u64 + 4
+                    }
+                } else {
+                    // store ptr
+                    var_offset as u64
+                };
+                injector.i32_store(MemArg {
+                    align: 0,
+                    max_align: 0,
+                    offset,
+                    memory: mem_id,
+                })
+            }
+            DataType::Tuple { .. } | DataType::Map { .. } => todo!(),
             DataType::Null | DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
                 unreachable!()
             }
@@ -305,7 +344,7 @@ impl MemoryAllocator {
             src_len,
             dst_mem_id,
             |func| {
-                emit_expr(dst_mem_ptr, inject_strategy, func, ctx);
+                emit_expr(dst_mem_ptr, None, inject_strategy, func, ctx);
                 func
             },
             func,

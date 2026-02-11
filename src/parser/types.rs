@@ -401,7 +401,7 @@ impl DataType {
                 }
                 Some(size)
             }
-            DataType::Str |
+            DataType::Str => Some(8), // (two i32s)
             DataType::Null |
             DataType::Lib |
             DataType::AssumeGood |
