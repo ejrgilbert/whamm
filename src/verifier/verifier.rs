@@ -105,6 +105,7 @@ struct TypeChecker<'a> {
     err: &'a mut ErrorGen,
     in_script_global: bool,
     in_function: bool,
+    restrict_probe_local_state: bool,
     has_reports: bool,
     curr_match_rule: Option<String>,
 
@@ -125,6 +126,7 @@ impl<'a> TypeChecker<'a> {
             err,
             in_script_global: false,
             in_function: false,
+            restrict_probe_local_state: false,
             has_reports: false,
             curr_match_rule: None,
             curr_lib: vec![],
@@ -460,7 +462,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     (None, Some(expr_loc)) => (None, Some(expr_loc.line_col.clone())),
                     _ => (None, None),
                 };
+                let orig_setting = self.restrict_probe_local_state;
+                self.restrict_probe_local_state = false;
                 let lhs_ty_op = self.visit_expr(var_id);
+                self.restrict_probe_local_state = orig_setting;
 
                 if let Some(lhs_ty) = &lhs_ty_op {
                     if let Expr::UnOp {
@@ -504,21 +509,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 self.outer_cast_fixes_assign = false;
                 self.assign_ty = None;
 
-                // if let Expr::Primitive {val, ..} = expr {
-                //     if let Expr::VarId {name, ..} = var_id {
-                //         if let Some(Record::Var { value, def, .. }) = self.table.lookup_var_mut(name, false) {
-                //             if !def.is_comp_defined() {
-                //                 *value = Some(val.clone());
-                //             }
-                //         }
-                //     }
-                // }
-
                 res
             }
             Statement::UnsharedDeclInit { decl, init, .. } => {
                 self.visit_stmt(decl);
+                self.restrict_probe_local_state = true;
                 self.visit_stmt(init);
+                self.restrict_probe_local_state = false;
                 None
             }
             Statement::UnsharedDecl {
@@ -1009,7 +1006,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 definition,
             } => {
                 // get type from symbol table
-                if let Some(id) = self.table.lookup(name) {
+                if let (Some(id), Some(scope_id)) = self.table.lookup_with_scope_id(name) {
+                    if self.restrict_probe_local_state && self.table.scope_is_probe_local(scope_id)
+                    {
+                        self.err.type_check_error(
+                            "Cannot use the probe-local state to initialize this variable with special scoping. Hint: split out the variable's initialization from the declaration.".to_string(),
+                            &loc.clone().map(|l| l.line_col),
+                        );
+                    }
                     if let Some(rec) = self.table.get_record(id) {
                         if let Record::Var { ty, def, value, .. } = rec {
                             *definition = *def;
