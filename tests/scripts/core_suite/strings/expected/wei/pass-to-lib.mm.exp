@@ -1,0 +1,17 @@
+hello drop😀😀A
+hello drop😀😀A
+hello drop😀😀A
+hello drop😀😀A
+hello drop😀😀A
+
+================================= REPORT CSV FLUSH ====================================
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
+4, memaddr, s, str, (i32, i32), script0, main, 5, 47, 0_wasm:opcode:drop, hello drop😀😀A
+
+40, memaddr, s, str, (i32, i32), script0, main, 5, 52, 0_wasm:opcode:drop, hello drop😀😀A
+
+76, memaddr, s, str, (i32, i32), script0, main, 5, 57, 0_wasm:opcode:drop, hello drop😀😀A
+
+112, memaddr, s, str, (i32, i32), script0, main, 5, 62, 0_wasm:opcode:drop, hello drop😀😀A
+
+148, memaddr, s, str, (i32, i32), script0, main, 5, 67, 0_wasm:opcode:drop, hello drop😀😀A

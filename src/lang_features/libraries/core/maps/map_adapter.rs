@@ -275,11 +275,9 @@ impl MapLibAdapter {
 
     pub fn print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         &mut self,
-        map_id: u32,
         func: &mut T,
         err: &mut ErrorGen,
     ) {
-        func.u32_const(map_id);
         self.call_print_map(func, err)
     }
 

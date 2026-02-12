@@ -311,6 +311,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
             let lib_id = self.table.put(
                 lib_name.clone(),
                 Record::Library {
+                    mem_id: Default::default(),
                     fns: Default::default(),
                 },
             );
@@ -417,7 +418,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
         // create record
         let fn_rec = Record::Fn {
             name: f.name.clone(),
-            def: f.def.clone(),
+            def: f.def,
             params: vec![],
             ret_ty: f.results.clone(),
             addr: None,
@@ -478,8 +479,10 @@ impl SymbolTableBuilder<'_, '_, '_> {
     }
 
     fn add_param(&mut self, var_id: &Expr, ty: &DataType) {
-        let name = match var_id {
-            Expr::VarId { name, .. } => name,
+        let (name, def) = match var_id {
+            Expr::VarId {
+                name, definition, ..
+            } => (name, *definition),
             _ => {
                 unreachable!("{}", UNEXPECTED_ERR_MSG)
             }
@@ -489,8 +492,9 @@ impl SymbolTableBuilder<'_, '_, '_> {
         let param_rec = Record::Var {
             ty: ty.clone(),
             value: None,
-            def: Definition::User,
+            def,
             addr: None,
+            times_set: 0,
             loc: var_id.loc().clone(),
         };
 
@@ -531,6 +535,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 value,
                 def: definition,
                 addr: None,
+                times_set: 0,
                 loc,
             },
         );
@@ -556,13 +561,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                     aliases.insert(name.clone(), alias.clone());
                 } else if let Expr::Primitive { val, .. } = derived_from {
                     // This is a simple value that can be folded away
-                    self.add_global(
-                        ty.clone(),
-                        name.clone(),
-                        Some(val.clone()),
-                        lifetime.clone(),
-                        None,
-                    );
+                    self.add_global(ty.clone(), name.clone(), Some(val.clone()), *lifetime, None);
                 } else {
                     // Add derived globals to the probe body itself (to calculate the value)
                     derived.insert(name.clone(), (ty.clone(), derived_from.clone()));
@@ -573,7 +572,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                     ty.clone(),
                     name.clone(),
                     None, // todo this is just made up
-                    lifetime.clone(),
+                    *lifetime,
                     None,
                 );
             }
@@ -901,13 +900,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                     } = &var_id
                     {
                         // Add symbol to table
-                        self.add_global(
-                            ty.clone(),
-                            name.clone(),
-                            None,
-                            definition.clone(),
-                            loc.clone(),
-                        );
+                        self.add_global(ty.clone(), name.clone(), None, *definition, loc.clone());
                     } else {
                         panic!(
                             "{} \

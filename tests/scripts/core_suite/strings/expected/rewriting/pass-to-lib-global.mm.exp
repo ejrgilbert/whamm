@@ -1,0 +1,10 @@
+hello global
+hello global
+hello global
+hello global
+hello global
+hello global
+
+================================= REPORT CSV FLUSH ====================================
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
+(4, 5), (global_id, global_id), h, str, (i32, i32), script0, , , , , hello global

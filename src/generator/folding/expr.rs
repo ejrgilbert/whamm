@@ -50,7 +50,7 @@ impl<'a> ExprFolder<'a> {
             Expr::UnOp { .. } => self.fold_unop(expr, table, err),
             Expr::BinOp { .. } => self.fold_binop(expr, table, err),
             Expr::Ternary { .. } => self.fold_ternary(expr, table, err),
-            Expr::Call { .. } => self.fold_call(expr, table),
+            Expr::Call { .. } => self.fold_call(expr, table, err),
             Expr::VarId { .. } => self.fold_var_id(expr, table),
             Expr::Primitive { .. } => self.fold_primitive(expr, table, err),
             Expr::MapGet { .. } => self.fold_map_get(expr, table, err),
@@ -1438,10 +1438,96 @@ impl<'a> ExprFolder<'a> {
         ternary.clone()
     }
 
-    fn fold_call(&mut self, call: &Expr, _table: &SymbolTable) -> Expr {
+    fn fold_call(&mut self, call: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         self.curr_loc = call.loc().clone();
+        // Check if this is calling a bound, static function!
+        if let Expr::Call {
+            fn_target, args, ..
+        } = call
+        {
+            let fn_name = match &**fn_target {
+                Expr::VarId { name, .. } => name.clone(),
+                _ => return call.clone(),
+            };
+            let Some(Record::Fn { def, .. }) = table.lookup_fn(fn_name.as_str(), false) else {
+                return call.clone();
+            };
+            if matches!(def, Definition::CompilerStatic) {
+                // We want to handle this as unique logic rather than a simple function call to be emitted
+                return self.handle_special_fn_call(call, &fn_name, args, table, err);
+            }
+        }
         call.clone()
     }
+
+    fn handle_special_fn_call(
+        &mut self,
+        call: &Expr,
+        target_fn_name: &str,
+        args: &[Expr],
+        table: &SymbolTable,
+        err: &mut ErrorGen,
+    ) -> Expr {
+        let mut folded_args = vec![];
+        for arg in args.iter() {
+            folded_args.push(ExprFolder::fold_expr(
+                arg,
+                self.registry,
+                self.as_monitor_module,
+                table,
+                err,
+            ));
+        }
+
+        match target_fn_name {
+            "len" => self.handle_len(call, &mut folded_args, table, err),
+            "memid" => self.handle_mem(&mut folded_args, table),
+            _ => call.clone(),
+        }
+    }
+
+    fn handle_len(
+        &mut self,
+        orig_call: &Expr,
+        args: &mut [Expr],
+        table: &SymbolTable,
+        err: &mut ErrorGen,
+    ) -> Expr {
+        // Assume the correct args since we've gone through typechecking at this point!
+        let arg0 = self.fold_expr_inner(&args[0], table, err);
+        let s = match arg0 {
+            Expr::Primitive {
+                val: Value::Str { val, .. },
+                ..
+            } => val.clone(),
+            _ => return orig_call.clone(),
+        };
+
+        Expr::Primitive {
+            val: Value::gen_u32(s.len() as u32),
+            loc: None,
+        }
+    }
+
+    fn handle_mem(&mut self, args: &mut [Expr], table: &SymbolTable) -> Expr {
+        // Assume the correct args since we've gone through typechecking at this point!
+        let libname = match args.iter().next().unwrap() {
+            Expr::VarId { name, .. } => name.clone(),
+            _ => unreachable!(),
+        };
+        let Some(Record::Library { mem_id, .. }) = table.lookup_lib(libname.as_str()) else {
+            unreachable!("unexpected type");
+        };
+        if let Some(mem_id) = mem_id {
+            Expr::Primitive {
+                val: Value::gen_u32(*mem_id),
+                loc: None,
+            }
+        } else {
+            panic!("memory has not been imported for {libname}")
+        }
+    }
+
     fn fold_var_id(&mut self, var_id: &Expr, table: &SymbolTable) -> Expr {
         self.curr_loc = var_id.loc().clone();
         if let Expr::VarId { name, .. } = &var_id {

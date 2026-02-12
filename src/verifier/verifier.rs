@@ -105,6 +105,7 @@ struct TypeChecker<'a> {
     err: &'a mut ErrorGen,
     in_script_global: bool,
     in_function: bool,
+    restrict_probe_local_state: bool,
     has_reports: bool,
     curr_match_rule: Option<String>,
 
@@ -125,6 +126,7 @@ impl<'a> TypeChecker<'a> {
             err,
             in_script_global: false,
             in_function: false,
+            restrict_probe_local_state: false,
             has_reports: false,
             curr_match_rule: None,
             curr_lib: vec![],
@@ -156,6 +158,7 @@ impl<'a> TypeChecker<'a> {
                 value: None,
                 def: definition,
                 addr: None,
+                times_set: 0,
                 loc: loc.clone(),
             },
         );
@@ -208,6 +211,7 @@ impl<'a> TypeChecker<'a> {
                             value: None,
                             def: CompilerDynamic,
                             addr: None,
+                            times_set: 0,
                             loc: loc.clone(),
                         },
                     );
@@ -419,6 +423,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 //allow declarations and assignment
                 Statement::Decl { .. } | Statement::Assign { .. } | Statement::LibImport { .. } => {
                 }
+                // allow function calls
+                Statement::Expr {
+                    expr: Expr::LibCall { .. } | Expr::Call { .. },
+                    ..
+                } => {}
                 Statement::UnsharedDecl { is_report, .. } => {
                     if *is_report {
                         self.has_reports = true;
@@ -433,7 +442,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
                 _ => {
                     self.err.type_check_error(
-                        format!("Only variable declarations, user lib imports, and assignment are allowed in the global scope, found: {:?}", stmt),
+                        format!("Only variable declarations, user lib imports, function calls, library function calls, and assignment are allowed in the global scope, found: {:?}", stmt),
                         &stmt.loc().clone().map(|l| l.line_col),
                     );
                     return None;
@@ -453,7 +462,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     (None, Some(expr_loc)) => (None, Some(expr_loc.line_col.clone())),
                     _ => (None, None),
                 };
+                let orig_setting = self.restrict_probe_local_state;
+                self.restrict_probe_local_state = false;
                 let lhs_ty_op = self.visit_expr(var_id);
+                self.restrict_probe_local_state = orig_setting;
 
                 if let Some(lhs_ty) = &lhs_ty_op {
                     if let Expr::UnOp {
@@ -496,11 +508,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 };
                 self.outer_cast_fixes_assign = false;
                 self.assign_ty = None;
+
                 res
             }
             Statement::UnsharedDeclInit { decl, init, .. } => {
                 self.visit_stmt(decl);
+                self.restrict_probe_local_state = true;
                 self.visit_stmt(init);
+                self.restrict_probe_local_state = false;
                 None
             }
             Statement::UnsharedDecl {
@@ -991,10 +1006,17 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 definition,
             } => {
                 // get type from symbol table
-                if let Some(id) = self.table.lookup(name) {
+                if let (Some(id), Some(scope_id)) = self.table.lookup_with_scope_id(name) {
+                    if self.restrict_probe_local_state && self.table.scope_is_probe_local(scope_id)
+                    {
+                        self.err.type_check_error(
+                            "Cannot use the probe-local state to initialize this variable with special scoping. Hint: split out the variable's initialization from the declaration.".to_string(),
+                            &loc.clone().map(|l| l.line_col),
+                        );
+                    }
                     if let Some(rec) = self.table.get_record(id) {
                         if let Record::Var { ty, def, value, .. } = rec {
-                            *definition = def.clone();
+                            *definition = *def;
                             // println!("{name}: {ty}");
                             if let Some(val) = value {
                                 // overwrite with a primitive value expression!
@@ -1004,9 +1026,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 };
                             }
                             return Some(ty.clone());
+                        } else if let Record::Library { .. } = rec {
+                            return Some(DataType::Lib);
                         } else {
                             // unexpected record type
-                            unreachable!("{} Expected Var type", UNEXPECTED_ERR_MSG)
+                            // TODO: make this look up the local-most var (overshadowing should work)
+                            unreachable!("{} Expected Var type, got: {rec:?}\nHave you overshadowed some bound variable?", UNEXPECTED_ERR_MSG)
                         }
                     }
                 }
@@ -1189,11 +1214,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 if let Some((_, is_static)) = curr_lib {
                     //disallow (non-static) user-function calls when the in the global state of the script
                     if self.in_script_global && !is_static {
-                        self.err.type_check_error(
-                            "Non-static calls to libraries are not allowed in the global state of the script"
-                                .to_owned(),
-                            &loc.clone().map(|l| l.line_col),
-                        );
+                        // self.err.type_check_error(
+                        //     "Non-static calls to libraries are not allowed in the global state of the script"
+                        //         .to_owned(),
+                        //     &loc.clone().map(|l| l.line_col),
+                        // );
                     }
                 } else if self.in_script_global
                     && !(*def == CompilerDynamic || *def == CompilerStatic)

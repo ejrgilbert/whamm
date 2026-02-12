@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::common::error::ErrorGen;
 use log::{debug, error, info};
-use wirm::Module;
+
 // =================
 // = Setup Logging =
 // =================
@@ -17,8 +17,20 @@ pub fn setup_logger() {
 // = Helper Functions =
 // ====================
 
-const TOGGLE_PATH: &str = "./tests/libs/toggle/toggle.wasm";
 const VALID_SCRIPTS: &[&str] = &[
+    // use global state in report variable DeclInit
+    "
+    var ptr: i32 = 0;
+    wasm:opcode:drop:before {
+        // `ptr` and `l` are scope-compatible!!
+        report var l: i32 = ptr;
+    }",
+    "
+    var ptr: i32 = 0;
+    wasm:opcode:drop:before {
+        // `ptr` and `l` are scope-compatible!!
+        unshared var l: i32 = ptr;
+    }",
     "wasm:opcode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
     r#"
 wasm::call:alt /
@@ -111,6 +123,21 @@ wasm::call:alt /
 ];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
+    // use probe-local state in report variable DeclInit
+    "
+    wasm:opcode:drop:before {
+        var ptr: i32 = 0;
+
+        // `ptr` and `l` are in a different scope!!
+        report var l: i32 = ptr;
+    }",
+    "
+    wasm:opcode:drop:before {
+        var ptr: i32 = 0;
+
+        // `ptr` and `l` are in a different scope!!
+        unshared var l: i32 = ptr;
+    }",
     // binary operations
     "wasm:opcode:call:alt {
         var i: i32 = 1 << (1, 2, 3);
@@ -477,10 +504,10 @@ wasm::call:alt /
     let table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
     debug!("{:#?}", table);
 
-    // 7 scopes: whamm, strcmp, drop_args, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt, probe itself
-    let num_scopes = 11;
-    // records: num_scopes PLUS (at_func_end, str_addr, func_id, func_name, value, probe_id, fid, fname, opidx, pc, opname, bytecode, localN, target_imp_name, target_fn_name, target_fn_type, target_imp_module, imm0, arg[0:9]+, category_name, category_id)
-    let num_recs = num_scopes + 20;
+    // 7 scopes: whamm, strcmp, drop_args, len, mem, write_str, read_str, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt, probe itself
+    let num_scopes = 15;
+    // records: num_scopes PLUS (at_func_end, str_addr, s, mem, target_mem, ptr, s, src_mem, ptr, l, func_id, func_name, value, probe_id, fid, fname, opidx, pc, opname, bytecode, localN, target_imp_name, target_fn_name, target_fn_type, target_imp_module, imm0, arg[0:9]+, category_name, category_id)
+    let num_recs = num_scopes + 28;
     // asserts on very high level table structure
     assert_eq!(num_scopes, table.scopes.len());
 
@@ -627,40 +654,6 @@ pub fn test_report_decl() {
     assert!(!err.has_errors);
 }
 
-#[test]
-pub fn test_dynamic_call_in_global_scope() {
-    setup_logger();
-    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-
-    // cannot have dynamic user library calls in global scope
-    let script = r#"
-use toggle;
-
-report var g: i32 = toggle.get_nonzero_nested(1, @static toggle.get_value());
-
-wasm:opcode:*:before / toggle.should_inject(fid as i32, @static toggle.get_value()) as bool / {
-    report var val: i32;
-    val = toggle.should_inject(fid as i32, @static toggle.get_value());
-}
-    "#;
-    let mut ast = tests::get_ast(script, &mut err);
-
-    let toggle_bytes = std::fs::read(TOGGLE_PATH).unwrap_or_else(|_| {
-        panic!(
-            "Could not read the core wasm module expected to be at location: {}",
-            TOGGLE_PATH
-        )
-    });
-    let toggle_lib: HashMap<String, (Option<String>, Module)> = HashMap::from([(
-        "toggle".to_string(),
-        (None, Module::parse(&toggle_bytes, true, false).unwrap()),
-    )]);
-
-    let mut table = verifier::build_symbol_table(&mut ast, &toggle_lib, &mut err);
-    verifier::type_check(&mut ast, &mut table, &mut err);
-    err.report();
-    assert!(err.has_errors);
-}
 //TODO: uncomment after BEGIN is working
 
 //WE DONT HAVE BEGIN WORKING YET

@@ -294,6 +294,7 @@ pub fn run(
         &mut mem_allocator,
         &mut utils_pkg,
         &mut core_packages,
+        metadata_collector.table,
         metadata_collector.err,
     );
     // If there were any errors encountered, report and exit!
@@ -302,15 +303,20 @@ pub fn run(
     }
 
     // make the used user library functions the correct form
-    let mut used_fns_per_lib: HashMap<String, HashSet<String>> = HashMap::default();
+    let mut used_exports_per_lib: HashMap<String, (bool, HashSet<String>)> = HashMap::default();
     let mut static_libs: HashSet<String> = HashSet::default();
     for ((used_lib, used_fn), is_static) in metadata_collector.used_user_library_fns.funcs.iter() {
-        used_fns_per_lib
+        let used_mem = metadata_collector.used_user_library_mems.contains(used_lib);
+        used_exports_per_lib
             .entry(used_lib.clone())
-            .and_modify(|set| {
+            .and_modify(|(mem, set)| {
+                *mem |= used_mem;
                 set.insert(used_fn.clone());
             })
-            .or_insert(HashSet::from_iter([used_fn.clone()].iter().cloned()));
+            .or_insert((
+                used_mem,
+                HashSet::from_iter([used_fn.clone()].iter().cloned()),
+            ));
         if *is_static {
             static_libs.insert(used_lib.clone());
         }
@@ -328,7 +334,7 @@ pub fn run(
         run_instr_wei(
             metrics,
             metadata_collector,
-            used_fns_per_lib,
+            used_exports_per_lib,
             user_lib_modules,
             target_wasm,
             &mut mem_allocator,
@@ -354,7 +360,7 @@ pub fn run(
             metrics,
             &mut whamm,
             metadata_collector,
-            used_fns_per_lib,
+            used_exports_per_lib,
             static_libs,
             user_lib_paths,
             user_lib_modules,
@@ -400,7 +406,7 @@ pub fn run(
 fn run_instr_wei(
     _metrics: &mut Metrics,
     metadata_collector: MetadataCollector,
-    used_fns_per_lib: HashMap<String, HashSet<String>>,
+    used_exports_per_lib: HashMap<String, (bool, HashSet<String>)>,
     user_lib_modules: HashMap<String, (Option<String>, Module)>,
     target_wasm: &mut Module,
     mem_allocator: &mut MemoryAllocator,
@@ -440,7 +446,7 @@ fn run_instr_wei(
         err,
         injected_funcs: &mut injected_funcs,
         config,
-        used_fns_per_lib,
+        used_exports_per_lib,
         user_lib_modules,
         curr_script_id: u8::MAX,
         unshared_var_handler: &mut wei_unshared_var_handler,
@@ -459,7 +465,7 @@ fn run_instr_rewrite(
     metrics: &mut Metrics,
     whamm: &mut Whamm,
     metadata_collector: MetadataCollector,
-    used_fns_per_lib: HashMap<String, HashSet<String>>,
+    used_exports_per_lib: HashMap<String, (bool, HashSet<String>)>,
     static_libs: HashSet<String>,
     user_lib_paths: HashMap<String, String>,
     user_lib_modules: HashMap<String, (Option<String>, Module)>,
@@ -497,7 +503,7 @@ fn run_instr_rewrite(
         ),
         context_name: "".to_string(),
         err,
-        used_fns_per_lib,
+        used_exports_per_lib,
         user_lib_modules,
         injected_funcs,
     };
