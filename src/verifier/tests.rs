@@ -18,6 +18,19 @@ pub fn setup_logger() {
 // ====================
 
 const VALID_SCRIPTS: &[&str] = &[
+    // use global state in report variable DeclInit
+    "
+    var ptr: i32 = 0;
+    wasm:opcode:drop:before {
+        // `ptr` and `l` are scope-compatible!!
+        report var l: i32 = ptr;
+    }",
+    "
+    var ptr: i32 = 0;
+    wasm:opcode:drop:before {
+        // `ptr` and `l` are scope-compatible!!
+        unshared var l: i32 = ptr;
+    }",
     "wasm:opcode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
     r#"
 wasm::call:alt /
@@ -110,6 +123,21 @@ wasm::call:alt /
 ];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
+    // use probe-local state in report variable DeclInit
+    "
+    wasm:opcode:drop:before {
+        var ptr: i32 = 0;
+
+        // `ptr` and `l` are in a different scope!!
+        report var l: i32 = ptr;
+    }",
+    "
+    wasm:opcode:drop:before {
+        var ptr: i32 = 0;
+
+        // `ptr` and `l` are in a different scope!!
+        unshared var l: i32 = ptr;
+    }",
     // binary operations
     "wasm:opcode:call:alt {
         var i: i32 = 1 << (1, 2, 3);

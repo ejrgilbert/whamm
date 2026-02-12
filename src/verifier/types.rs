@@ -240,7 +240,7 @@ impl SymbolTable {
         new_rec_id
     }
     pub fn lookup_rec_with_context(&self, key: &str) -> (Option<&Record>, String) {
-        if let (Some(id), context) = self.lookup_with_context(key) {
+        if let (Some(id), _, context) = self.lookup_with_context(key) {
             if let Some(rec) = self.get_record(id) {
                 return (Some(rec), context);
             }
@@ -409,14 +409,20 @@ impl SymbolTable {
         }
     }
 
-    pub fn lookup_with_context(&self, key: &str) -> (Option<usize>, String) {
+    // returns: (rec_id, scope_id, context)
+    pub fn lookup_with_context(&self, key: &str) -> (Option<usize>, Option<usize>, String) {
         match self.get_curr_scope() {
-            None => (None, "".to_string()),
+            None => (None, None, "".to_string()),
             Some(curr) => {
                 match curr.lookup(key) {
-                    Some(rec_id) => (Some(*rec_id), self.get_scope_context(curr.id)),
+                    Some(rec_id) => (
+                        Some(*rec_id),
+                        Some(curr.id),
+                        self.get_scope_context(curr.id),
+                    ),
                     None => {
                         let mut rec_id: Option<&usize> = None;
+                        let mut scope_id: Option<usize> = None;
 
                         // Search the parent instead
                         let mut lookup_scope = curr;
@@ -425,6 +431,7 @@ impl SymbolTable {
                             Some(p_id) => self.scopes.get(p_id),
                         };
                         while rec_id.is_none() && next_parent.is_some() {
+                            scope_id = Some(next_parent.unwrap().id);
                             // Perform lookup in next_parent (moving in the chain of parent scopes)
                             rec_id = next_parent.unwrap().lookup(key);
 
@@ -440,7 +447,11 @@ impl SymbolTable {
                             "".to_string()
                         };
 
-                        (rec_id.copied(), context)
+                        (
+                            rec_id.copied(),
+                            if rec_id.is_some() { scope_id } else { None },
+                            context,
+                        )
                     }
                 }
             }
@@ -448,6 +459,33 @@ impl SymbolTable {
     }
     pub fn lookup(&self, key: &str) -> Option<usize> {
         self.lookup_with_context(key).0
+    }
+    pub fn lookup_with_scope_id(&self, key: &str) -> (Option<usize>, Option<usize>) {
+        let (rec_id, scope_id, _) = self.lookup_with_context(key);
+        (rec_id, scope_id)
+    }
+
+    pub fn scope_is_probe_local(&self, scope_id: usize) -> bool {
+        let mut is_probe_local = false;
+        if let Some(scope) = self.scopes.get(scope_id) {
+            is_probe_local |= matches!(scope.ty, ScopeType::Probe);
+            let rec_id: Option<&usize> = None;
+            let mut curr_scope = scope;
+            let mut next_parent: Option<&Scope> = match curr_scope.parent {
+                None => None,
+                Some(p_id) => self.scopes.get(p_id),
+            };
+            while rec_id.is_none() && next_parent.is_some() {
+                is_probe_local |= matches!(next_parent.unwrap().ty, ScopeType::Probe);
+
+                curr_scope = next_parent.unwrap();
+                next_parent = match curr_scope.parent {
+                    None => None,
+                    Some(p_id) => self.scopes.get(p_id),
+                };
+            }
+        }
+        is_probe_local
     }
 
     fn get_scope_context(&self, scope_id: usize) -> String {
