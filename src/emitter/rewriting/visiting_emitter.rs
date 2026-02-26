@@ -457,7 +457,10 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
         let block_ty = match orig_ty_id {
             Some(ty_id) => {
                 let ty = match self.app_iter.module.types.get(TypeID(ty_id)) {
-                    Some(ty) => ty.results().clone(),
+                    Some(ty) => ty
+                        .results()
+                        .expect("internal error: this should be a function type!")
+                        .clone(),
                     None => vec![],
                 };
 
@@ -629,12 +632,12 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
                 .functions
                 .get_local_fid_by_name("on_exit")
             {
-                let Some(mut on_exit) = self.app_iter.module.functions.get_fn_modifier(fid) else {
-                    panic!(
-                        "{UNEXPECTED_ERR_MSG} \
-                                No on_exit found in the module!"
-                    );
-                };
+                let mut on_exit = self
+                    .app_iter
+                    .module
+                    .functions
+                    .get_fn_modifier(fid)
+                    .expect("internal error: No on_exit found in the module!");
                 if let Some(probes) = report_probe {
                     // handle wasm:report override
                     emit_probes(
@@ -856,6 +859,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j>
             {
                 wasm.functions
                     .unwrap_local(*func_idx)
+                    .expect("internal error: Should be able to find the function!")
                     .lookup_pc_offset_for(*instr_idx)
                     .unwrap() as u32
                     + 1

@@ -8,8 +8,8 @@ use crate::common::metrics::Metrics;
 use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
 use std::collections::HashMap;
 use std::fs;
-use wac_graph::{CompositionGraph, EncodeOptions};
 use wac_graph::types::Package;
+use wac_graph::{CompositionGraph, EncodeOptions};
 use wirm::ir::module::module_types::Types;
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
 use wirm::ir::types::{DataType as WirmType, FuncInstrMode, InstrumentationMode};
@@ -29,7 +29,7 @@ pub const MAX_ERRORS: i32 = 15;
 pub fn instrument_with_config(
     app_wasm_path: String,
     script_path: &String,
-    user_lib_paths: &Vec<String>,
+    user_libs: &[String],
     config: Config,
     core_lib_path: &Option<String>,
     defs_path: &Option<String>,
@@ -40,7 +40,7 @@ pub fn instrument_with_config(
         &def_yamls,
         app_wasm_path,
         script_path,
-        user_lib_paths,
+        user_libs,
         MAX_ERRORS,
         config,
     )
@@ -56,7 +56,7 @@ pub fn instrument_with_config(
 pub fn instrument_with_rewriting(
     app_wasm_path: String,
     script_path: &String,
-    user_lib_paths: &Vec<String>,
+    user_lib_paths: &[String],
     core_lib_path: &Option<String>,
     defs_path: &Option<String>,
 ) -> Result<(bool, Vec<u8>), Box<ErrorGen>> {
@@ -80,23 +80,21 @@ pub fn instrument_with_rewriting(
 pub fn instrument_bytes_with_rewriting(
     target_wasm_bytes: Vec<u8>,
     script_path: &String,
-    user_lib_paths: &Vec<String>,
+    user_libs: &[String],
     core_lib_path: &Option<String>,
     defs_path: &Option<String>,
 ) -> Result<(bool, Vec<u8>), Vec<WhammError>> {
     let def_yamls = get_defs(defs_path);
-    match instr::run_on_bytes_and_encode(
+    instr::run_on_bytes_and_encode(
         core_lib_path,
         &def_yamls,
         &target_wasm_bytes,
         script_path,
-        user_lib_paths,
+        user_libs,
         MAX_ERRORS,
         Config::default_rewriting(),
-    ) {
-        Ok(res) => Ok(res),
-        Err(e) => Err(WhammError::from_errs(e.pull_errs())),
-    }
+    )
+    .map_err(|gen| WhammError::from_errs(gen.pull_errs()))
 }
 
 /// Using the passed Whamm script, generate a monitor module that encodes instructions for
@@ -109,21 +107,19 @@ pub fn instrument_bytes_with_rewriting(
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn generate_monitor_module(
     script_path: &String,
-    user_lib_paths: &Vec<String>,
+    user_libs: &[String],
     core_lib_path: &Option<String>,
     defs_path: &Option<String>,
 ) -> Result<(bool, Vec<u8>), Vec<WhammError>> {
-    match instrument_with_config(
+    instrument_with_config(
         "".to_string(),
         script_path,
-        user_lib_paths,
+        user_libs,
         Config::default_monitor_module(),
         core_lib_path,
         defs_path,
-    ) {
-        Ok(res) => Ok(res),
-        Err(e) => Err(WhammError::from_errs(e.pull_errs())),
-    }
+    )
+    .map_err(|gen| WhammError::from_errs(gen.pull_errs()))
 }
 
 /// Using the passed Whamm script, perform a dry run of instrumentation and return metadata
@@ -137,7 +133,7 @@ pub fn generate_monitor_module(
 pub fn instrument_as_dry_run_rewriting(
     app_wasm_path: String,
     script_path: &String,
-    user_lib_paths: &Vec<String>,
+    user_lib_paths: &[String],
     core_lib_path: &Option<String>,
     defs_path: &Option<String>,
 ) -> Result<HashMap<WirmInjectType, Vec<Injection>>, Vec<WhammError>> {
@@ -168,7 +164,7 @@ pub fn instrument_as_dry_run_rewriting(
 /// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
 pub fn instrument_as_dry_run_wei(
     script_path: &String,
-    user_lib_paths: &Vec<String>,
+    user_lib_paths: &[String],
     core_lib_path: &Option<String>,
     defs_path: &Option<String>,
 ) -> Result<HashMap<WirmInjectType, Vec<Injection>>, Vec<WhammError>> {
@@ -179,8 +175,8 @@ pub fn instrument_as_dry_run_wei(
         &core_lib,
         &def_yamls,
         &mut module,
-        &script_path,
-        &user_lib_paths.to_vec(),
+        script_path,
+        user_lib_paths,
         false,
         MAX_ERRORS,
         &mut Metrics::default(),
@@ -188,7 +184,7 @@ pub fn instrument_as_dry_run_wei(
     ) {
         Err(err.pull_errs())
     } else {
-        Ok(module.pull_side_effects())
+        module.pull_side_effects().map_err(|e| vec![e.into()])
     };
     handle_dry_run_response(response)
 }
@@ -214,13 +210,16 @@ fn handle_dry_run_response(
 
 // FOR COMPONENTS
 const RUN_FUNC_PREFIX: &str = "wasi:cli/run@";
-pub fn wac(app_path: &String, outpath: &String, user_lib_paths: &Vec<String>) {
+pub fn wac(app_path: &String, outpath: &String, user_lib_paths: &[String]) {
     assert_eq!(1, user_lib_paths.len());
     let user_libs = parse_user_lib_paths(user_lib_paths);
     let (core_lib_name, core_lib_name_override, core_lib_path, _) = user_libs.first().unwrap();
     let (core_lib_name, core_lib_path) = (
-        core_lib_name_override.as_ref().unwrap_or_else(|| core_lib_name).clone(),
-        core_lib_path
+        core_lib_name_override
+            .as_ref()
+            .unwrap_or(core_lib_name)
+            .clone(),
+        core_lib_path,
     );
 
     let mut graph = CompositionGraph::new();

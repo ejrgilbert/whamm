@@ -3,12 +3,12 @@ mod cli;
 
 use cli::{Cmd, WhammCli};
 
+use crate::cli::{InstrArgs, WacArgs};
 use clap::Parser;
 use cli::LibraryLinkStrategyArg;
 use std::path::PathBuf;
 use whamm::api::instrument::{instrument_with_config, wac, Config, LibraryLinkStrategy};
 use whamm::api::utils::{print_info, run_wast_tests_at, write_to_file};
-use crate::cli::{InstrArgs, WacArgs};
 
 use colored::Colorize;
 
@@ -82,26 +82,32 @@ fn try_main() -> Result<(), failure::Error> {
                 }
             }
         }
-        Cmd::Wac(args) => wac(
-            &args.app,
-            &args.output_path,
-            &args.user_libs
-        )
+        Cmd::Wac(args) => wac(&args.app, &args.output_path, &args.user_libs),
     }
 
     Ok(())
 }
 
 fn process_instr_result(was_component: bool, bytes: Vec<u8>, instr_args: &InstrArgs) {
-    println!("{}", "\n\nYour wasm binary has been instrumented successfully!".green());
+    println!(
+        "{}",
+        "\n\nYour wasm binary has been instrumented successfully!".green()
+    );
     write_to_file(bytes, &instr_args.output_path);
 
     if was_component {
         // print the `wac` command that should be run!
         println!("{}", "Run the following command to produce a single component containing all introduced library dependencies:".blue());
-        println!("{}", format!("{}", WhammCli {
-            command: Cmd::Wac(WacArgs::from(instr_args))
-        }).blue());
+        println!(
+            "{}",
+            format!(
+                "{}",
+                WhammCli {
+                    command: Cmd::Wac(WacArgs::from(instr_args))
+                }
+            )
+            .blue()
+        );
     }
 }
 

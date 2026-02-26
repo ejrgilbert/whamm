@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments)]
 use crate::api::instrument::LibraryLinkStrategy;
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::MemoryAllocator;
@@ -104,7 +105,7 @@ pub fn configure_component_libraries<'a>(
         for ComponentExport { name, kind, .. } in lib_wasm.exports.iter() {
             let (alias_func_id, ..) = wasm.add_alias_func(ComponentAlias::InstanceExport {
                 name: name.0,
-                kind: kind.clone(),
+                kind: *kind,
                 instance_index: inst_id,
             });
             let canon_id = wasm.add_canon_func(CanonicalFunction::Lower {
@@ -120,7 +121,7 @@ pub fn configure_component_libraries<'a>(
         }
 
         for alias in lib_wasm.alias.items.iter() {
-            if let ComponentAlias::CoreInstanceExport {name, kind, ..} = alias {
+            if let ComponentAlias::CoreInstanceExport { name, kind, .. } = alias {
                 if *name == "memory" && matches!(kind, ExternalKind::Memory) {
                     // see in component/whamm_core.wat:
                     //   (alias core export 11 "memory" (core memory (;0;)))

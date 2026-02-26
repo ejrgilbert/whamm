@@ -1,5 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::generator::ast::StackReq;
+use crate::lang_features::libraries::core::WHAMM_CORE_LIB_NAME;
 use crate::parser::provider_handler::{BoundFunc, BoundVar, Event, Package, Probe, Provider};
 use crate::parser::types as parser_types;
 use crate::parser::types::{BoundFunction, Definition, FnId, Global, WhammVisitorMut};
@@ -13,7 +14,6 @@ use std::collections::{HashMap, HashSet};
 use wirm::ir::id::FunctionID;
 use wirm::wasmparser::ExternalKind;
 use wirm::Module;
-use crate::lang_features::libraries::core::WHAMM_CORE_LIB_NAME;
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
 
@@ -339,11 +339,19 @@ impl SymbolTableBuilder<'_, '_, '_> {
                         let func = lib_module.functions.get(FunctionID(export.index));
                         if let Some(ty) = lib_module.types.get(func.get_type_id()) {
                             let mut params = vec![];
-                            for p in ty.params().iter() {
+                            for p in ty
+                                .params()
+                                .expect("internal error: should be a function type")
+                                .iter()
+                            {
                                 params.push(DataType::from_wasm_type(p));
                             }
                             let mut results = vec![];
-                            for p in ty.results().iter() {
+                            for p in ty
+                                .results()
+                                .expect("internal error: should be a function type")
+                                .iter()
+                            {
                                 results.push(DataType::from_wasm_type(p));
                             }
                             let fn_name = export.name.clone();

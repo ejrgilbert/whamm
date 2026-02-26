@@ -9,6 +9,7 @@ use termcolor::{Buffer, BufferWriter, ColorChoice, WriteColor};
 const ERR_UNDERLINE_CHAR: char = '^';
 const INFO_UNDERLINE_CHAR: char = '-';
 
+#[derive(Default)]
 pub struct ErrorGen {
     curr_match_rule: Option<String>,
     script_path: String,
@@ -34,6 +35,14 @@ impl ErrorGen {
             too_many: false,
             has_errors: false,
             has_warnings: false,
+        }
+    }
+
+    pub fn new_with(err: wirm::error::Error) -> Self {
+        Self {
+            errors: vec![err.into()],
+            has_errors: true,
+            ..Default::default()
         }
     }
 
@@ -69,7 +78,11 @@ impl ErrorGen {
 
     pub fn report_warnings(&mut self) {
         self.warnings.iter_mut().for_each(|warning| {
-            warning.report(&self.script_text, &self.script_path);
+            if self.script_text.is_empty() {
+                warning.report_simple();
+            } else {
+                warning.report(&self.script_text, &self.script_path);
+            }
         });
         self.warnings.clear();
     }
@@ -78,7 +91,11 @@ impl ErrorGen {
         self.report_warnings();
         // Report the most-recent error first
         self.errors.iter_mut().for_each(|error| {
-            error.report(&self.script_text, &self.script_path);
+            if self.script_text.is_empty() {
+                error.report_simple();
+            } else {
+                error.report(&self.script_text, &self.script_path);
+            }
         });
         self.errors.clear();
     }
@@ -642,6 +659,18 @@ impl From<std::io::Error> for Box<WhammError> {
         })
     }
 }
+impl From<wirm::error::Error> for WhammError {
+    fn from(e: wirm::error::Error) -> Self {
+        WhammError {
+            match_rule: None,
+            err_loc: None,
+            info_loc: None,
+            ty: ErrorType::Error {
+                message: Some(e.to_string()),
+            },
+        }
+    }
+}
 
 pub struct WhammWarning {
     pub match_rule: Option<String>,
@@ -650,20 +679,19 @@ pub struct WhammWarning {
     pub info_loc: Option<CodeLocation>,
 }
 impl WhammWarning {
+    pub fn report_simple(&mut self) {
+        let message = self.ty.message();
+        let writer = BufferWriter::stderr(ColorChoice::Always);
+        let mut buffer = writer.buffer();
+        Self::print_msg(&mut buffer, &self.match_rule, &self.ty, &message);
+    }
     pub fn report(&mut self, script: &str, script_path: &String) {
         let spacing = self.spacing();
         let message = self.ty.message();
 
         let writer = BufferWriter::stderr(ColorChoice::Always);
         let mut buffer = writer.buffer();
-
-        let preamble = if let Some(rule) = &self.match_rule {
-            format!("warning[{}]@{rule}", self.ty.name())
-        } else {
-            format!("warning[{}]", self.ty.name())
-        };
-        yellow(true, preamble, &mut buffer);
-        white(true, format!(": {}\n", message), &mut buffer);
+        Self::print_msg(&mut buffer, &self.match_rule, &self.ty, &message);
 
         if let Some(warn_loc) = &mut self.warn_loc {
             if warn_loc.message.is_none() {
@@ -708,6 +736,15 @@ impl WhammWarning {
             .reset()
             .expect("Uh oh, something went wrong while printing to terminal");
     }
+    fn print_msg(buffer: &mut Buffer, match_rule: &Option<String>, ty: &WarnType, message: &str) {
+        let preamble = if let Some(rule) = match_rule {
+            format!("warning[{}]@{rule}", ty.name())
+        } else {
+            format!("warning[{}]", ty.name())
+        };
+        yellow(true, preamble, buffer);
+        white(true, format!(": {}\n", message), buffer);
+    }
     fn spacing(&self) -> String {
         let largest_err_line_no = if let Some(warn_loc) = &self.warn_loc {
             match &warn_loc.line_col {
@@ -746,6 +783,12 @@ impl WhammWarning {
     }
 }
 impl WhammError {
+    pub fn report_simple(&mut self) {
+        let message = self.ty.message();
+        let writer = BufferWriter::stderr(ColorChoice::Always);
+        let mut buffer = writer.buffer();
+        Self::print_msg(&mut buffer, &self.match_rule, &self.ty, &message);
+    }
     /// report this error to the console, including color highlighting
     pub fn report(&mut self, script: &str, script_path: &String) {
         let spacing = self.spacing();
@@ -753,14 +796,7 @@ impl WhammError {
 
         let writer = BufferWriter::stderr(ColorChoice::Always);
         let mut buffer = writer.buffer();
-
-        let preamble = if let Some(rule) = &self.match_rule {
-            format!("error[{}]@{rule}", self.ty.name())
-        } else {
-            format!("error[{}]", self.ty.name())
-        };
-        red(true, preamble, &mut buffer);
-        white(true, format!(": {}\n", message), &mut buffer);
+        Self::print_msg(&mut buffer, &self.match_rule, &self.ty, &message);
 
         if let Some(err_loc) = &mut self.err_loc {
             if err_loc.message.is_none() {
@@ -804,6 +840,15 @@ impl WhammError {
         buffer
             .reset()
             .expect("Uh oh, something went wrong while printing to terminal");
+    }
+    fn print_msg(buffer: &mut Buffer, match_rule: &Option<String>, ty: &ErrorType, message: &str) {
+        let preamble = if let Some(rule) = match_rule {
+            format!("error[{}]@{rule}", ty.name())
+        } else {
+            format!("error[{}]", ty.name())
+        };
+        red(true, preamble, buffer);
+        white(true, format!(": {}\n", message), buffer);
     }
 
     fn spacing(&self) -> String {

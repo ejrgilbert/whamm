@@ -456,12 +456,10 @@ impl MapLibAdapter {
         //time to set up the map_init fn
         let init_id = self.get_map_init_fid(app_wasm);
 
-        let Some(mut init_fn) = app_wasm.functions.get_fn_modifier(init_id) else {
-            panic!(
-                "{UNEXPECTED_ERR_MSG} \
-                                No instr_init found in the module!"
-            );
-        };
+        let mut init_fn = app_wasm
+            .functions
+            .get_fn_modifier(init_id)
+            .expect("internal error: no instr_init found in the module!");
         init_fn.func_entry();
         let map_id = if is_report {
             self.map_create_report(name, is_global, ty.clone(), &mut init_fn, report_vars, err)

@@ -283,8 +283,8 @@ fn import_lib_fn_names_from_module(
                     let fid = import_func(
                         import_name,
                         fn_name,
-                        &ty.params().clone(),
-                        &ty.results().clone(),
+                        &ty.params().expect("Should be a function type").clone(),
+                        &ty.results().expect("Should be a function type").clone(),
                         loc,
                         app_wasm,
                     );

@@ -104,7 +104,11 @@ fn handle_wasm(
 
     for param in prov.all_params() {
         if let Some(n) = param.n_for("local") {
-            let func = app_wasm.functions.get(fid).unwrap_local();
+            let func = app_wasm
+                .functions
+                .get(fid)
+                .unwrap_local()
+                .unwrap_or_else(|_| panic!("Should have found local function using FID: {fid}"));
 
             let wasm_ty = if n < func.args.len() as u32 {
                 // referring to a function argument
@@ -2048,11 +2052,21 @@ pub fn get_ty_info_for_instr(
                 };
                 if let Some(ty) = app_wasm.types.get(ty_id) {
                     let mut args = vec![];
-                    for t in ty.params().iter().rev() {
+                    for t in ty
+                        .params()
+                        .expect("this should be a function type!")
+                        .iter()
+                        .rev()
+                    {
                         args.push(Some(*t));
                     }
                     let mut results = vec![];
-                    for t in ty.results().iter().rev() {
+                    for t in ty
+                        .results()
+                        .expect("this should be a function type!")
+                        .iter()
+                        .rev()
+                    {
                         results.push(Some(*t));
                     }
                     (args, results, Some(*ty_id))
@@ -2073,11 +2087,21 @@ pub fn get_ty_info_for_instr(
             } => {
                 if let Some(ty) = app_wasm.types.get(TypeID(*ty_id)) {
                     let mut args = vec![];
-                    for t in ty.params().iter().rev() {
+                    for t in ty
+                        .params()
+                        .expect("this should be a function type!")
+                        .iter()
+                        .rev()
+                    {
                         args.push(Some(*t));
                     }
                     let mut results = vec![];
-                    for t in ty.results().iter().rev() {
+                    for t in ty
+                        .results()
+                        .expect("this should be a function type!")
+                        .iter()
+                        .rev()
+                    {
                         results.push(Some(*t));
                     }
                     (args, results, Some(*ty_id))

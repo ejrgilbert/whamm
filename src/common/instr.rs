@@ -53,7 +53,7 @@ pub fn run_with_path(
     def_yamls: &Vec<String>,
     app_wasm_path: String,
     script_path: &String,
-    user_lib_paths: &Vec<String>,
+    user_libs: &[String],
     max_errors: i32,
     config: Config,
 ) -> Result<(bool, Vec<u8>), Box<ErrorGen>> {
@@ -72,7 +72,7 @@ pub fn run_with_path(
         def_yamls,
         &bytes,
         script_path,
-        user_lib_paths,
+        user_libs,
         max_errors,
         config,
     )
@@ -83,7 +83,7 @@ pub fn dry_run_on_bytes<'a>(
     def_yamls: &Vec<String>,
     target_wasm_bytes: &'a [u8],
     script_path: &String,
-    user_lib_paths: &Vec<String>,
+    user_lib_paths: &[String],
     max_errors: i32,
     config: Config,
 ) -> Result<HashMap<WirmInjectType, Vec<WirmInjection<'a>>>, Vec<WhammError>> {
@@ -92,8 +92,8 @@ pub fn dry_run_on_bytes<'a>(
         target_wasm_bytes,
         core_lib,
         def_yamls,
-        &script_path,
-        &user_lib_paths,
+        script_path,
+        user_lib_paths,
         max_errors,
         &mut metrics,
         &config,
@@ -113,21 +113,20 @@ fn dry_run_module_or_component<'a>(
     // handle a wasm component OR module
     match bytes_to_wasm(target_wasm_bytes) {
         (Some(mut module), None) => {
-            if let Err(err) = run_on_module(
+            run_on_module(
                 core_lib_bytes,
                 def_yamls,
                 &mut module,
                 script_path,
-                &user_lib_paths.to_vec(),
+                user_lib_paths,
                 false,
                 max_errors,
                 metrics,
                 config,
-            ) {
-                Err(err.pull_errs())
-            } else {
-                Ok(module.pull_side_effects())
-            }
+            )
+            .map_err(|gen| gen.pull_errs())?;
+
+            module.pull_side_effects().map_err(|e| vec![e.into()])
         }
         (None, Some(_component)) => {
             todo!("We haven't supported pulling side effects from components yet...sorry :/")
@@ -143,7 +142,7 @@ fn dry_run_module_or_component<'a>(
     }
 }
 
-pub fn parse_user_lib_paths(paths: &Vec<String>) -> Vec<(String, Option<String>, String, Vec<u8>)> {
+pub fn parse_user_lib_paths(paths: &[String]) -> Vec<(String, Option<String>, String, Vec<u8>)> {
     let mut res = vec![];
     for path in paths.iter() {
         let parts = path.split('=').collect::<Vec<&str>>();
@@ -184,7 +183,7 @@ pub fn run_on_bytes_and_encode(
     def_yamls: &Vec<String>,
     target_wasm_bytes: &[u8],
     script_path: &String,
-    user_libs: &Vec<String>,
+    user_libs: &[String],
     max_errors: i32,
     config: Config,
 ) -> Result<(bool, Vec<u8>), Box<ErrorGen>> {
@@ -201,14 +200,19 @@ pub fn run_on_bytes_and_encode(
             &core_lib_bytes,
             def_yamls,
             &mut module,
-            &script_path,
-            &user_libs,
+            script_path,
+            user_libs,
             false,
             max_errors,
             &mut metrics,
             &config,
         )?;
-        Ok((false, module.encode()))
+        Ok((
+            false,
+            module
+                .encode()
+                .map_err(|e| Box::new(ErrorGen::new_with(e)))?,
+        ))
     } else {
         let core_lib_bytes = get_core_lib(
             core_lib_path,
@@ -220,7 +224,7 @@ pub fn run_on_bytes_and_encode(
             target_wasm_bytes,
             &core_lib_bytes,
             def_yamls,
-            &script_path,
+            script_path,
             user_libs,
             max_errors,
             &mut metrics,
@@ -237,7 +241,7 @@ fn run_and_encode_module_or_component(
     core_lib_bytes: &[u8],
     def_yamls: &Vec<String>,
     script_path: &String,
-    user_lib_paths: &Vec<String>,
+    user_lib_paths: &[String],
     max_errors: i32,
     metrics: &mut Metrics,
     config: &Config,
@@ -245,33 +249,32 @@ fn run_and_encode_module_or_component(
     // handle a wasm component OR module
     let res = match bytes_to_wasm(target_wasm_bytes) {
         (Some(mut module), None) => {
-            match run_on_module(
-                &core_lib_bytes,
+            let ran = run_on_module(
+                core_lib_bytes,
                 def_yamls,
                 &mut module,
                 script_path,
-                &user_lib_paths,
+                user_lib_paths,
                 false,
                 max_errors,
                 metrics,
                 config,
-            ) {
-                Ok(ran) => {
-                    if !ran {
-                        panic!("Module was not instrument-able (MUST have a main).");
-                    }
-                }
-                Err(err) => {
-                    return Err(err);
-                }
+            )?;
+            if !ran {
+                panic!("Module was not instrument-able (MUST have a main).");
             }
-            (false, module.encode())
+            (
+                false,
+                module
+                    .encode()
+                    .map_err(|e| Box::new(ErrorGen::new_with(e)))?,
+            )
         }
         (None, Some(mut component)) => {
             // make sure none of the user libraries are provided as modules
-            check_is_component(WHAMM_CORE_LIB_NAME, &core_lib_bytes);
+            check_is_component(WHAMM_CORE_LIB_NAME, core_lib_bytes);
 
-            let user_libs = parse_user_lib_paths(&user_lib_paths);
+            let user_libs = parse_user_lib_paths(user_lib_paths);
             let mut user_lib_bytes = HashMap::new();
             for (name, _, _, bytes) in user_libs.iter() {
                 check_is_component(name, bytes);
@@ -283,36 +286,35 @@ fn run_and_encode_module_or_component(
                     panic!("When instrumenting a component, the libraries MUST be provided as components, this library is a module: {}", name);
                 }
             }
-            match run_on_component(
-                &core_lib_bytes,
+            let ran_on = run_on_component(
+                core_lib_bytes,
                 def_yamls,
                 &mut component,
                 script_path,
-                &user_lib_paths,
+                user_lib_paths,
                 max_errors,
                 metrics,
                 config,
-            ) {
-                Ok(ran_on) => {
-                    if let Some(id) = ran_on {
-                        // Now that the component has been instrumented, we need to add in the support libraries
-                        // so that they are linked appropriately!
-                        configure_component_libraries(
-                            id as u32,
-                            &mut component,
-                            &core_lib_bytes,
-                            &user_lib_bytes,
-                        );
-                    } else {
-                        panic!("Could not find an instrument-able module in the target component (MUST have a main).");
-                    }
-                }
-                Err(err) => {
-                    return Err(err);
-                }
+            )?;
+            if let Some(id) = ran_on {
+                // Now that the component has been instrumented, we need to add in the support libraries
+                // so that they are linked appropriately!
+                configure_component_libraries(
+                    id as u32,
+                    &mut component,
+                    core_lib_bytes,
+                    &user_lib_bytes,
+                );
+            } else {
+                panic!("Could not find an instrument-able module in the target component (MUST have a main).");
             }
 
-            (true, component.encode())
+            (
+                true,
+                component
+                    .encode()
+                    .map_err(|e| Box::new(ErrorGen::new_with(e)))?,
+            )
         }
         (None, None) => {
             // error, couldn't parse
@@ -344,7 +346,7 @@ fn run_on_component(
     def_yamls: &Vec<String>,
     target_wasm: &mut Component,
     script_path: &String,
-    user_lib_paths: &Vec<String>,
+    user_libs: &[String],
     max_errors: i32,
     metrics: &mut Metrics,
     config: &Config,
@@ -356,7 +358,7 @@ fn run_on_component(
             def_yamls,
             module,
             script_path,
-            user_lib_paths,
+            user_libs,
             true,
             max_errors,
             metrics,
@@ -373,7 +375,7 @@ fn run_on_component(
             def_yamls,
             component,
             script_path,
-            user_lib_paths,
+            user_libs,
             max_errors,
             metrics,
             config,
@@ -390,7 +392,7 @@ pub fn run_on_module(
     def_yamls: &Vec<String>,
     target_wasm: &mut Module,
     script_path: &String,
-    user_lib_paths: &Vec<String>,
+    user_lib_paths: &[String],
     libs_as_components: bool,
     max_errors: i32,
     metrics: &mut Metrics,
@@ -505,7 +507,7 @@ pub fn run(
 
     // Collect the metadata for the AST and transform to different representation
     // specifically used for targeting wei during compilation.
-    let mut metadata_collector = MetadataCollector::new(&mut symbol_table, &mut err, &config);
+    let mut metadata_collector = MetadataCollector::new(&mut symbol_table, &mut err, config);
     metadata_collector.visit_whamm(&whamm);
 
     // Merge in the core library IF NEEDED
@@ -799,32 +801,36 @@ fn call_instr_init_at_start(
 ) {
     if let Some(instr_init_fid) = module.functions.get_local_fid_by_name("instr_init") {
         if let Some(state_init_id) = state_init_id {
-            if let Some(mut instr_init) = module.functions.get_fn_modifier(instr_init_fid) {
-                instr_init.call(state_init_id);
-            } else {
-                unreachable!("Should have found the function in the module.")
-            }
+            let mut instr_init = module
+                .functions
+                .get_fn_modifier(instr_init_fid)
+                .expect("internal error: Should have found the function in the module.");
+            instr_init.call(state_init_id);
         }
 
         // now call `instr_init` in the module's start function
         let (start_fid, _was_created) = ModuleEmitter::get_or_create_start_func(module);
-        if let Some(mut start_func) = module.functions.get_fn_modifier(FunctionID(start_fid)) {
-            start_func.func_entry();
-            start_func.call(instr_init_fid);
+        let mut start_func = module
+            .functions
+            .get_fn_modifier(FunctionID(start_fid))
+            .unwrap_or_else(|_| {
+                panic!(
+                    "Should have successfully found the start function using the fid: {start_fid}"
+                )
+            });
+        start_func.func_entry();
+        start_func.call(instr_init_fid);
 
-            let op_idx = start_func.curr_instr_len() as u32;
-            start_func.append_tag_at(
-                get_probe_tag_data(&None, op_idx),
-                // location is unused
-                wirm::Location::Module {
-                    func_idx: FunctionID(0),
-                    instr_idx: 0,
-                },
-            );
-            start_func.finish_instr();
-        } else {
-            err.add_internal_error("Should have found the function in the module.", &None);
-        }
+        let op_idx = start_func.curr_instr_len() as u32;
+        start_func.append_tag_at(
+            get_probe_tag_data(&None, op_idx),
+            // location is unused
+            wirm::Location::Module {
+                func_idx: FunctionID(0),
+                instr_idx: 0,
+            },
+        );
+        start_func.finish_instr();
     } else if state_init_id.is_some() {
         err.add_internal_error(
             "If there's a state init function, there should be an instr_init function!",

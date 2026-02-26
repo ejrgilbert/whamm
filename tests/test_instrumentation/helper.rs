@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments)]
 use crate::util::{setup_logger, DEFAULT_CORE_LIB_PATH_COMPONENT, DEFAULT_CORE_LIB_PATH_MODULE};
 use glob::{glob, glob_with};
 use log::{error, warn};
@@ -12,7 +13,6 @@ pub const DEFAULT_DEFS_PATH: &str = "./";
 const TEST_RSC_DIR: &str = "tests/scripts/";
 const MM_PATTERN: &str = "*.mm";
 const TODO: &str = "*.TODO";
-
 
 fn get_test_scripts(sub_dir: &str) -> Vec<(PathBuf, String)> {
     let mut scripts = vec![];
@@ -176,12 +176,7 @@ pub(crate) fn run_core_suite(
             libs.clone(),
             rewriting_exp,
         ));
-        wei_tests.push(TestCase::new(
-            script_path.clone(),
-            app,
-            libs,
-            wei_exp,
-        ));
+        wei_tests.push(TestCase::new(script_path.clone(), app, libs, wei_exp));
     }
 
     let outdir = format!("output/tests/{suite_name}");
@@ -200,7 +195,7 @@ pub(crate) fn run_core_suite(
             app_core,
             app_comp,
             libs_core,
-            libs_comp,
+            libs_comp: _,
             exp_core,
             exp_comp,
         } in rewriting_tests.iter()
@@ -218,7 +213,8 @@ pub(crate) fn run_core_suite(
             } else {
                 vec![]
             };
-            let metadata = fs::metadata(exp_core).expect("Failed to load expected output file metadata");
+            let metadata =
+                fs::metadata(exp_core).expect("Failed to load expected output file metadata");
             let exp_out = if metadata.len() > MAX_EXP_OUT_SIZE {
                 ExpectedOutput::hash(exp_core)
             } else {
@@ -242,13 +238,15 @@ pub(crate) fn run_core_suite(
             if let Some(comp) = app_comp {
                 println!("\t[COMP] Running test case with component");
                 let exp_out = if exp_comp.as_ref().unwrap().exists() {
-                    let metadata = fs::metadata(exp_comp.as_ref().unwrap()).expect("Failed to load expected output file metadata");
+                    let metadata = fs::metadata(exp_comp.as_ref().unwrap())
+                        .expect("Failed to load expected output file metadata");
                     if metadata.len() > MAX_EXP_OUT_SIZE {
                         ExpectedOutput::hash(exp_comp.as_ref().unwrap())
                     } else {
                         ExpectedOutput::Str(
-                            fs::read_to_string(exp_comp.as_ref().unwrap())
-                                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp_comp.as_ref().unwrap())),
+                            fs::read_to_string(exp_comp.as_ref().unwrap()).unwrap_or_else(|_| {
+                                panic!("Unable to read file at {:?}", exp_comp.as_ref().unwrap())
+                            }),
                         )
                     }
                 } else {
@@ -293,7 +291,10 @@ pub(crate) fn run_core_suite(
                 vec![]
             };
             let metadata = fs::metadata(exp_core).unwrap_or_else(|_| {
-                panic!("Failed to load expected output file metadata at: {:?}", exp_core)
+                panic!(
+                    "Failed to load expected output file metadata at: {:?}",
+                    exp_core
+                )
             });
             let exp_out = if metadata.len() > MAX_EXP_OUT_SIZE {
                 ExpectedOutput::hash(exp_core)
@@ -305,8 +306,8 @@ pub(crate) fn run_core_suite(
             };
             run_testcase_wei(
                 script,
-                &app_core,
-                libs_path_str,
+                app_core,
+                &libs_path_str,
                 core_lib_path.clone(),
                 exp_out,
                 &outdir,
@@ -353,7 +354,7 @@ pub(crate) fn run_script(
     script_path: &Path,
     wasm_path: &str,
     target_wasm_bytes: Vec<u8>,
-    user_libs: Vec<String>,
+    user_libs: &[String],
     core_wasm_path: String,
     output_path: Option<String>,
     target_wei: bool,
@@ -363,7 +364,7 @@ pub(crate) fn run_script(
     let (was_component, wasm_result) = if target_wei {
         whamm::api::instrument::generate_monitor_module(
             &script_path_str,
-            &user_libs,
+            user_libs,
             &Some(core_wasm_path.clone()),
             &Some("./".to_string()),
         )
@@ -371,7 +372,7 @@ pub(crate) fn run_script(
         whamm::api::instrument::instrument_bytes_with_rewriting(
             target_wasm_bytes,
             &script_path_str,
-            &user_libs,
+            user_libs,
             &Some(core_wasm_path.clone()),
             &Some("./".to_string()),
         )
@@ -380,7 +381,7 @@ pub(crate) fn run_script(
         let _side_effects = instrument_as_dry_run_rewriting(
             wasm_path.to_string(),
             &script_path.to_str().unwrap().to_string(),
-            &user_libs,
+            user_libs,
             &Some(core_wasm_path),
             &Some("./".to_string()),
         )
@@ -398,7 +399,7 @@ pub(crate) fn run_script(
 fn run_testcase_rewriting(
     script: &Path,
     app_path_str: &str,
-    user_libs: &Vec<String>,
+    user_libs: &[String],
     core_wasm_path: String,
     exp_output: &ExpectedOutput,
     outdir: &String,
@@ -407,10 +408,10 @@ fn run_testcase_rewriting(
     is_component: bool,
 ) {
     match run_script(
-        &script,
+        script,
         app_path_str,
         fs::read(app_path_str).unwrap(),
-        user_libs.clone(),
+        user_libs,
         core_wasm_path.clone(),
         Some(instr_app_path.clone()),
         false,
@@ -449,7 +450,7 @@ fn run_testcase_rewriting(
 fn run_testcase_wei(
     script: &Path,
     app_path_str: &str,
-    user_libs: Vec<String>,
+    user_libs: &[String],
     core_wasm_path: String,
     exp_output: ExpectedOutput,
     outdir: &String,
@@ -555,7 +556,7 @@ fn run_testcase_wei(
 }
 
 fn run_wasmtime_component(
-    user_libs: &Vec<String>,
+    user_libs: &[String],
     core_wasm_path: String,
     exp_output: &ExpectedOutput,
     outdir: &String,
@@ -565,11 +566,11 @@ fn run_wasmtime_component(
     wac(
         instr_app_path,
         &composed_app_path,
-        &vec![format!("whamm-core={core_wasm_path}")]
+        &[format!("whamm-core={core_wasm_path}")],
     );
 
     let mut cmd = Command::new("wasmtime");
-    let out_file = prep_outfile(&mut cmd, outdir, &exp_output);
+    let out_file = prep_outfile(&mut cmd, outdir, exp_output);
     cmd.arg("run").arg("--env").arg("TO_CONSOLE=true");
 
     if !user_libs.is_empty() {
@@ -581,7 +582,7 @@ fn run_wasmtime_component(
 }
 
 fn run_wasmtime_module(
-    user_libs: &Vec<String>,
+    user_libs: &[String],
     core_wasm_path: String,
     exp_output: &ExpectedOutput,
     outdir: &String,
@@ -589,11 +590,11 @@ fn run_wasmtime_module(
 ) {
     let whamm_core_lib_path = format!("whamm_core={core_wasm_path}");
     let mut cmd = Command::new("wasmtime");
-    let out_file = prep_outfile(&mut cmd, outdir, &exp_output);
+    let out_file = prep_outfile(&mut cmd, outdir, exp_output);
     cmd.arg("run").arg("--env").arg("TO_CONSOLE=true");
 
     for lib in user_libs.iter() {
-        cmd.arg("--preload").arg(format!("{lib}"));
+        cmd.arg("--preload").arg(lib);
     }
 
     cmd.arg("--preload")
@@ -627,7 +628,7 @@ fn run_and_assert(
             String::from_utf8(res.stdout).unwrap(),
             String::from_utf8(res.stderr).unwrap()
         );
-        assert!(false);
+        panic!()
     } else {
         assert!(
             res.stderr.is_empty(),
@@ -636,7 +637,7 @@ fn run_and_assert(
         );
         match exp_output {
             ExpectedOutput::Str(exp_str) => {
-                let stdout = fs::read_to_string(&out_file)
+                let stdout = fs::read_to_string(out_file)
                     .unwrap_or_else(|_| panic!("Unable to read file at {:?}", out_file));
                 assert_eq!(stdout.trim(), exp_str.trim());
             }
@@ -656,6 +657,7 @@ struct TestCase {
     app_core: String,
     app_comp: Option<String>,
     libs_core: PathBuf,
+    #[allow(dead_code)]
     libs_comp: Option<String>,
     exp_core: PathBuf,
     exp_comp: Option<PathBuf>,
@@ -677,13 +679,11 @@ impl TestCase {
         };
 
         let exp_comp = if app_comp.is_some() {
-            exp.to_str().map(|s| {
-                PathBuf::from(s.replace(".exp", ".comp.exp"))
-            })
+            exp.to_str()
+                .map(|s| PathBuf::from(s.replace(".exp", ".comp.exp")))
         } else {
             None
         };
-
 
         // let libs_path_str = if let Ok(res) = fs::read_to_string(libs) {
         //     let mut libs = vec![];
@@ -708,7 +708,7 @@ impl TestCase {
             libs_core: libs,
             libs_comp: None,
             exp_core: exp,
-            exp_comp
+            exp_comp,
         }
     }
 }

@@ -249,7 +249,7 @@ fn generate_instrumented_bin_wast(
             core_lib_buff.clone(),
         )];
 
-        if let Err(mut err) = run(
+        if let Err(mut gen) = run(
             core_lib_buff.as_slice(),
             &def_yamls,
             &mut module_to_instrument,
@@ -271,11 +271,13 @@ fn generate_instrumented_bin_wast(
                 library_strategy: LibraryLinkStrategy::Imported,
             },
         ) {
-            err.report();
+            gen.report();
             unreachable!("Shouldn't have had errors!")
         }
 
-        let instrumented_module_wasm = module_to_instrument.encode();
+        let instrumented_module_wasm = module_to_instrument
+            .encode()
+            .expect("errored during encode");
 
         try_path(&debug_file_path);
         if let Err(e) = std::fs::write(&debug_file_path, instrumented_module_wasm.clone()) {

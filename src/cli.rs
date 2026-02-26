@@ -41,14 +41,16 @@ pub enum Cmd {
     /// This is helpful if you've instrumented a component and now need to compose the
     /// instrumented component with the library dependencies into a single, runnable
     /// component.
-    Wac(WacArgs)
+    Wac(WacArgs),
 }
 impl std::fmt::Display for WhammCli {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("whamm ")?;
         match &self.command {
             Cmd::Wac(WacArgs {
-                app, output_path, user_libs
+                app,
+                output_path,
+                user_libs,
             }) => {
                 f.write_str("wac ")?;
                 f.write_fmt(format_args!("--app {} ", app))?;
@@ -57,7 +59,9 @@ impl std::fmt::Display for WhammCli {
                     f.write_str("--user-libs ")?;
                     let mut is_first = true;
                     for lib in user_libs.iter() {
-                        if !is_first { f.write_str(",")?; }
+                        if !is_first {
+                            f.write_str(",")?;
+                        }
                         f.write_str(lib)?;
                         is_first = false
                     }
@@ -65,9 +69,7 @@ impl std::fmt::Display for WhammCli {
 
                 Ok(())
             }
-            Cmd::Wast { .. }
-            | Cmd::Instr(_)
-            | Cmd::Info { .. } => Ok(())
+            Cmd::Wast { .. } | Cmd::Instr(_) | Cmd::Info { .. } => Ok(()),
         }
     }
 }
@@ -152,16 +154,20 @@ pub enum LibraryLinkStrategyArg {
 }
 
 pub const WHAMM_CORE_COMPONENT_NAME: &str = "whamm-core";
-pub const DEFAULT_WHAMM_CORE_COMPONENT_PATH: &str = "whamm_core-component/target/wasm32-wasip2/release/whamm_core.wasm";
+pub const DEFAULT_WHAMM_CORE_COMPONENT_PATH: &str =
+    "whamm_core-component/target/wasm32-wasip2/release/whamm_core.wasm";
 impl From<&InstrArgs> for WacArgs {
     fn from(value: &InstrArgs) -> Self {
         let mut user_libs = value.user_libs.clone();
-        user_libs.insert(0, format!("{WHAMM_CORE_COMPONENT_NAME}={DEFAULT_WHAMM_CORE_COMPONENT_PATH}"));
+        user_libs.insert(
+            0,
+            format!("{WHAMM_CORE_COMPONENT_NAME}={DEFAULT_WHAMM_CORE_COMPONENT_PATH}"),
+        );
 
         Self {
             app: value.output_path.clone(),
             output_path: "./composition.wasm".to_string(),
-            user_libs
+            user_libs,
         }
     }
 }

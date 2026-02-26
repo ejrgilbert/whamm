@@ -1,10 +1,9 @@
 use crate::test_instrumentation::helper::{
-    run_basic_instrumentation, run_core_suite, run_script, run_whamm_bin, setup_fault_injection,
-    setup_numerics_monitors, setup_replay, setup_tests, setup_wizard_monitors, DEFAULT_DEFS_PATH,
+    run_basic_instrumentation, run_core_suite, run_script, setup_fault_injection,
+    setup_numerics_monitors, setup_replay, setup_tests, setup_wizard_monitors,
 };
 use crate::util::{setup_logger, DEFAULT_CORE_LIB_PATH_MODULE};
 use std::fs;
-use whamm::api::utils::wasm2wat_on_file;
 
 const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic-core.wasm";
 
@@ -23,7 +22,7 @@ fn instrument_dfinity_with_fault_injection() {
             &script_path,
             wasm_path,
             fs::read(wasm_path).unwrap(),
-            vec![],
+            &[],
             DEFAULT_CORE_LIB_PATH_MODULE.to_string(),
             None,
             false,
@@ -48,11 +47,7 @@ fn instrument_handwritten_wasm_call() {
     let monitor_path = "tests/scripts/instr.mm";
     let instrumented_wasm_path = "output/tests/integration-handwritten_add.wasm";
 
-    run_basic_instrumentation(
-        original_wasm_path,
-        monitor_path,
-        instrumented_wasm_path,
-    );
+    run_basic_instrumentation(original_wasm_path, monitor_path, instrumented_wasm_path);
 }
 
 #[test]
@@ -62,11 +57,7 @@ fn instrument_no_matches() {
     let monitor_path = "tests/scripts/instr.mm";
     let instrumented_wasm_path = "output/tests/integration-no_matched_events-core.wasm";
 
-    run_basic_instrumentation(
-        original_wasm_path,
-        monitor_path,
-        instrumented_wasm_path,
-    );
+    run_basic_instrumentation(original_wasm_path, monitor_path, instrumented_wasm_path);
 }
 
 #[test]
@@ -88,7 +79,7 @@ fn instrument_with_wizard_monitors() {
             &script_path,
             APP_WASM_PATH,
             fs::read(APP_WASM_PATH).unwrap(),
-            vec![],
+            &[],
             DEFAULT_CORE_LIB_PATH_MODULE.to_string(),
             None,
             false,

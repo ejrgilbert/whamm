@@ -19,7 +19,7 @@ fn dry_run() {
     let side_effects = instrument_as_dry_run_rewriting(
         wasm_path.to_string(),
         &script_path.to_string(),
-        &vec![],
+        &[],
         &Some(DEFAULT_CORE_LIB_PATH_MODULE.to_string()),
         &Some("./".to_string()),
     )
@@ -35,7 +35,7 @@ fn dry_run_wei() {
         "tests/scripts/core_suite/branch-monitor_rewriting/branch-br__br_if__br_table.mm";
     let side_effects = instrument_as_dry_run_wei(
         &script_path.to_string(),
-        &vec![],
+        &[],
         &Some(DEFAULT_CORE_LIB_PATH_MODULE.to_string()),
         &Some("./".to_string()),
     )
@@ -52,7 +52,7 @@ fn dry_run_errs() {
     let errs = instrument_as_dry_run_rewriting(
         wasm_path.to_string(),
         &script_path.to_string(),
-        &vec![],
+        &[],
         &Some(DEFAULT_CORE_LIB_PATH_MODULE.to_string()),
         &Some("./".to_string()),
     )
