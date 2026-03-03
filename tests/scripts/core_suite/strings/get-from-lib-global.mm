@@ -28,7 +28,7 @@ wasm:opcode:drop:before {
     whamm_core.mem_free(core_ptr);
 
     report var s2: str = "hello";
-    var l2: u32 = len(s2);
+    var l2: u32 = s2.len();
     core_ptr = whamm_core.mem_alloc(l2 as i32);
     write_str(memid(whamm_core), core_ptr, s2);
     whamm_core.puts(core_ptr, l2 as i32);

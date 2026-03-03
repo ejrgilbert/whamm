@@ -109,8 +109,8 @@ struct TypeChecker<'a> {
     has_reports: bool,
     curr_match_rule: Option<String>,
 
-    // If a lib function call, use this for lookup
-    curr_lib: Vec<(String, bool)>,
+    // If a function invocation on an object, use this for lookup
+    curr_obj: Vec<(String, bool)>,
 
     // bookkeeping for casting
     curr_loc: Option<Location>,
@@ -129,7 +129,7 @@ impl<'a> TypeChecker<'a> {
             restrict_probe_local_state: false,
             has_reports: false,
             curr_match_rule: None,
-            curr_lib: vec![],
+            curr_obj: vec![],
             curr_loc: None,
             outer_cast_fixes_assign: false,
             assign_ty: None,
@@ -220,6 +220,20 @@ impl<'a> TypeChecker<'a> {
                 self.err
                     .type_check_error(format!("{UNEXPECTED_ERR_MSG} Expected VarId type"), &None);
             }
+        }
+    }
+
+    fn get_type_utils(&self, ty: &DataType) -> Option<&HashMap<String, usize>> {
+        let Record::Whamm { type_utils, .. } = self.table.lookup_rec("whamm").unwrap() else {
+            unreachable!("{UNEXPECTED_ERR_MSG} Expected Whamm type")
+        };
+        if let Some(utils_rec_id) = type_utils.get(ty) {
+            let Record::Library { fns, .. } = self.table.get_record(*utils_rec_id).unwrap() else {
+                unreachable!("{UNEXPECTED_ERR_MSG} Expected Library type")
+            };
+            Some(&fns)
+        } else {
+            None
         }
     }
 }
@@ -425,7 +439,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
                 // allow function calls
                 Statement::Expr {
-                    expr: Expr::LibCall { .. } | Expr::Call { .. },
+                    expr: Expr::ObjCall { .. } | Expr::Call { .. },
                     ..
                 } => {}
                 Statement::UnsharedDecl { is_report, .. } => {
@@ -1097,20 +1111,20 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     Some(DataType::AssumeGood)
                 }
             }
-            Expr::LibCall {
-                lib_name,
+            Expr::ObjCall {
+                obj_name,
                 call,
                 results,
                 annotation,
                 ..
             } => {
-                self.curr_lib.push((
-                    lib_name.clone(),
+                self.curr_obj.push((
+                    obj_name.clone(),
                     annotation.as_ref().map_or_else(|| false, |a| a.is_static()),
                 ));
                 let res = self.visit_expr(call);
                 *results = res.clone();
-                self.curr_lib.pop();
+                self.curr_obj.pop();
 
                 res
             }
@@ -1146,22 +1160,47 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 };
 
-                let curr_lib = self.curr_lib.first();
-                let rec = if let Some((lib_name, _)) = &curr_lib {
-                    if let Some(id) = self.table.lookup_lib_fn(lib_name, fn_name) {
-                        id
-                    } else {
-                        self.err.type_check_error(
-                            "Could not find library function".to_string(),
-                            &loc.clone().map(|l| l.line_col),
-                        );
-                        return Some(DataType::AssumeGood);
-                    }
+                let curr_obj = self.curr_obj.first();
+                let rec = if let Some((obj_name, _)) = &curr_obj {
+                    let fns = match self.table.lookup_rec(obj_name) {
+                        Some(Record::Library {fns, ..}) => fns,
+                        Some(Record::Var {ty, ..}) => if let Some(fns) = self.get_type_utils(ty) {
+                            fns
+                        } else {
+                            self.err.type_check_error(
+                                "Could not find function for the invocation".to_string(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            return Some(DataType::AssumeGood);
+                        },
+                        _ => {
+                            self.err.type_check_error(
+                                "Could not find function for the invocation".to_string(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            return Some(DataType::AssumeGood);
+                        }
+                    };
+                    let rec = fns.get(fn_name)
+                        .and_then(|rec| {
+                            self.table.get_record(*rec)
+                        })
+                        .or_else( || {
+                            self.err.type_check_error(
+                                "Could not find function for the invocation".to_string(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            None
+                        });
+                    rec
                 } else if let Some(id) = self.table.lookup_fn(fn_name, true) {
-                    id
+                    Some(id)
                 } else {
-                    return Some(DataType::AssumeGood);
+                    None
                 };
+                if rec.is_none() {
+                }
+                let rec = rec.unwrap();
 
                 let (params, ret_ty, def, loc) = match rec {
                     Record::Fn {
@@ -1192,7 +1231,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         let ret_ty = if results.len() > 1 {
                             panic!(
                                 "We don't support functions with multiple return types: {}.{}",
-                                curr_lib.unwrap().0,
+                                curr_obj.unwrap().0,
                                 name
                             );
                         } else if results.is_empty() {
@@ -1211,7 +1250,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 };
 
-                if let Some((_, is_static)) = curr_lib {
+                if let Some((_, is_static)) = curr_obj {
                     //disallow (non-static) user-function calls when the in the global state of the script
                     if self.in_script_global && !is_static {
                         // self.err.type_check_error(

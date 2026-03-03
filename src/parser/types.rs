@@ -1047,6 +1047,9 @@ impl Value {
             fmt: NumFmt::NA,
         }
     }
+    pub fn gen_bool(val: bool) -> Self {
+        Self::Boolean { val }
+    }
     pub fn ty(&self) -> DataType {
         match self {
             Value::Number { ty, .. } => ty.clone(),
@@ -1359,9 +1362,9 @@ pub enum Expr {
         args: Vec<Expr>,
         loc: Option<Location>,
     },
-    LibCall {
+    ObjCall {
         annotation: Option<Annotation>,
-        lib_name: String,
+        obj_name: String,
         call: Box<Expr>,           // should be Expr::Call
         results: Option<DataType>, // set by the type checker!
         loc: Option<Location>,
@@ -1433,7 +1436,7 @@ impl Expr {
             Expr::UnOp { loc, .. }
             | Expr::Ternary { loc, .. }
             | Expr::BinOp { loc, .. }
-            | Expr::LibCall { loc, .. }
+            | Expr::ObjCall { loc, .. }
             | Expr::Call { loc, .. }
             | Expr::VarId { loc, .. }
             | Expr::MapGet { loc, .. }
@@ -1481,7 +1484,7 @@ impl Display for Expr {
                 }
                 write!(f, "{fn_target}({args_str})")
             }
-            Expr::LibCall { lib_name, call, .. } => {
+            Expr::ObjCall { obj_name: lib_name, call, .. } => {
                 write!(f, "{lib_name}.{}", call)
             }
             Expr::VarId { name, .. } => write!(f, "{name}"),
@@ -1490,9 +1493,15 @@ impl Display for Expr {
         }
     }
 }
-pub(crate) fn expr_to_val(expr: &Expr) -> Option<Val> {
+pub(crate) fn expr_to_wasm_val(expr: &Expr) -> Option<Val> {
     match expr {
         Expr::Primitive { val, .. } => whamm_value_to_wasm_val(val),
+        _ => None,
+    }
+}
+pub(crate) fn expr_to_value(expr: &Expr) -> Option<Value> {
+    match expr {
+        Expr::Primitive { val, .. } => Some(val.clone()),
         _ => None,
     }
 }
@@ -1621,6 +1630,8 @@ pub(crate) fn print_fns(tabs: &mut usize, functions: &[BoundFunction], buffer: &
 pub struct Whamm {
     pub fns: Vec<BoundFunction>,   // Comp-provided
     pub bound_vars: Vec<BoundVar>, // Comp-provided
+    // The utility functions that can be invoked on a `str` type
+    pub utils_strings: Vec<BoundFunction>,
 
     pub scripts: Vec<Script>,
 }
@@ -1629,6 +1640,7 @@ impl Whamm {
         Whamm {
             fns: Whamm::get_bound_fns(),
             bound_vars: Whamm::get_bound_vars(),
+            utils_strings: Whamm::get_utils_strings(),
 
             scripts: vec![],
         }
@@ -1637,7 +1649,6 @@ impl Whamm {
     pub(crate) fn get_bound_fns() -> Vec<BoundFunction> {
         vec![
             Self::def_strcmp(),
-            Self::def_len(),
             Self::def_mem(),
             Self::def_write_str(),
             Self::def_read_str(),
@@ -1671,25 +1682,6 @@ impl Whamm {
             strcmp_params,
             DataType::Boolean,
             false,
-            StackReq::None,
-        )
-    }
-    fn def_len() -> BoundFunction {
-        let len_params = vec![(
-            Expr::VarId {
-                definition: Definition::CompilerStatic,
-                name: "s".to_string(),
-                loc: None,
-            },
-            DataType::Str,
-        )];
-
-        BoundFunction::new(
-            "len".to_string(),
-            "Get the length of a string.".to_string(),
-            len_params,
-            DataType::U32,
-            true,
             StackReq::None,
         )
     }
@@ -1790,6 +1782,82 @@ impl Whamm {
 
     pub(crate) fn get_bound_vars() -> Vec<BoundVar> {
         vec![]
+    }
+
+    pub(crate) fn get_utils_strings() -> Vec<BoundFunction> {
+        vec![
+            Self::def_len(),
+            Self::def_starts_with(),
+            Self::def_ends_with(),
+            Self::def_contains(),
+        ]
+    }
+    fn def_len() -> BoundFunction {
+        BoundFunction::new(
+            "len".to_string(),
+            "Get the length of a string.".to_string(),
+            vec![],
+            DataType::U32,
+            true,
+            StackReq::None,
+        )
+    }
+    fn def_starts_with() -> BoundFunction {
+        let starts_with_params = vec![(
+            Expr::VarId {
+                definition: Definition::CompilerStatic,
+                name: "prefix".to_string(),
+                loc: None,
+            },
+            DataType::Str,
+        )];
+
+        BoundFunction::new(
+            "starts_with".to_string(),
+            "Whether the string has the specified prefix.".to_string(),
+            starts_with_params,
+            DataType::Boolean,
+            true,
+            StackReq::None,
+        )
+    }
+    fn def_ends_with() -> BoundFunction {
+        let ends_with_params = vec![(
+            Expr::VarId {
+                definition: Definition::CompilerStatic,
+                name: "suffix".to_string(),
+                loc: None,
+            },
+            DataType::Str,
+        )];
+
+        BoundFunction::new(
+            "ends_with".to_string(),
+            "Whether the string has the specified suffix.".to_string(),
+            ends_with_params,
+            DataType::Boolean,
+            true,
+            StackReq::None,
+        )
+    }
+    fn def_contains() -> BoundFunction {
+        let contains_params = vec![(
+            Expr::VarId {
+                definition: Definition::CompilerStatic,
+                name: "pattern".to_string(),
+                loc: None,
+            },
+            DataType::Str,
+        )];
+
+        BoundFunction::new(
+            "contains".to_string(),
+            "Whether the string has the specified sub-string.".to_string(),
+            contains_params,
+            DataType::Boolean,
+            true,
+            StackReq::None,
+        )
     }
 
     pub fn add_script(&mut self, mut script: Script) -> usize {

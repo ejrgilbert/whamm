@@ -267,12 +267,14 @@ impl SymbolTable {
         panic!("Unexpected record type. Expected {}, found: {:?}", exp, rec)
     }
 
-    pub fn lookup_lib(&self, key: &str) -> Option<&Record> {
+    pub fn lookup_lib(&self, key: &str, fail_on_miss: bool) -> Option<&Record> {
         if let Some(rec) = self.lookup_rec(key) {
             if matches!(rec, Record::Library { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(rec, "Library");
+                if fail_on_miss {
+                    Self::no_match(rec, "Library");
+                }
                 None
             }
         } else {
@@ -381,8 +383,8 @@ impl SymbolTable {
         }
     }
 
-    pub fn lookup_lib_fn(&self, lib_name: &str, lib_fn_name: &str) -> Option<&Record> {
-        if let Some(Record::Library { fns, .. }) = self.lookup_lib(lib_name) {
+    pub fn lookup_lib_fn(&self, lib_name: &str, lib_fn_name: &str, fail_on_miss: bool) -> Option<&Record> {
+        if let Some(Record::Library { fns, .. }) = self.lookup_lib(lib_name, fail_on_miss) {
             if let Some(rec) = fns.get(lib_fn_name) {
                 if let Some(rec) = self.get_record(*rec) {
                     return Some(rec);
@@ -406,6 +408,23 @@ impl SymbolTable {
             Some(rec)
         } else {
             panic!("Could not find match for library function: {lib_name}.{lib_fn_name}");
+        }
+    }
+
+    pub fn lookup_type_util_fn(&self, ty: &DataType, fn_name: &str) -> Option<&Record> {
+        let Record::Whamm { type_utils, .. } = self.lookup_rec("whamm").unwrap() else {
+            unreachable!("{UNEXPECTED_ERR_MSG} Expected Whamm type")
+        };
+        if let Some(utils_rec_id) = type_utils.get(ty) {
+            let Record::Library { fns, .. } = self.get_record(*utils_rec_id).unwrap() else {
+                unreachable!("{UNEXPECTED_ERR_MSG} Expected Library type")
+            };
+            fns.get(fn_name)
+                .and_then(|rec| {
+                    self.get_record(*rec)
+                })
+        } else {
+            None
         }
     }
 
@@ -587,6 +606,7 @@ impl Scope {
 #[derive(Debug, Eq, PartialEq)]
 pub enum ScopeType {
     Whamm,
+    TypeUtils,
     Script,
     Provider,
     Package,
@@ -601,6 +621,9 @@ impl Display for ScopeType {
         match self {
             ScopeType::Whamm => {
                 write!(f, "Whamm")
+            }
+            ScopeType::TypeUtils => {
+                write!(f, "TypeUtils")
             }
             ScopeType::Script => {
                 write!(f, "Script")
@@ -631,11 +654,12 @@ impl Display for ScopeType {
 }
 
 /// The usize values in the record fields index into the SymbolTable::records Vec.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Record {
     Whamm {
         fns: Vec<usize>,
         globals: Vec<usize>,
+        type_utils: HashMap<DataType, usize>,   // points to a library?
         scripts: Vec<usize>,
     },
     Script {
@@ -704,7 +728,7 @@ pub enum Record {
         addr: Option<Vec<VarAddr>>,
         times_set: u32,
         loc: Option<Location>,
-    },
+    }
 }
 impl Record {
     pub fn loc(&self) -> &Option<Location> {

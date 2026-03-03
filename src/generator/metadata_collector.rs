@@ -239,9 +239,9 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                     loc: loc.clone(),
                 }
             }
-            Expr::LibCall {
+            Expr::ObjCall {
                 annotation,
-                lib_name,
+                obj_name,
                 call,
                 results,
                 loc,
@@ -253,10 +253,14 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                     (false, false)
                 };
 
-                self.curr_user_lib.push((lib_name.to_string(), is_static));
-                let new_call = Expr::LibCall {
+                // todo conditionally add strcmp?
+                self.used_bound_fns
+                    .insert(("whamm".to_string(), "strcmp".to_string()));
+
+                self.curr_user_lib.push((obj_name.to_string(), is_static));
+                let new_call = Expr::ObjCall {
                     annotation: annotation.clone(),
-                    lib_name: lib_name.clone(),
+                    obj_name: obj_name.clone(),
                     call: Box::new(self.visit_expr_inner(call)),
                     results: results.clone(),
                     loc: loc.clone(),
@@ -320,14 +324,22 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 let (def, ret_ty, req_args, context) = if let Some((lib_name, is_static)) =
                     &self.curr_user_lib.last()
                 {
-                    let Some(Record::LibFn { results, def, .. }) =
-                        self.table.lookup_lib_fn(lib_name, &fn_name)
-                    else {
-                        self.err.add_internal_error(
-                            &format!("Could not find library function for {lib_name}.{fn_name}"),
-                            expr.loc(),
-                        );
-                        return expr.clone();
+                    let (results, def) = if let Some(Record::LibFn { results, def, .. }) =
+                        self.table.lookup_lib_fn(lib_name, &fn_name, false) {
+                        (results, def)
+                    } else {
+                        let Some(Record::Var {ty, ..}) = self.table.lookup_rec(lib_name) else {
+                            panic!()
+                        };
+                        if let Some(Record::LibFn {results, def, ..}) =
+                            self.table.lookup_type_util_fn(ty, &fn_name) {
+                            // we've already gone through typechecking, we can assume that this is
+                            // a type utility function!
+                            // return expr.clone();
+                            (results, def)
+                        } else {
+                            panic!()
+                        }
                     };
 
                     // Track user library that's being used

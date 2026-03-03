@@ -1030,9 +1030,9 @@ fn handle_lib_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     // handle lib func call
     let lib_func_call = handle_fn_call(pairs.next().unwrap())?;
 
-    Ok(Expr::LibCall {
+    Ok(Expr::ObjCall {
         annotation,
-        lib_name,
+        obj_name: lib_name,
         call: Box::new(lib_func_call),
         results: None,
         loc: Some(Location {

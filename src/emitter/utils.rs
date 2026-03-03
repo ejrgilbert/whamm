@@ -20,7 +20,7 @@ use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmVa
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{MacroOpcode, Opcode};
 use wirm::{InitInstr, Module};
-
+use crate::lang_features::type_utils::strings::StringUtils;
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -34,10 +34,10 @@ use wirm::{InitInstr, Module};
 pub struct EmitCtx<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
     registry: &'a mut WasmRegistry,
     table: &'b mut SymbolTable,
-    mem_allocator: &'c MemoryAllocator,
-    locals_tracker: &'d mut LocalsTracker,
+    pub(crate) mem_allocator: &'c MemoryAllocator,
+    pub(crate) locals_tracker: &'d mut LocalsTracker,
     in_map_op: bool,
-    in_lib_call_to: Option<String>,
+    in_obj_call_on: Option<String>,
     utils_adapter: &'e mut UtilsAdapter,
     map_lib_adapter: &'f mut MapLibAdapter,
     err_msg: String,
@@ -60,7 +60,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> EmitCtx<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
             mem_allocator,
             locals_tracker,
             in_map_op: false,
-            in_lib_call_to: None,
+            in_obj_call_on: None,
             utils_adapter,
             map_lib_adapter,
             err_msg: err_msg.to_string(),
@@ -153,7 +153,6 @@ fn handle_special_fn_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
             unreachable!("static function call should already be handled: {target_fn_name}")
         }
-        "len" => handle_len(&mut folded_args, strategy, injector, ctx),
         "write_str" => handle_write_str(&mut folded_args, strategy, injector, ctx),
         "read_str" => handle_read_str(&mut folded_args, strategy, injector, ctx),
         _ => {
@@ -163,22 +162,6 @@ fn handle_special_fn_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             );
         }
     }
-}
-
-fn handle_len<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-    args: &mut [Expr],
-    strategy: InjectStrategy,
-    injector: &mut T,
-    ctx: &mut EmitCtx,
-) -> bool {
-    // handle the string parameter
-    emit_expr(&mut args[0], None, strategy, injector, ctx);
-    let str_len = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
-    injector.local_set(str_len);
-    injector.drop(); // I don't care about the addr pointer, just the len!
-
-    injector.local_get(str_len); // bring back up the string len value to ToS
-    true
 }
 
 fn handle_write_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -423,13 +406,14 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                         locally_bound &= matches!(part, VarAddr::Local { .. });
                     }
                 }
-                if is_stable && locally_bound && !def.is_comp_defined() {
-                    // We can only do this shortcut if the assignment is:
-                    // - stable: only happens once
-                    // - bound to local function state: does not have side effects on program state (memory, globals, etc.)
-                    // - is self-contained in the probe body: cannot interact with the application (e.g. through bound variables)
-                    if let Expr::Primitive { val, .. } = expr {
-                        *value = Some(val.clone());
+
+                if let Expr::Primitive { val, .. } = expr {
+                    *value = Some(val.clone());
+                    if is_stable && locally_bound && !def.is_comp_defined() {
+                        // We can only do this shortcut if the assignment is:
+                        // - stable: only happens once
+                        // - bound to local function state: does not have side effects on program state (memory, globals, etc.)
+                        // - is self-contained in the probe body: cannot interact with the application (e.g. through bound variables)
                         // TODO: Dynamic string building will break this
                         return true;
                     }
@@ -892,11 +876,11 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 ctx,
             )
         }
-        Expr::LibCall { lib_name, call, .. } => {
-            ctx.in_lib_call_to = Some(lib_name.clone());
+        Expr::ObjCall { obj_name: lib_name, call, .. } => {
+            ctx.in_obj_call_on = Some(lib_name.clone());
             let is_success = emit_expr(&mut *call, None, strategy, injector, ctx);
 
-            ctx.in_lib_call_to = None;
+            ctx.in_obj_call_on = None;
             is_success
         }
         Expr::Call {
@@ -908,14 +892,36 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             };
 
             // first save off current context's state on whether we're in a lib call
-            let in_lib_call_to = ctx.in_lib_call_to.clone();
+            let in_obj_call_on = ctx.in_obj_call_on.clone();
 
-            let addr = if let Some(lib_name) = &ctx.in_lib_call_to {
-                let Some(Record::LibFn { addr, .. }) = ctx.table.lookup_lib_fn(lib_name, &fn_name)
-                else {
-                    unreachable!("unexpected type");
-                };
-                *addr
+            let addr = if let Some(lib_name) = &in_obj_call_on {
+                // TODO: here i need to handle dynamic type utils!
+                let rec = ctx.table.lookup_rec(lib_name).cloned();
+                match rec {
+                    Some(Record::Library { fns, .. }) => {
+                        let Some(rec) = fns.get(&fn_name) else {
+                            unreachable!("should have gotten a rec")
+                        };
+                        let Record::LibFn {addr, ..} = ctx.table.get_record(*rec).unwrap() else {
+                            unreachable!("should have gotten lib func rec")
+                        };
+                        *addr
+                    },
+                    Some(Record::Var { def, ty, .. }) => {
+                        ctx.in_obj_call_on = None;
+                        return handle_type_utils_call(
+                            lib_name,
+                            &ty,
+                            def,
+                            fn_name,
+                            args,
+                            strategy,
+                            injector,
+                            ctx
+                        );
+                    },
+                    _ => unreachable!("unexpected type for {lib_name}: {rec:?}")
+                }
             } else {
                 let Some(Record::Fn { def, addr, .. }) = ctx.table.lookup_fn(&fn_name, true) else {
                     unreachable!("unexpected type");
@@ -935,14 +941,14 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             }
 
             // now that we've emitted the arguments, restore the original lib call tracking
-            ctx.in_lib_call_to = in_lib_call_to;
+            ctx.in_obj_call_on = in_obj_call_on;
 
             if let Some(f_id) = addr {
                 injector.call(FunctionID(f_id));
             } else {
                 ctx.err.add_internal_error(&format!("{}\n\tfn_target address not in symbol table for '{}{}', not emitted yet...",
                                                     ctx.err_msg,
-                                                    if let Some(lib_name) = &ctx.in_lib_call_to {
+                                                    if let Some(lib_name) = &ctx.in_obj_call_on {
                                                         format!("{lib_name}.")
                                                     } else {
                                                         "".to_string()
@@ -1010,6 +1016,68 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
         Expr::Primitive { val, .. } => emit_value(val, idx, strategy, injector, ctx),
         Expr::MapGet { .. } => emit_map_get(expr, strategy, injector, ctx),
+    }
+}
+
+fn handle_type_utils_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    target_var_name: &str,
+    target_var_ty: &DataType,
+    target_var_def: Definition,
+    target_fn_name: String,
+    args: &mut [Expr],
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) -> bool {
+    let mut folded_args = vec![];
+    for arg in args.iter() {
+        folded_args.push(ExprFolder::fold_expr(
+            arg,
+            ctx.registry,
+            strategy.as_monitor_module(),
+            ctx.table,
+            ctx.err,
+        ));
+    }
+
+    match target_var_ty {
+        DataType::Str => handle_type_utils_string(
+            target_var_name,
+            target_var_def,
+            target_fn_name,
+            args,
+            strategy,
+            injector,
+            ctx
+        ),
+        _ => unreachable!("unhandled type utils variant: {:?}", target_var_ty),
+    }
+}
+fn handle_type_utils_string<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    target_var_name: &str,
+    target_var_def: Definition,
+    target_fn_name: String,
+    args: &mut [Expr],
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) -> bool{
+    let mut target = Expr::VarId {
+        name: target_var_name.to_string(),
+        definition: target_var_def,
+        loc: None
+    };
+    match target_fn_name.as_str() {
+        "len" => StringUtils::len_dynamic(&mut target, strategy, injector, ctx),
+        "starts_with" => StringUtils::starts_with_dynamic(&mut target, args, strategy, injector, ctx),
+        "ends_with" => StringUtils::ends_with_dynamic(&mut target, args, strategy, injector, ctx),
+        "contains" => StringUtils::contains_dynamic(&mut target, strategy, injector, ctx),
+        _ => {
+            unreachable!(
+                "{} Could not find handler for static function with name: {}",
+                ctx.err_msg, target_fn_name
+            );
+        }
     }
 }
 

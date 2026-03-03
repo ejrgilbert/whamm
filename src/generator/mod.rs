@@ -454,7 +454,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
                 is_success
             }
-            Expr::LibCall { call, .. } => self.visit_expr(call),
+            Expr::ObjCall { call, .. } => self.visit_expr(call),
             Expr::Call { args, .. } => {
                 let mut is_success = true;
                 args.iter_mut().for_each(|arg| {

@@ -123,6 +123,31 @@ wasm::call:alt /
 ];
 
 const TYPE_ERROR_SCRIPTS: &[&str] = &[
+    // use dynamic state in report variable DeclInit
+    "wasm:opcode:drop:before {
+        report var s: str = read_str(0, 0, 10);
+    }",
+    "wasm:opcode:drop:before {
+        report var s: str;
+        s = read_str(0, 0, 10);
+
+        // `s` and `l` are in a different scope!!
+        report var l: bool = s.len();
+    }",
+    "wasm:opcode:drop:before {
+        report var s: str;
+        s = read_str(0, 0, 10);
+
+        // `s` and `l` are in a different scope!!
+        report var l: bool = s.starts_with(\"wxyz\");
+    }",
+    "
+    wasm:opcode:drop:before {
+        var s: str = read_str(0, 0, 10);
+
+        // `s` and `l` are in a different scope!!
+        report var l: bool = s.ends_with(\"wxyz\");
+    }",
     // use probe-local state in report variable DeclInit
     "
     wasm:opcode:drop:before {
