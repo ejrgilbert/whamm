@@ -3,7 +3,7 @@ use crate::parser::types::{DataType, Definition, FnId, Location, ProbeRule, Valu
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 
 const UNEXPECTED_ERR_MSG: &str =
     "SymbolTable: Looks like you've found a bug...please report this behavior!";
@@ -263,43 +263,42 @@ impl SymbolTable {
         None
     }
 
-    fn no_match(rec: &Record, exp: &str) {
+    fn no_match<T: Debug>(rec: T, exp: &str) {
         panic!("Unexpected record type. Expected {}, found: {:?}", exp, rec)
     }
 
     pub fn lookup_lib(&self, key: &str, fail_on_miss: bool) -> Option<&Record> {
-        if let Some(rec) = self.lookup_rec(key) {
+        let res = self.lookup_rec(key).and_then(|rec| {
             if matches!(rec, Record::Library { .. }) {
                 Some(rec)
             } else {
-                if fail_on_miss {
-                    Self::no_match(rec, "Library");
-                }
                 None
             }
-        } else {
-            None
+        });
+
+        if res.is_none() && fail_on_miss {
+            Self::no_match(res, "Library");
         }
+        res
     }
     pub fn lookup_lib_mut(&mut self, key: &str) -> Option<&mut Record> {
-        if let Some((_, rec)) = self.lookup_rec_mut(key) {
+        let res = self.lookup_rec_mut(key).and_then(|(_, rec)| {
             if matches!(rec, Record::Library { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(rec, "Library");
                 None
             }
-        } else {
-            None
+        });
+
+        if res.is_none() {
+            Self::no_match(&res, "Library");
         }
+        res
     }
 
     pub fn lookup_var_mut(&mut self, key: &str, panic_if_missing: bool) -> Option<&mut Record> {
-        if let Some((_, rec)) = self.lookup_var_with_id_mut(key, panic_if_missing) {
-            Some(rec)
-        } else {
-            None
-        }
+        self.lookup_var_with_id_mut(key, panic_if_missing)
+            .map(|(_, rec)| rec)
     }
 
     pub fn lookup_var_with_id_mut(
@@ -383,7 +382,12 @@ impl SymbolTable {
         }
     }
 
-    pub fn lookup_lib_fn(&self, lib_name: &str, lib_fn_name: &str, fail_on_miss: bool) -> Option<&Record> {
+    pub fn lookup_lib_fn(
+        &self,
+        lib_name: &str,
+        lib_fn_name: &str,
+        fail_on_miss: bool,
+    ) -> Option<&Record> {
         if let Some(Record::Library { fns, .. }) = self.lookup_lib(lib_name, fail_on_miss) {
             if let Some(rec) = fns.get(lib_fn_name) {
                 if let Some(rec) = self.get_record(*rec) {
@@ -419,10 +423,7 @@ impl SymbolTable {
             let Record::Library { fns, .. } = self.get_record(*utils_rec_id).unwrap() else {
                 unreachable!("{UNEXPECTED_ERR_MSG} Expected Library type")
             };
-            fns.get(fn_name)
-                .and_then(|rec| {
-                    self.get_record(*rec)
-                })
+            fns.get(fn_name).and_then(|rec| self.get_record(*rec))
         } else {
             None
         }
@@ -606,7 +607,6 @@ impl Scope {
 #[derive(Debug, Eq, PartialEq)]
 pub enum ScopeType {
     Whamm,
-    TypeUtils,
     Script,
     Provider,
     Package,
@@ -621,9 +621,6 @@ impl Display for ScopeType {
         match self {
             ScopeType::Whamm => {
                 write!(f, "Whamm")
-            }
-            ScopeType::TypeUtils => {
-                write!(f, "TypeUtils")
             }
             ScopeType::Script => {
                 write!(f, "Script")
@@ -659,7 +656,7 @@ pub enum Record {
     Whamm {
         fns: Vec<usize>,
         globals: Vec<usize>,
-        type_utils: HashMap<DataType, usize>,   // points to a library?
+        type_utils: HashMap<DataType, usize>, // points to a Record::Library
         scripts: Vec<usize>,
     },
     Script {
@@ -728,7 +725,7 @@ pub enum Record {
         addr: Option<Vec<VarAddr>>,
         times_set: u32,
         loc: Option<Location>,
-    }
+    },
 }
 impl Record {
     pub fn loc(&self) -> &Option<Location> {

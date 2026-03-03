@@ -28,13 +28,13 @@ fn get_rec<'a>(table: &'a mut SymbolTable, name: &str) -> Option<&'a mut Record>
         }
     };
 
-    return match table.get_record_mut(var_rec_id) {
+    match table.get_record_mut(var_rec_id) {
         Some(rec) => Some(rec),
         _ => {
             error!("Variable symbol does not exist!");
             None
         }
-    };
+    }
 }
 
 fn get_pred(whamm: &Whamm) -> &Expr {

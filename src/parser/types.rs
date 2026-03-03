@@ -1484,7 +1484,11 @@ impl Display for Expr {
                 }
                 write!(f, "{fn_target}({args_str})")
             }
-            Expr::ObjCall { obj_name: lib_name, call, .. } => {
+            Expr::ObjCall {
+                obj_name: lib_name,
+                call,
+                ..
+            } => {
                 write!(f, "{lib_name}.{}", call)
             }
             Expr::VarId { name, .. } => write!(f, "{name}"),

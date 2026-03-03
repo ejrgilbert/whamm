@@ -231,7 +231,7 @@ impl<'a> TypeChecker<'a> {
             let Record::Library { fns, .. } = self.table.get_record(*utils_rec_id).unwrap() else {
                 unreachable!("{UNEXPECTED_ERR_MSG} Expected Library type")
             };
-            Some(&fns)
+            Some(fns)
         } else {
             None
         }
@@ -1163,16 +1163,18 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 let curr_obj = self.curr_obj.first();
                 let rec = if let Some((obj_name, _)) = &curr_obj {
                     let fns = match self.table.lookup_rec(obj_name) {
-                        Some(Record::Library {fns, ..}) => fns,
-                        Some(Record::Var {ty, ..}) => if let Some(fns) = self.get_type_utils(ty) {
-                            fns
-                        } else {
-                            self.err.type_check_error(
-                                "Could not find function for the invocation".to_string(),
-                                &loc.clone().map(|l| l.line_col),
-                            );
-                            return Some(DataType::AssumeGood);
-                        },
+                        Some(Record::Library { fns, .. }) => fns,
+                        Some(Record::Var { ty, .. }) => {
+                            if let Some(fns) = self.get_type_utils(ty) {
+                                fns
+                            } else {
+                                self.err.type_check_error(
+                                    "Could not find function for the invocation".to_string(),
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                                return Some(DataType::AssumeGood);
+                            }
+                        }
                         _ => {
                             self.err.type_check_error(
                                 "Could not find function for the invocation".to_string(),
@@ -1181,11 +1183,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             return Some(DataType::AssumeGood);
                         }
                     };
-                    let rec = fns.get(fn_name)
-                        .and_then(|rec| {
-                            self.table.get_record(*rec)
-                        })
-                        .or_else( || {
+                    let rec = fns
+                        .get(fn_name)
+                        .and_then(|rec| self.table.get_record(*rec))
+                        .or_else(|| {
                             self.err.type_check_error(
                                 "Could not find function for the invocation".to_string(),
                                 &loc.clone().map(|l| l.line_col),
@@ -1193,13 +1194,9 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             None
                         });
                     rec
-                } else if let Some(id) = self.table.lookup_fn(fn_name, true) {
-                    Some(id)
                 } else {
-                    None
+                    self.table.lookup_fn(fn_name, true)
                 };
-                if rec.is_none() {
-                }
                 let rec = rec.unwrap();
 
                 let (params, ret_ty, def, loc) = match rec {

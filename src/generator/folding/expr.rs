@@ -1,11 +1,14 @@
 use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::registry::WasmRegistry;
-use crate::parser::types::{expr_to_value, expr_to_wasm_val, BinOp, DataType, Definition, Expr, Location, NumLit, UnOp, Value};
+use crate::lang_features::type_utils::strings::StringUtils;
+use crate::parser::types::Definition::User;
+use crate::parser::types::{
+    expr_to_value, expr_to_wasm_val, BinOp, DataType, Definition, Expr, Location, NumLit, UnOp,
+    Value,
+};
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::{Record, SymbolTable};
 use std::ops::{Add, Div, Mul, Rem, Sub};
-use crate::lang_features::type_utils::strings::StringUtils;
-use crate::parser::types::Definition::User;
 // =======================================
 // = Constant Propagation via ExprFolder =
 // =======================================
@@ -75,11 +78,7 @@ impl<'a> ExprFolder<'a> {
                 }
             }
 
-            if let Some(new_expr) = self.fold_type_utils_call(
-                obj_call,
-                table,
-                err
-            ) {
+            if let Some(new_expr) = self.fold_type_utils_call(obj_call, table, err) {
                 return new_expr;
             }
 
@@ -107,12 +106,15 @@ impl<'a> ExprFolder<'a> {
             ..
         } = obj_call
         {
-            if let Expr::Primitive {val, ..} = self.fold_expr_inner(
-                &Expr::VarId {definition: User, name: obj_name.clone(), loc: obj_call_loc.clone()},
+            if let Expr::Primitive { val, .. } = self.fold_expr_inner(
+                &Expr::VarId {
+                    definition: User,
+                    name: obj_name.clone(),
+                    loc: obj_call_loc.clone(),
+                },
                 table,
-                err
+                err,
             ) {
-
                 // already made it through typechecking, we can assume the records exist!
                 if let Expr::Call {
                     fn_target, args, ..
@@ -130,15 +132,23 @@ impl<'a> ExprFolder<'a> {
                                 arg_vals.push(new_arg);
                             } else {
                                 err.add_internal_error(
-                                    &format!("couldn't convert to a primitive value: {:?}", new_arg),
+                                    &format!(
+                                        "couldn't convert to a primitive value: {:?}",
+                                        new_arg
+                                    ),
                                     obj_call_loc,
                                 );
                             }
                         }
                         let ty = val.ty();
                         return match ty {
-                            DataType::Str => Some(self.fold_string_utils_call(func_name, &val, arg_vals, obj_call_loc)),
-                            _ => unreachable!("Utility functions not supported for type: {ty}")
+                            DataType::Str => Some(self.fold_string_utils_call(
+                                func_name,
+                                &val,
+                                arg_vals,
+                                obj_call_loc,
+                            )),
+                            _ => unreachable!("Utility functions not supported for type: {ty}"),
                         };
                     } else {
                         err.add_internal_error(
@@ -159,23 +169,41 @@ impl<'a> ExprFolder<'a> {
         None
     }
 
-    fn fold_string_utils_call(&mut self, fn_name: &str, val: &Value, args: Vec<Value>, loc: &Option<Location>) -> Expr {
+    fn fold_string_utils_call(
+        &mut self,
+        fn_name: &str,
+        val: &Value,
+        args: Vec<Value>,
+        loc: &Option<Location>,
+    ) -> Expr {
         match fn_name {
             "len" => {
                 let res = StringUtils::len(val);
-                Expr::Primitive { val: Value::gen_u32(res), loc: loc.clone() }
-            },
+                Expr::Primitive {
+                    val: Value::gen_u32(res),
+                    loc: loc.clone(),
+                }
+            }
             "starts_with" => {
                 let res = StringUtils::starts_with(val, &args);
-                Expr::Primitive { val: Value::gen_bool(res), loc: loc.clone() }
+                Expr::Primitive {
+                    val: Value::gen_bool(res),
+                    loc: loc.clone(),
+                }
             }
             "ends_with" => {
                 let res = StringUtils::ends_with(val, &args);
-                Expr::Primitive { val: Value::gen_bool(res), loc: loc.clone() }
+                Expr::Primitive {
+                    val: Value::gen_bool(res),
+                    loc: loc.clone(),
+                }
             }
             "contains" => {
                 let res = StringUtils::contains(val, &args);
-                Expr::Primitive { val: Value::gen_bool(res), loc: loc.clone() }
+                Expr::Primitive {
+                    val: Value::gen_bool(res),
+                    loc: loc.clone(),
+                }
             }
             _ => unreachable!("Unrecognized string utility function name: {:?}", fn_name),
         }

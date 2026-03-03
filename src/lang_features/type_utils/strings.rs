@@ -1,18 +1,18 @@
-use wirm::ir::id::LocalID;
-use wirm::module_builder::AddLocal;
-use wirm::Opcode;
-use wirm::opcode::MacroOpcode;
-use crate::emitter::InjectStrategy;
 use crate::emitter::utils::{emit_expr, EmitCtx};
+use crate::emitter::InjectStrategy;
 use crate::parser::types::{Definition, Expr, Value};
-use wirm::ir::types::{DataType as WirmType};
+use wirm::ir::id::LocalID;
+use wirm::ir::types::DataType as WirmType;
+use wirm::module_builder::AddLocal;
+use wirm::opcode::MacroOpcode;
+use wirm::Opcode;
 
 /// See Rust docs: https://doc.rust-lang.org/std/primitive.str.html
 #[derive(Default)]
 pub struct StringUtils {}
 impl StringUtils {
     fn get_str(s: &Value) -> &str {
-        let Value::Str {val: s} = s else {
+        let Value::Str { val: s } = s else {
             unreachable!("Should have gotten a string value for the variable.")
         };
         s
@@ -26,23 +26,23 @@ impl StringUtils {
     }
     /// Returns true if the given pattern matches a prefix of this string slice.
     /// Returns false if it does not.
-    pub(crate) fn starts_with(s: &Value, args: &Vec<Value>) -> bool {
+    pub(crate) fn starts_with(s: &Value, args: &[Value]) -> bool {
         let s = Self::get_str(s);
-        let prefix = Self::get_str(args.get(0).unwrap());
+        let prefix = Self::get_str(args.first().unwrap());
         s.starts_with(prefix)
     }
     /// Returns true if the given pattern matches a suffix of this string slice.
     /// Returns false if it does not.
-    pub(crate) fn ends_with(s: &Value, args: &Vec<Value>) -> bool {
+    pub(crate) fn ends_with(s: &Value, args: &[Value]) -> bool {
         let s = Self::get_str(s);
-        let suffix = Self::get_str(args.get(0).unwrap());
+        let suffix = Self::get_str(args.first().unwrap());
         s.ends_with(suffix)
     }
     /// Returns true if the given pattern matches a sub-slice of this string.
     /// Returns false if it does not.
-    pub(crate) fn contains(s: &Value, args: &Vec<Value>) -> bool {
+    pub(crate) fn contains(s: &Value, args: &[Value]) -> bool {
         let s = Self::get_str(s);
-        let pat = Self::get_str(args.get(0).unwrap());
+        let pat = Self::get_str(args.first().unwrap());
         s.contains(pat)
     }
 
@@ -97,15 +97,21 @@ impl StringUtils {
         // (str1_addr, str1_len)
         emit_expr(prefix, None, strategy, injector, ctx);
 
-        emit_expr(&mut Expr::Call {
-            fn_target: Box::new(Expr::VarId {
-                name: "strcmp".to_string(),
-                definition: Definition::CompilerDynamic,
-                loc: None
-            }),
-            args: vec![],
-            loc: None
-        }, None, strategy, injector, ctx)
+        emit_expr(
+            &mut Expr::Call {
+                fn_target: Box::new(Expr::VarId {
+                    name: "strcmp".to_string(),
+                    definition: Definition::CompilerDynamic,
+                    loc: None,
+                }),
+                args: vec![],
+                loc: None,
+            },
+            None,
+            strategy,
+            injector,
+            ctx,
+        )
     }
 
     pub(crate) fn ends_with_dynamic<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -120,14 +126,9 @@ impl StringUtils {
         // str0_addr = (var.addr() + (var.len() - 1)) - (suffix.len() - 1)
         Self::addr_of(target, strategy, injector, ctx);
         Self::len_dynamic(target, strategy, injector, ctx);
-        injector
-            .i32_const(1)
-            .i32_sub()
-            .i32_add();
+        injector.i32_const(1).i32_sub().i32_add();
         Self::len_dynamic(suffix, strategy, injector, ctx);
-        injector.i32_const(1)
-            .i32_sub()
-            .i32_sub();
+        injector.i32_const(1).i32_sub().i32_sub();
 
         // str0_len = suffix.len()
         Self::len_dynamic(suffix, strategy, injector, ctx);
@@ -135,15 +136,21 @@ impl StringUtils {
         // (str1_addr, str1_len)
         emit_expr(suffix, None, strategy, injector, ctx);
 
-        emit_expr(&mut Expr::Call {
-            fn_target: Box::new(Expr::VarId {
-                name: "strcmp".to_string(),
-                definition: Definition::CompilerDynamic,
-                loc: None
-            }),
-            args: vec![],
-            loc: None
-        }, None, strategy, injector, ctx)
+        emit_expr(
+            &mut Expr::Call {
+                fn_target: Box::new(Expr::VarId {
+                    name: "strcmp".to_string(),
+                    definition: Definition::CompilerDynamic,
+                    loc: None,
+                }),
+                args: vec![],
+                loc: None,
+            },
+            None,
+            strategy,
+            injector,
+            ctx,
+        )
     }
 
     pub(crate) fn contains_dynamic<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(

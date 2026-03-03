@@ -10,6 +10,7 @@ use crate::generator::folding::stmt::StmtFolder;
 use crate::lang_features::libraries::core::maps::map_adapter::{MapLibAdapter, MAP_LIB_MEM_OFFSET};
 use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::registry::WasmRegistry;
+use crate::lang_features::type_utils::strings::StringUtils;
 use crate::parser::types::{
     BinOp, Block, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
 };
@@ -20,7 +21,6 @@ use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmVa
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{MacroOpcode, Opcode};
 use wirm::{InitInstr, Module};
-use crate::lang_features::type_utils::strings::StringUtils;
 // ==================================================================
 // ================ Emitter Helper Functions ========================
 // - Necessary to extract common logic between Emitter and InstrumentationVisitor.
@@ -408,14 +408,17 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 }
 
                 if let Expr::Primitive { val, .. } = expr {
-                    *value = Some(val.clone());
-                    if is_stable && locally_bound && !def.is_comp_defined() {
+                    if is_stable {
+                        *value = Some(val.clone()); // assign the value so we can do folding
+
                         // We can only do this shortcut if the assignment is:
                         // - stable: only happens once
                         // - bound to local function state: does not have side effects on program state (memory, globals, etc.)
                         // - is self-contained in the probe body: cannot interact with the application (e.g. through bound variables)
                         // TODO: Dynamic string building will break this
-                        return true;
+                        if locally_bound && !def.is_comp_defined() {
+                            return true;
+                        }
                     }
                 }
 
@@ -876,7 +879,11 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                 ctx,
             )
         }
-        Expr::ObjCall { obj_name: lib_name, call, .. } => {
+        Expr::ObjCall {
+            obj_name: lib_name,
+            call,
+            ..
+        } => {
             ctx.in_obj_call_on = Some(lib_name.clone());
             let is_success = emit_expr(&mut *call, None, strategy, injector, ctx);
 
@@ -895,32 +902,24 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             let in_obj_call_on = ctx.in_obj_call_on.clone();
 
             let addr = if let Some(lib_name) = &in_obj_call_on {
-                // TODO: here i need to handle dynamic type utils!
                 let rec = ctx.table.lookup_rec(lib_name).cloned();
                 match rec {
                     Some(Record::Library { fns, .. }) => {
                         let Some(rec) = fns.get(&fn_name) else {
                             unreachable!("should have gotten a rec")
                         };
-                        let Record::LibFn {addr, ..} = ctx.table.get_record(*rec).unwrap() else {
+                        let Record::LibFn { addr, .. } = ctx.table.get_record(*rec).unwrap() else {
                             unreachable!("should have gotten lib func rec")
                         };
                         *addr
-                    },
+                    }
                     Some(Record::Var { def, ty, .. }) => {
                         ctx.in_obj_call_on = None;
                         return handle_type_utils_call(
-                            lib_name,
-                            &ty,
-                            def,
-                            fn_name,
-                            args,
-                            strategy,
-                            injector,
-                            ctx
+                            lib_name, &ty, def, fn_name, args, strategy, injector, ctx,
                         );
-                    },
-                    _ => unreachable!("unexpected type for {lib_name}: {rec:?}")
+                    }
+                    _ => unreachable!("unexpected type for {lib_name}: {rec:?}"),
                 }
             } else {
                 let Some(Record::Fn { def, addr, .. }) = ctx.table.lookup_fn(&fn_name, true) else {
@@ -1048,7 +1047,7 @@ fn handle_type_utils_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             args,
             strategy,
             injector,
-            ctx
+            ctx,
         ),
         _ => unreachable!("unhandled type utils variant: {:?}", target_var_ty),
     }
@@ -1061,15 +1060,17 @@ fn handle_type_utils_string<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
-) -> bool{
+) -> bool {
     let mut target = Expr::VarId {
         name: target_var_name.to_string(),
         definition: target_var_def,
-        loc: None
+        loc: None,
     };
     match target_fn_name.as_str() {
         "len" => StringUtils::len_dynamic(&mut target, strategy, injector, ctx),
-        "starts_with" => StringUtils::starts_with_dynamic(&mut target, args, strategy, injector, ctx),
+        "starts_with" => {
+            StringUtils::starts_with_dynamic(&mut target, args, strategy, injector, ctx)
+        }
         "ends_with" => StringUtils::ends_with_dynamic(&mut target, args, strategy, injector, ctx),
         "contains" => StringUtils::contains_dynamic(&mut target, strategy, injector, ctx),
         _ => {

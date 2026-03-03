@@ -253,9 +253,13 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                     (false, false)
                 };
 
-                // todo conditionally add strcmp?
-                self.used_bound_fns
-                    .insert(("whamm".to_string(), "strcmp".to_string()));
+                if let Some(Record::Var { ty, .. }) = self.table.lookup_var(obj_name, false) {
+                    if matches!(ty, DataType::Str) {
+                        // this is a type utility
+                        self.used_bound_fns
+                            .insert(("whamm".to_string(), "strcmp".to_string()));
+                    }
+                }
 
                 self.curr_user_lib.push((obj_name.to_string(), is_static));
                 let new_call = Expr::ObjCall {
@@ -325,20 +329,19 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                     &self.curr_user_lib.last()
                 {
                     let (results, def) = if let Some(Record::LibFn { results, def, .. }) =
-                        self.table.lookup_lib_fn(lib_name, &fn_name, false) {
+                        self.table.lookup_lib_fn(lib_name, &fn_name, false)
+                    {
                         (results, def)
                     } else {
-                        let Some(Record::Var {ty, ..}) = self.table.lookup_rec(lib_name) else {
-                            panic!()
+                        let Some(Record::Var { ty, .. }) = self.table.lookup_rec(lib_name) else {
+                            panic!("should have gotten a var type")
                         };
-                        if let Some(Record::LibFn {results, def, ..}) =
-                            self.table.lookup_type_util_fn(ty, &fn_name) {
-                            // we've already gone through typechecking, we can assume that this is
-                            // a type utility function!
-                            // return expr.clone();
+                        if let Some(Record::LibFn { results, def, .. }) =
+                            self.table.lookup_type_util_fn(ty, &fn_name)
+                        {
                             (results, def)
                         } else {
-                            panic!()
+                            panic!("should have gotten a lib func type")
                         }
                     };
 
