@@ -1,14 +1,13 @@
-[package]
-name = "whamm"
+[workspace]
+members = ["whamm_core", "wasmtime-runner", "wasm_playground/control_flow", "wasm_playground/example"]
+resolver = "3"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-doc = false
-name = "whamm"
-path = "src/main.rs"
-
-[dependencies]
+[workspace.dependencies]
+once_cell = "1.3.1"
 failure = "0.1.5"
 glob = "0.3.1"
 lazy_static = "1.4.0"
@@ -19,6 +18,8 @@ wirm = "=2.2.0"
 # For the wasmtime embedding for @static
 wasmtime = "38.0.3"
 wasi-common = "38.0.3"
+wasm-bindgen = "0.2"
+wasmtime-wasi = "24.0.0"
 
 # Logging
 env_logger = "0.10.2"
@@ -35,10 +36,60 @@ serde_yml = "0.0.12"
 
 # CLI
 clap = { version = "4.5.4", features = ["derive", "cargo", "env"] }
+clap_mangen = "=0.2.20"
 
 wat = "1.214.0"
 
+[package]
+name = "whamm"
+version.workspace = true
+edition.workspace = true
+
+authors = ["Elizabeth Gilbert"]
+description = "A framework for 'Wasm Application Monitoring and Manipulation'"
+license = "Apache-2.0"
+
+readme = "README.md"
+repository = "https://github.com/ejrgilbert/whamm"
+categories = ["wasm"]
+keywords = ["wasm", "WebAssembly", "components", "composition"]
+
+[[bin]]
+doc = false
+name = "whamm"
+path = "src/main.rs"
+
+[dependencies]
+failure = { workspace = true }
+glob = { workspace = true }
+lazy_static = { workspace = true }
+itertools = { workspace = true }
+#wirm = { path = "../wirm" }
+wirm = { workspace = true }
+
+# For the wasmtime embedding for @static
+wasmtime = { workspace = true }
+wasi-common = { workspace = true }
+
+# Logging
+env_logger = { workspace = true }
+log = { workspace = true }
+termcolor = { workspace = true }
+
+# Pest
+pest = { workspace = true }
+pest_derive = { workspace = true }
+
+# Provider YAML configs
+serde = { workspace = true, features = ["derive"] }
+serde_yml = { workspace = true }
+
+# CLI
+clap = { workspace = true, features = ["derive", "cargo", "env"] }
+
+wat = { workspace = true }
+
 [build-dependencies]
-clap = { version = "4.5.4", features = ["derive", "cargo", "env"] }
-clap_mangen = "0.2.20"
-glob = "0.3.1"
+clap = { workspace = true, features = ["derive", "cargo", "env"] }
+clap_mangen = {workspace = true}
+glob = { workspace = true }

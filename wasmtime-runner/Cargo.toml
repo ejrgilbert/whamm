@@ -10,6 +10,6 @@ path = "src/main.rs"
 #required-features = ["exe"]
 
 [dependencies]
-wasmtime = "24.0.0"
-wasmtime-wasi = "24.0.0"
-wasi-common = "24.0.0"
+wasmtime = { workspace = true }
+wasmtime-wasi = { workspace = true }
+wasi-common = { workspace = true }
