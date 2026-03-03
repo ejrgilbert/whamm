@@ -130,6 +130,13 @@ pub fn putc(c: u8) {
     print(core::str::from_utf8(&[c]).expect("Our bytes should be valid utf8"));
 }
 
+/// # Safety
+///
+/// This function assumes:
+/// - `start` has not already been freed.
+/// - The memory at `start` is in bounds.
+///
+/// Violating any of these assumptions results in **undefined behavior**.
 #[no_mangle]
 pub unsafe fn puts(start: i32, len: i32) {
     let ptr: *const u8 = start as *const u8;

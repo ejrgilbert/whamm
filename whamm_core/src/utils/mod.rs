@@ -80,7 +80,7 @@ pub fn mem_alloc(len: usize) -> *mut u8 {
 
 /// Frees memory previously allocated by [`mem_alloc`].
 ///
-/// # Safety & Invariants
+/// # Safety
 ///
 /// This function assumes:
 /// - `ptr` was returned by a previous call to [`mem_alloc`].
@@ -106,7 +106,7 @@ pub fn mem_alloc(len: usize) -> *mut u8 {
 /// - This function must be used instead of `free` or other host
 ///   deallocation functions.
 #[no_mangle]
-pub fn mem_free(ptr: *mut u8) {
+pub unsafe fn mem_free(ptr: *mut u8) {
     if ptr.is_null() {
         return;
     }
