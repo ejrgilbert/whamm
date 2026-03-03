@@ -18,6 +18,11 @@ pub fn setup_logger() {
 // ====================
 
 const VALID_SCRIPTS: &[&str] = &[
+    "
+    report var s: str = read_str(0, 0, 10);
+    wasm:opcode:drop:before {
+        var a: i32;
+    }",
     // use global state in report variable DeclInit
     "
     var ptr: i32 = 0;

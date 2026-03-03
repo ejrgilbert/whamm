@@ -39,6 +39,7 @@ fn emit_needed_funcs(
         if let Some(fid) = emitter.emit_bound_fn(
             context,
             &Fn {
+                runnable_in_report_decl_init: true,
                 def: Definition::CompilerDynamic,
                 name: FnId {
                     name: fname.clone(),

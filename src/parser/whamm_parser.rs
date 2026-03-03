@@ -393,6 +393,7 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
     // Add the new function to the current script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
     script.fns.push(types::Fn {
+        runnable_in_report_decl_init: true,
         def: Definition::User,
         name: fn_id,
         params,

@@ -1521,6 +1521,8 @@ pub struct FnId {
 
 #[derive(Clone, Debug)]
 pub struct Fn {
+    // Whether this function can be used in a DeclInit of a probe-local report
+    pub(crate) runnable_in_report_decl_init: bool,
     pub(crate) def: Definition,
     pub(crate) name: FnId,
     pub(crate) params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
@@ -1686,6 +1688,7 @@ impl Whamm {
             strcmp_params,
             DataType::Boolean,
             false,
+            true,
             StackReq::None,
         )
     }
@@ -1704,6 +1707,7 @@ impl Whamm {
             "Get the ID of the memory assigned to an imported library.".to_string(),
             mem_params,
             DataType::U32,
+            true,
             true,
             StackReq::None,
         )
@@ -1741,6 +1745,7 @@ impl Whamm {
             "Write a string to the target ptr address of the specified memory.".to_string(),
             write_params,
             DataType::Tuple { ty_info: vec![] },
+            true,
             true,
             StackReq::None,
         )
@@ -1780,6 +1785,7 @@ impl Whamm {
             write_params,
             DataType::Str,
             true,
+            false,
             StackReq::None,
         )
     }
@@ -1803,6 +1809,7 @@ impl Whamm {
             vec![],
             DataType::U32,
             true,
+            true,
             StackReq::None,
         )
     }
@@ -1821,6 +1828,7 @@ impl Whamm {
             "Whether the string has the specified prefix.".to_string(),
             starts_with_params,
             DataType::Boolean,
+            true,
             true,
             StackReq::None,
         )
@@ -1841,6 +1849,7 @@ impl Whamm {
             ends_with_params,
             DataType::Boolean,
             true,
+            true,
             StackReq::None,
         )
     }
@@ -1859,6 +1868,7 @@ impl Whamm {
             "Whether the string has the specified sub-string.".to_string(),
             contains_params,
             DataType::Boolean,
+            true,
             true,
             StackReq::None,
         )
@@ -2186,11 +2196,13 @@ impl BoundFunction {
         params: Vec<(Expr, DataType)>,
         return_ty: DataType,
         is_static: bool,
+        runnable_in_report_decl_init: bool,
         req_args: StackReq,
     ) -> Self {
         Self {
             docs,
             function: Fn {
+                runnable_in_report_decl_init,
                 def: if is_static {
                     Definition::CompilerStatic
                 } else {

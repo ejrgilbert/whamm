@@ -1199,10 +1199,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 };
                 let rec = rec.unwrap();
 
-                let (params, ret_ty, def, loc) = match rec {
+                let (params, ret_ty, def, runnable_in_report_decl_init, loc) = match rec {
                     Record::Fn {
                         params,
                         ret_ty,
+                        runnable_in_report_decl_init,
                         def,
                         loc,
                         ..
@@ -1215,7 +1216,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 expected_param_tys.push(Some(ty.clone()));
                             }
                         }
-                        (expected_param_tys, ret_ty.clone(), def, loc)
+                        (
+                            expected_param_tys,
+                            ret_ty.clone(),
+                            def,
+                            *runnable_in_report_decl_init,
+                            loc,
+                        )
                     }
                     Record::LibFn {
                         name,
@@ -1240,7 +1247,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         for param in params.iter() {
                             expected_param_tys.push(Some(param.clone()));
                         }
-                        (expected_param_tys, ret_ty, def, loc)
+                        (expected_param_tys, ret_ty, def, true, loc)
                     }
                     other => {
                         panic!("Got unexpected record type: {:?}", other)
@@ -1266,6 +1273,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         &loc.clone().map(|l| l.line_col),
                     );
                     //continue to check for other errors even after emitting this one
+                } else if !self.in_script_global
+                    && self.restrict_probe_local_state
+                    && !runnable_in_report_decl_init
+                {
+                    self.err.type_check_error(
+                        "Cannot use a non-static compiler function to initialize this variable with special scoping. Hint: split out the variable's initialization from the declaration.".to_string(),
+                        &loc.clone().map(|l| l.line_col),
+                    );
                 }
 
                 for (i, (expected, actual)) in

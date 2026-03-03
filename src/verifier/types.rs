@@ -707,6 +707,7 @@ pub enum Record {
         // given that we are assuming function that return nothing
         // returns a unit type (empty tuple)
         ret_ty: DataType,
+        runnable_in_report_decl_init: bool,
         def: Definition,
 
         /// The address of this function post-injection

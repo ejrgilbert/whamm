@@ -418,6 +418,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
         // create record
         let fn_rec = Record::Fn {
             name: f.name.clone(),
+            runnable_in_report_decl_init: f.runnable_in_report_decl_init,
             def: f.def,
             params: vec![],
             ret_ty: f.results.clone(),
@@ -603,6 +604,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                     params,
                     results,
                     body,
+                    ..
                 },
             ..
         } in funcs.iter()
