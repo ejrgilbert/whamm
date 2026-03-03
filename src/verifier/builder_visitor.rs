@@ -418,6 +418,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
         // create record
         let fn_rec = Record::Fn {
             name: f.name.clone(),
+            runnable_in_report_decl_init: f.runnable_in_report_decl_init,
             def: f.def,
             params: vec![],
             ret_ty: f.results.clone(),
@@ -568,13 +569,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
                 }
             } else {
                 // Add other globals to the scope itself
-                self.add_global(
-                    ty.clone(),
-                    name.clone(),
-                    None, // todo this is just made up
-                    *lifetime,
-                    None,
-                );
+                self.add_global(ty.clone(), name.clone(), None, *lifetime, None);
             }
         }
 
@@ -596,6 +591,58 @@ impl SymbolTableBuilder<'_, '_, '_> {
             self.derived_vars.remove(var);
         }
     }
+
+    fn visit_type_utils(&mut self, for_type: &DataType, funcs: &[BoundFunction]) {
+        let whamm_rec_id = self.curr_whamm.unwrap();
+
+        let mut lib_funcs = HashMap::new();
+        for BoundFunction {
+            function:
+                Fn {
+                    def,
+                    name,
+                    params,
+                    results,
+                    body,
+                    ..
+                },
+            ..
+        } in funcs.iter()
+        {
+            // we only support static util funcs right now
+            assert!(matches!(def, Definition::CompilerStatic));
+            assert!(body.is_empty());
+
+            let fn_name = name.name.to_string();
+            let fn_rec = Record::LibFn {
+                name: fn_name.clone(),
+                params: params.iter().map(|(_, ty)| ty.clone()).collect(),
+                results: vec![results.clone()],
+                def: *def,
+                addr: None,
+                loc: None,
+            };
+
+            // Add fn to library
+            let id = self.table.put(fn_name.clone(), fn_rec);
+            lib_funcs.insert(fn_name.clone(), id);
+        }
+
+        let lib_id = self.table.put(
+            for_type.to_string(),
+            Record::Library {
+                mem_id: Default::default(),
+                fns: lib_funcs,
+            },
+        );
+
+        // add libfuncs rec to Whamm record
+        let Record::Whamm { type_utils, .. } = self.table.get_record_mut(whamm_rec_id).unwrap()
+        else {
+            unreachable!("{} Wrong record type", UNEXPECTED_ERR_MSG);
+        };
+        type_utils.insert(for_type.clone(), lib_id);
+    }
 }
 
 impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
@@ -609,6 +656,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
         let whamm_rec = Record::Whamm {
             fns: vec![],
             globals: vec![],
+            type_utils: HashMap::new(),
             scripts: vec![],
         };
 
@@ -627,8 +675,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
             },
         );
 
-        // visit globals
+        // visit bound vars
         _ = self.visit_bound_vars(&whamm.bound_vars);
+
+        // visit type utils
+        self.visit_type_utils(&DataType::Str, &whamm.utils_strings);
 
         // visit scripts
         whamm
@@ -987,7 +1038,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
                     self.visit_expr(arg);
                 }
             }
-            Expr::LibCall { call, .. } => {
+            Expr::ObjCall { call, .. } => {
                 self.visit_expr(call);
             }
             Expr::Primitive {

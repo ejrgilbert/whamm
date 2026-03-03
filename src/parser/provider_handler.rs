@@ -819,6 +819,7 @@ impl CheckedFrom<BoundFuncYml> for BoundFunc {
 
         Ok(Self {
             func: WhammFn {
+                runnable_in_report_decl_init: true,
                 def,
                 name: FnId {
                     name: value.name.to_owned(),

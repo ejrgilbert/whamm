@@ -15,6 +15,8 @@ wasm:opcode:drop:before {
     // (should also get flushed at the end of execution)
     report var s: str;
     s = read_str(memid(alpha), ptr, l as u32);
+    report var length: u32;
+    length = s.len();       // call happens at runtime
 
     // free the memory we've just used
     alpha.mem_free(ptr);

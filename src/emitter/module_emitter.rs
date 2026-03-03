@@ -301,7 +301,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, '
         if context == "whamm" && f.name.name == "strcmp" {
             self.emit_whamm_strcmp_fn(f)
         } else {
-            panic!("Provided function, but could not find a context to provide the definition, context: {context}");
+            panic!("Provided function ('{}'), but could not find a context to provide the definition, context: {context}", f.name.name);
         }
     }
 

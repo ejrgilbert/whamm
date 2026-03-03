@@ -239,31 +239,53 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                     loc: loc.clone(),
                 }
             }
-            Expr::LibCall {
+            Expr::ObjCall {
                 annotation,
-                lib_name,
+                obj_name,
                 call,
                 results,
                 loc,
             } => {
-                let is_static = matches!(annotation, Some(Annotation::Static));
+                let static_annot = matches!(annotation, Some(Annotation::Static));
                 let (is_nested, _) = if let Some(c) = self.curr_user_lib.first() {
                     (true, c.1)
                 } else {
                     (false, false)
                 };
 
-                self.curr_user_lib.push((lib_name.to_string(), is_static));
-                let new_call = Expr::LibCall {
+                let is_type_util = if let Some(Record::Var { ty, def, .. }) =
+                    self.table.lookup_var(obj_name, false).cloned()
+                {
+                    if matches!(ty, DataType::Str) {
+                        // this is a type utility
+                        self.used_bound_fns
+                            .insert(("whamm".to_string(), "strcmp".to_string()));
+
+                        if def.is_comp_defined() {
+                            // For wei: Request all!
+                            // For B.R.: Only request dynamic data
+                            self.push_metadata(obj_name, &ty);
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                };
+
+                self.curr_user_lib
+                    .push((obj_name.to_string(), static_annot));
+                let new_call = Expr::ObjCall {
                     annotation: annotation.clone(),
-                    lib_name: lib_name.clone(),
+                    obj_name: obj_name.clone(),
                     call: Box::new(self.visit_expr_inner(call)),
                     results: results.clone(),
                     loc: loc.clone(),
                 };
                 self.curr_user_lib.pop();
 
-                if is_static {
+                if static_annot {
                     // this is a static library call, translate this into an optimize-able expression
                     // BUT ONLY IF we're not in a predicate that's targeting an engine, we want to rewrite this expression
                     if (matches!(self.visiting, Visiting::Body)) && self.config.as_monitor_module {
@@ -283,7 +305,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                             new_call
                         };
                     }
-                } else {
+                } else if !is_type_util {
                     // now we know that the call is not annotated as static
                     self.mark_expr_as_dynamic();
                 }
@@ -320,14 +342,21 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 let (def, ret_ty, req_args, context) = if let Some((lib_name, is_static)) =
                     &self.curr_user_lib.last()
                 {
-                    let Some(Record::LibFn { results, def, .. }) =
-                        self.table.lookup_lib_fn(lib_name, &fn_name)
-                    else {
-                        self.err.add_internal_error(
-                            &format!("Could not find library function for {lib_name}.{fn_name}"),
-                            expr.loc(),
-                        );
-                        return expr.clone();
+                    let (results, def) = if let Some(Record::LibFn { results, def, .. }) =
+                        self.table.lookup_lib_fn(lib_name, &fn_name, false)
+                    {
+                        (results, def)
+                    } else {
+                        let Some(Record::Var { ty, .. }) = self.table.lookup_rec(lib_name) else {
+                            panic!("should have gotten a var type")
+                        };
+                        if let Some(Record::LibFn { results, def, .. }) =
+                            self.table.lookup_type_util_fn(ty, &fn_name)
+                        {
+                            (results, def)
+                        } else {
+                            panic!("should have gotten a lib func type")
+                        }
                     };
 
                     // Track user library that's being used

@@ -393,6 +393,7 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
     // Add the new function to the current script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
     script.fns.push(types::Fn {
+        runnable_in_report_decl_init: true,
         def: Definition::User,
         name: fn_id,
         params,
@@ -1030,9 +1031,9 @@ fn handle_lib_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     // handle lib func call
     let lib_func_call = handle_fn_call(pairs.next().unwrap())?;
 
-    Ok(Expr::LibCall {
+    Ok(Expr::ObjCall {
         annotation,
-        lib_name,
+        obj_name: lib_name,
         call: Box::new(lib_func_call),
         results: None,
         loc: Some(Location {

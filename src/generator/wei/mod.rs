@@ -149,7 +149,7 @@ impl WeiGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
                     loc: None,
                 };
 
-                let ty = if let Expr::LibCall { results, .. } = lib_call {
+                let ty = if let Expr::ObjCall { results, .. } = lib_call {
                     results.as_ref().unwrap().clone()
                 } else {
                     self.err.add_internal_error(
