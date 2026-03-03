@@ -901,8 +901,8 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             // first save off current context's state on whether we're in a lib call
             let in_obj_call_on = ctx.in_obj_call_on.clone();
 
-            let addr = if let Some(lib_name) = &in_obj_call_on {
-                let rec = ctx.table.lookup_rec(lib_name).cloned();
+            let addr = if let Some(obj_name) = &in_obj_call_on {
+                let rec = ctx.table.lookup_rec(obj_name).cloned();
                 match rec {
                     Some(Record::Library { fns, .. }) => {
                         let Some(rec) = fns.get(&fn_name) else {
@@ -916,10 +916,10 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     Some(Record::Var { def, ty, .. }) => {
                         ctx.in_obj_call_on = None;
                         return handle_type_utils_call(
-                            lib_name, &ty, def, fn_name, args, strategy, injector, ctx,
+                            obj_name, &ty, def, fn_name, args, strategy, injector, ctx,
                         );
                     }
-                    _ => unreachable!("unexpected type for {lib_name}: {rec:?}"),
+                    _ => unreachable!("unexpected type for {obj_name}: {rec:?}"),
                 }
             } else {
                 let Some(Record::Fn { def, addr, .. }) = ctx.table.lookup_fn(&fn_name, true) else {
@@ -1072,7 +1072,7 @@ fn handle_type_utils_string<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             StringUtils::starts_with_dynamic(&mut target, args, strategy, injector, ctx)
         }
         "ends_with" => StringUtils::ends_with_dynamic(&mut target, args, strategy, injector, ctx),
-        "contains" => StringUtils::contains_dynamic(&mut target, strategy, injector, ctx),
+        "contains" => StringUtils::contains_dynamic(&mut target, args, strategy, injector, ctx),
         _ => {
             unreachable!(
                 "{} Could not find handler for static function with name: {}",

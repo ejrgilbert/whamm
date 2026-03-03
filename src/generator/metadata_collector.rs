@@ -246,22 +246,36 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 results,
                 loc,
             } => {
-                let is_static = matches!(annotation, Some(Annotation::Static));
+                let static_annot = matches!(annotation, Some(Annotation::Static));
                 let (is_nested, _) = if let Some(c) = self.curr_user_lib.first() {
                     (true, c.1)
                 } else {
                     (false, false)
                 };
 
-                if let Some(Record::Var { ty, .. }) = self.table.lookup_var(obj_name, false) {
+                let is_type_util = if let Some(Record::Var { ty, def, .. }) =
+                    self.table.lookup_var(obj_name, false).cloned()
+                {
                     if matches!(ty, DataType::Str) {
                         // this is a type utility
                         self.used_bound_fns
                             .insert(("whamm".to_string(), "strcmp".to_string()));
-                    }
-                }
 
-                self.curr_user_lib.push((obj_name.to_string(), is_static));
+                        if def.is_comp_defined() {
+                            // For wei: Request all!
+                            // For B.R.: Only request dynamic data
+                            self.push_metadata(obj_name, &ty);
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                };
+
+                self.curr_user_lib
+                    .push((obj_name.to_string(), static_annot));
                 let new_call = Expr::ObjCall {
                     annotation: annotation.clone(),
                     obj_name: obj_name.clone(),
@@ -271,7 +285,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 };
                 self.curr_user_lib.pop();
 
-                if is_static {
+                if static_annot {
                     // this is a static library call, translate this into an optimize-able expression
                     // BUT ONLY IF we're not in a predicate that's targeting an engine, we want to rewrite this expression
                     if (matches!(self.visiting, Visiting::Body)) && self.config.as_monitor_module {
@@ -291,7 +305,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                             new_call
                         };
                     }
-                } else {
+                } else if !is_type_util {
                     // now we know that the call is not annotated as static
                     self.mark_expr_as_dynamic();
                 }
