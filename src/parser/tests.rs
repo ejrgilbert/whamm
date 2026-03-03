@@ -14,7 +14,7 @@ pub fn setup_logger() {
 
 pub fn get_ast(script: &str, err: &mut ErrorGen) -> Whamm {
     info!("Getting the AST");
-    match parse_script(&pull_all_yml_files(&DEFS_PATH), &script.to_string(), err) {
+    match parse_script(&pull_all_yml_files(DEFS_PATH), &script.to_string(), err) {
         Some(ast) => {
             // print_ast(&ast);
             ast

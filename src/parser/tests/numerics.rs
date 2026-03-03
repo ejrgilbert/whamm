@@ -1,3 +1,4 @@
+#![allow(clippy::type_complexity)]
 use crate::common::error::WhammError;
 use crate::parser::tests::setup_logger;
 use crate::parser::types::{Expr, NumLit, Rule, Value, WhammParser};
@@ -470,8 +471,8 @@ pub fn test_f32s() {
     t(NumLit::f32(4.55555),         "4.55555");
     t(NumLit::f32(3.666666),        "3.666666");
     t(NumLit::f32(2.7777777),       "2.7777777");
-    t(NumLit::f32(1.88888888),      "1.88888888");
-    t(NumLit::f32(-1.88888888),     "-1.88888888");
+    t(NumLit::f32(1.888_888_8),      "1.88888888");
+    t(NumLit::f32(-1.888_888_8),     "-1.88888888");
     t(NumLit::f32(0.999999999),     "0.999999999");
     t(NumLit::f32(-0.999999999),    "-0.999999999");
 
@@ -613,14 +614,12 @@ fn parse_float(exp: NumLit, token: &str) {
 }
 
 fn fail_parse_float(token: &str) {
-    match fail_parser(Rule::FLOAT, token, &handle_float) {
-        Ok(Expr::Primitive {
-            val: Value::Number { val, .. },
-            ..
-        }) => {
-            handle_unexp_pass(val, token);
-        }
-        _ => {} // passes, nothing to do
+    if let Ok(Expr::Primitive {
+        val: Value::Number { val, .. },
+        ..
+    }) = fail_parser(Rule::FLOAT, token, &handle_float)
+    {
+        handle_unexp_pass(val, token);
     }
 }
 
