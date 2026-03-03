@@ -24,6 +24,13 @@ jobs:
       # Caching to increase performance as dependency tree grows
       - uses: Swatinem/rust-cache@v2
 
+      - name: Build Whamm Core Library
+        run: |
+          pushd whamm_core
+          rustup target add wasm32-wasip1
+          cargo build --release --target wasm32-wasip1
+          popd
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 
