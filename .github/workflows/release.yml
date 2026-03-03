@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    name: Bump and Create Release PR
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Install cargo-edit (provides cargo set-version)
+      - name: Install cargo-edit
+        run: cargo install cargo-edit
+
+      # Bump version using official cargo-edit tool
+      - name: Bump Version
+        run: cargo set-version --bump ${{ github.event.inputs.bump }}
+
+      # Extract version cleanly using cargo metadata (more robust than grep)
+      - name: Extract Version
+        id: version
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name=="splicer") | .version')
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Create branch, commit, and PR
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+
+          git checkout -b release-v${{ steps.version.outputs.version }}
+          git add Cargo.toml Cargo.lock
+          git commit -m "Release v${{ steps.version.outputs.version }}"
+          git push --set-upstream origin release-v${{ steps.version.outputs.version }}
+
+          gh pr create \
+            --title "Release v${{ steps.version.outputs.version }}" \
+            --body "Creating release for splicer v${{ steps.version.outputs.version }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
