@@ -1,5 +1,5 @@
-use std::fs::File;
 use std::env;
+use std::fs::File;
 use wasi_common::sync::{Dir, WasiCtxBuilder};
 use wasmtime::*;
 

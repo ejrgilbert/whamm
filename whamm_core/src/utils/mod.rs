@@ -56,10 +56,7 @@ pub fn mem_alloc(len: usize) -> *mut u8 {
     let total_size = header_size + len;
 
     // Align to usize so the header is properly aligned
-    let layout = match Layout::from_size_align(
-        total_size,
-        align_of::<usize>(),
-    ) {
+    let layout = match Layout::from_size_align(total_size, align_of::<usize>()) {
         Ok(layout) => layout,
         Err(_) => return ptr::null_mut(),
     };
@@ -121,10 +118,7 @@ pub unsafe fn mem_free(ptr: *mut u8) {
         let len = *(raw as *mut usize);
         let total_size = header_size + len;
 
-        let layout = match Layout::from_size_align(
-            total_size,
-            align_of::<usize>(),
-        ) {
+        let layout = match Layout::from_size_align(total_size, align_of::<usize>()) {
             Ok(layout) => layout,
             Err(_) => return, // layout corruption → best effort no-op
         };

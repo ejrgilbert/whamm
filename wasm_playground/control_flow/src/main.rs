@@ -21,7 +21,7 @@ fn opt_str(opt: &Opt) -> String {
     match opt {
         Opt::Hi => "hi".to_string(),
         Opt::Hello => "hello".to_string(),
-        Opt::Sup => "'sup".to_string()
+        Opt::Sup => "'sup".to_string(),
     }
 }
 
@@ -46,5 +46,5 @@ fn main() {
 enum Opt {
     Hi,
     Hello,
-    Sup
+    Sup,
 }
