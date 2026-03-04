@@ -3,8 +3,12 @@ pub mod utils;
 
 use crate::parser::yml_processor::pull_all_yml_files;
 
-pub static WHAMM_CORE_LIB_BYTES: &[u8] =
-    include_bytes!("../../target/wasm32-wasip1/release/whamm_core.wasm");
+pub static WHAMM_CORE_LIB_BYTES: &[u8] = include_bytes!(
+    concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/target/wasm32-wasip1/release/whamm_core.wasm"
+    )
+);
 
 // Include the embedded resources (see build.rs for how this is built)
 include!(concat!(env!("OUT_DIR"), "/bundled.rs"));

@@ -31,7 +31,11 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        run: |
+          pushd whamm_core/
+          cargo build --target wasm32-wasip1 --release
+          popd
+          cargo build --release --target ${{ matrix.target }}
 
       - name: Rename binary
         run: |
