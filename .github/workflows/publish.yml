@@ -18,10 +18,10 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact_name: splicer-linux-x86_64
+            artifact_name: whamm-linux-x86_64
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact_name: splicer-macos-x86_64
+            artifact_name: whamm-macos-x86_64
 
     steps:
       - uses: actions/checkout@v4
@@ -36,8 +36,8 @@ jobs:
       - name: Rename binary
         run: |
           mkdir dist
-          cp target/${{ matrix.target }}/release/splicer dist/${{ matrix.artifact_name }} || \
-          cp target/${{ matrix.target }}/release/splicer.exe dist/${{ matrix.artifact_name }}
+          cp target/${{ matrix.target }}/release/whamm dist/${{ matrix.artifact_name }} || \
+          cp target/${{ matrix.target }}/release/whamm.exe dist/${{ matrix.artifact_name }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

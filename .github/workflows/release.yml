@@ -44,7 +44,7 @@ jobs:
         id: version
         run: |
           version=$(cargo metadata --no-deps --format-version 1 \
-            | jq -r '.packages[] | select(.name=="splicer") | .version')
+            | jq -r '.packages[] | select(.name=="whamm") | .version')
           echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Create branch, commit, and PR
@@ -59,6 +59,6 @@ jobs:
 
           gh pr create \
             --title "Release v${{ steps.version.outputs.version }}" \
-            --body "Creating release for splicer v${{ steps.version.outputs.version }}"
+            --body "Creating release for whamm v${{ steps.version.outputs.version }}"
         env:
           GH_TOKEN: ${{ github.token }}
