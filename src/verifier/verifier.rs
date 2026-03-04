@@ -1254,7 +1254,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 };
 
-                if self.in_script_global && !(*def == CompilerDynamic || *def == CompilerStatic) {
+                if curr_obj.is_none()
+                    && self.in_script_global
+                    && !(*def == CompilerDynamic || *def == CompilerStatic)
+                {
                     //check if in global state and if is_comp_defined is false --> not allowed if both are the case
                     self.err.type_check_error(
                         "Function calls to user def functions are not allowed in the global state of the script"
