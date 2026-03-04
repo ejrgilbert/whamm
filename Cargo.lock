@@ -3037,6 +3037,7 @@ dependencies = [
  "wasi-common",
  "wasmtime 38.0.4",
  "wat",
+ "whamm_core",
  "wirm",
 ]
 
