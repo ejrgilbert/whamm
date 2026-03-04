@@ -5,7 +5,6 @@ use std::fs::File;
 use std::io::Error;
 use std::io::Write;
 use std::path::Path;
-use std::process::Command;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let out_dir = env::var("OUT_DIR").unwrap();
@@ -18,15 +17,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // -- bundle the provider definitions
     let defs_dir = "./";
     bundle_defs(defs_dir, &mut out_file, "DEF_YAMLS");
-
-    // -- bundle the whamm_core library
-    let whamm_core_path = "target/wasm32-wasip1/release/whamm_core.wasm";
-    bundle_wasm(
-        whamm_core_path,
-        build_core_library,
-        &mut out_file,
-        "WHAMM_CORE_LIB_BYTES",
-    );
 
     // Build the CLI manual.
 
@@ -55,37 +45,6 @@ fn bundle_defs(base_dir: &str, out_file: &mut File, var_name: &str) {
         writeln!(out_file, "    {:?},", def).unwrap();
     }
     writeln!(out_file, "];").unwrap();
-}
-
-fn bundle_wasm(p: &str, build_wasm: fn(), out_file: &mut File, wasm_var_name: &str) {
-    // ALWAYS build it -- ensures wasm is up to date
-    build_wasm();
-
-    let data = fs::read(p).unwrap_or_else(|_| panic!("Failed to read Wasm binary: {}", p));
-    write!(out_file, "pub static {wasm_var_name}: &[u8] = &[").unwrap();
-    for byte in data {
-        write!(out_file, "{},", byte).unwrap();
-    }
-    writeln!(out_file, "];").unwrap();
-}
-
-fn build_core_library() {
-    let res = Command::new("cargo")
-        .arg("build")
-        .arg("--target")
-        .arg("wasm32-wasip1")
-        .arg("--release")
-        .current_dir("whamm_core")
-        .output()
-        .expect("failed to execute process");
-    if !res.status.success() {
-        println!(
-            "[ERROR] 'whamm_core' build project failed:\n{}\n{}",
-            String::from_utf8(res.stdout).unwrap(),
-            String::from_utf8(res.stderr).unwrap()
-        );
-    }
-    assert!(res.status.success());
 }
 
 // ==================================
