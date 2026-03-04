@@ -30,6 +30,34 @@ Strings can use the `\` character to escape some sequences including:
 report var s: str = "hello drop\u{1F600}😀\x41\n";
 ```
 
+## Utilities ##
+
+The following utilities are provided for string operations:
+
+```
+var s: str = "test";
+
+/// Returns the length of the string.
+/// This length is in bytes, not chars or graphemes. In other words, it might not be
+/// what a human considers the length of the string.
+var l: u32 = s.len();
+
+/// Returns true if the given pattern matches a prefix of this string slice.
+/// Returns false if it does not.
+var r0: bool = s.starts_with("te");    // `true`
+var r1: bool = s.starts_with("st");    // `false`
+
+/// Returns true if the given pattern matches a suffix of this string slice.
+/// Returns false if it does not.
+var r2: bool = s.ends_with("te");      // `false`
+var r3: bool = s.ends_with("st");      // `true`
+
+/// Returns true if the given pattern matches a sub-slice of this string.
+/// Returns false if it does not.
+var r4: bool = s.contains("te");       // `true`
+var r5: bool = s.contains("NA");       // `false`
+```
+
 # Strings and Libraries #
 
 Strings can be passed to / pulled from libraries through memory operations. To have
