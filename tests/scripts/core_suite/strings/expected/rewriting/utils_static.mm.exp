@@ -45,8 +45,8 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 1492, memaddr, contains_exp_true1, bool, i32, script0, main, 5, 67, 0_wasm:opcode:drop:before, true
 1524, memaddr, contains_exp_true2, bool, i32, script0, main, 5, 67, 0_wasm:opcode:drop:before, true
 1556, memaddr, contains_exp_false, bool, i32, script0, main, 5, 67, 0_wasm:opcode:drop:before, false
-292, memaddr, s, str, (i32, i32), script0, main, 5, 47, 0_wasm:opcode:drop:before, hello world
-616, memaddr, s, str, (i32, i32), script0, main, 5, 52, 0_wasm:opcode:drop:before, hello world
-940, memaddr, s, str, (i32, i32), script0, main, 5, 57, 0_wasm:opcode:drop:before, hello world
-1264, memaddr, s, str, (i32, i32), script0, main, 5, 62, 0_wasm:opcode:drop:before, hello world
-1588, memaddr, s, str, (i32, i32), script0, main, 5, 67, 0_wasm:opcode:drop:before, hello world
+292, memaddr, s, str, (i32; i32), script0, main, 5, 47, 0_wasm:opcode:drop:before, hello world
+616, memaddr, s, str, (i32; i32), script0, main, 5, 52, 0_wasm:opcode:drop:before, hello world
+940, memaddr, s, str, (i32; i32), script0, main, 5, 57, 0_wasm:opcode:drop:before, hello world
+1264, memaddr, s, str, (i32; i32), script0, main, 5, 62, 0_wasm:opcode:drop:before, hello world
+1588, memaddr, s, str, (i32; i32), script0, main, 5, 67, 0_wasm:opcode:drop:before, hello world

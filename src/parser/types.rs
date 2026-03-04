@@ -406,7 +406,6 @@ impl DataType {
             DataType::Lib |
             DataType::AssumeGood |
             DataType::Unknown => {
-                // todo
                 // TODO -- is this okay for AssumeGood?
                 // size should be determined respective to the context!
                 None

@@ -30,12 +30,12 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 1012, memaddr, start_exp_false, bool, i32, script0, main, 5, 67, 0_wasm:opcode:drop:before, false
 1044, memaddr, end_exp_true, bool, i32, script0, main, 5, 67, 0_wasm:opcode:drop:before, true
 1076, memaddr, end_exp_false, bool, i32, script0, main, 5, 67, 0_wasm:opcode:drop:before, false
-196, memaddr, s, str, (i32, i32), script0, main, 5, 47, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz
+196, memaddr, s, str, (i32; i32), script0, main, 5, 47, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz
 
-424, memaddr, s, str, (i32, i32), script0, main, 5, 52, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz
+424, memaddr, s, str, (i32; i32), script0, main, 5, 52, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz
 
-652, memaddr, s, str, (i32, i32), script0, main, 5, 57, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz
+652, memaddr, s, str, (i32; i32), script0, main, 5, 57, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz
 
-880, memaddr, s, str, (i32, i32), script0, main, 5, 62, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz
+880, memaddr, s, str, (i32; i32), script0, main, 5, 62, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz
 
-1108, memaddr, s, str, (i32, i32), script0, main, 5, 67, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz
+1108, memaddr, s, str, (i32; i32), script0, main, 5, 67, 0_wasm:opcode:drop:before, abcdefghijklmnopqrstuvwxyz

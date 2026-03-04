@@ -1254,16 +1254,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 };
 
-                if let Some((_, is_static)) = curr_obj {
-                    //disallow (non-static) user-function calls when the in the global state of the script
-                    if self.in_script_global && !is_static {
-                        // self.err.type_check_error(
-                        //     "Non-static calls to libraries are not allowed in the global state of the script"
-                        //         .to_owned(),
-                        //     &loc.clone().map(|l| l.line_col),
-                        // );
-                    }
-                } else if self.in_script_global
+                if self.in_script_global
                     && !(*def == CompilerDynamic || *def == CompilerStatic)
                 {
                     //check if in global state and if is_comp_defined is false --> not allowed if both are the case

@@ -169,8 +169,8 @@ impl ReportVars {
                 let mut first = true;
                 for key in keys {
                     if !first {
-                        addr_vals.push_str(", ");
-                        addr_tys.push_str(", ");
+                        addr_vals.push_str("; ");
+                        addr_tys.push_str("; ");
                     }
                     addr_vals.push_str(key.to_string().as_str());
                     addr_tys.push_str(&key.ty());
@@ -1493,7 +1493,7 @@ fn get_wasm_tys_str(wasm_tys: &[WirmType]) -> String {
     let mut first = true;
     for ty in wasm_tys.iter() {
         if !first {
-            res.push_str(", ");
+            res.push_str("; ");
         }
         let s = get_wasm_ty_str(ty);
         res.push_str(&s);
