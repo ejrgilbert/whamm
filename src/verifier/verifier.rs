@@ -1031,7 +1031,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     if let Some(rec) = self.table.get_record(id) {
                         if let Record::Var { ty, def, value, .. } = rec {
                             *definition = *def;
-                            // println!("{name}: {ty}");
                             if let Some(val) = value {
                                 // overwrite with a primitive value expression!
                                 *expr = Expr::Primitive {
