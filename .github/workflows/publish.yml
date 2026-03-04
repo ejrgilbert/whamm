@@ -62,6 +62,13 @@ jobs:
       - name: Login to crates.io
         run: cargo login ${{ secrets.CRATES_API_TOKEN }}
 
+      - name: Build Whamm Core Library
+        run: |
+          pushd whamm_core
+          rustup target add wasm32-wasip1
+          cargo build --release --target wasm32-wasip1
+          popd
+
       - name: Publish
         run: cargo publish --locked
 
