@@ -60,7 +60,6 @@ name = "whamm"
 path = "src/main.rs"
 
 [dependencies]
-whamm_core = { path = "whamm_core" }
 failure = { workspace = true }
 glob = { workspace = true }
 lazy_static = { workspace = true }
