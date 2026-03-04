@@ -1,7 +1,7 @@
 use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
 use crate::generator::ast::{Probe, Script, StackReq, WhammParam, WhammParams};
-use crate::lang_features::report_vars::{BytecodeLoc, Metadata as ReportMetadata};
+use crate::lang_features::report_vars::{BytecodeLoc, LocationData, Metadata as ReportMetadata};
 use crate::parser::provider_handler::{Event, ModeKind, Package, Probe as ParserProbe, Provider};
 use crate::parser::types::{
     Annotation, BinOp, Block, DataType, Definition, Expr, Location, Script as ParserScript,
@@ -49,6 +49,7 @@ pub struct MetadataCollector<'a, 'b, 'c> {
 
     // misc. trackers
     pub used_user_library_fns: UserLibs,
+    pub used_user_library_mems: HashSet<String>,
     pub used_bound_fns: HashSet<(String, String)>,
     pub used_report_var_dts: HashSet<DataType>,
     pub check_strcmp: bool,
@@ -78,6 +79,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             err,
             config,
             ast: Default::default(),
+            used_user_library_mems: Default::default(),
             used_user_library_fns: Default::default(),
             curr_user_lib: Default::default(),
             used_bound_fns: Default::default(),
@@ -237,31 +239,53 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                     loc: loc.clone(),
                 }
             }
-            Expr::LibCall {
+            Expr::ObjCall {
                 annotation,
-                lib_name,
+                obj_name,
                 call,
                 results,
                 loc,
             } => {
-                let is_static = matches!(annotation, Some(Annotation::Static));
+                let static_annot = matches!(annotation, Some(Annotation::Static));
                 let (is_nested, _) = if let Some(c) = self.curr_user_lib.first() {
                     (true, c.1)
                 } else {
                     (false, false)
                 };
 
-                self.curr_user_lib.push((lib_name.to_string(), is_static));
-                let new_call = Expr::LibCall {
+                let is_type_util = if let Some(Record::Var { ty, def, .. }) =
+                    self.table.lookup_var(obj_name, false).cloned()
+                {
+                    if matches!(ty, DataType::Str) {
+                        // this is a type utility
+                        self.used_bound_fns
+                            .insert(("whamm".to_string(), "strcmp".to_string()));
+
+                        if def.is_comp_defined() {
+                            // For wei: Request all!
+                            // For B.R.: Only request dynamic data
+                            self.push_metadata(obj_name, &ty);
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                };
+
+                self.curr_user_lib
+                    .push((obj_name.to_string(), static_annot));
+                let new_call = Expr::ObjCall {
                     annotation: annotation.clone(),
-                    lib_name: lib_name.clone(),
+                    obj_name: obj_name.clone(),
                     call: Box::new(self.visit_expr_inner(call)),
                     results: results.clone(),
                     loc: loc.clone(),
                 };
                 self.curr_user_lib.pop();
 
-                if is_static {
+                if static_annot {
                     // this is a static library call, translate this into an optimize-able expression
                     // BUT ONLY IF we're not in a predicate that's targeting an engine, we want to rewrite this expression
                     if (matches!(self.visiting, Visiting::Body)) && self.config.as_monitor_module {
@@ -281,7 +305,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                             new_call
                         };
                     }
-                } else {
+                } else if !is_type_util {
                     // now we know that the call is not annotated as static
                     self.mark_expr_as_dynamic();
                 }
@@ -318,14 +342,21 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                 let (def, ret_ty, req_args, context) = if let Some((lib_name, is_static)) =
                     &self.curr_user_lib.last()
                 {
-                    let Some(Record::LibFn { results, def, .. }) =
-                        self.table.lookup_lib_fn(lib_name, &fn_name)
-                    else {
-                        self.err.add_internal_error(
-                            &format!("Could not find library function for {lib_name}.{fn_name}"),
-                            expr.loc(),
-                        );
-                        return expr.clone();
+                    let (results, def) = if let Some(Record::LibFn { results, def, .. }) =
+                        self.table.lookup_lib_fn(lib_name, &fn_name, false)
+                    {
+                        (results, def)
+                    } else {
+                        let Some(Record::Var { ty, .. }) = self.table.lookup_rec(lib_name) else {
+                            panic!("should have gotten a var type")
+                        };
+                        if let Some(Record::LibFn { results, def, .. }) =
+                            self.table.lookup_type_util_fn(ty, &fn_name)
+                        {
+                            (results, def)
+                        } else {
+                            panic!("should have gotten a lib func type")
+                        }
                     };
 
                     // Track user library that's being used
@@ -370,6 +401,12 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                         // will need to possibly define arguments!
                         self.combine_req_args(req_args.clone());
                     }
+                } else if matches!(def, Definition::CompilerStatic) && fn_name == "memid" {
+                    let target_lib = args.first().unwrap();
+                    let Expr::VarId { name, .. } = target_lib else {
+                        panic!("not supported")
+                    };
+                    self.used_user_library_mems.insert(name.clone());
                 }
 
                 let mut new_args = vec![];
@@ -468,23 +505,15 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
                         // keep track of the used report var datatypes across the whole AST
                         self.used_report_var_dts.insert(ty.clone());
                         // this needs to also add report_var_metadata (if is_report)!
-                        let wasm_ty = if ty.to_wasm_type().len() > 1 {
-                            self.err.add_unimplemented_error(
-                                "We don't support multiple wasm types for an unshared var",
-                                loc,
-                            );
-                            return stmt.clone();
-                        } else {
-                            *ty.to_wasm_type().first().unwrap()
-                        };
-                        Some(ReportMetadata::Local {
-                            name: name.clone(),
-                            whamm_ty: ty.clone(),
-                            wasm_ty,
-                            script_id: self.script_num,
-                            bytecode_loc: BytecodeLoc::new(0, 0), // (unused)
-                            probe_id: self.curr_probe.to_string(),
-                        })
+                        Some(ReportMetadata::new(
+                            name.clone(),
+                            ty.clone(),
+                            &LocationData::Local {
+                                script_id: self.script_num,
+                                bytecode_loc: BytecodeLoc::new(0, 0), // (unused)
+                                probe_id: self.curr_probe.to_string(),
+                            },
+                        ))
                     } else {
                         None
                     };
@@ -507,6 +536,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
             Statement::Assign { var_id, expr, loc } => {
                 if let Expr::VarId { name, .. } = var_id {
                     let (def, _ty, loc) = get_def(name, self.table);
+                    incr_times_set(name, self.table);
                     if def.is_comp_defined()
                         && self.config.as_monitor_module
                         && !self.config.enable_wei_alt
@@ -735,8 +765,20 @@ impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
 }
 
 fn get_def(name: &str, table: &SymbolTable) -> (Definition, DataType, Option<Location>) {
-    if let Some(Record::Var { def, ty, loc, .. }) = table.lookup_var(name, false) {
-        (def.clone(), ty.clone(), loc.clone())
+    let var = table.lookup_var(name, false);
+    if let Some(Record::Var { def, ty, loc, .. }) = var {
+        (*def, ty.clone(), loc.clone())
+    } else if let Some(Record::Library { .. }) = var {
+        (Definition::User, DataType::Lib, None)
+    } else {
+        unreachable!("unexpected type");
+    }
+}
+
+fn incr_times_set(name: &str, table: &mut SymbolTable) {
+    let var = table.lookup_var_mut(name, false);
+    if let Some(Record::Var { times_set, .. }) = var {
+        *times_set += 1;
     } else {
         unreachable!("unexpected type");
     }

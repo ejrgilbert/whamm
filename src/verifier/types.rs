@@ -3,7 +3,7 @@ use crate::parser::types::{DataType, Definition, FnId, Location, ProbeRule, Valu
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 
 const UNEXPECTED_ERR_MSG: &str =
     "SymbolTable: Looks like you've found a bug...please report this behavior!";
@@ -240,7 +240,7 @@ impl SymbolTable {
         new_rec_id
     }
     pub fn lookup_rec_with_context(&self, key: &str) -> (Option<&Record>, String) {
-        if let (Some(id), context) = self.lookup_with_context(key) {
+        if let (Some(id), _, context) = self.lookup_with_context(key) {
             if let Some(rec) = self.get_record(id) {
                 return (Some(rec), context);
             }
@@ -255,49 +255,64 @@ impl SymbolTable {
         }
         None
     }
-    pub fn lookup_rec_mut(&mut self, key: &str) -> Option<&mut Record> {
+    pub fn lookup_rec_mut(&mut self, key: &str) -> Option<(usize, &mut Record)> {
         let id = self.lookup(key)?;
         if let Some(rec) = self.get_record_mut(id) {
-            return Some(rec);
+            return Some((id, rec));
         }
         None
     }
 
-    fn no_match(rec: &Record, exp: &str) {
+    fn no_match<T: Debug>(rec: T, exp: &str) {
         panic!("Unexpected record type. Expected {}, found: {:?}", exp, rec)
     }
 
-    pub fn lookup_lib(&self, key: &str) -> Option<&Record> {
-        if let Some(rec) = self.lookup_rec(key) {
+    pub fn lookup_lib(&self, key: &str, fail_on_miss: bool) -> Option<&Record> {
+        let res = self.lookup_rec(key).and_then(|rec| {
             if matches!(rec, Record::Library { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(rec, "Library");
                 None
             }
-        } else {
-            None
+        });
+
+        if res.is_none() && fail_on_miss {
+            Self::no_match(res, "Library");
         }
+        res
     }
     pub fn lookup_lib_mut(&mut self, key: &str) -> Option<&mut Record> {
-        if let Some(rec) = self.lookup_rec_mut(key) {
+        let res = self.lookup_rec_mut(key).and_then(|(_, rec)| {
             if matches!(rec, Record::Library { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(rec, "Library");
                 None
             }
-        } else {
-            None
+        });
+
+        if res.is_none() {
+            Self::no_match(&res, "Library");
         }
+        res
     }
 
     pub fn lookup_var_mut(&mut self, key: &str, panic_if_missing: bool) -> Option<&mut Record> {
-        if let Some(rec) = self.lookup_rec_mut(key) {
+        self.lookup_var_with_id_mut(key, panic_if_missing)
+            .map(|(_, rec)| rec)
+    }
+
+    pub fn lookup_var_with_id_mut(
+        &mut self,
+        key: &str,
+        panic_if_missing: bool,
+    ) -> Option<(usize, &mut Record)> {
+        if let Some((id, rec)) = self.lookup_rec_mut(key) {
             if matches!(rec, Record::Var { .. }) {
-                Some(rec)
+                Some((id, rec))
             } else {
-                Self::no_match(rec, "Var");
+                if panic_if_missing {
+                    Self::no_match(rec, "Var");
+                }
                 None
             }
         } else if panic_if_missing {
@@ -306,12 +321,15 @@ impl SymbolTable {
             None
         }
     }
+
     pub fn lookup_var(&self, key: &str, fail_on_miss: bool) -> Option<&Record> {
         if let Some(rec) = self.lookup_rec(key) {
-            if matches!(rec, Record::Var { .. }) {
+            if matches!(rec, Record::Var { .. } | Record::Library { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(rec, "Var");
+                if fail_on_miss {
+                    Self::no_match(rec, "Var");
+                }
                 None
             }
         } else {
@@ -339,7 +357,9 @@ impl SymbolTable {
             if matches!(rec, Record::Fn { .. }) {
                 Some(rec)
             } else {
-                Self::no_match(rec, "Fn");
+                if fail_on_miss {
+                    Self::no_match(rec, "Fn");
+                }
                 None
             }
         } else {
@@ -350,7 +370,7 @@ impl SymbolTable {
         }
     }
     pub fn lookup_fn_mut(&mut self, key: &str) -> Option<&mut Record> {
-        if let Some(rec) = self.lookup_rec_mut(key) {
+        if let Some((_, rec)) = self.lookup_rec_mut(key) {
             if matches!(rec, Record::Fn { .. }) {
                 Some(rec)
             } else {
@@ -362,8 +382,13 @@ impl SymbolTable {
         }
     }
 
-    pub fn lookup_lib_fn(&self, lib_name: &str, lib_fn_name: &str) -> Option<&Record> {
-        if let Some(Record::Library { fns, .. }) = self.lookup_lib(lib_name) {
+    pub fn lookup_lib_fn(
+        &self,
+        lib_name: &str,
+        lib_fn_name: &str,
+        fail_on_miss: bool,
+    ) -> Option<&Record> {
+        if let Some(Record::Library { fns, .. }) = self.lookup_lib(lib_name, fail_on_miss) {
             if let Some(rec) = fns.get(lib_fn_name) {
                 if let Some(rec) = self.get_record(*rec) {
                     return Some(rec);
@@ -390,14 +415,34 @@ impl SymbolTable {
         }
     }
 
-    pub fn lookup_with_context(&self, key: &str) -> (Option<usize>, String) {
+    pub fn lookup_type_util_fn(&self, ty: &DataType, fn_name: &str) -> Option<&Record> {
+        let Record::Whamm { type_utils, .. } = self.lookup_rec("whamm").unwrap() else {
+            unreachable!("{UNEXPECTED_ERR_MSG} Expected Whamm type")
+        };
+        if let Some(utils_rec_id) = type_utils.get(ty) {
+            let Record::Library { fns, .. } = self.get_record(*utils_rec_id).unwrap() else {
+                unreachable!("{UNEXPECTED_ERR_MSG} Expected Library type")
+            };
+            fns.get(fn_name).and_then(|rec| self.get_record(*rec))
+        } else {
+            None
+        }
+    }
+
+    // returns: (rec_id, scope_id, context)
+    pub fn lookup_with_context(&self, key: &str) -> (Option<usize>, Option<usize>, String) {
         match self.get_curr_scope() {
-            None => (None, "".to_string()),
+            None => (None, None, "".to_string()),
             Some(curr) => {
                 match curr.lookup(key) {
-                    Some(rec_id) => (Some(*rec_id), self.get_scope_context(curr.id)),
+                    Some(rec_id) => (
+                        Some(*rec_id),
+                        Some(curr.id),
+                        self.get_scope_context(curr.id),
+                    ),
                     None => {
                         let mut rec_id: Option<&usize> = None;
+                        let mut scope_id: Option<usize> = None;
 
                         // Search the parent instead
                         let mut lookup_scope = curr;
@@ -406,6 +451,7 @@ impl SymbolTable {
                             Some(p_id) => self.scopes.get(p_id),
                         };
                         while rec_id.is_none() && next_parent.is_some() {
+                            scope_id = Some(next_parent.unwrap().id);
                             // Perform lookup in next_parent (moving in the chain of parent scopes)
                             rec_id = next_parent.unwrap().lookup(key);
 
@@ -421,7 +467,11 @@ impl SymbolTable {
                             "".to_string()
                         };
 
-                        (rec_id.copied(), context)
+                        (
+                            rec_id.copied(),
+                            if rec_id.is_some() { scope_id } else { None },
+                            context,
+                        )
                     }
                 }
             }
@@ -429,6 +479,33 @@ impl SymbolTable {
     }
     pub fn lookup(&self, key: &str) -> Option<usize> {
         self.lookup_with_context(key).0
+    }
+    pub fn lookup_with_scope_id(&self, key: &str) -> (Option<usize>, Option<usize>) {
+        let (rec_id, scope_id, _) = self.lookup_with_context(key);
+        (rec_id, scope_id)
+    }
+
+    pub fn scope_is_probe_local(&self, scope_id: usize) -> bool {
+        let mut is_probe_local = false;
+        if let Some(scope) = self.scopes.get(scope_id) {
+            is_probe_local |= matches!(scope.ty, ScopeType::Probe);
+            let rec_id: Option<&usize> = None;
+            let mut curr_scope = scope;
+            let mut next_parent: Option<&Scope> = match curr_scope.parent {
+                None => None,
+                Some(p_id) => self.scopes.get(p_id),
+            };
+            while rec_id.is_none() && next_parent.is_some() {
+                is_probe_local |= matches!(next_parent.unwrap().ty, ScopeType::Probe);
+
+                curr_scope = next_parent.unwrap();
+                next_parent = match curr_scope.parent {
+                    None => None,
+                    Some(p_id) => self.scopes.get(p_id),
+                };
+            }
+        }
+        is_probe_local
     }
 
     fn get_scope_context(&self, scope_id: usize) -> String {
@@ -574,11 +651,12 @@ impl Display for ScopeType {
 }
 
 /// The usize values in the record fields index into the SymbolTable::records Vec.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Record {
     Whamm {
         fns: Vec<usize>,
         globals: Vec<usize>,
+        type_utils: HashMap<DataType, usize>, // points to a Record::Library
         scripts: Vec<usize>,
     },
     Script {
@@ -588,6 +666,7 @@ pub enum Record {
         providers: Vec<usize>,
     },
     Library {
+        mem_id: Option<u32>,
         fns: HashMap<String, usize>,
     },
     Provider {
@@ -628,6 +707,7 @@ pub enum Record {
         // given that we are assuming function that return nothing
         // returns a unit type (empty tuple)
         ret_ty: DataType,
+        runnable_in_report_decl_init: bool,
         def: Definition,
 
         /// The address of this function post-injection
@@ -644,6 +724,7 @@ pub enum Record {
         def: Definition,
         /// The address of this var post-injection
         addr: Option<Vec<VarAddr>>,
+        times_set: u32,
         loc: Option<Location>,
     },
 }
@@ -659,6 +740,12 @@ impl Record {
         match self {
             Record::Fn { def, .. } | Record::Var { def, .. } => def.is_comp_defined(),
             _ => true,
+        }
+    }
+    pub fn val_is_stable(&self) -> bool {
+        match self {
+            Record::Var { times_set, .. } => *times_set <= 1,
+            _ => unreachable!("cannot call this function on a non-var record."),
         }
     }
 }

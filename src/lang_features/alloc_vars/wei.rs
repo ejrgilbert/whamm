@@ -84,10 +84,6 @@ impl UnsharedVarHandler {
                 .mem_allocator
                 .emit_string(emitter.app_wasm, probe_id);
 
-            if matches!(var.ty, DataType::Str) {
-                // handle variables that are strings
-                todo!()
-            }
             // (once they're emitted, the addresses will be available in MemoryAllocator::emitted_strings)
         }
 
@@ -232,6 +228,7 @@ impl UnsharedVarHandler {
                     value: None,
                     def: Definition::User,
                     addr: Some(vec![var_addr]),
+                    times_set: 0,
                     loc: None,
                 },
             );
@@ -264,6 +261,7 @@ impl UnsharedVarHandler {
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![addr_fid]),
+                    times_set: 0,
                     loc: None,
                 },
             );
@@ -274,6 +272,7 @@ impl UnsharedVarHandler {
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![addr_pc]),
+                    times_set: 0,
                     loc: None,
                 },
             );
@@ -284,6 +283,7 @@ impl UnsharedVarHandler {
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![addr_offset]),
+                    times_set: 0,
                     loc: None,
                 },
             );

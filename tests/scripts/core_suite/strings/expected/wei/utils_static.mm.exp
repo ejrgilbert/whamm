@@ -1,0 +1,52 @@
+================================= REPORT CSV FLUSH ====================================
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
+40, memaddr, l, u32, i32, script0, main, 5, 47, 0_wasm:opcode:drop, 11
+364, memaddr, l, u32, i32, script0, main, 5, 52, 0_wasm:opcode:drop, 11
+688, memaddr, l, u32, i32, script0, main, 5, 57, 0_wasm:opcode:drop, 11
+1012, memaddr, l, u32, i32, script0, main, 5, 62, 0_wasm:opcode:drop, 11
+1336, memaddr, l, u32, i32, script0, main, 5, 67, 0_wasm:opcode:drop, 11
+72, memaddr, start_exp_true, bool, i32, script0, main, 5, 47, 0_wasm:opcode:drop, true
+104, memaddr, start_exp_false, bool, i32, script0, main, 5, 47, 0_wasm:opcode:drop, false
+136, memaddr, end_exp_true, bool, i32, script0, main, 5, 47, 0_wasm:opcode:drop, true
+168, memaddr, end_exp_false, bool, i32, script0, main, 5, 47, 0_wasm:opcode:drop, false
+200, memaddr, contains_exp_true0, bool, i32, script0, main, 5, 47, 0_wasm:opcode:drop, true
+232, memaddr, contains_exp_true1, bool, i32, script0, main, 5, 47, 0_wasm:opcode:drop, true
+264, memaddr, contains_exp_true2, bool, i32, script0, main, 5, 47, 0_wasm:opcode:drop, true
+296, memaddr, contains_exp_false, bool, i32, script0, main, 5, 47, 0_wasm:opcode:drop, false
+396, memaddr, start_exp_true, bool, i32, script0, main, 5, 52, 0_wasm:opcode:drop, true
+428, memaddr, start_exp_false, bool, i32, script0, main, 5, 52, 0_wasm:opcode:drop, false
+460, memaddr, end_exp_true, bool, i32, script0, main, 5, 52, 0_wasm:opcode:drop, true
+492, memaddr, end_exp_false, bool, i32, script0, main, 5, 52, 0_wasm:opcode:drop, false
+524, memaddr, contains_exp_true0, bool, i32, script0, main, 5, 52, 0_wasm:opcode:drop, true
+556, memaddr, contains_exp_true1, bool, i32, script0, main, 5, 52, 0_wasm:opcode:drop, true
+588, memaddr, contains_exp_true2, bool, i32, script0, main, 5, 52, 0_wasm:opcode:drop, true
+620, memaddr, contains_exp_false, bool, i32, script0, main, 5, 52, 0_wasm:opcode:drop, false
+720, memaddr, start_exp_true, bool, i32, script0, main, 5, 57, 0_wasm:opcode:drop, true
+752, memaddr, start_exp_false, bool, i32, script0, main, 5, 57, 0_wasm:opcode:drop, false
+784, memaddr, end_exp_true, bool, i32, script0, main, 5, 57, 0_wasm:opcode:drop, true
+816, memaddr, end_exp_false, bool, i32, script0, main, 5, 57, 0_wasm:opcode:drop, false
+848, memaddr, contains_exp_true0, bool, i32, script0, main, 5, 57, 0_wasm:opcode:drop, true
+880, memaddr, contains_exp_true1, bool, i32, script0, main, 5, 57, 0_wasm:opcode:drop, true
+912, memaddr, contains_exp_true2, bool, i32, script0, main, 5, 57, 0_wasm:opcode:drop, true
+944, memaddr, contains_exp_false, bool, i32, script0, main, 5, 57, 0_wasm:opcode:drop, false
+1044, memaddr, start_exp_true, bool, i32, script0, main, 5, 62, 0_wasm:opcode:drop, true
+1076, memaddr, start_exp_false, bool, i32, script0, main, 5, 62, 0_wasm:opcode:drop, false
+1108, memaddr, end_exp_true, bool, i32, script0, main, 5, 62, 0_wasm:opcode:drop, true
+1140, memaddr, end_exp_false, bool, i32, script0, main, 5, 62, 0_wasm:opcode:drop, false
+1172, memaddr, contains_exp_true0, bool, i32, script0, main, 5, 62, 0_wasm:opcode:drop, true
+1204, memaddr, contains_exp_true1, bool, i32, script0, main, 5, 62, 0_wasm:opcode:drop, true
+1236, memaddr, contains_exp_true2, bool, i32, script0, main, 5, 62, 0_wasm:opcode:drop, true
+1268, memaddr, contains_exp_false, bool, i32, script0, main, 5, 62, 0_wasm:opcode:drop, false
+1368, memaddr, start_exp_true, bool, i32, script0, main, 5, 67, 0_wasm:opcode:drop, true
+1400, memaddr, start_exp_false, bool, i32, script0, main, 5, 67, 0_wasm:opcode:drop, false
+1432, memaddr, end_exp_true, bool, i32, script0, main, 5, 67, 0_wasm:opcode:drop, true
+1464, memaddr, end_exp_false, bool, i32, script0, main, 5, 67, 0_wasm:opcode:drop, false
+1496, memaddr, contains_exp_true0, bool, i32, script0, main, 5, 67, 0_wasm:opcode:drop, true
+1528, memaddr, contains_exp_true1, bool, i32, script0, main, 5, 67, 0_wasm:opcode:drop, true
+1560, memaddr, contains_exp_true2, bool, i32, script0, main, 5, 67, 0_wasm:opcode:drop, true
+1592, memaddr, contains_exp_false, bool, i32, script0, main, 5, 67, 0_wasm:opcode:drop, false
+4, memaddr, s, str, (i32; i32), script0, main, 5, 47, 0_wasm:opcode:drop, hello world
+328, memaddr, s, str, (i32; i32), script0, main, 5, 52, 0_wasm:opcode:drop, hello world
+652, memaddr, s, str, (i32; i32), script0, main, 5, 57, 0_wasm:opcode:drop, hello world
+976, memaddr, s, str, (i32; i32), script0, main, 5, 62, 0_wasm:opcode:drop, hello world
+1300, memaddr, s, str, (i32; i32), script0, main, 5, 67, 0_wasm:opcode:drop, hello world

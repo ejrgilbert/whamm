@@ -1,12 +1,14 @@
 use crate::common::error::ErrorGen;
 use crate::lang_features::libraries::registry::WasmRegistry;
+use crate::lang_features::type_utils::strings::StringUtils;
+use crate::parser::types::Definition::User;
 use crate::parser::types::{
-    expr_to_val, BinOp, DataType, Definition, Expr, Location, NumLit, UnOp, Value,
+    expr_to_value, expr_to_wasm_val, BinOp, DataType, Definition, Expr, Location, NumLit, UnOp,
+    Value,
 };
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::{Record, SymbolTable};
 use std::ops::{Add, Div, Mul, Rem, Sub};
-
 // =======================================
 // = Constant Propagation via ExprFolder =
 // =======================================
@@ -50,40 +52,161 @@ impl<'a> ExprFolder<'a> {
             Expr::UnOp { .. } => self.fold_unop(expr, table, err),
             Expr::BinOp { .. } => self.fold_binop(expr, table, err),
             Expr::Ternary { .. } => self.fold_ternary(expr, table, err),
-            Expr::Call { .. } => self.fold_call(expr, table),
+            Expr::Call { .. } => self.fold_call(expr, table, err),
             Expr::VarId { .. } => self.fold_var_id(expr, table),
             Expr::Primitive { .. } => self.fold_primitive(expr, table, err),
             Expr::MapGet { .. } => self.fold_map_get(expr, table, err),
-            Expr::LibCall { .. } => self.fold_lib_call(expr, table, err),
+            Expr::ObjCall { .. } => self.fold_obj_call(expr, table, err),
         }
     }
 
-    fn fold_lib_call(&mut self, lib_call: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
-        self.curr_loc = lib_call.loc().clone();
+    fn fold_obj_call(&mut self, obj_call: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        self.curr_loc = obj_call.loc().clone();
 
-        if let Expr::LibCall {
+        if let Expr::ObjCall {
             annotation,
             call,
-            lib_name,
+            obj_name,
             results,
             loc,
-        } = lib_call
+        } = obj_call
         {
             if let Some(ann) = annotation {
                 if ann.is_static() && !self.as_monitor_module {
                     // we're doing bytecode rewriting, so we should statically evaluate this lib call!
-                    return self.fold_static_lib_call(lib_call, table, err);
+                    return self.fold_static_lib_call(obj_call, table, err);
                 }
             }
-            return Expr::LibCall {
+
+            if let Some(new_expr) = self.fold_type_utils_call(obj_call, table, err) {
+                return new_expr;
+            }
+
+            return Expr::ObjCall {
                 annotation: annotation.clone(),
-                lib_name: lib_name.clone(),
+                obj_name: obj_name.clone(),
                 results: results.clone(),
                 loc: loc.clone(),
                 call: Box::new(self.fold_expr_inner(call, table, err)),
             };
         }
-        lib_call.clone()
+        obj_call.clone()
+    }
+
+    fn fold_type_utils_call(
+        &mut self,
+        obj_call: &Expr,
+        table: &SymbolTable,
+        err: &mut ErrorGen,
+    ) -> Option<Expr> {
+        if let Expr::ObjCall {
+            call,
+            obj_name,
+            loc: obj_call_loc,
+            ..
+        } = obj_call
+        {
+            if let Expr::Primitive { val, .. } = self.fold_expr_inner(
+                &Expr::VarId {
+                    definition: User,
+                    name: obj_name.clone(),
+                    loc: obj_call_loc.clone(),
+                },
+                table,
+                err,
+            ) {
+                // already made it through typechecking, we can assume the records exist!
+                if let Expr::Call {
+                    fn_target, args, ..
+                } = call.as_ref()
+                {
+                    if let Expr::VarId {
+                        name: func_name, ..
+                    } = fn_target.as_ref()
+                    {
+                        let mut arg_vals = vec![];
+                        for arg in args.iter() {
+                            // fold each of these expressions and add to the arg_vals vector
+                            let new_arg = self.fold_expr_inner(arg, table, err);
+                            if let Some(new_arg) = expr_to_value(&new_arg) {
+                                arg_vals.push(new_arg);
+                            } else {
+                                err.add_internal_error(
+                                    &format!(
+                                        "couldn't convert to a primitive value: {:?}",
+                                        new_arg
+                                    ),
+                                    obj_call_loc,
+                                );
+                            }
+                        }
+                        let ty = val.ty();
+                        return match ty {
+                            DataType::Str => Some(self.fold_string_utils_call(
+                                func_name,
+                                &val,
+                                arg_vals,
+                                obj_call_loc,
+                            )),
+                            _ => unreachable!("Utility functions not supported for type: {ty}"),
+                        };
+                    } else {
+                        err.add_internal_error(
+                            &format!("Expected a name expression, got: {:?}", fn_target),
+                            obj_call_loc,
+                        );
+                        return None;
+                    }
+                } else {
+                    err.add_internal_error(
+                        &format!("Expected call expression, got: {:?}", call),
+                        obj_call_loc,
+                    );
+                    return None;
+                }
+            }
+        }
+        None
+    }
+
+    fn fold_string_utils_call(
+        &mut self,
+        fn_name: &str,
+        val: &Value,
+        args: Vec<Value>,
+        loc: &Option<Location>,
+    ) -> Expr {
+        match fn_name {
+            "len" => {
+                let res = StringUtils::len(val);
+                Expr::Primitive {
+                    val: Value::gen_u32(res),
+                    loc: loc.clone(),
+                }
+            }
+            "starts_with" => {
+                let res = StringUtils::starts_with(val, &args);
+                Expr::Primitive {
+                    val: Value::gen_bool(res),
+                    loc: loc.clone(),
+                }
+            }
+            "ends_with" => {
+                let res = StringUtils::ends_with(val, &args);
+                Expr::Primitive {
+                    val: Value::gen_bool(res),
+                    loc: loc.clone(),
+                }
+            }
+            "contains" => {
+                let res = StringUtils::contains(val, &args);
+                Expr::Primitive {
+                    val: Value::gen_bool(res),
+                    loc: loc.clone(),
+                }
+            }
+            _ => unreachable!("Unrecognized string utility function name: {:?}", fn_name),
+        }
     }
 
     fn fold_static_lib_call(
@@ -92,8 +215,8 @@ impl<'a> ExprFolder<'a> {
         table: &SymbolTable,
         err: &mut ErrorGen,
     ) -> Expr {
-        if let Expr::LibCall {
-            lib_name,
+        if let Expr::ObjCall {
+            obj_name: lib_name,
             call,
             results,
             loc: lib_call_loc,
@@ -112,7 +235,7 @@ impl<'a> ExprFolder<'a> {
                     for arg in args.iter() {
                         // fold each of these expressions and add to the arg_vals vector
                         let new_arg = self.fold_expr_inner(arg, table, err);
-                        if let Some(new_arg) = expr_to_val(&new_arg) {
+                        if let Some(new_arg) = expr_to_wasm_val(&new_arg) {
                             arg_vals.push(new_arg);
                         } else {
                             err.add_internal_error(
@@ -444,7 +567,7 @@ impl<'a> ExprFolder<'a> {
                     | Expr::Ternary { .. }
                     | Expr::BinOp { .. }
                     | Expr::Call { .. }
-                    | Expr::LibCall { .. }
+                    | Expr::ObjCall { .. }
                     | Expr::VarId { .. }
                     | Expr::MapGet { .. } => Expr::UnOp {
                         op: UnOp::Cast {
@@ -1438,10 +1561,96 @@ impl<'a> ExprFolder<'a> {
         ternary.clone()
     }
 
-    fn fold_call(&mut self, call: &Expr, _table: &SymbolTable) -> Expr {
+    fn fold_call(&mut self, call: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         self.curr_loc = call.loc().clone();
+        // Check if this is calling a bound, static function!
+        if let Expr::Call {
+            fn_target, args, ..
+        } = call
+        {
+            let fn_name = match &**fn_target {
+                Expr::VarId { name, .. } => name.clone(),
+                _ => return call.clone(),
+            };
+            let Some(Record::Fn { def, .. }) = table.lookup_fn(fn_name.as_str(), false) else {
+                return call.clone();
+            };
+            if matches!(def, Definition::CompilerStatic) {
+                // We want to handle this as unique logic rather than a simple function call to be emitted
+                return self.handle_special_fn_call(call, &fn_name, args, table, err);
+            }
+        }
         call.clone()
     }
+
+    fn handle_special_fn_call(
+        &mut self,
+        call: &Expr,
+        target_fn_name: &str,
+        args: &[Expr],
+        table: &SymbolTable,
+        err: &mut ErrorGen,
+    ) -> Expr {
+        let mut folded_args = vec![];
+        for arg in args.iter() {
+            folded_args.push(ExprFolder::fold_expr(
+                arg,
+                self.registry,
+                self.as_monitor_module,
+                table,
+                err,
+            ));
+        }
+
+        match target_fn_name {
+            "len" => self.handle_len(call, &mut folded_args, table, err),
+            "memid" => self.handle_mem(&mut folded_args, table),
+            _ => call.clone(),
+        }
+    }
+
+    fn handle_len(
+        &mut self,
+        orig_call: &Expr,
+        args: &mut [Expr],
+        table: &SymbolTable,
+        err: &mut ErrorGen,
+    ) -> Expr {
+        // Assume the correct args since we've gone through typechecking at this point!
+        let arg0 = self.fold_expr_inner(&args[0], table, err);
+        let s = match arg0 {
+            Expr::Primitive {
+                val: Value::Str { val, .. },
+                ..
+            } => val.clone(),
+            _ => return orig_call.clone(),
+        };
+
+        Expr::Primitive {
+            val: Value::gen_u32(s.len() as u32),
+            loc: None,
+        }
+    }
+
+    fn handle_mem(&mut self, args: &mut [Expr], table: &SymbolTable) -> Expr {
+        // Assume the correct args since we've gone through typechecking at this point!
+        let libname = match args.iter().next().unwrap() {
+            Expr::VarId { name, .. } => name.clone(),
+            _ => unreachable!(),
+        };
+        let Some(Record::Library { mem_id, .. }) = table.lookup_lib(libname.as_str(), false) else {
+            unreachable!("unexpected type");
+        };
+        if let Some(mem_id) = mem_id {
+            Expr::Primitive {
+                val: Value::gen_u32(*mem_id),
+                loc: None,
+            }
+        } else {
+            panic!("memory has not been imported for {libname}")
+        }
+    }
+
     fn fold_var_id(&mut self, var_id: &Expr, table: &SymbolTable) -> Expr {
         self.curr_loc = var_id.loc().clone();
         if let Expr::VarId { name, .. } = &var_id {

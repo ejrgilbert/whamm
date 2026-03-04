@@ -105,11 +105,12 @@ struct TypeChecker<'a> {
     err: &'a mut ErrorGen,
     in_script_global: bool,
     in_function: bool,
+    restrict_probe_local_state: bool,
     has_reports: bool,
     curr_match_rule: Option<String>,
 
-    // If a lib function call, use this for lookup
-    curr_lib: Vec<(String, bool)>,
+    // If a function invocation on an object, use this for lookup
+    curr_obj: Vec<(String, bool)>,
 
     // bookkeeping for casting
     curr_loc: Option<Location>,
@@ -125,9 +126,10 @@ impl<'a> TypeChecker<'a> {
             err,
             in_script_global: false,
             in_function: false,
+            restrict_probe_local_state: false,
             has_reports: false,
             curr_match_rule: None,
-            curr_lib: vec![],
+            curr_obj: vec![],
             curr_loc: None,
             outer_cast_fixes_assign: false,
             assign_ty: None,
@@ -156,6 +158,7 @@ impl<'a> TypeChecker<'a> {
                 value: None,
                 def: definition,
                 addr: None,
+                times_set: 0,
                 loc: loc.clone(),
             },
         );
@@ -208,6 +211,7 @@ impl<'a> TypeChecker<'a> {
                             value: None,
                             def: CompilerDynamic,
                             addr: None,
+                            times_set: 0,
                             loc: loc.clone(),
                         },
                     );
@@ -216,6 +220,20 @@ impl<'a> TypeChecker<'a> {
                 self.err
                     .type_check_error(format!("{UNEXPECTED_ERR_MSG} Expected VarId type"), &None);
             }
+        }
+    }
+
+    fn get_type_utils(&self, ty: &DataType) -> Option<&HashMap<String, usize>> {
+        let Record::Whamm { type_utils, .. } = self.table.lookup_rec("whamm").unwrap() else {
+            unreachable!("{UNEXPECTED_ERR_MSG} Expected Whamm type")
+        };
+        if let Some(utils_rec_id) = type_utils.get(ty) {
+            let Record::Library { fns, .. } = self.table.get_record(*utils_rec_id).unwrap() else {
+                unreachable!("{UNEXPECTED_ERR_MSG} Expected Library type")
+            };
+            Some(fns)
+        } else {
+            None
         }
     }
 }
@@ -419,6 +437,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 //allow declarations and assignment
                 Statement::Decl { .. } | Statement::Assign { .. } | Statement::LibImport { .. } => {
                 }
+                // allow function calls
+                Statement::Expr {
+                    expr: Expr::ObjCall { .. } | Expr::Call { .. },
+                    ..
+                } => {}
                 Statement::UnsharedDecl { is_report, .. } => {
                     if *is_report {
                         self.has_reports = true;
@@ -433,7 +456,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
                 _ => {
                     self.err.type_check_error(
-                        format!("Only variable declarations, user lib imports, and assignment are allowed in the global scope, found: {:?}", stmt),
+                        format!("Only variable declarations, user lib imports, function calls, library function calls, and assignment are allowed in the global scope, found: {:?}", stmt),
                         &stmt.loc().clone().map(|l| l.line_col),
                     );
                     return None;
@@ -453,7 +476,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     (None, Some(expr_loc)) => (None, Some(expr_loc.line_col.clone())),
                     _ => (None, None),
                 };
+                let orig_setting = self.restrict_probe_local_state;
+                self.restrict_probe_local_state = false;
                 let lhs_ty_op = self.visit_expr(var_id);
+                self.restrict_probe_local_state = orig_setting;
 
                 if let Some(lhs_ty) = &lhs_ty_op {
                     if let Expr::UnOp {
@@ -496,11 +522,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 };
                 self.outer_cast_fixes_assign = false;
                 self.assign_ty = None;
+
                 res
             }
             Statement::UnsharedDeclInit { decl, init, .. } => {
                 self.visit_stmt(decl);
+                self.restrict_probe_local_state = true;
                 self.visit_stmt(init);
+                self.restrict_probe_local_state = false;
                 None
             }
             Statement::UnsharedDecl {
@@ -991,11 +1020,17 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 definition,
             } => {
                 // get type from symbol table
-                if let Some(id) = self.table.lookup(name) {
+                if let (Some(id), Some(scope_id)) = self.table.lookup_with_scope_id(name) {
+                    if self.restrict_probe_local_state && self.table.scope_is_probe_local(scope_id)
+                    {
+                        self.err.type_check_error(
+                            "Cannot use the probe-local state to initialize this variable with special scoping. Hint: split out the variable's initialization from the declaration.".to_string(),
+                            &loc.clone().map(|l| l.line_col),
+                        );
+                    }
                     if let Some(rec) = self.table.get_record(id) {
                         if let Record::Var { ty, def, value, .. } = rec {
-                            *definition = def.clone();
-                            // println!("{name}: {ty}");
+                            *definition = *def;
                             if let Some(val) = value {
                                 // overwrite with a primitive value expression!
                                 *expr = Expr::Primitive {
@@ -1004,9 +1039,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 };
                             }
                             return Some(ty.clone());
+                        } else if let Record::Library { .. } = rec {
+                            return Some(DataType::Lib);
                         } else {
                             // unexpected record type
-                            unreachable!("{} Expected Var type", UNEXPECTED_ERR_MSG)
+                            // TODO: make this look up the local-most var (overshadowing should work)
+                            unreachable!("{} Expected Var type, got: {rec:?}\nHave you overshadowed some bound variable?", UNEXPECTED_ERR_MSG)
                         }
                     }
                 }
@@ -1072,20 +1110,20 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     Some(DataType::AssumeGood)
                 }
             }
-            Expr::LibCall {
-                lib_name,
+            Expr::ObjCall {
+                obj_name,
                 call,
                 results,
                 annotation,
                 ..
             } => {
-                self.curr_lib.push((
-                    lib_name.clone(),
+                self.curr_obj.push((
+                    obj_name.clone(),
                     annotation.as_ref().map_or_else(|| false, |a| a.is_static()),
                 ));
                 let res = self.visit_expr(call);
                 *results = res.clone();
-                self.curr_lib.pop();
+                self.curr_obj.pop();
 
                 res
             }
@@ -1121,27 +1159,50 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 };
 
-                let curr_lib = self.curr_lib.first();
-                let rec = if let Some((lib_name, _)) = &curr_lib {
-                    if let Some(id) = self.table.lookup_lib_fn(lib_name, fn_name) {
-                        id
-                    } else {
-                        self.err.type_check_error(
-                            "Could not find library function".to_string(),
-                            &loc.clone().map(|l| l.line_col),
-                        );
-                        return Some(DataType::AssumeGood);
-                    }
-                } else if let Some(id) = self.table.lookup_fn(fn_name, true) {
-                    id
+                let curr_obj = self.curr_obj.first();
+                let rec = if let Some((obj_name, _)) = &curr_obj {
+                    let fns = match self.table.lookup_rec(obj_name) {
+                        Some(Record::Library { fns, .. }) => fns,
+                        Some(Record::Var { ty, .. }) => {
+                            if let Some(fns) = self.get_type_utils(ty) {
+                                fns
+                            } else {
+                                self.err.type_check_error(
+                                    "Could not find function for the invocation".to_string(),
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                                return Some(DataType::AssumeGood);
+                            }
+                        }
+                        _ => {
+                            self.err.type_check_error(
+                                "Could not find function for the invocation".to_string(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            return Some(DataType::AssumeGood);
+                        }
+                    };
+                    let rec = fns
+                        .get(fn_name)
+                        .and_then(|rec| self.table.get_record(*rec))
+                        .or_else(|| {
+                            self.err.type_check_error(
+                                "Could not find function for the invocation".to_string(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            None
+                        });
+                    rec
                 } else {
-                    return Some(DataType::AssumeGood);
+                    self.table.lookup_fn(fn_name, true)
                 };
+                let rec = rec.unwrap();
 
-                let (params, ret_ty, def, loc) = match rec {
+                let (params, ret_ty, def, runnable_in_report_decl_init, loc) = match rec {
                     Record::Fn {
                         params,
                         ret_ty,
+                        runnable_in_report_decl_init,
                         def,
                         loc,
                         ..
@@ -1154,7 +1215,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                                 expected_param_tys.push(Some(ty.clone()));
                             }
                         }
-                        (expected_param_tys, ret_ty.clone(), def, loc)
+                        (
+                            expected_param_tys,
+                            ret_ty.clone(),
+                            def,
+                            *runnable_in_report_decl_init,
+                            loc,
+                        )
                     }
                     Record::LibFn {
                         name,
@@ -1167,7 +1234,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         let ret_ty = if results.len() > 1 {
                             panic!(
                                 "We don't support functions with multiple return types: {}.{}",
-                                curr_lib.unwrap().0,
+                                curr_obj.unwrap().0,
                                 name
                             );
                         } else if results.is_empty() {
@@ -1179,23 +1246,15 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         for param in params.iter() {
                             expected_param_tys.push(Some(param.clone()));
                         }
-                        (expected_param_tys, ret_ty, def, loc)
+                        (expected_param_tys, ret_ty, def, true, loc)
                     }
                     other => {
                         panic!("Got unexpected record type: {:?}", other)
                     }
                 };
 
-                if let Some((_, is_static)) = curr_lib {
-                    //disallow (non-static) user-function calls when the in the global state of the script
-                    if self.in_script_global && !is_static {
-                        self.err.type_check_error(
-                            "Non-static calls to libraries are not allowed in the global state of the script"
-                                .to_owned(),
-                            &loc.clone().map(|l| l.line_col),
-                        );
-                    }
-                } else if self.in_script_global
+                if curr_obj.is_none()
+                    && self.in_script_global
                     && !(*def == CompilerDynamic || *def == CompilerStatic)
                 {
                     //check if in global state and if is_comp_defined is false --> not allowed if both are the case
@@ -1205,6 +1264,14 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         &loc.clone().map(|l| l.line_col),
                     );
                     //continue to check for other errors even after emitting this one
+                } else if !self.in_script_global
+                    && self.restrict_probe_local_state
+                    && !runnable_in_report_decl_init
+                {
+                    self.err.type_check_error(
+                        "Cannot use a non-static compiler function to initialize this variable with special scoping. Hint: split out the variable's initialization from the declaration.".to_string(),
+                        &loc.clone().map(|l| l.line_col),
+                    );
                 }
 
                 for (i, (expected, actual)) in

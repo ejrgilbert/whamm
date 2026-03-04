@@ -11,7 +11,8 @@ use wirm::ir::id::FunctionID;
 use wirm::Module;
 
 pub const WHAMM_CORE_LIB_NAME: &str = "whamm_core";
-pub const WHAMM_CORE_LIB_MEM_NAME: &str = "memory";
+// TODO: refactor to be more generic!
+pub const ASSUMED_LIB_MEM_NAME: &str = "memory";
 
 // A lib package needs to be able to visit the AST and determine if it's needed (should be linked)
 pub trait LibPackage: AstVisitor<bool> {

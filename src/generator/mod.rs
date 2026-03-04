@@ -39,6 +39,7 @@ fn emit_needed_funcs(
         if let Some(fid) = emitter.emit_bound_fn(
             context,
             &Fn {
+                runnable_in_report_decl_init: true,
                 def: Definition::CompilerDynamic,
                 name: FnId {
                     name: fname.clone(),
@@ -454,7 +455,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
                 is_success
             }
-            Expr::LibCall { call, .. } => self.visit_expr(call),
+            Expr::ObjCall { call, .. } => self.visit_expr(call),
             Expr::Call { args, .. } => {
                 let mut is_success = true;
                 args.iter_mut().for_each(|arg| {

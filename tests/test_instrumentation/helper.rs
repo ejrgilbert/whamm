@@ -396,6 +396,7 @@ fn run_testcase_rewriting(
         for e in errs.iter() {
             println!("- {}", e.msg)
         }
+        panic!();
     }
 
     // run the instrumented application on wasmtime
@@ -437,6 +438,7 @@ fn run_testcase_rewriting(
         match exp_output {
             ExpectedOutput::Str(exp_str) => {
                 let stdout = String::from_utf8(res.stdout).unwrap();
+                fs::write(out_file, &stdout).expect("failed to write to log");
                 assert_eq!(stdout.trim(), exp_str.trim());
             }
             ExpectedOutput::Hash(exp_hash) => {
