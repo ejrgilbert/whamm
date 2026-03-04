@@ -66,17 +66,13 @@ fn bundle_whamm_core(out_dir: &str) {
 
     assert!(status.success());
 
-    let target_dir =
-        std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".into());
+    let target_dir = std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".into());
 
-    let wasm_src = format!(
-        "{target_dir}/wasm32-wasip1/release/whamm_core.wasm"
-    );
+    let wasm_src = format!("{target_dir}/wasm32-wasip1/release/whamm_core.wasm");
 
     let wasm_dst = std::path::Path::new(out_dir).join("whamm_core.wasm");
 
-    std::fs::copy(&wasm_src, &wasm_dst)
-        .expect("Failed to copy wasm");
+    std::fs::copy(&wasm_src, &wasm_dst).expect("Failed to copy wasm");
 
     println!("cargo:rerun-if-changed=whamm_core/src/");
 }
