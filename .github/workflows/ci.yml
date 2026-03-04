@@ -144,14 +144,8 @@ jobs:
   
           echo "[INFO] Testing the wasm ref interpreter configuration..."
           ./output/tests/engines/wasm --help
-      - name: Build Whamm Core Library
-        run: |
-          pushd whamm_core
-          rustup target add wasm32-wasip1
-          cargo build --release --target wasm32-wasip1
-          popd
 
-      - name: Build
+      - name: Build main crate
         run: cargo build --locked --verbose
 
       - name: Run tests

@@ -3,8 +3,14 @@ pub mod utils;
 
 use crate::parser::yml_processor::pull_all_yml_files;
 
+#[cfg(debug_assertions)]
 pub static WHAMM_CORE_LIB_BYTES: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/whamm_core.wasm"));
+    include_bytes!("../../embedded/debug/whamm_core.wasm");
+
+#[cfg(not(debug_assertions))]
+pub static WHAMM_CORE_LIB_BYTES: &[u8] =
+    include_bytes!("../../embedded/release/whamm_core.wasm");
+
 
 // Include the embedded resources (see build.rs for how this is built)
 include!(concat!(env!("OUT_DIR"), "/bundled.rs"));

@@ -30,13 +30,6 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Build
-        run: |
-          pushd whamm_core/
-          cargo build --target wasm32-wasip1 --release
-          popd
-          cargo build --release --target ${{ matrix.target }}
-
       - name: Rename binary
         run: |
           mkdir dist
@@ -62,8 +55,8 @@ jobs:
       - name: Login to crates.io
         run: cargo login ${{ secrets.CRATES_API_TOKEN }}
 
-      - name: Install wasm target
-        run: rustup target add wasm32-wasip1
+      - name: Build main crate
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Publish
         run: cargo publish --locked

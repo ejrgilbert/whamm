@@ -19,9 +19,9 @@ Take a look at the official [`whamm!` book](https://ejrgilbert.github.io/whamm/i
 
 ```shell
 # Debug build
-cargo build
+make
 # Release build
-cargo build --release
+make release
 ```
 
 ### Run ###

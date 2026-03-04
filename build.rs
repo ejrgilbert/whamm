@@ -5,7 +5,6 @@ use std::fs::File;
 use std::io::Error;
 use std::io::Write;
 use std::path::Path;
-use std::process::Command;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let out_dir = env::var("OUT_DIR").unwrap();
@@ -14,9 +13,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let out_path = Path::new(&out_dir).join("bundled.rs");
     let mut out_file = File::create(&out_path).unwrap();
-
-    // bundle the whamm_core lib
-    bundle_whamm_core(&out_dir);
 
     // -- bundle the provider definitions
     let defs_dir = "./";
@@ -49,32 +45,6 @@ fn bundle_defs(base_dir: &str, out_file: &mut File, var_name: &str) {
         writeln!(out_file, "    {:?},", def).unwrap();
     }
     writeln!(out_file, "];").unwrap();
-}
-
-fn bundle_whamm_core(out_dir: &str) {
-    let status = Command::new("cargo")
-        .args([
-            "build",
-            "--release",
-            "--target",
-            "wasm32-wasip1",
-            "-p",
-            "whamm_core",
-        ])
-        .status()
-        .expect("Failed to build whamm_core");
-
-    assert!(status.success());
-
-    let target_dir = std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".into());
-
-    let wasm_src = format!("{target_dir}/wasm32-wasip1/release/whamm_core.wasm");
-
-    let wasm_dst = std::path::Path::new(out_dir).join("whamm_core.wasm");
-
-    std::fs::copy(&wasm_src, &wasm_dst).expect("Failed to copy wasm");
-
-    println!("cargo:rerun-if-changed=whamm_core/src/");
 }
 
 // ==================================
