@@ -67,8 +67,14 @@ pub fn link_core_lib(
         if *is_used {
             let core_lib = Module::parse(core_lib, false, false).unwrap();
             if package.import_memory() {
-                let lib_mem_id =
-                    import_lib_memory(app_wasm, &None, WHAMM_CORE_LIB_NAME, &None, None);
+                let lib_mem_id = import_lib_memory(
+                    app_wasm,
+                    &None,
+                    WHAMM_CORE_LIB_NAME,
+                    &None,
+                    get_lib_mem_name(&core_lib),
+                    None,
+                );
                 package.set_lib_mem_id(lib_mem_id);
             }
             package.set_instr_mem_id(mem_allocator.mem_id as i32);
@@ -118,6 +124,7 @@ pub fn link_user_lib(
             loc,
             &lib_name,
             lib_name_import_override,
+            get_lib_mem_name(lib_wasm),
             Some(table),
         );
     }
@@ -130,11 +137,24 @@ pub fn link_user_lib(
     injected_funcs
 }
 
+pub(crate) fn get_lib_mem_name<'a>(lib_wasm: &'a Module) -> &'a str {
+    let mut lib_mem_name = ASSUMED_LIB_MEM_NAME;
+    for export in lib_wasm.exports.iter() {
+        if export.kind == ExternalKind::Memory {
+            // assume it's the FIRST lib memory
+            lib_mem_name = export.name.as_str();
+            break;
+        }
+    }
+    lib_mem_name
+}
+
 fn import_lib_memory(
     app_wasm: &mut Module,
     loc: &Option<Location>,
     lib_name: &str,
     lib_name_import_override: &Option<String>,
+    lib_mem_name: &str,
     mut table: Option<&mut SymbolTable>,
 ) -> i32 {
     let import_module_name = if let Some(name_override) = lib_name_import_override {
@@ -153,7 +173,7 @@ fn import_lib_memory(
                 // memory for this library hasn't been imported yet, fix that!
                 let id = import_memory(
                     import_module_name,
-                    ASSUMED_LIB_MEM_NAME,
+                    lib_mem_name,
                     &format!("{lib_name}_lib_mem"),
                     loc,
                     app_wasm,

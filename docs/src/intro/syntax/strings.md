@@ -1,7 +1,9 @@
 # Strings #
 
 `Whamm` has very basic support for strings; they are injected into the instrumented Wasm program
-and are represented as the tuple: `(memory_address, length)`.
+and are represented as the tuple: `(memory_address, length)`. Only static strings can be defined,
+e.g. `"i'm a string"`, no dynamic string creation is supported (yet), e.g. `"i " + " am " + " groot`.
+However, as a workaround, you can pull a string from a user library to get this functionality.
 
 ```
 var a: str = "";

@@ -422,9 +422,6 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
                     }
                 }
 
-                // if def.is_comp_defined() {
-                //     return true;
-                // }
                 ty.to_wasm_type()
             } else {
                 unreachable!("{} Expected VarId.", ctx.err_msg);
@@ -957,7 +954,6 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             is_success
         }
         Expr::VarId { name, .. } => {
-            // TODO -- support string vars (unimplemented)
             let addr = if let Some(Record::Var { addr, def, .. }) =
                 ctx.table.lookup_var_mut(name, true)
             {
