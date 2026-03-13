@@ -633,15 +633,28 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
         // check if ast overrides report logic
         let report_probe = if let Some(wasm) = ast.provs.get_mut("wasm") {
             if let Some(report_probe) = wasm.pkgs.get_mut("report") {
-                Some(
-                    report_probe
-                        .evts
-                        .get_mut("")
-                        .unwrap()
-                        .modes
-                        .get_mut(&ModeKind::Null)
-                        .unwrap(),
-                )
+                let report_probes = report_probe
+                    .evts
+                    .get_mut("")
+                    .unwrap()
+                    .modes
+                    .get_mut(&ModeKind::Null)
+                    .unwrap();
+
+                // enter mode scope
+                let probe = report_probes.first().unwrap();
+                assert!(
+                    self.enter_scope_via_rule(
+                        &probe.script_id.to_string(),
+                        &(&probe.rule).into(),
+                        probe.scope_id
+                    ),
+                    "Failed to enter scope"
+                );
+                self.table
+                    .enter_named_scope(&probe.probe_number.to_string()); // enter probe scope
+
+                Some(report_probes)
             } else {
                 None
             }
