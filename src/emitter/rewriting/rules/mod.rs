@@ -2857,6 +2857,23 @@ impl Display for ProbeRule {
         )
     }
 }
+impl From<&crate::generator::ast::ProbeRule> for ProbeRule {
+    fn from(rule: &crate::generator::ast::ProbeRule) -> Self {
+        let crate::generator::ast::ProbeRule {
+            provider,
+            package,
+            event,
+            mode,
+        } = rule;
+
+        Self {
+            provider: (!provider.name.is_empty()).then(|| provider.clone()),
+            package: (!package.name.is_empty()).then(|| package.clone()),
+            event: (!event.name.is_empty()).then(|| event.clone()),
+            mode: (!mode.name.is_empty()).then(|| ModeKind::from(mode.name.clone())),
+        }
+    }
+}
 
 #[derive(Default, Debug)]
 pub struct LocInfo {
