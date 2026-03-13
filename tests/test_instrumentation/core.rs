@@ -176,6 +176,15 @@ fn instrument_with_overlap_scripts() {
     run_core_suite("overlap", processed_scripts, true, true)
 }
 #[test]
+fn instrument_with_load_and_call_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/load-and-call");
+    assert!(!processed_scripts.is_empty());
+
+    // res0 isn't available in wei yet
+    run_core_suite("load-and-call", processed_scripts, true, false)
+}
+#[test]
 fn instrument_with_local_n_scripts() {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/localN");

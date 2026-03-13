@@ -413,6 +413,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
             override_val(&format!("res{i}"));
         }
         self.instr_created_args.clear();
+        self.instr_created_results.clear();
     }
 
     pub(crate) fn fold_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {
