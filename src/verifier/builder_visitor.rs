@@ -16,9 +16,9 @@ use wirm::Module;
 
 const UNEXPECTED_ERR_MSG: &str = "SymbolTableBuilder: Looks like you've found a bug...please report this behavior! Exiting now...";
 
-pub struct SymbolTableBuilder<'a, 'b, 'c> {
+pub struct SymbolTableBuilder<'a, 'ir> {
     pub table: SymbolTable,
-    pub user_libs: &'b HashMap<String, (Option<String>, Module<'c>)>,
+    pub user_libs: &'a HashMap<String, (Option<String>, Module<'ir>)>,
     pub err: &'a mut ErrorGen,
     pub curr_whamm: Option<usize>,  // indexes into this::table::records
     pub curr_script: Option<usize>, // indexes into this::table::records
@@ -37,7 +37,7 @@ pub struct SymbolTableBuilder<'a, 'b, 'c> {
     // bookkeeping for boundfunctions
     pub req_args: StackReq,
 }
-impl SymbolTableBuilder<'_, '_, '_> {
+impl SymbolTableBuilder<'_, '_> {
     fn add_script(&mut self, script: &Script) {
         /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
         In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
@@ -645,7 +645,7 @@ impl SymbolTableBuilder<'_, '_, '_> {
     }
 }
 
-impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_, '_> {
+impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) {
         trace!("Entering: visit_whamm");
         let name: String = "whamm".to_string();

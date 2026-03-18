@@ -52,10 +52,10 @@ fn add_to_table(info: &LocInfo, emitter: &mut VisitingEmitter) {
 /// passed emitter to emit instrumentation code.
 /// This process should ideally be generic, made to perform a specific
 /// instrumentation technique by the passed Emitter type.
-pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm> {
-    pub emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>,
+pub struct InstrGenerator<'a, 'ir> {
+    pub emitter: VisitingEmitter<'a, 'ir>,
     pub ast: SimpleAST,
-    pub err: &'l mut ErrorGen,
+    pub err: &'a mut ErrorGen,
     curr_instr_args: Vec<StackVal>,
     curr_instr_results: Vec<StackVal>,
     curr_probe_rule: ProbeRule,
@@ -67,16 +67,14 @@ pub struct InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm> {
     /// Whether there are reports to flush at the end of execution
     has_reports: bool,
     on_exit_fid: Option<u32>,
-    config: &'m Config,
+    config: &'a Config,
 }
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm>
-    InstrGenerator<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm>
-{
+impl<'a, 'ir> InstrGenerator<'a, 'ir> {
     pub fn new(
-        emitter: VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>,
+        emitter: VisitingEmitter<'a, 'ir>,
         ast: SimpleAST,
-        err: &'l mut ErrorGen,
-        config: &'m Config,
+        err: &'a mut ErrorGen,
+        config: &'a Config,
         has_reports: bool,
     ) -> Self {
         Self {
@@ -334,7 +332,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm>
         };
     }
 }
-impl InstrGenerator<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl InstrGenerator<'_, '_> {
     fn emit_probe(
         &mut self,
         dynamic_data: &HashMap<String, Block>,

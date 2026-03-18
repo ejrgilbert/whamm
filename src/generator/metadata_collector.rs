@@ -43,7 +43,7 @@ impl UserLibs {
 // while emitting. It will collect the required variables to pass to a probe
 // (argN, localN, etc.) and can be extended to compute the memory space that
 // must be allocated per probe (vars_to_alloc).
-pub struct MetadataCollector<'a, 'b, 'c> {
+pub struct MetadataCollector<'a> {
     pub table: &'a mut SymbolTable,
     pub ast: Vec<Script>,
 
@@ -56,8 +56,8 @@ pub struct MetadataCollector<'a, 'b, 'c> {
     pub strings_to_emit: Vec<String>,
     pub has_probe_state_init: bool,
 
-    pub err: &'b mut ErrorGen,
-    pub config: &'c Config,
+    pub err: &'a mut ErrorGen,
+    pub config: &'a Config,
 
     visiting: Visiting,
     curr_rule: String,
@@ -68,11 +68,11 @@ pub struct MetadataCollector<'a, 'b, 'c> {
     curr_user_lib: Vec<(String, bool)>, // (lib_name, is_static_call)
     curr_lib_call_args: WhammParams,
 }
-impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
+impl<'a> MetadataCollector<'a> {
     pub(crate) fn new(
         table: &'a mut SymbolTable,
-        err: &'b mut ErrorGen,
-        config: &'c Config,
+        err: &'a mut ErrorGen,
+        config: &'a Config,
     ) -> Self {
         Self {
             table,
@@ -605,7 +605,7 @@ impl<'a, 'b, 'c> MetadataCollector<'a, 'b, 'c> {
         }
     }
 }
-impl WhammVisitor<()> for MetadataCollector<'_, '_, '_> {
+impl WhammVisitor<()> for MetadataCollector<'_> {
     fn visit_whamm(&mut self, whamm: &Whamm) {
         trace!("Entering: CodeGenerator::visit_whamm");
 

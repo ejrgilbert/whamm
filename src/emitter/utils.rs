@@ -31,28 +31,28 @@ use wirm::{InitInstr, Module};
 // ==================================================================
 // ==================================================================
 
-pub struct EmitCtx<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+pub struct EmitCtx<'a> {
     registry: &'a mut WasmRegistry,
-    table: &'b mut SymbolTable,
-    pub(crate) mem_allocator: &'c MemoryAllocator,
-    pub(crate) locals_tracker: &'d mut LocalsTracker,
+    table: &'a mut SymbolTable,
+    pub(crate) mem_allocator: &'a MemoryAllocator,
+    pub(crate) locals_tracker: &'a mut LocalsTracker,
     in_map_op: bool,
     in_obj_call_on: Option<String>,
-    utils_adapter: &'e mut UtilsAdapter,
-    map_lib_adapter: &'f mut MapLibAdapter,
+    utils_adapter: &'a mut UtilsAdapter,
+    map_lib_adapter: &'a mut MapLibAdapter,
     err_msg: String,
-    err: &'g mut ErrorGen,
+    err: &'a mut ErrorGen,
 }
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g> EmitCtx<'a, 'b, 'c, 'd, 'e, 'f, 'g> {
+impl<'a> EmitCtx<'a> {
     pub fn new(
         registry: &'a mut WasmRegistry,
-        table: &'b mut SymbolTable,
-        mem_allocator: &'c MemoryAllocator,
-        locals_tracker: &'d mut LocalsTracker,
-        utils_adapter: &'e mut UtilsAdapter,
-        map_lib_adapter: &'f mut MapLibAdapter,
+        table: &'a mut SymbolTable,
+        mem_allocator: &'a MemoryAllocator,
+        locals_tracker: &'a mut LocalsTracker,
+        utils_adapter: &'a mut UtilsAdapter,
+        map_lib_adapter: &'a mut MapLibAdapter,
         err_msg: &str,
-        err: &'g mut ErrorGen,
+        err: &'a mut ErrorGen,
     ) -> Self {
         Self {
             registry,
