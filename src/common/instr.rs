@@ -82,15 +82,15 @@ pub fn run_with_path(
     )
 }
 
-pub fn dry_run_on_bytes<'a>(
-    core_lib: &[u8],
+pub fn dry_run_on_bytes<'ir>(
+    core_lib: &'ir [u8],
     def_yamls: &Vec<String>,
-    target_wasm: &'a mut Module,
+    target_wasm: &mut Module<'ir>,
     script_path: String,
     user_lib_paths: Vec<String>,
     max_errors: i32,
     config: Config,
-) -> Result<HashMap<WirmInjectType, Vec<WirmInjection<'a>>>, Vec<WhammError>> {
+) -> Result<HashMap<WirmInjectType, Vec<WirmInjection<'ir>>>, Vec<WhammError>> {
     let mut metrics = Metrics::default();
     if let Err(err) = run_on_module(
         core_lib,
@@ -144,10 +144,10 @@ pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, Option<String>, 
     res
 }
 
-pub fn run_on_module_and_encode(
-    core_lib: &[u8],
+pub fn run_on_module_and_encode<'lib, 'ir>(
+    core_lib: &'lib [u8],
     def_yamls: &Vec<String>,
-    target_wasm: &mut Module,
+    target_wasm: &mut Module<'ir>,
     script_path: String,
     user_lib_paths: Vec<String>,
     max_errors: i32,
@@ -170,10 +170,10 @@ pub fn run_on_module_and_encode(
     Ok(wasm)
 }
 
-pub fn run_on_module(
-    core_lib: &[u8],
+pub fn run_on_module<'lib, 'ir>(
+    core_lib: &'lib [u8],
     def_yamls: &Vec<String>,
-    target_wasm: &mut Module,
+    target_wasm: &mut Module<'ir>,
     script_path: String,
     user_lib_paths: Vec<String>,
     max_errors: i32,
@@ -218,10 +218,10 @@ pub fn write_to_file(module: Vec<u8>, output_wasm_path: String) {
     }
 }
 
-pub fn run(
-    core_lib: &[u8],
+pub fn run<'lib, 'ir>(
+    core_lib: &'lib [u8],
     def_yamls: &Vec<String>,
-    target_wasm: &mut Module,
+    target_wasm: &mut Module<'ir>,
     whamm_script: &String,
     script_path: &str,
     user_libs: Vec<(String, Option<String>, String, Vec<u8>)>,
@@ -403,12 +403,12 @@ pub fn run(
     }
 }
 
-fn run_instr_wei(
+fn run_instr_wei<'lib, 'ir>(
     _metrics: &mut Metrics,
     metadata_collector: MetadataCollector,
     used_exports_per_lib: HashMap<String, (bool, HashSet<String>)>,
-    user_lib_modules: HashMap<String, (Option<String>, Module)>,
-    target_wasm: &mut Module,
+    user_lib_modules: HashMap<String, (Option<String>, Module<'lib>)>,
+    target_wasm: &mut Module<'ir>,
     mem_allocator: &mut MemoryAllocator,
     io_adapter: &mut IOAdapter,
     utils_adapter: &mut UtilsAdapter,
@@ -461,15 +461,15 @@ fn run_instr_wei(
     call_instr_init_at_start(None, target_wasm, err);
 }
 
-fn run_instr_rewrite(
+fn run_instr_rewrite<'lib, 'ir>(
     metrics: &mut Metrics,
     whamm: &mut Whamm,
     metadata_collector: MetadataCollector,
     used_exports_per_lib: HashMap<String, (bool, HashSet<String>)>,
     static_libs: HashSet<String>,
     user_lib_paths: HashMap<String, String>,
-    user_lib_modules: HashMap<String, (Option<String>, Module)>,
-    target_wasm: &mut Module,
+    user_lib_modules: HashMap<String, (Option<String>, Module<'lib>)>,
+    target_wasm: &mut Module<'ir>,
     has_reports: bool,
     mem_allocator: &mut MemoryAllocator,
     utils_adapter: &mut UtilsAdapter,

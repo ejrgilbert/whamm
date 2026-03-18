@@ -31,31 +31,31 @@ use wirm::InitInstr;
 const UNEXPECTED_ERR_MSG: &str =
     "ModuleEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
+pub struct ModuleEmitter<'a, 'ir> {
     pub strategy: InjectStrategy,
-    pub app_wasm: &'a mut Module<'b>,
-    pub emitting_func: Option<FunctionBuilder<'b>>,
-    pub table: &'c mut SymbolTable,
-    pub mem_allocator: &'d mut MemoryAllocator,
+    pub app_wasm: &'a mut Module<'ir>,
+    pub emitting_func: Option<FunctionBuilder<'ir>>,
+    pub table: &'a mut SymbolTable,
+    pub mem_allocator: &'a mut MemoryAllocator,
     pub locals_tracker: LocalsTracker,
-    pub utils_adapter: &'e mut UtilsAdapter,
-    pub map_lib_adapter: &'f mut MapLibAdapter,
-    pub report_vars: &'g mut ReportVars,
-    pub registry: &'h mut WasmRegistry,
+    pub utils_adapter: &'a mut UtilsAdapter,
+    pub map_lib_adapter: &'a mut MapLibAdapter,
+    pub report_vars: &'a mut ReportVars,
+    pub registry: &'a mut WasmRegistry,
     fn_providing_contexts: Vec<String>,
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> {
+impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
     // note: only used in integration test
     pub fn new(
         strategy: InjectStrategy,
-        app_wasm: &'a mut Module<'b>,
-        table: &'c mut SymbolTable,
-        mem_allocator: &'d mut MemoryAllocator,
-        utils_adapter: &'e mut UtilsAdapter,
-        map_lib_adapter: &'f mut MapLibAdapter,
-        report_vars: &'g mut ReportVars,
-        registry: &'h mut WasmRegistry,
+        app_wasm: &'a mut Module<'ir>,
+        table: &'a mut SymbolTable,
+        mem_allocator: &'a mut MemoryAllocator,
+        utils_adapter: &'a mut UtilsAdapter,
+        map_lib_adapter: &'a mut MapLibAdapter,
+        report_vars: &'a mut ReportVars,
+        registry: &'a mut WasmRegistry,
     ) -> Self {
         Self {
             strategy,
@@ -714,7 +714,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h> ModuleEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, '
         (fid, was_created)
     }
 }
-impl Emitter for ModuleEmitter<'_, '_, '_, '_, '_, '_, '_, '_> {
+impl Emitter for ModuleEmitter<'_, '_> {
     fn reset_locals_for_probe(&mut self) {
         if let Some(func) = &mut self.emitting_func {
             self.locals_tracker.reset_probe(func);

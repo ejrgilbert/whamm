@@ -10,11 +10,11 @@ use crate::verifier::types::SymbolTable;
 use wirm::ir::id::FunctionID;
 use wirm::Module;
 
-pub fn link_core_lib(
+pub fn link_core_lib<'lib, 'ir>(
     method: LibraryLinkStrategy,
     ast: &[Script],
-    app_wasm: &mut Module,
-    core_lib: &[u8],
+    app_wasm: &mut Module<'ir>,
+    core_lib: &'lib [u8],
     mem_allocator: &mut MemoryAllocator,
     utils: &mut UtilsPackage,
     packages: &mut [&mut dyn LibPackage],

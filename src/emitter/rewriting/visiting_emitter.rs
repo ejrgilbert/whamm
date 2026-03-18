@@ -41,45 +41,43 @@ use wirm::Location;
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
 
-pub struct VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k> {
+pub struct VisitingEmitter<'a, 'ir> {
     pub strategy: InjectStrategy,
-    pub app_iter: ModuleIterator<'a, 'b>,
-    pub init_func: &'c mut FunctionBuilder<'d>,
+    pub app_iter: ModuleIterator<'a, 'ir>,
+    pub init_func: &'a mut FunctionBuilder<'ir>,
     pub in_init: bool,
 
-    pub table: &'e mut SymbolTable,
-    pub mem_allocator: &'f mut MemoryAllocator,
+    pub table: &'a mut SymbolTable,
+    pub mem_allocator: &'a mut MemoryAllocator,
     pub locals_tracker: LocalsTracker,
     pub init_func_locals_tracker: LocalsTracker,
-    pub utils_adapter: &'g mut UtilsAdapter,
-    pub map_lib_adapter: &'h mut MapLibAdapter,
-    pub io_adapter: &'i mut IOAdapter,
-    pub(crate) report_vars: &'j mut ReportVars,
-    pub(crate) unshared_var_handler: &'j mut UnsharedVarHandler,
+    pub utils_adapter: &'a mut UtilsAdapter,
+    pub map_lib_adapter: &'a mut MapLibAdapter,
+    pub io_adapter: &'a mut IOAdapter,
+    pub(crate) report_vars: &'a mut ReportVars,
+    pub(crate) unshared_var_handler: &'a mut UnsharedVarHandler,
     instr_created_args: Vec<(String, usize)>,
     instr_created_results: Vec<(String, usize)>,
     pub curr_unshared: Vec<UnsharedVar>,
 
-    pub registry: &'k mut WasmRegistry,
+    pub registry: &'a mut WasmRegistry,
 }
 
-impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
-    VisitingEmitter<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
-{
+impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
     // note: only used in integration test
     pub fn new(
         strategy: InjectStrategy,
-        app_wasm: &'a mut Module<'b>,
-        init_func: &'c mut FunctionBuilder<'d>,
+        app_wasm: &'a mut Module<'ir>,
+        init_func: &'a mut FunctionBuilder<'ir>,
         injected_funcs: &Vec<FunctionID>,
-        table: &'e mut SymbolTable,
-        mem_allocator: &'f mut MemoryAllocator,
-        utils_adapter: &'g mut UtilsAdapter,
-        map_lib_adapter: &'h mut MapLibAdapter,
-        io_adapter: &'i mut IOAdapter,
-        report_vars: &'j mut ReportVars,
-        unshared_var_handler: &'j mut UnsharedVarHandler,
-        registry: &'k mut WasmRegistry,
+        table: &'a mut SymbolTable,
+        mem_allocator: &'a mut MemoryAllocator,
+        utils_adapter: &'a mut UtilsAdapter,
+        map_lib_adapter: &'a mut MapLibAdapter,
+        io_adapter: &'a mut IOAdapter,
+        report_vars: &'a mut ReportVars,
+        unshared_var_handler: &'a mut UnsharedVarHandler,
+        registry: &'a mut WasmRegistry,
     ) -> Self {
         Self {
             strategy,
@@ -935,7 +933,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
         }
     }
 }
-impl Emitter for VisitingEmitter<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_> {
+impl Emitter for VisitingEmitter<'_, '_> {
     fn reset_locals_for_probe(&mut self) {
         self.locals_tracker.reset_probe(&mut self.app_iter);
     }
