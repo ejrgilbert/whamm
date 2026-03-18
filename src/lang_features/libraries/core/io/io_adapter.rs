@@ -1,7 +1,7 @@
 // may use some of this code in the future (intrusive_puts)
 #![allow(dead_code)]
 use crate::common::error::ErrorGen;
-use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::emitter::memory_allocator::{EmitMode, MemoryAllocator, PtrSource};
 use crate::emitter::tag_handler::get_tag_for;
 use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::core::LibAdapter;
@@ -115,12 +115,13 @@ impl IOAdapter {
         puts.local_set(alloc_ptr);
 
         // write to allocated memory
-        mem_allocator.copy_to_mem_local_ptr(
+        mem_allocator.mem_cpy(
             self.instr_mem as u32,
-            str_addr,
-            len,
+            &mut PtrSource::Local(str_addr),
+            &mut PtrSource::Local(len),
             self.lib_mem as u32,
-            alloc_ptr,
+            &mut PtrSource::Local(alloc_ptr),
+            EmitMode::NoCtx,
             &mut puts,
         );
 
