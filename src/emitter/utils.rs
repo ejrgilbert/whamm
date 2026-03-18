@@ -143,7 +143,7 @@ fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     }
 
     match target_fn_name.as_str() {
-        "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
+        "dup_at" | "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
             unreachable!("static function call should already be handled: {target_fn_name}")
         }
         "memcpy" => handle_memcpy(&folded_args, strategy, injector, ctx),

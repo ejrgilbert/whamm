@@ -1139,7 +1139,7 @@ fn handle_opcode_events(
             define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "memory.atomic_notify" => if let Operator::MemoryAtomicNotify {memarg: MemArg {
+        "memory.atomic.notify" => if let Operator::MemoryAtomicNotify {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1148,7 +1148,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "memory.atomic_wait32" => if let Operator::MemoryAtomicWait32 {memarg: MemArg {
+        "memory.atomic.wait32" => if let Operator::MemoryAtomicWait32 {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1157,7 +1157,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "memory.atomic_wait64" => if let Operator::MemoryAtomicWait64 {memarg: MemArg {
+        "memory.atomic.wait64" => if let Operator::MemoryAtomicWait64 {memarg: MemArg {
             align,
             offset,
             memory,

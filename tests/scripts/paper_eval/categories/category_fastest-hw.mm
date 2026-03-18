@@ -225,9 +225,9 @@ wasm:opcode:memory.fill:before { mem++; }
 wasm:opcode:data.drop:before { mem++; }
 wasm:opcode:elem.drop:before { table++; }
 wasm:opcode:try_table|table*:before { table++; }
-wasm:opcode:memory.atomic_notify:before { atomic++; }
-wasm:opcode:memory.atomic_wait32:before { atomic++; }
-wasm:opcode:memory.atomic_wait64:before { atomic++; }
+wasm:opcode:memory.atomic.notify:before { atomic++; }
+wasm:opcode:memory.atomic.wait32:before { atomic++; }
+wasm:opcode:memory.atomic.wait64:before { atomic++; }
 wasm:opcode:atomic.fence:before { atomic++; }
 wasm:opcode:i32.atomic_load:before { atomic++; }
 wasm:opcode:i64.atomic_load:before { atomic++; }

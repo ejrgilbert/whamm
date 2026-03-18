@@ -506,6 +506,17 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         Ok(is_success)
     }
 
+    fn handle_dup_at(&mut self, args: &[Expr], err: &mut ErrorGen) -> bool {
+        // args[0] get target mem_id
+
+        // emit: args[1] (dst addr)
+        // emit: `arg1` (src addr)
+        // emit: `arg0` (len)
+
+        // duplicate the opcode at the target instr location with new mem_id
+        todo!()
+    }
+
     fn handle_alt_call_by_name(&mut self, args: &[Expr], err: &mut ErrorGen) -> bool {
         if self.in_init {
             err.add_instr_error("Cannot call `alt_call_by_name` as a variable initialization.");
@@ -540,7 +551,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
 
     fn handle_alt_call_by_id(&mut self, args: &[Expr], err: &mut ErrorGen) -> bool {
         if self.in_init {
-            err.add_instr_error("Cannot call `alt_call_by_name` as a variable initialization.");
+            err.add_instr_error("Cannot call `alt_call_by_id` as a variable initialization.");
             return false;
         }
         // args: vec![func_id: i32]
@@ -618,6 +629,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         }
 
         match target_fn_name.as_str() {
+            "dup_at" => self.handle_dup_at(&folded_args, err),
             "alt_call_by_name" => self.handle_alt_call_by_name(&folded_args, err),
             "alt_call_by_id" => self.handle_alt_call_by_id(&folded_args, err),
             "drop_args" => self.handle_drop_args(err),
