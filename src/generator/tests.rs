@@ -145,7 +145,14 @@ fn basic_run(script: &str, err: &mut ErrorGen) {
     let pred = get_pred(&whamm);
     hardcode_compiler_constants(&mut table);
 
-    let folded_expr = ExprFolder::fold_expr(pred, &mut WasmRegistry::default(), false, &table, err);
+    let folded_expr = ExprFolder::fold_expr(
+        pred,
+        &mut WasmRegistry::default(),
+        false,
+        &table,
+        &HashMap::default(),
+        err,
+    );
     assert_simplified_predicate(&folded_expr);
 }
 
@@ -164,6 +171,7 @@ fn fatal_fold(expr: &Expr) {
             &mut WasmRegistry::default(),
             false,
             &SymbolTable::new(),
+            &HashMap::default(),
             &mut err,
         );
     });
@@ -292,8 +300,14 @@ wasm::call:alt /
     let pred = get_pred(&whamm);
     hardcode_compiler_constants(&mut table);
 
-    let folded_expr =
-        ExprFolder::fold_expr(pred, &mut WasmRegistry::default(), false, &table, &mut err);
+    let folded_expr = ExprFolder::fold_expr(
+        pred,
+        &mut WasmRegistry::default(),
+        false,
+        &table,
+        &HashMap::default(),
+        &mut err,
+    );
     debug!("{:#?}", folded_expr);
 
     // ExprFolder should not be able to simplify the Call expressions at all.

@@ -236,3 +236,11 @@ fn instrument_with_strings_scripts() {
 
     run_core_suite("strings", processed_scripts, true, true)
 }
+#[test]
+fn instrument_with_memcpy_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/memcpy");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("memcpy", processed_scripts, true, true)
+}

@@ -1176,7 +1176,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         }
                         _ => {
                             self.err.type_check_error(
-                                "Could not find function for the invocation".to_string(),
+                                format!("Could not find variable `{obj_name}` that this function was called on"),
                                 &loc.clone().map(|l| l.line_col),
                             );
                             return Some(DataType::AssumeGood);

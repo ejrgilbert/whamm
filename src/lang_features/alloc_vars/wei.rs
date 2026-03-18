@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::common::error::ErrorGen;
-use crate::emitter::memory_allocator::{StringAddr, VAR_BLOCK_BASE_VAR};
+use crate::emitter::memory_allocator::{EmitMode, StringAddr, VAR_BLOCK_BASE_VAR};
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::emitter::utils::{emit_stmt, EmitCtx};
@@ -402,6 +402,7 @@ impl UnsharedVarHandler {
             fname_len.id,
             base_mem,
             base_mem_tracker,
+            EmitMode::NoCtx,
             func,
         );
 

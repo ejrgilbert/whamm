@@ -1,25 +1,30 @@
 use crate::common::error::ErrorGen;
+use crate::emitter::memory_allocator::StringAddr;
 use crate::generator::folding::expr::ExprFolder;
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::parser::types::{Block, Location, Statement};
 use crate::verifier::types::SymbolTable;
+use std::collections::HashMap;
 
 // =======================================
 // = Constant Propagation via StmtFolder =
 // =======================================
 
-pub struct StmtFolder {
+pub struct StmtFolder<'a> {
+    emitted_strings: &'a HashMap<String, StringAddr>,
     as_monitor_module: bool,
     curr_loc: Option<Location>,
 }
-impl StmtFolder {
+impl<'a> StmtFolder<'a> {
     pub fn fold_stmt(
         stmt: &Statement,
         as_monitor_module: bool,
         table: &SymbolTable,
+        emitted_strings: &'a HashMap<String, StringAddr>,
         err: &mut ErrorGen,
     ) -> Block {
         let mut inst = Self {
+            emitted_strings,
             as_monitor_module,
             curr_loc: None,
         };
@@ -55,11 +60,13 @@ impl StmtFolder {
                 &mut WasmRegistry::default(),
                 self.as_monitor_module,
                 table,
+                self.emitted_strings,
                 err,
             );
             if let Some(b) = ExprFolder::get_single_bool(
                 &folded_expr,
                 &mut WasmRegistry::default(),
+                self.emitted_strings,
                 self.as_monitor_module,
             ) {
                 let mut new_block = Block::default();

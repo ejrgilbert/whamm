@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
-use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::emitter::memory_allocator::{EmitMode, MemoryAllocator, PtrSource};
 use crate::emitter::tag_handler::get_probe_tag_data;
 use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::core::LibAdapter;
@@ -135,7 +135,7 @@ impl MapLibAdapter {
         vec![]
     }
 
-    pub fn map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn map_get<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         key: DataType,
         val: DataType,
@@ -161,7 +161,7 @@ impl MapLibAdapter {
         }
     }
 
-    fn handle_string_key_before_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    fn handle_string_key_before_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &self,
         func: &mut T,
         utils: &UtilsAdapter,
@@ -185,18 +185,19 @@ impl MapLibAdapter {
         utils.mem_alloc(src_len, func, err);
         func.local_set(alloc_ptr);
 
-        mem_allocator.copy_to_mem_u32_ptr(
+        mem_allocator.mem_cpy(
             self.instr_mem as u32,
-            src_offset,
-            src_len,
+            &mut PtrSource::Local(src_offset),
+            &mut PtrSource::Local(src_len),
             self.lib_mem as u32,
-            MAP_LIB_MEM_OFFSET,
+            &mut PtrSource::U32(MAP_LIB_MEM_OFFSET),
+            EmitMode::NoCtx,
             func,
         );
         alloc_ptr
     }
 
-    fn handle_string_key_after_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    fn handle_string_key_after_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &self,
         alloc_ptr: LocalID,
         func: &mut T,
@@ -207,7 +208,7 @@ impl MapLibAdapter {
         utils.mem_free(alloc_ptr, func, err);
     }
 
-    pub fn map_insert<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn map_insert<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         key: DataType,
         val: DataType,
@@ -233,7 +234,7 @@ impl MapLibAdapter {
         }
     }
 
-    pub fn map_create_report<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn map_create_report<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         name: String,
         is_global: bool,
@@ -250,7 +251,7 @@ impl MapLibAdapter {
         map_id
     }
 
-    pub fn map_create<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn map_create<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         ty: DataType,
         func: &mut T,
@@ -262,7 +263,7 @@ impl MapLibAdapter {
         map_id
     }
 
-    pub fn map_create_dynamic<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn map_create_dynamic<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         ty: DataType,
         func: &mut T,
@@ -273,7 +274,7 @@ impl MapLibAdapter {
         self.call(func_name.as_str(), func, err);
     }
 
-    pub fn print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn print_map<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         func: &mut T,
         err: &mut ErrorGen,
@@ -291,7 +292,7 @@ impl MapLibAdapter {
         (map_id, func_name)
     }
 
-    pub(crate) fn call_print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn call_print_map<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         func: &mut T,
         err: &mut ErrorGen,
@@ -426,7 +427,7 @@ impl MapLibAdapter {
         }
     }
 
-    fn call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    fn call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         fname: &str,
         func: &mut T,

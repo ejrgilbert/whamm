@@ -1,6 +1,8 @@
+use crate::emitter::memory_allocator::StringAddr;
 use crate::emitter::utils::{emit_expr, EmitCtx};
 use crate::emitter::InjectStrategy;
 use crate::parser::types::{Definition, Expr, Value};
+use std::collections::HashMap;
 use wirm::ir::id::LocalID;
 use wirm::ir::types::{BlockType, DataType as WirmType};
 use wirm::module_builder::AddLocal;
@@ -16,6 +18,11 @@ impl StringUtils {
             unreachable!("Should have gotten a string value for the variable.")
         };
         s
+    }
+    /// Returns the address of the string in memory.
+    pub(crate) fn addr(s: &Value, emitted_strings: &HashMap<String, StringAddr>) -> u32 {
+        let s = Self::get_str(s);
+        emitted_strings.get(&s.to_string()).unwrap().mem_offset as u32
     }
     /// Returns the length of the string.
     /// This length is in bytes, not chars or graphemes. In other words, it might not be
@@ -51,7 +58,7 @@ impl StringUtils {
     // TODO: Once I support chars, add utilities that use them
 }
 impl StringUtils {
-    pub(crate) fn addr_of<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn addr_of<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         target: &mut Expr,
         strategy: InjectStrategy,
         injector: &mut T,
@@ -63,7 +70,7 @@ impl StringUtils {
 
         true
     }
-    pub(crate) fn len_dynamic<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn len_dynamic<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         target: &mut Expr,
         strategy: InjectStrategy,
         injector: &mut T,
@@ -79,7 +86,7 @@ impl StringUtils {
         true
     }
 
-    pub(crate) fn starts_with_dynamic<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn starts_with_dynamic<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         target: &mut Expr,
         args: &mut [Expr],
         strategy: InjectStrategy,
@@ -114,7 +121,7 @@ impl StringUtils {
         )
     }
 
-    pub(crate) fn ends_with_dynamic<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn ends_with_dynamic<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         target: &mut Expr,
         args: &mut [Expr],
         strategy: InjectStrategy,
@@ -153,7 +160,7 @@ impl StringUtils {
         )
     }
 
-    pub(crate) fn contains_dynamic<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn contains_dynamic<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         target: &mut Expr,
         args: &mut [Expr],
         strategy: InjectStrategy,

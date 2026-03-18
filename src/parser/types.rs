@@ -1655,6 +1655,7 @@ impl Whamm {
         vec![
             Self::def_strcmp(),
             Self::def_mem(),
+            Self::def_mem_cpy(),
             Self::def_write_str(),
             Self::def_read_str(),
         ]
@@ -1711,12 +1712,66 @@ impl Whamm {
             StackReq::None,
         )
     }
+    fn def_mem_cpy() -> BoundFunction {
+        let mem_params = vec![
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "src_mem".to_string(),
+                    loc: None,
+                },
+                DataType::U32,
+            ),
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "src_ptr".to_string(),
+                    loc: None,
+                },
+                DataType::U32,
+            ),
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "dst_mem".to_string(),
+                    loc: None,
+                },
+                DataType::U32,
+            ),
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "dst_ptr".to_string(),
+                    loc: None,
+                },
+                DataType::U32,
+            ),
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "len".to_string(),
+                    loc: None,
+                },
+                DataType::U32,
+            ),
+        ];
+
+        BoundFunction::new(
+            "memcpy".to_string(),
+            "Copy a region of bytes from the source to the destination memory.".to_string(),
+            mem_params,
+            DataType::Tuple { ty_info: vec![] },
+            true,
+            true,
+            StackReq::None,
+        )
+    }
     fn def_write_str() -> BoundFunction {
         let write_params = vec![
             (
                 Expr::VarId {
                     definition: Definition::CompilerStatic,
-                    name: "target_mem".to_string(),
+                    name: "dst_mem".to_string(),
                     loc: None,
                 },
                 DataType::U32,
@@ -1795,11 +1850,23 @@ impl Whamm {
 
     pub(crate) fn get_utils_strings() -> Vec<BoundFunction> {
         vec![
+            Self::def_addr(),
             Self::def_len(),
             Self::def_starts_with(),
             Self::def_ends_with(),
             Self::def_contains(),
         ]
+    }
+    fn def_addr() -> BoundFunction {
+        BoundFunction::new(
+            "addr".to_string(),
+            "Get the address of a string in memory.".to_string(),
+            vec![],
+            DataType::U32,
+            true,
+            true,
+            StackReq::None,
+        )
     }
     fn def_len() -> BoundFunction {
         BoundFunction::new(

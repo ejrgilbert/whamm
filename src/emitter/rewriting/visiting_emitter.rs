@@ -416,7 +416,14 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
 
     pub(crate) fn fold_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {
         // todo -- create actual registry
-        *expr = ExprFolder::fold_expr(expr, self.registry, false, self.table, err);
+        *expr = ExprFolder::fold_expr(
+            expr,
+            self.registry,
+            false,
+            self.table,
+            &self.mem_allocator.emitted_strings,
+            err,
+        );
         true
     }
 
@@ -579,6 +586,11 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         true
     }
 
+    fn handle_memcpy(&mut self) -> bool {
+        // this is handled in the shared emitter utils
+        false
+    }
+
     fn handle_write_str(&mut self) -> bool {
         // this is handled in the shared emitter utils
         false
@@ -602,6 +614,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                 self.registry,
                 self.strategy.as_monitor_module(),
                 self.table,
+                &self.mem_allocator.emitted_strings,
                 err,
             ));
         }
@@ -610,6 +623,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             "alt_call_by_name" => self.handle_alt_call_by_name(&mut folded_args, err),
             "alt_call_by_id" => self.handle_alt_call_by_id(&mut folded_args, err),
             "drop_args" => self.handle_drop_args(err),
+            "memcpy" => self.handle_memcpy(),
             "write_str" => self.handle_write_str(),
             "read_str" => self.handle_read_str(),
             _ => {

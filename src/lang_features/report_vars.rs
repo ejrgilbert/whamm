@@ -592,7 +592,7 @@ impl ReportVars {
         wasm.set_fn_name(flush_fid, "flush_var_metadata".to_string());
         self.flush_tracker.flush_var_metadata_fid = Some(*flush_fid);
     }
-    fn flush_ty_metadata<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    fn flush_ty_metadata<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         flush_fn: &mut T,
         dt: &DataType,
         dt_local: &LocalID,
