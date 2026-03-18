@@ -1169,7 +1169,7 @@ fn handle_opcode_events(
         "atomic.fence" => if let Operator::AtomicFence = instr {
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_load" => if let Operator::I32AtomicLoad {memarg: MemArg {
+        "i32.atomic.load" => if let Operator::I32AtomicLoad {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1178,7 +1178,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_load" => if let Operator::I64AtomicLoad {memarg: MemArg {
+        "i64.atomic.load" => if let Operator::I64AtomicLoad {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1187,7 +1187,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_load8_u" => if let Operator::I32AtomicLoad8U {memarg: MemArg {
+        "i32.atomic.load8_u" => if let Operator::I32AtomicLoad8U {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1196,7 +1196,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_load16_u" => if let Operator::I32AtomicLoad16U {memarg: MemArg {
+        "i32.atomic.load16_u" => if let Operator::I32AtomicLoad16U {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1205,7 +1205,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_load8_u" => if let Operator::I64AtomicLoad8U {memarg: MemArg {
+        "i64.atomic.load8_u" => if let Operator::I64AtomicLoad8U {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1214,7 +1214,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_load16_u" => if let Operator::I64AtomicLoad16U {memarg: MemArg {
+        "i64.atomic.load16_u" => if let Operator::I64AtomicLoad16U {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1223,7 +1223,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_load32_u" => if let Operator::I64AtomicLoad32U {memarg: MemArg {
+        "i64.atomic.load32_u" => if let Operator::I64AtomicLoad32U {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1232,7 +1232,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_store" => if let Operator::I32AtomicStore {memarg: MemArg {
+        "i32.atomic.store" => if let Operator::I32AtomicStore {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1241,7 +1241,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_store8" => if let Operator::I32AtomicStore8 {memarg: MemArg {
+        "i32.atomic.store8" => if let Operator::I32AtomicStore8 {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1250,7 +1250,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_store16" => if let Operator::I32AtomicStore16 {memarg: MemArg {
+        "i32.atomic.store16" => if let Operator::I32AtomicStore16 {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1259,7 +1259,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_store" => if let Operator::I64AtomicStore {memarg: MemArg {
+        "i64.atomic.store" => if let Operator::I64AtomicStore {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1268,7 +1268,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_store8" => if let Operator::I64AtomicStore8 {memarg: MemArg {
+        "i64.atomic.store8" => if let Operator::I64AtomicStore8 {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1277,7 +1277,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_store16" => if let Operator::I64AtomicStore16 {memarg: MemArg {
+        "i64.atomic.store16" => if let Operator::I64AtomicStore16 {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1286,7 +1286,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_store32" => if let Operator::I64AtomicStore32 {memarg: MemArg {
+        "i64.atomic.store32" => if let Operator::I64AtomicStore32 {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1295,7 +1295,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw_add" => if let Operator::I32AtomicRmwAdd {memarg: MemArg {
+        "i32.atomic.rmw.add" => if let Operator::I32AtomicRmwAdd {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1304,7 +1304,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw8_add_u" => if let Operator::I32AtomicRmw8AddU {memarg: MemArg {
+        "i32.atomic.rmw8.add_u" => if let Operator::I32AtomicRmw8AddU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1313,7 +1313,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw16_add_u" => if let Operator::I32AtomicRmw16AddU {memarg: MemArg {
+        "i32.atomic.rmw16.add_u" => if let Operator::I32AtomicRmw16AddU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1322,7 +1322,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw_add" => if let Operator::I64AtomicRmwAdd {memarg: MemArg {
+        "i64.atomic.rmw.add" => if let Operator::I64AtomicRmwAdd {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1331,7 +1331,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw8_add_u" => if let Operator::I64AtomicRmw8AddU {memarg: MemArg {
+        "i64.atomic.rmw8.add_u" => if let Operator::I64AtomicRmw8AddU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1340,7 +1340,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw16_add_u" => if let Operator::I64AtomicRmw16AddU {memarg: MemArg {
+        "i64.atomic.rmw16.add_u" => if let Operator::I64AtomicRmw16AddU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1349,7 +1349,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw32_add_u" => if let Operator::I64AtomicRmw32AddU {memarg: MemArg {
+        "i64.atomic.rmw32.add_u" => if let Operator::I64AtomicRmw32AddU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1358,7 +1358,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw_sub" => if let Operator::I32AtomicRmwSub {memarg: MemArg {
+        "i32.atomic.rmw.sub" => if let Operator::I32AtomicRmwSub {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1367,7 +1367,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw8_sub_u" => if let Operator::I32AtomicRmw8SubU {memarg: MemArg {
+        "i32.atomic.rmw8.sub_u" => if let Operator::I32AtomicRmw8SubU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1376,7 +1376,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw16_sub_u" => if let Operator::I32AtomicRmw16SubU {memarg: MemArg {
+        "i32.atomic.rmw16.sub_u" => if let Operator::I32AtomicRmw16SubU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1385,7 +1385,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw_sub" => if let Operator::I64AtomicRmwSub {memarg: MemArg {
+        "i64.atomic.rmw.sub" => if let Operator::I64AtomicRmwSub {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1394,7 +1394,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw8_sub_u" => if let Operator::I64AtomicRmw8SubU {memarg: MemArg {
+        "i64.atomic.rmw8.sub_u" => if let Operator::I64AtomicRmw8SubU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1403,7 +1403,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw16_sub_u" => if let Operator::I64AtomicRmw16SubU {memarg: MemArg {
+        "i64.atomic.rmw16.sub_u" => if let Operator::I64AtomicRmw16SubU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1412,7 +1412,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw32_sub_u" => if let Operator::I64AtomicRmw32SubU {memarg: MemArg {
+        "i64.atomic.rmw32.sub_u" => if let Operator::I64AtomicRmw32SubU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1421,7 +1421,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw_and" => if let Operator::I32AtomicRmwAnd {memarg: MemArg {
+        "i32.atomic.rmw.and" => if let Operator::I32AtomicRmwAnd {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1430,7 +1430,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw8_and_u" => if let Operator::I32AtomicRmw8AndU {memarg: MemArg {
+        "i32.atomic.rmw8.and_u" => if let Operator::I32AtomicRmw8AndU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1439,7 +1439,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw16_and_u" => if let Operator::I32AtomicRmw16AndU {memarg: MemArg {
+        "i32.atomic.rmw16.and_u" => if let Operator::I32AtomicRmw16AndU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1448,7 +1448,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw_and" => if let Operator::I64AtomicRmwAnd {memarg: MemArg {
+        "i64.atomic.rmw.and" => if let Operator::I64AtomicRmwAnd {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1457,7 +1457,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw8_and_u" => if let Operator::I64AtomicRmw8AndU {memarg: MemArg {
+        "i64.atomic.rmw8.and_u" => if let Operator::I64AtomicRmw8AndU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1466,7 +1466,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw16_and_u" => if let Operator::I64AtomicRmw16AndU {memarg: MemArg {
+        "i64.atomic.rmw16.and_u" => if let Operator::I64AtomicRmw16AndU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1475,7 +1475,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw32_and_u" => if let Operator::I64AtomicRmw32AndU {memarg: MemArg {
+        "i64.atomic.rmw32.and_u" => if let Operator::I64AtomicRmw32AndU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1484,7 +1484,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw_or" => if let Operator::I32AtomicRmwOr {memarg: MemArg {
+        "i32.atomic.rmw.or" => if let Operator::I32AtomicRmwOr {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1493,7 +1493,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw8_or_u" => if let Operator::I32AtomicRmw8OrU {memarg: MemArg {
+        "i32.atomic.rmw8.or_u" => if let Operator::I32AtomicRmw8OrU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1502,7 +1502,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw16_or_u" => if let Operator::I32AtomicRmw16OrU {memarg: MemArg {
+        "i32.atomic.rmw16.or_u" => if let Operator::I32AtomicRmw16OrU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1511,7 +1511,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw_or" => if let Operator::I64AtomicRmwOr {memarg: MemArg {
+        "i64.atomic.rmw.or" => if let Operator::I64AtomicRmwOr {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1520,7 +1520,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw8_or_u" => if let Operator::I64AtomicRmw8OrU {memarg: MemArg {
+        "i64.atomic.rmw8.or_u" => if let Operator::I64AtomicRmw8OrU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1529,7 +1529,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw16_or_u" => if let Operator::I64AtomicRmw16OrU {memarg: MemArg {
+        "i64.atomic.rmw16.or_u" => if let Operator::I64AtomicRmw16OrU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1538,7 +1538,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw32_or_u" => if let Operator::I64AtomicRmw32OrU {memarg: MemArg {
+        "i64.atomic.rmw32.or_u" => if let Operator::I64AtomicRmw32OrU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1547,7 +1547,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw_xor" => if let Operator::I32AtomicRmwXor {memarg: MemArg {
+        "i32.atomic.rmw.xor" => if let Operator::I32AtomicRmwXor {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1556,7 +1556,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw8_xor_u" => if let Operator::I32AtomicRmw8XorU {memarg: MemArg {
+        "i32.atomic.rmw8.xor_u" => if let Operator::I32AtomicRmw8XorU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1565,7 +1565,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw16_xor_u" => if let Operator::I32AtomicRmw16XorU {memarg: MemArg {
+        "i32.atomic.rmw16.xor_u" => if let Operator::I32AtomicRmw16XorU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1574,7 +1574,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw_xor" => if let Operator::I64AtomicRmwXor {memarg: MemArg {
+        "i64.atomic.rmw.xor" => if let Operator::I64AtomicRmwXor {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1583,7 +1583,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw8_xor_u" => if let Operator::I64AtomicRmw8XorU {memarg: MemArg {
+        "i64.atomic.rmw8.xor_u" => if let Operator::I64AtomicRmw8XorU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1592,7 +1592,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw16_xor_u" => if let Operator::I64AtomicRmw16XorU {memarg: MemArg {
+        "i64.atomic.rmw16.xor_u" => if let Operator::I64AtomicRmw16XorU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1601,7 +1601,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw32_xor_u" => if let Operator::I64AtomicRmw32XorU {memarg: MemArg {
+        "i64.atomic.rmw32.xor_u" => if let Operator::I64AtomicRmw32XorU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1610,7 +1610,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw_xchg" => if let Operator::I32AtomicRmwXchg {memarg: MemArg {
+        "i32.atomic.rmw.xchg" => if let Operator::I32AtomicRmwXchg {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1619,7 +1619,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw8_xchg_u" => if let Operator::I32AtomicRmw8XchgU {memarg: MemArg {
+        "i32.atomic.rmw8.xchg_u" => if let Operator::I32AtomicRmw8XchgU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1628,7 +1628,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw16_xchg_u" => if let Operator::I32AtomicRmw16XchgU {memarg: MemArg {
+        "i32.atomic.rmw16.xchg_u" => if let Operator::I32AtomicRmw16XchgU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1637,7 +1637,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw_xchg" => if let Operator::I64AtomicRmwXchg {memarg: MemArg {
+        "i64.atomic.rmw.xchg" => if let Operator::I64AtomicRmwXchg {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1646,7 +1646,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw8_xchg_u" => if let Operator::I64AtomicRmw8XchgU {memarg: MemArg {
+        "i64.atomic.rmw8.xchg_u" => if let Operator::I64AtomicRmw8XchgU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1655,7 +1655,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw16_xchg_u" => if let Operator::I64AtomicRmw16XchgU {memarg: MemArg {
+        "i64.atomic.rmw16.xchg_u" => if let Operator::I64AtomicRmw16XchgU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1664,7 +1664,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw32_xchg_u" => if let Operator::I64AtomicRmw32XchgU {memarg: MemArg {
+        "i64.atomic.rmw32.xchg_u" => if let Operator::I64AtomicRmw32XchgU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1673,7 +1673,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw_cmpxchg" => if let Operator::I32AtomicRmwCmpxchg {memarg: MemArg {
+        "i32.atomic.rmw.cmpxchg" => if let Operator::I32AtomicRmwCmpxchg {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1682,7 +1682,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw8_cmpxchg_u" => if let Operator::I32AtomicRmw8CmpxchgU {memarg: MemArg {
+        "i32.atomic.rmw8.cmpxchg_u" => if let Operator::I32AtomicRmw8CmpxchgU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1691,7 +1691,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i32.atomic_rmw16_cmpxchg_u" => if let Operator::I32AtomicRmw16CmpxchgU {memarg: MemArg {
+        "i32.atomic.rmw16.cmpxchg_u" => if let Operator::I32AtomicRmw16CmpxchgU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1700,7 +1700,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw_cmpxchg" => if let Operator::I64AtomicRmwCmpxchg {memarg: MemArg {
+        "i64.atomic.rmw.cmpxchg" => if let Operator::I64AtomicRmwCmpxchg {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1709,7 +1709,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw8_cmpxchg_u" => if let Operator::I64AtomicRmw8CmpxchgU {memarg: MemArg {
+        "i64.atomic.rmw8.cmpxchg_u" => if let Operator::I64AtomicRmw8CmpxchgU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1718,7 +1718,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw16_cmpxchg_u" => if let Operator::I64AtomicRmw16CmpxchgU {memarg: MemArg {
+        "i64.atomic.rmw16.cmpxchg_u" => if let Operator::I64AtomicRmw16CmpxchgU {memarg: MemArg {
             align,
             offset,
             memory,
@@ -1727,7 +1727,7 @@ fn handle_opcode_events(
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        "i64.atomic_rmw32_cmpxchg_u" => if let Operator::I64AtomicRmw32CmpxchgU {memarg: MemArg {
+        "i64.atomic.rmw32.cmpxchg_u" => if let Operator::I64AtomicRmw32CmpxchgU {memarg: MemArg {
             align,
             offset,
             memory,

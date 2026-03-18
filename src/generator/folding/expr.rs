@@ -1408,7 +1408,7 @@ impl<'a> ExprFolder<'a> {
         if let Some(res) = self.fold_i32_unop(&val, op, err) {
             return Some(res);
         }
-        let val = self.get_u32(expr);
+        let val = Self::get_u32(expr);
         if let Some(res) = self.fold_u32_unop(&val, op, err) {
             return Some(res);
         }
@@ -1768,9 +1768,9 @@ impl<'a> ExprFolder<'a> {
         }
     }
     fn get_u32s(&mut self, lhs: &Expr, rhs: &Expr) -> (Option<u32>, Option<u32>) {
-        (self.get_u32(lhs), self.get_u32(rhs))
+        (Self::get_u32(lhs), Self::get_u32(rhs))
     }
-    fn get_u32(&mut self, expr: &Expr) -> Option<u32> {
+    pub(crate) fn get_u32(expr: &Expr) -> Option<u32> {
         match expr {
             Expr::Primitive {
                 val:

@@ -391,8 +391,6 @@ impl<'a> MetadataCollector<'a> {
                     if let Some(context) = context {
                         // will need to emit this function!
                         self.used_bound_fns.insert((context, fn_name));
-                        // will need to possibly define arguments!
-                        self.combine_req_args(req_args.clone());
                     }
                 } else if matches!(def, Definition::CompilerStatic) && fn_name == "memid" {
                     let target_lib = args.first().unwrap();
@@ -400,6 +398,10 @@ impl<'a> MetadataCollector<'a> {
                         panic!("not supported")
                     };
                     self.used_user_library_mems.insert(name.clone());
+                }
+                if !matches!(self.visiting, Visiting::None) {
+                    // will need to possibly define arguments!
+                    self.combine_req_args(req_args.clone());
                 }
 
                 let mut new_args = vec![];

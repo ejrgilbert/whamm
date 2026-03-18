@@ -606,7 +606,7 @@ dup_at: &dup_at
   params: "(dst_mem: u32, dst_addr: u32)"
   results: ()
   req_args: -1
-  docs: Duplicate the side effect of the bulk memory operation at the target address in the destination memory.
+  docs: Duplicate the side effect of the bulk memory operation at the target address in the destination memory (useful for maintaining a shadow memory on writes).
 
 # =======================
 # ==== wasm:opcode:* ====
@@ -1843,8 +1843,7 @@ i32_store: &i32_store
     - *effective_addr
     - *is_write_true
     - *offset
-  bound_fns:
-    - *dup_at
+  bound_fns: []
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
@@ -1881,8 +1880,7 @@ i64_store: &i64_store
     - *effective_addr
     - *is_write_true
     - *offset
-  bound_fns:
-    - *dup_at
+  bound_fns: []
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
@@ -1919,8 +1917,7 @@ f32_store: &f32_store
     - *effective_addr
     - *is_write_true
     - *offset
-  bound_fns:
-    - *dup_at
+  bound_fns: []
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
@@ -1957,8 +1954,7 @@ f64_store: &f64_store
     - *effective_addr
     - *is_write_true
     - *offset
-  bound_fns:
-    - *dup_at
+  bound_fns: []
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
@@ -1995,8 +1991,7 @@ i32_store8: &i32_store8
     - *effective_addr
     - *is_write_true
     - *offset
-  bound_fns:
-    - *dup_at
+  bound_fns: []
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
@@ -2033,8 +2028,7 @@ i32_store16: &i32_store16
     - *effective_addr
     - *is_write_true
     - *offset
-  bound_fns:
-    - *dup_at
+  bound_fns: []
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
@@ -2071,8 +2065,7 @@ i64_store8: &i64_store8
     - *effective_addr
     - *is_write_true
     - *offset
-  bound_fns:
-    - *dup_at
+  bound_fns: []
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
@@ -2110,8 +2103,7 @@ i64_store16: &i64_store16
     - *effective_addr
     - *is_write_true
     - *offset
-  bound_fns:
-    - *dup_at
+  bound_fns: []
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
@@ -2148,8 +2140,7 @@ i64_store32: &i64_store32
     - *effective_addr
     - *is_write_true
     - *offset
-  bound_fns:
-    - *dup_at
+  bound_fns: []
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Store"
