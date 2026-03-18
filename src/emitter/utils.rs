@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
 use crate::emitter::locals_tracker::LocalsTracker;
-use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::emitter::memory_allocator::{EmitMode, MemoryAllocator, PtrSource};
 use crate::emitter::tag_handler::get_tag_for;
 use crate::emitter::InjectStrategy;
 use crate::generator::ast::Probe;
@@ -153,6 +153,7 @@ fn handle_special_fn_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
             unreachable!("static function call should already be handled: {target_fn_name}")
         }
+        "memcpy" => handle_memcpy(&mut folded_args, strategy, injector, ctx),
         "write_str" => handle_write_str(&mut folded_args, strategy, injector, ctx),
         "read_str" => handle_read_str(&mut folded_args, strategy, injector, ctx),
         _ => {
@@ -162,6 +163,40 @@ fn handle_special_fn_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
             );
         }
     }
+}
+
+fn handle_memcpy<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    args: &mut [Expr],
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) -> bool {
+    // usage: `memcpy(dst_mem: u32, src_mem: u32, start_addr: u32, len: u32) -> ()`
+    let src_mem = args[0]
+        .get_primitive_u32()
+        .unwrap_or_else(|| unreachable!());
+    let dst_mem = args[2]
+        .get_primitive_u32()
+        .unwrap_or_else(|| unreachable!());
+
+    // TODO: Fix utils.rs to not need `&mut Expr` at all (make immutable)
+    let src_ptr = args[1].clone();
+    let dst_ptr = args[3].clone();
+    let src_len = args[4].clone();
+
+    ctx.mem_allocator.copy_to_mem(
+        src_mem,
+        &mut PtrSource::Expr(src_ptr),
+        &mut PtrSource::Expr(src_len),
+        dst_mem,
+        &mut PtrSource::Expr(dst_ptr),
+        EmitMode::WithCtx {
+            ctx,
+            strategy
+        },
+        injector,
+    );
+    true
 }
 
 fn handle_write_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
@@ -181,15 +216,15 @@ fn handle_write_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     injector.local_set(str_len);
     let str_ptr = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
     injector.local_set(str_ptr);
+    let dst_ptr = args[1].clone();
 
-    ctx.mem_allocator.copy_to_mem_expr(
+    ctx.mem_allocator.copy_to_mem(
         ctx.mem_allocator.mem_id,
-        str_ptr,
-        str_len,
+        &mut PtrSource::Local(str_ptr),
+        &mut PtrSource::Local(str_len),
         target_mem,
-        &mut args[1],
-        strategy,
-        ctx,
+        &mut PtrSource::Expr(dst_ptr),
+        EmitMode::WithCtx {ctx, strategy},
         injector,
     );
     true
@@ -221,6 +256,7 @@ fn handle_read_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         str_len,
         ctx.mem_allocator.mem_id,
         dst_ptr,
+        EmitMode::WithCtx {ctx, strategy},
         injector,
     );
 

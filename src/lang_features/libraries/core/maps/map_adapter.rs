@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
-use crate::emitter::memory_allocator::MemoryAllocator;
+use crate::emitter::memory_allocator::{EmitMode, MemoryAllocator, PtrSource};
 use crate::emitter::tag_handler::get_probe_tag_data;
 use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::core::LibAdapter;
@@ -185,12 +185,13 @@ impl MapLibAdapter {
         utils.mem_alloc(src_len, func, err);
         func.local_set(alloc_ptr);
 
-        mem_allocator.copy_to_mem_u32_ptr(
+        mem_allocator.copy_to_mem(
             self.instr_mem as u32,
-            src_offset,
-            src_len,
+            &mut PtrSource::Local(src_offset),
+            &mut PtrSource::Local(src_len),
             self.lib_mem as u32,
-            MAP_LIB_MEM_OFFSET,
+            &mut PtrSource::U32(MAP_LIB_MEM_OFFSET),
+            EmitMode::NoCtx,
             func,
         );
         alloc_ptr

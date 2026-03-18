@@ -581,6 +581,11 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
         true
     }
 
+    fn handle_memcpy(&mut self) -> bool {
+        // this is handled in the shared emitter utils
+        false
+    }
+
     fn handle_write_str(&mut self) -> bool {
         // this is handled in the shared emitter utils
         false
@@ -612,6 +617,7 @@ impl<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k>
             "alt_call_by_name" => self.handle_alt_call_by_name(&mut folded_args, err),
             "alt_call_by_id" => self.handle_alt_call_by_id(&mut folded_args, err),
             "drop_args" => self.handle_drop_args(err),
+            "memcpy" => self.handle_memcpy(),
             "write_str" => self.handle_write_str(),
             "read_str" => self.handle_read_str(),
             _ => {

@@ -256,14 +256,16 @@ impl MemoryAllocator {
         src_len: LocalID,
         dst_mem_id: u32,
         dst_mem_tracker: GlobalID,
+        mode: EmitMode<'a>,
         func: &mut T,
     ) {
         self.copy_to_mem(
             src_mem_id,
-            src_offset,
-            src_len,
+            &mut PtrSource::Local(src_offset),
+            &mut PtrSource::Local(src_len),
             dst_mem_id,
-            |func| func.global_get(dst_mem_tracker),
+            &mut PtrSource::Global(dst_mem_tracker),
+            mode,
             func,
         );
 
@@ -273,18 +275,16 @@ impl MemoryAllocator {
             .i32_add()
             .global_set(dst_mem_tracker);
     }
-
-    fn copy_to_mem<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal, F>(
+    pub(crate) fn copy_to_mem<'b, T: Opcode<'b> + MacroOpcode<'b> + AddLocal>(
         &self,
         src_mem_id: u32,
-        src_offset: LocalID,
-        src_len: LocalID,
+        src_ptr: &mut PtrSource,
+        src_len: &mut PtrSource,
         dst_mem_id: u32,
-        mut get_ptr: F,
+        dst_ptr: &mut PtrSource,
+        mut mode: EmitMode<'_>,
         func: &mut T,
-    ) where
-        F: FnMut(&mut T) -> &mut T,
-    {
+    ) {
         let i = func.add_local(WirmType::I32);
         let tmp = func.add_local(WirmType::I32);
 
@@ -302,91 +302,32 @@ impl MemoryAllocator {
         };
 
         #[rustfmt::skip]
-        func.loop_stmt(BlockType::Empty)
-            // write new data
-            .local_get(src_offset)
+    func.loop_stmt(BlockType::Empty);
+
+        mode.emit(src_ptr, func);
+        func
             .local_get(i)
             .i32_add()
-            .i32_load8_u(src_mem) // load new char
+            .i32_load8_u(src_mem)
             .local_set(tmp);
-        get_ptr(func)
+
+        mode.emit(dst_ptr, func);
+        func
             .local_get(i)
             .i32_add()
             .local_get(tmp)
-            .i32_store8(dst_mem) // store new char
-            // update i
+            .i32_store8(dst_mem)
             .i32_const(1)
             .local_get(i)
             .i32_add()
             .local_set(i)
-            // continue loop if we're still less than the length of the string
-            .local_get(i)
-            .local_get(src_len)
+            .local_get(i);
+
+        mode.emit(src_len, func);
+        func
             .i32_lt_signed()
             .br_if(0)
             .end();
-    }
-
-    pub fn copy_to_mem_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &self,
-        src_mem_id: u32,
-        src_offset: LocalID,
-        src_len: LocalID,
-        dst_mem_id: u32,
-        dst_mem_ptr: &mut Expr,
-        inject_strategy: InjectStrategy,
-        ctx: &mut EmitCtx,
-        func: &mut T,
-    ) {
-        self.copy_to_mem(
-            src_mem_id,
-            src_offset,
-            src_len,
-            dst_mem_id,
-            |func| {
-                emit_expr(dst_mem_ptr, None, inject_strategy, func, ctx);
-                func
-            },
-            func,
-        );
-    }
-
-    pub fn copy_to_mem_local_ptr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &self,
-        src_mem_id: u32,
-        src_offset: LocalID,
-        src_len: LocalID,
-        dst_mem_id: u32,
-        dst_mem_ptr: LocalID,
-        func: &mut T,
-    ) {
-        self.copy_to_mem(
-            src_mem_id,
-            src_offset,
-            src_len,
-            dst_mem_id,
-            |func| func.local_get(dst_mem_ptr),
-            func,
-        );
-    }
-
-    pub fn copy_to_mem_u32_ptr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
-        &self,
-        src_mem_id: u32,
-        src_offset: LocalID,
-        src_len: LocalID,
-        dst_mem_id: u32,
-        dst_mem_ptr: u32,
-        func: &mut T,
-    ) {
-        self.copy_to_mem(
-            src_mem_id,
-            src_offset,
-            src_len,
-            dst_mem_id,
-            |func| func.u32_const(dst_mem_ptr),
-            func,
-        );
     }
 
     // =====================
@@ -645,4 +586,69 @@ impl MemoryAllocator {
 pub struct StringAddr {
     pub mem_offset: usize,
     pub len: usize,
+}
+
+pub(crate) enum EmitMode<'ctx> {
+    NoCtx,
+    WithCtx {
+        ctx: *mut EmitCtx<'ctx, 'ctx,'ctx,'ctx,'ctx,'ctx,'ctx>, // TODO: Change to &mut
+        strategy: InjectStrategy,
+    },
+}
+impl<'ctx> EmitMode<'ctx> {
+    fn emit<'b, T: Opcode<'b> + MacroOpcode<'b> + AddLocal>(
+        &mut self,
+        ptr: &mut PtrSource,
+        func: &mut T,
+    ) {
+        match self {
+            EmitMode::NoCtx => ptr.emit(func),
+            EmitMode::WithCtx { ctx, strategy } => {
+                ptr.emit_with_ctx(func, ctx, *strategy)
+            }
+        }
+    }
+}
+
+pub enum PtrSource {
+    U32(u32),
+    Local(LocalID),
+    Global(GlobalID),
+    Expr(Expr),
+}
+impl PtrSource {
+    fn emit<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T
+    ) {
+        match self {
+            PtrSource::U32(i) => {
+                func.u32_const(*i);
+            }
+            PtrSource::Local(id) => {
+                func.local_get(*id);
+            }
+            PtrSource::Global(id) => {
+                func.global_get(*id);
+            }
+            PtrSource::Expr(_) => unreachable!("should call `emit_with_ctx` with this!")
+        }
+    }
+    fn emit_with_ctx<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+        &mut self,
+        func: &mut T,
+        ctx: &mut EmitCtx,
+        strategy: InjectStrategy,
+    ) {
+        match self {
+            PtrSource::Expr(expr) => {
+                emit_expr(expr, None, strategy, func, ctx);
+            }
+            PtrSource::U32(_)
+            | PtrSource::Local(_)
+            | PtrSource::Global(_) => {
+                self.emit(func);
+            }
+        }
+    }
 }
