@@ -82,7 +82,7 @@ pub fn emit_probes<'h, T: Opcode<'h> + MacroOpcode<'h> + AddLocal>(
     }
 }
 
-pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+pub fn emit_body<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     body: &mut Block,
     strategy: InjectStrategy,
     injector: &mut T,
@@ -95,7 +95,7 @@ pub fn emit_body<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     is_success
 }
 
-pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+pub fn emit_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     stmt: &mut Statement,
     strategy: InjectStrategy,
     injector: &mut T,
@@ -131,7 +131,7 @@ pub fn emit_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     is_success
 }
 
-fn handle_special_fn_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     target_fn_name: String,
     args: &mut [Expr],
     strategy: InjectStrategy,
@@ -165,7 +165,7 @@ fn handle_special_fn_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     }
 }
 
-fn handle_memcpy<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn handle_memcpy<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     args: &mut [Expr],
     strategy: InjectStrategy,
     injector: &mut T,
@@ -199,7 +199,7 @@ fn handle_memcpy<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     true
 }
 
-fn handle_write_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn handle_write_str<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     args: &mut [Expr],
     strategy: InjectStrategy,
     injector: &mut T,
@@ -230,7 +230,7 @@ fn handle_write_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     true
 }
 
-fn handle_read_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn handle_read_str<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     args: &mut [Expr],
     strategy: InjectStrategy,
     injector: &mut T,
@@ -270,7 +270,7 @@ fn handle_read_str<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     true
 }
 
-fn emit_stmt_inner<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn emit_stmt_inner<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     stmt: &mut Statement,
     strategy: InjectStrategy,
     injector: &mut T,
@@ -304,7 +304,7 @@ fn emit_stmt_inner<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     }
 }
 
-fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn emit_decl_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     stmt: &mut Statement,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -382,7 +382,7 @@ fn emit_decl_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         }
     }
 }
-fn handle_decl<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn handle_decl<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     addr: &mut Option<Vec<VarAddr>>,
     ty: &mut DataType,
     locals_tracker: &mut LocalsTracker,
@@ -412,7 +412,7 @@ fn emit_unshared_decl_stmt(stmt: &mut Statement, ctx: &mut EmitCtx) -> bool {
     );
 }
 
-fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn emit_assign_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     stmt: &mut Statement,
     strategy: InjectStrategy,
     injector: &mut T,
@@ -501,7 +501,7 @@ fn emit_assign_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     }
 }
 
-fn emit_set_map_stmt<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn emit_set_map_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     stmt: &mut Statement,
     strategy: InjectStrategy,
     injector: &mut T,
@@ -670,7 +670,7 @@ pub fn block_type_to_wasm(block: &Block) -> BlockType {
     }
 }
 
-fn possibly_emit_memaddr_calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn possibly_emit_memaddr_calc_offset<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     var_id: &mut Expr,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -698,7 +698,7 @@ fn possibly_emit_memaddr_calc_offset<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLo
     }
 }
 
-fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn emit_set<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     var_id: &mut Expr,
     idx: Option<usize>, // optionally specify a specific part of the expression to set
     injector: &mut T,
@@ -735,7 +735,7 @@ fn emit_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     }
 }
 
-fn addr_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn addr_set<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     addr: &VarAddr,
     idx: Option<usize>, // optionally specify a specific part of the expression to set
     name: &str,
@@ -764,7 +764,7 @@ fn addr_set<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     }
 }
 
-fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn emit_if_preamble<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     strategy: InjectStrategy,
@@ -784,7 +784,7 @@ fn emit_if_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     is_success
 }
 
-fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn emit_if_else_preamble<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     alternate: &mut Block,
@@ -807,7 +807,7 @@ fn emit_if_else_preamble<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     is_success
 }
 
-fn emit_if<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn emit_if<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     strategy: InjectStrategy,
@@ -823,7 +823,7 @@ fn emit_if<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     is_success
 }
 
-fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn emit_if_else<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     condition: &mut Expr,
     conseq: &mut Block,
     alternate: &mut Block,
@@ -841,7 +841,7 @@ fn emit_if_else<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
 }
 
 // TODO: emit_expr has two mutable references to the name object, the injector has module data in it
-pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     expr: &mut Expr,
     idx: Option<usize>, // optionally specify a specific part of the expression to emit
     strategy: InjectStrategy,
@@ -1050,7 +1050,7 @@ pub(crate) fn emit_expr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     }
 }
 
-fn handle_type_utils_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn handle_type_utils_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     target_var_name: &str,
     target_var_ty: &DataType,
     target_var_def: Definition,
@@ -1084,7 +1084,7 @@ fn handle_type_utils_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
         _ => unreachable!("unhandled type utils variant: {:?}", target_var_ty),
     }
 }
-fn handle_type_utils_string<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn handle_type_utils_string<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     target_var_name: &str,
     target_var_def: Definition,
     target_fn_name: String,
@@ -2176,7 +2176,7 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
     true
 }
 
-fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn emit_value<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     val: &mut Value,
     idx: Option<usize>, // optionally specify a specific part of the expression to emit
     strategy: InjectStrategy,
@@ -2294,7 +2294,7 @@ fn emit_value<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
     is_success
 }
 
-fn emit_map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+fn emit_map_get<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     expr: &mut Expr,
     strategy: InjectStrategy,
     injector: &mut T,
@@ -2384,7 +2384,7 @@ fn get_map_info(name: &mut str, ctx: &mut EmitCtx) -> Option<(VarAddr, DataType,
     }
 }
 
-pub fn emit_stack_vals<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+pub fn emit_stack_vals<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     created_stack_vals: &[(String, usize)],
     injector: &mut T,
     ctx: &mut EmitCtx,

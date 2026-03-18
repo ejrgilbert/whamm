@@ -51,7 +51,7 @@ impl StringUtils {
     // TODO: Once I support chars, add utilities that use them
 }
 impl StringUtils {
-    pub(crate) fn addr_of<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn addr_of<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         target: &mut Expr,
         strategy: InjectStrategy,
         injector: &mut T,
@@ -63,7 +63,7 @@ impl StringUtils {
 
         true
     }
-    pub(crate) fn len_dynamic<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn len_dynamic<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         target: &mut Expr,
         strategy: InjectStrategy,
         injector: &mut T,
@@ -79,7 +79,7 @@ impl StringUtils {
         true
     }
 
-    pub(crate) fn starts_with_dynamic<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn starts_with_dynamic<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         target: &mut Expr,
         args: &mut [Expr],
         strategy: InjectStrategy,
@@ -114,7 +114,7 @@ impl StringUtils {
         )
     }
 
-    pub(crate) fn ends_with_dynamic<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn ends_with_dynamic<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         target: &mut Expr,
         args: &mut [Expr],
         strategy: InjectStrategy,
@@ -153,7 +153,7 @@ impl StringUtils {
         )
     }
 
-    pub(crate) fn contains_dynamic<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn contains_dynamic<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         target: &mut Expr,
         args: &mut [Expr],
         strategy: InjectStrategy,

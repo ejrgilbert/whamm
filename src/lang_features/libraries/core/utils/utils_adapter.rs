@@ -46,7 +46,7 @@ impl UtilsAdapter {
         vec![]
     }
 
-    pub fn mem_alloc<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn mem_alloc<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &self,
         local: LocalID,
         func: &mut T,
@@ -56,7 +56,7 @@ impl UtilsAdapter {
         self.call_mem_alloc(func, err);
     }
 
-    fn call_mem_alloc<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    fn call_mem_alloc<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &self,
         func: &mut T,
         err: &mut ErrorGen,
@@ -64,7 +64,7 @@ impl UtilsAdapter {
         self.call(MEM_ALLOC, func, err)
     }
 
-    pub fn mem_free<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn mem_free<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &self,
         local: LocalID,
         func: &mut T,
@@ -74,7 +74,7 @@ impl UtilsAdapter {
         self.call_mem_free(func, err);
     }
 
-    fn call_mem_free<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    fn call_mem_free<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &self,
         func: &mut T,
         err: &mut ErrorGen,
@@ -82,7 +82,7 @@ impl UtilsAdapter {
         self.call(MEM_FREE, func, err)
     }
 
-    fn call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    fn call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &self,
         fname: &str,
         func: &mut T,

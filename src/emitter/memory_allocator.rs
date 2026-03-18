@@ -68,7 +68,7 @@ impl MemoryAllocator {
     // ==== Get / Set ====
     // ===================
 
-    pub(crate) fn emit_addr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn emit_addr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &self,
         table: &SymbolTable,
         injector: &mut T,
@@ -91,7 +91,7 @@ impl MemoryAllocator {
         injector.local_get(LocalID(*var_block_start));
     }
 
-    pub fn get_from_mem<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn get_from_mem<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &self,
         mem_id: u32,
         ty: &DataType,
@@ -176,7 +176,7 @@ impl MemoryAllocator {
         };
     }
 
-    pub fn set_in_mem<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn set_in_mem<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &self,
         var_offset: u32,
         mem_id: u32,
@@ -249,7 +249,7 @@ impl MemoryAllocator {
         };
     }
 
-    pub fn copy_to_mem_global_ptr<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn copy_to_mem_global_ptr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &self,
         src_mem_id: u32,
         src_offset: LocalID,
@@ -584,7 +584,7 @@ pub enum PtrSource {
     Expr(Expr),
 }
 impl PtrSource {
-    fn emit<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    fn emit<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         func: &mut T
     ) {

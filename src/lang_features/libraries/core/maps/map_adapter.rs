@@ -135,7 +135,7 @@ impl MapLibAdapter {
         vec![]
     }
 
-    pub fn map_get<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn map_get<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         key: DataType,
         val: DataType,
@@ -161,7 +161,7 @@ impl MapLibAdapter {
         }
     }
 
-    fn handle_string_key_before_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    fn handle_string_key_before_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &self,
         func: &mut T,
         utils: &UtilsAdapter,
@@ -197,7 +197,7 @@ impl MapLibAdapter {
         alloc_ptr
     }
 
-    fn handle_string_key_after_call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    fn handle_string_key_after_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &self,
         alloc_ptr: LocalID,
         func: &mut T,
@@ -208,7 +208,7 @@ impl MapLibAdapter {
         utils.mem_free(alloc_ptr, func, err);
     }
 
-    pub fn map_insert<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn map_insert<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         key: DataType,
         val: DataType,
@@ -234,7 +234,7 @@ impl MapLibAdapter {
         }
     }
 
-    pub fn map_create_report<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn map_create_report<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         name: String,
         is_global: bool,
@@ -251,7 +251,7 @@ impl MapLibAdapter {
         map_id
     }
 
-    pub fn map_create<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn map_create<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         ty: DataType,
         func: &mut T,
@@ -263,7 +263,7 @@ impl MapLibAdapter {
         map_id
     }
 
-    pub fn map_create_dynamic<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn map_create_dynamic<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         ty: DataType,
         func: &mut T,
@@ -274,7 +274,7 @@ impl MapLibAdapter {
         self.call(func_name.as_str(), func, err);
     }
 
-    pub fn print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub fn print_map<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         func: &mut T,
         err: &mut ErrorGen,
@@ -292,7 +292,7 @@ impl MapLibAdapter {
         (map_id, func_name)
     }
 
-    pub(crate) fn call_print_map<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    pub(crate) fn call_print_map<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         func: &mut T,
         err: &mut ErrorGen,
@@ -427,7 +427,7 @@ impl MapLibAdapter {
         }
     }
 
-    fn call<'a, T: Opcode<'a> + MacroOpcode<'a> + AddLocal>(
+    fn call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut self,
         fname: &str,
         func: &mut T,
