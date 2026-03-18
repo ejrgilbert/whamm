@@ -570,9 +570,7 @@ impl<'a, 'b> EmitMode<'a, 'b> {
     ) {
         match self {
             EmitMode::NoCtx => ptr.emit(func),
-            EmitMode::WithCtx { ctx, strategy } => {
-                ptr.emit_with_ctx(func, ctx, *strategy)
-            }
+            EmitMode::WithCtx { ctx, strategy } => ptr.emit_with_ctx(func, ctx, *strategy),
         }
     }
 }
@@ -584,10 +582,7 @@ pub enum PtrSource {
     Expr(Expr),
 }
 impl PtrSource {
-    fn emit<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-        &mut self,
-        func: &mut T
-    ) {
+    fn emit<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(&mut self, func: &mut T) {
         match self {
             PtrSource::U32(i) => {
                 func.u32_const(*i);
@@ -598,7 +593,7 @@ impl PtrSource {
             PtrSource::Global(id) => {
                 func.global_get(*id);
             }
-            PtrSource::Expr(_) => unreachable!("should call `emit_with_ctx` with this!")
+            PtrSource::Expr(_) => unreachable!("should call `emit_with_ctx` with this!"),
         }
     }
     fn emit_with_ctx<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
@@ -611,9 +606,7 @@ impl PtrSource {
             PtrSource::Expr(expr) => {
                 emit_expr(expr, None, strategy, func, ctx);
             }
-            PtrSource::U32(_)
-            | PtrSource::Local(_)
-            | PtrSource::Global(_) => {
+            PtrSource::U32(_) | PtrSource::Local(_) | PtrSource::Global(_) => {
                 self.emit(func);
             }
         }

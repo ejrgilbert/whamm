@@ -190,10 +190,7 @@ fn handle_memcpy<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut PtrSource::Expr(src_len),
         dst_mem,
         &mut PtrSource::Expr(dst_ptr),
-        EmitMode::WithCtx {
-            ctx,
-            strategy
-        },
+        EmitMode::WithCtx { ctx, strategy },
         injector,
     );
     true
@@ -224,7 +221,7 @@ fn handle_write_str<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &mut PtrSource::Local(str_len),
         target_mem,
         &mut PtrSource::Expr(dst_ptr),
-        EmitMode::WithCtx {ctx, strategy},
+        EmitMode::WithCtx { ctx, strategy },
         injector,
     );
     true
@@ -256,7 +253,7 @@ fn handle_read_str<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         str_len,
         ctx.mem_allocator.mem_id,
         dst_ptr,
-        EmitMode::WithCtx {ctx, strategy},
+        EmitMode::WithCtx { ctx, strategy },
         injector,
     );
 
