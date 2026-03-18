@@ -1,4 +1,5 @@
 use crate::common::error::ErrorGen;
+use crate::emitter::memory_allocator::StringAddr;
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::type_utils::strings::StringUtils;
 use crate::parser::types::Definition::User;
@@ -8,6 +9,7 @@ use crate::parser::types::{
 };
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::{Record, SymbolTable};
+use std::collections::HashMap;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 // =======================================
 // = Constant Propagation via ExprFolder =
@@ -15,6 +17,7 @@ use std::ops::{Add, Div, Mul, Rem, Sub};
 
 pub struct ExprFolder<'a> {
     registry: &'a mut WasmRegistry,
+    emitted_strings: &'a HashMap<String, StringAddr>,
     as_monitor_module: bool,
     curr_loc: Option<Location>,
 }
@@ -24,10 +27,12 @@ impl<'a> ExprFolder<'a> {
         registry: &'a mut WasmRegistry,
         as_monitor_module: bool,
         table: &SymbolTable,
+        emitted_strings: &'a HashMap<String, StringAddr>,
         err: &mut ErrorGen,
     ) -> Expr {
         let mut instance = Self {
             registry,
+            emitted_strings,
             as_monitor_module,
             curr_loc: None,
         };
@@ -36,10 +41,12 @@ impl<'a> ExprFolder<'a> {
     pub fn get_single_bool(
         expr: &Expr,
         registry: &'a mut WasmRegistry,
+        emitted_strings: &'a HashMap<String, StringAddr>,
         as_monitor_module: bool,
     ) -> Option<bool> {
         let mut instance = Self {
             registry,
+            emitted_strings,
             as_monitor_module,
             curr_loc: None,
         };
@@ -202,6 +209,13 @@ impl<'a> ExprFolder<'a> {
                 let res = StringUtils::contains(val, &args);
                 Expr::Primitive {
                     val: Value::gen_bool(res),
+                    loc: loc.clone(),
+                }
+            }
+            "addr" => {
+                let res = StringUtils::addr(val, self.emitted_strings);
+                Expr::Primitive {
+                    val: Value::gen_u32(res),
                     loc: loc.clone(),
                 }
             }
@@ -1598,14 +1612,40 @@ impl<'a> ExprFolder<'a> {
                 self.registry,
                 self.as_monitor_module,
                 table,
+                self.emitted_strings,
                 err,
             ));
         }
 
         match target_fn_name {
+            "addr" => self.handle_addr(call, &mut folded_args, table, err),
             "len" => self.handle_len(call, &mut folded_args, table, err),
             "memid" => self.handle_mem(&mut folded_args, table),
             _ => call.clone(),
+        }
+    }
+
+    fn handle_addr(
+        &mut self,
+        orig_call: &Expr,
+        args: &mut [Expr],
+        table: &SymbolTable,
+        err: &mut ErrorGen,
+    ) -> Expr {
+        // Assume the correct args since we've gone through typechecking at this point!
+        let arg0 = self.fold_expr_inner(&args[0], table, err);
+        let s = match arg0 {
+            Expr::Primitive {
+                val: Value::Str { val, .. },
+                ..
+            } => val.clone(),
+            _ => return orig_call.clone(),
+        };
+        let addr = self.emitted_strings.get(&s).unwrap().mem_offset;
+
+        Expr::Primitive {
+            val: Value::gen_u32(addr as u32),
+            loc: None,
         }
     }
 

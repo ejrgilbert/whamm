@@ -263,9 +263,12 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                         is_success = self.emitter.fold_expr(pred, self.err);
 
                         // If the predicate evaluates to false, short-circuit!
-                        if let Some(pred_as_bool) =
-                            ExprFolder::get_single_bool(pred, self.emitter.registry, false)
-                        {
+                        if let Some(pred_as_bool) = ExprFolder::get_single_bool(
+                            pred,
+                            self.emitter.registry,
+                            &self.emitter.mem_allocator.emitted_strings,
+                            false,
+                        ) {
                             if !pred_as_bool {
                                 // predicate is reduced to false, short-circuit!
                                 continue;
@@ -447,9 +450,12 @@ impl InstrGenerator<'_, '_> {
     fn pred_is_true(&mut self) -> bool {
         if let Some((.., pred)) = &self.curr_probe {
             if let Some(pred) = pred {
-                if let Some(pred_as_bool) =
-                    ExprFolder::get_single_bool(pred, self.emitter.registry, false)
-                {
+                if let Some(pred_as_bool) = ExprFolder::get_single_bool(
+                    pred,
+                    self.emitter.registry,
+                    &self.emitter.mem_allocator.emitted_strings,
+                    false,
+                ) {
                     // predicate has been reduced to a boolean value
                     return pred_as_bool;
                 }

@@ -416,7 +416,14 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
 
     pub(crate) fn fold_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {
         // todo -- create actual registry
-        *expr = ExprFolder::fold_expr(expr, self.registry, false, self.table, err);
+        *expr = ExprFolder::fold_expr(
+            expr,
+            self.registry,
+            false,
+            self.table,
+            &self.mem_allocator.emitted_strings,
+            err,
+        );
         true
     }
 
@@ -607,6 +614,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                 self.registry,
                 self.strategy.as_monitor_module(),
                 self.table,
+                &self.mem_allocator.emitted_strings,
                 err,
             ));
         }

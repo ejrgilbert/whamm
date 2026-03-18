@@ -102,8 +102,13 @@ pub fn emit_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     let mut is_success = true;
-    let mut folded_stmt =
-        StmtFolder::fold_stmt(stmt, strategy.as_monitor_module(), ctx.table, ctx.err);
+    let mut folded_stmt = StmtFolder::fold_stmt(
+        stmt,
+        strategy.as_monitor_module(),
+        ctx.table,
+        &ctx.mem_allocator.emitted_strings,
+        ctx.err,
+    );
     for s in folded_stmt.stmts.iter_mut() {
         // Check if this is calling a bound, static function!
         if let Statement::Expr {
@@ -145,6 +150,7 @@ fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             ctx.registry,
             strategy.as_monitor_module(),
             ctx.table,
+            &ctx.mem_allocator.emitted_strings,
             ctx.err,
         ));
     }
@@ -851,6 +857,7 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         ctx.registry,
         strategy.as_monitor_module(),
         ctx.table,
+        &ctx.mem_allocator.emitted_strings,
         ctx.err,
     );
     match &mut folded_expr {
@@ -1064,6 +1071,7 @@ fn handle_type_utils_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             ctx.registry,
             strategy.as_monitor_module(),
             ctx.table,
+            &ctx.mem_allocator.emitted_strings,
             ctx.err,
         ));
     }
@@ -1096,6 +1104,7 @@ fn handle_type_utils_string<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         loc: None,
     };
     match target_fn_name.as_str() {
+        "addr" => StringUtils::addr_of(&mut target, strategy, injector, ctx),
         "len" => StringUtils::len_dynamic(&mut target, strategy, injector, ctx),
         "starts_with" => {
             StringUtils::starts_with_dynamic(&mut target, args, strategy, injector, ctx)

@@ -1850,11 +1850,23 @@ impl Whamm {
 
     pub(crate) fn get_utils_strings() -> Vec<BoundFunction> {
         vec![
+            Self::def_addr(),
             Self::def_len(),
             Self::def_starts_with(),
             Self::def_ends_with(),
             Self::def_contains(),
         ]
+    }
+    fn def_addr() -> BoundFunction {
+        BoundFunction::new(
+            "addr".to_string(),
+            "Get the address of a string in memory.".to_string(),
+            vec![],
+            DataType::U32,
+            true,
+            true,
+            StackReq::None,
+        )
     }
     fn def_len() -> BoundFunction {
         BoundFunction::new(
