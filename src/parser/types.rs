@@ -952,6 +952,14 @@ impl NumFmt {
 // Values
 #[derive(Clone, Debug)]
 pub enum Value {
+    /// An integer literal that has not yet been resolved to a concrete type.
+    /// Emitted by the parser; the type checker resolves it to `Value::Number`
+    /// via `check_value` (with or without an `expected` type).
+    NumericLiteral {
+        raw: i128,
+        fmt: NumFmt,
+        token: String,
+    },
     Number {
         val: NumLit,
         ty: DataType,
@@ -975,6 +983,7 @@ pub enum Value {
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            Value::NumericLiteral { token, .. } => write!(f, "{token}"),
             Value::Number { val, .. } => write!(f, "{val}"),
             Value::Boolean { val } => write!(f, "{val}"),
             Value::Str { val } => write!(f, "\"{val}\""),
@@ -992,6 +1001,9 @@ impl Display for Value {
 impl Value {
     pub fn encode(&self) -> Vec<u8> {
         match self {
+            Self::NumericLiteral { .. } => {
+                unreachable!("NumericLiteral must be resolved by the type checker before encoding")
+            }
             Self::Number { val, .. } => val.encode(),
             Self::Boolean { .. }
             | Self::Str { .. }
@@ -1000,6 +1012,24 @@ impl Value {
                 todo!()
             }
         }
+    }
+    /// Convert a raw `i128` value to the `NumLit` variant for `target`.
+    /// Uses the same bitwise-truncation semantics as the existing `NumLit::as_*` methods.
+    /// Returns `None` if `target` is not a numeric type.
+    pub fn num_lit_from_raw(raw: i128, target: &DataType) -> Option<NumLit> {
+        Some(match target {
+            DataType::I8 => NumLit::i8((raw & 0xFF) as i8),
+            DataType::U8 => NumLit::u8((raw & 0xFF) as u8),
+            DataType::I16 => NumLit::i16((raw & 0xFFFF) as i16),
+            DataType::U16 => NumLit::u16((raw & 0xFFFF) as u16),
+            DataType::I32 => NumLit::i32(raw as i32),
+            DataType::U32 => NumLit::u32(raw as u32),
+            DataType::I64 => NumLit::i64(raw as i64),
+            DataType::U64 => NumLit::u64(raw as u64),
+            DataType::F32 => NumLit::f32(raw as f32),
+            DataType::F64 => NumLit::f64(raw as f64),
+            _ => return None,
+        })
     }
     pub fn gen_empty_tuple() -> Self {
         Self::Tuple {
@@ -1051,6 +1081,7 @@ impl Value {
     }
     pub fn ty(&self) -> DataType {
         match self {
+            Value::NumericLiteral { .. } => DataType::Unknown,
             Value::Number { ty, .. } => ty.clone(),
             Value::Boolean { .. } => DataType::Boolean,
             Value::Str { .. } => DataType::Str,
@@ -1063,6 +1094,17 @@ impl Value {
     }
     pub fn implicit_cast(&mut self, target: &DataType) -> Result<(), String> {
         match self {
+            Value::NumericLiteral { raw, fmt, token } => {
+                let val = Self::num_lit_from_raw(*raw, target)
+                    .ok_or_else(|| format!("{raw} to {target}"))?;
+                *self = Value::Number {
+                    val,
+                    ty: target.clone(),
+                    token: token.clone(),
+                    fmt: fmt.clone(),
+                };
+                Ok(())
+            }
             Value::Number {
                 val, token, fmt, ..
             } => {
@@ -1178,6 +1220,9 @@ impl From<&Val> for Value {
 }
 pub(crate) fn whamm_value_to_wasm_val(v: &Value) -> Option<Val> {
     match v {
+        Value::NumericLiteral { .. } => {
+            unreachable!("NumericLiteral must be resolved by the type checker before use in code generation")
+        }
         Value::Number { val, .. } => match val {
             NumLit::I8 { val } => Some(Val::I32(*val as i32)),
             NumLit::U8 { val } => Some(Val::I32(*val as i32)),
