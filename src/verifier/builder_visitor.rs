@@ -8,7 +8,10 @@ use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier::check_duplicate_id;
 use itertools::Itertools;
 use log::trace;
-use parser_types::{Block, DataType, Expr, Fn, Script, Statement, Value, Whamm};
+use parser_types::{
+    traverse_block_mut, traverse_expr_mut, Block, DataType, Expr, Fn, Script, Statement, Value,
+    Whamm,
+};
 use std::collections::{HashMap, HashSet};
 use wirm::ir::id::FunctionID;
 use wirm::wasmparser::ExternalKind;
@@ -921,9 +924,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
     }
 
     fn visit_block(&mut self, block: &mut Block) {
-        for stmt in block.stmts.iter_mut() {
-            self.visit_stmt(stmt);
-        }
+        traverse_block_mut(self, block);
     }
 
     fn visit_stmt(&mut self, stmt: &mut Statement) {
@@ -1010,54 +1011,22 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
             Expr::VarId { name, .. } => {
                 // see if this is an alias or derived var!
                 if let Some(alias) = self.aliases.get(name) {
-                    // this is an alias!
                     *name = alias.clone();
                 } else if self.derived_vars.contains_key(name) {
                     self.used_derived_vars.insert(name.clone());
                 }
             }
-            Expr::UnOp { expr, .. } => {
-                self.visit_expr(expr);
+            _ => {
+                traverse_expr_mut(self, expr);
             }
-            Expr::Ternary {
-                cond, conseq, alt, ..
-            } => {
-                self.visit_expr(cond);
-                self.visit_expr(conseq);
-                self.visit_expr(alt);
-            }
-            Expr::BinOp { lhs, rhs, .. } => {
-                self.visit_expr(lhs);
-                self.visit_expr(rhs);
-            }
-            Expr::Call {
-                fn_target, args, ..
-            } => {
-                self.visit_expr(fn_target);
-                for arg in args.iter_mut() {
-                    self.visit_expr(arg);
-                }
-            }
-            Expr::ObjCall { call, .. } => {
-                self.visit_expr(call);
-            }
-            Expr::Primitive {
-                val: Value::Tuple { vals, .. },
-                ..
-            } => {
-                for val in vals.iter_mut() {
-                    self.visit_expr(val);
-                }
-            }
-            Expr::MapGet { map, key, .. } => {
-                self.visit_expr(map);
-                self.visit_expr(key);
-            }
-            _ => {}
         }
     }
-    fn visit_value(&mut self, _val: &mut Value) {
-        // Not visiting predicates/statements
-        panic!("{UNEXPECTED_ERR_MSG}");
+
+    fn visit_value(&mut self, val: &mut Value) {
+        if let Value::Tuple { vals, .. } = val {
+            for v in vals.iter_mut() {
+                self.visit_expr(v);
+            }
+        }
     }
 }
