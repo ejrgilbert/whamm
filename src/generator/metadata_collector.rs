@@ -453,11 +453,10 @@ impl<'a> MetadataCollector<'a> {
                 expr.clone()
             }
             Expr::MapGet { map, key, loc } => {
-                let map = self.visit_expr_inner(map);
                 let key = self.visit_expr_inner(key);
 
                 Expr::MapGet {
-                    map: Box::new(map),
+                    map: map.clone(),
                     key: Box::new(key),
                     loc: loc.clone(),
                 }
@@ -485,12 +484,7 @@ impl<'a> MetadataCollector<'a> {
             Statement::UnsharedDecl {
                 is_report, decl, ..
             } => {
-                if let Statement::Decl {
-                    ty,
-                    var_id: Expr::VarId { name, loc, .. },
-                    ..
-                } = decl.as_ref()
-                {
+                if let Statement::Decl { ty, name, loc, .. } = decl.as_ref() {
                     let report_metadata = if *is_report {
                         // keep track of the used report var datatypes across the whole AST
                         self.used_report_var_dts.insert(ty.clone());
@@ -586,7 +580,7 @@ impl<'a> MetadataCollector<'a> {
                 loc: loc.clone(),
             },
             Statement::SetMap { map, key, val, loc } => Statement::SetMap {
-                map: self.visit_expr_inner(map),
+                map: map.clone(),
                 key: self.visit_expr_inner(key),
                 val: self.visit_expr_inner(val),
                 loc: loc.clone(),

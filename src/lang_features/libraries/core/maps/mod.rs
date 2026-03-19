@@ -180,24 +180,20 @@ impl AstVisitor<bool> for MapLibPackage {
         match stmt {
             Statement::Decl {
                 ty: DataType::Map { .. },
-                var_id,
+                name,
                 ..
             } => {
-                if let Expr::VarId { name, .. } = var_id {
-                    debug!("{name} is a map!");
-                }
+                debug!("{name} is a map!");
                 true
             }
             Statement::UnsharedDecl { decl, .. } => {
                 if let Statement::Decl {
                     ty: DataType::Map { .. },
-                    var_id,
+                    name,
                     ..
                 } = &**decl
                 {
-                    if let Expr::VarId { name, .. } = var_id {
-                        debug!("{name} is a map!");
-                    }
+                    debug!("{name} is a map!");
                     if matches!(self.strategy, InjectStrategy::Rewriting) {
                         // TODO -- this needs to change when I refactor to use
                         //    allocated memory for probes! (that's the reason it's true here)

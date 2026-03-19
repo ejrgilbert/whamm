@@ -539,10 +539,9 @@ impl<'a> ExprFolder<'a> {
     fn fold_map_get(&mut self, expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         self.curr_loc = expr.loc().clone();
         if let Expr::MapGet { map, key, .. } = &expr {
-            let map = self.fold_expr_inner(map, table, err);
             let key = self.fold_expr_inner(key, table, err);
             return Expr::MapGet {
-                map: Box::new(map),
+                map: map.clone(),
                 key: Box::new(key),
                 loc: None,
             };

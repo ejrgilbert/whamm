@@ -2937,11 +2937,6 @@ impl LocInfo {
         })
     }
     fn add_dynamic_value(&mut self, name: String, val: Value) {
-        let var_id = Expr::VarId {
-            definition: Definition::CompilerDynamic,
-            name: name.clone(),
-            loc: None,
-        };
         match &val {
             Value::Number {
                 val: NumLit::U8 { val },
@@ -3086,15 +3081,16 @@ impl LocInfo {
             Value::U32U32Map { val: map_val } => {
                 // create a declaration
                 let decl = Statement::Decl {
+                    name: name.clone(),
                     ty: val.ty(),
-                    var_id: var_id.clone(),
+                    definition: Definition::CompilerDynamic,
                     loc: None,
                 };
                 // create assignments
                 let mut stmts = vec![decl];
                 for (key, val) in map_val.iter() {
                     stmts.push(Statement::SetMap {
-                        map: var_id.clone(),
+                        map: name.clone(),
                         key: Expr::Primitive {
                             val: Value::gen_u32(*key),
                             loc: None,
@@ -3118,21 +3114,20 @@ impl LocInfo {
         };
     }
     fn add_dynamic_assign(&mut self, name: String, ty: DataType, expr: Expr) {
-        let var_id = Expr::VarId {
-            definition: Definition::CompilerDynamic,
-            name: name.clone(),
-            loc: None,
-        };
-
         // create a declaration
         let decl = Statement::Decl {
+            name: name.clone(),
             ty,
-            var_id: var_id.clone(),
+            definition: Definition::CompilerDynamic,
             loc: None,
         };
         // create an assignment
         let assign = Statement::Assign {
-            var_id: var_id.clone(),
+            var_id: Expr::VarId {
+                definition: Definition::CompilerDynamic,
+                name: name.clone(),
+                loc: None,
+            },
             expr,
             loc: None,
         };

@@ -43,13 +43,13 @@ pub fn test_int_hex() {
     parse_int(0, "0x0");
     parse_int(0, "0x000");
     parse_int(0xFF, "0xff");
-    parse_int(0xFF, "0xFF");    // uppercase digits
-    parse_int(0xFF, "0XFF");    // uppercase prefix
+    parse_int(0xFF, "0xFF"); // uppercase digits
+    parse_int(0xFF, "0XFF"); // uppercase prefix
     parse_int(1, "0x0000000000000001");
 
     // 32-bit patterns: stored as unsigned magnitude, NOT sign-extended
-    parse_int(0xFFFF_FFFF, "0xffffffff");        // 4294967295, not -1
-    parse_int(0x8000_0000, "0x80000000");        // 2147483648, not i32::MIN
+    parse_int(0xFFFF_FFFF, "0xffffffff"); // 4294967295, not -1
+    parse_int(0x8000_0000, "0x80000000"); // 2147483648, not i32::MIN
 
     // 64-bit values that fit in i64 (positive)
     parse_int(0x7FFF_FFFF_FFFF_FFFF, "0x7fffffffffffffff");
@@ -70,7 +70,7 @@ pub fn test_int_binary() {
     parse_int(0, "0b000");
     parse_int(1, "0b1");
     parse_int(0b1010, "0b1010");
-    parse_int(0b101, "0B101");    // uppercase prefix
+    parse_int(0b101, "0B101"); // uppercase prefix
 
     // Leading zeros do not affect value
     parse_int(3, "0b0011");
@@ -93,8 +93,8 @@ pub fn test_int_format_field() {
     parse_int_fmt(42, NumFmt::Dec, "42");
     parse_int_fmt(0xFF, NumFmt::Hex, "0xff");
     parse_int_fmt(0b1010, NumFmt::Bin, "0b1010");
-    parse_int_fmt(0xFF, NumFmt::Hex, "0XFF");    // uppercase prefix still → Hex
-    parse_int_fmt(0b101, NumFmt::Bin, "0B101");  // uppercase prefix still → Bin
+    parse_int_fmt(0xFF, NumFmt::Hex, "0XFF"); // uppercase prefix still → Hex
+    parse_int_fmt(0b101, NumFmt::Bin, "0B101"); // uppercase prefix still → Bin
 }
 
 #[test]

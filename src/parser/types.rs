@@ -1221,7 +1221,9 @@ impl From<&Val> for Value {
 pub(crate) fn whamm_value_to_wasm_val(v: &Value) -> Option<Val> {
     match v {
         Value::NumericLiteral { .. } => {
-            unreachable!("NumericLiteral must be resolved by the type checker before use in code generation")
+            unreachable!(
+                "NumericLiteral must be resolved by the type checker before use in code generation"
+            )
         }
         Value::Number { val, .. } => match val {
             NumLit::I8 { val } => Some(Val::I32(*val as i32)),
@@ -1292,8 +1294,9 @@ pub enum Statement {
         loc: Option<Location>,
     },
     Decl {
+        name: String,
         ty: DataType,
-        var_id: Expr, // should be VarId
+        definition: Definition,
         loc: Option<Location>,
     },
 
@@ -1303,7 +1306,7 @@ pub enum Statement {
         loc: Option<Location>,
     },
     SetMap {
-        map: Expr, // Should be VarId
+        map: String,
         key: Expr,
         val: Expr,
         loc: Option<Location>,
@@ -1424,7 +1427,7 @@ pub enum Expr {
         loc: Option<Location>,
     },
     MapGet {
-        map: Box<Expr>, //This should be a VarId
+        map: String,
         key: Box<Expr>,
         loc: Option<Location>,
     },
@@ -2455,8 +2458,7 @@ pub fn traverse_expr_mut<T: Default, V: WhammVisitorMut<T>>(visitor: &mut V, exp
         }
         Expr::Primitive { val, .. } => visitor.visit_value(val),
         Expr::VarId { .. } => T::default(),
-        Expr::MapGet { map, key, .. } => {
-            visitor.visit_expr(map);
+        Expr::MapGet { key, .. } => {
             visitor.visit_expr(key);
             T::default()
         }

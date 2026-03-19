@@ -725,24 +725,17 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
                 }
                 _ => stmt,
             };
-            if let Statement::Decl { ty, var_id, .. } = stmt {
-                if let Expr::VarId { name, .. } = &var_id {
-                    // Add global variable to script globals (triggers the init_generator to emit them!)
-                    script.globals.insert(
-                        name.clone(),
-                        Global {
-                            def: Definition::User,
-                            report: is_report_var,
-                            ty: ty.clone(),
-                            value: None,
-                        },
-                    );
-                } else {
-                    self.err.add_internal_error(&format!(
-                        "{UNEXPECTED_ERR_MSG} \
-            Variable declaration var_id is not the correct Expr variant!!",
-                    ), var_id.loc());
-                }
+            if let Statement::Decl { ty, name, .. } = stmt {
+                // Add global variable to script globals (triggers the init_generator to emit them!)
+                script.globals.insert(
+                    name.clone(),
+                    Global {
+                        def: Definition::User,
+                        report: is_report_var,
+                        ty: ty.clone(),
+                        value: None,
+                    },
+                );
             }
             self.visit_stmt(stmt)
         });
@@ -867,12 +860,9 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
                     body.stmts.insert(
                         0,
                         Statement::Decl {
+                            name: var.clone(),
                             ty: ty.clone(),
-                            var_id: Expr::VarId {
-                                definition: Definition::CompilerDerived,
-                                name: var.clone(),
-                                loc: None,
-                            },
+                            definition: Definition::CompilerDerived,
                             loc: None,
                         },
                     );
@@ -945,21 +935,14 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
                     self.add_user_lib(lib_name, loc);
                 }
                 Statement::Decl {
-                    ty, var_id, loc, ..
+                    ty,
+                    name,
+                    definition,
+                    loc,
+                    ..
                 } => {
-                    if let Expr::VarId {
-                        name, definition, ..
-                    } = &var_id
-                    {
-                        // Add symbol to table
-                        self.add_global(ty.clone(), name.clone(), None, *definition, loc.clone());
-                    } else {
-                        panic!(
-                            "{} \
-                Variable declaration var_id is not the correct Expr variant!!",
-                            UNEXPECTED_ERR_MSG
-                        );
-                    }
+                    // Add symbol to table
+                    self.add_global(ty.clone(), name.clone(), None, *definition, loc.clone());
                 }
                 _ => {}
             }
@@ -971,7 +954,12 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
                     self.visit_expr(expr);
                 }
                 Statement::SetMap { map, key, val, .. } => {
-                    self.visit_expr(map);
+                    // resolve alias for the map name
+                    if let Some(alias) = self.aliases.get(map.as_str()) {
+                        *map = alias.clone();
+                    } else if self.derived_vars.contains_key(map.as_str()) {
+                        self.used_derived_vars.insert(map.clone());
+                    }
                     self.visit_expr(key);
                     self.visit_expr(val);
                 }
