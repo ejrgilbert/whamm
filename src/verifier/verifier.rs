@@ -1,4 +1,5 @@
 use crate::common::error::ErrorGen;
+use crate::common::rule_tracker::RuleTracker;
 use crate::generator::ast::StackReq;
 use crate::parser::provider_handler::{Event, Package, Probe, Provider};
 use crate::parser::types::Definition::{CompilerDynamic, CompilerStatic};
@@ -8,6 +9,7 @@ use crate::parser::types::{
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
+use crate::verifier::visitor::VerifierVisitorTyped;
 use pest::error::LineColLocation;
 use std::collections::{HashMap, HashSet};
 use std::vec;
@@ -107,7 +109,7 @@ struct TypeChecker<'a> {
     in_function: bool,
     restrict_probe_local_state: bool,
     has_reports: bool,
-    curr_match_rule: Option<String>,
+    rule_tracker: RuleTracker,
 
     // If a function invocation on an object, use this for lookup
     curr_obj: Vec<(String, bool)>,
@@ -128,7 +130,7 @@ impl<'a> TypeChecker<'a> {
             in_function: false,
             restrict_probe_local_state: false,
             has_reports: false,
-            curr_match_rule: None,
+            rule_tracker: RuleTracker::default(),
             curr_obj: vec![],
             curr_loc: None,
             outer_cast_fixes_assign: false,
@@ -162,25 +164,6 @@ impl<'a> TypeChecker<'a> {
                 loc: loc.clone(),
             },
         );
-    }
-
-    fn set_curr_rule(&mut self, val: Option<String>) {
-        self.curr_match_rule = val;
-    }
-
-    fn get_curr_rule(&self) -> &String {
-        let Some(curr_rule) = &self.curr_match_rule else {
-            panic!("should have a value associated with the curr_match_rule")
-        };
-        curr_rule
-    }
-
-    fn append_curr_rule(&mut self, val: String) {
-        let Some(curr_rule) = &mut self.curr_match_rule else {
-            panic!("should have a value associated with the curr_match_rule")
-        };
-        *curr_rule += &val;
-        self.err.update_match_rule(self.curr_match_rule.clone());
     }
 
     fn handle_type_bounds(&mut self, type_bounds: &[(Expr, DataType)]) {
@@ -238,6 +221,36 @@ impl<'a> TypeChecker<'a> {
     }
 }
 
+impl VerifierVisitorTyped for TypeChecker<'_> {
+    fn enter_named_scope(&mut self, name: &str) {
+        let _ = self.table.enter_named_scope(name);
+    }
+
+    fn exit_scope(&mut self) {
+        self.table.exit_scope();
+    }
+
+    fn get_rule_tracker_mut(&mut self) -> &mut RuleTracker {
+        &mut self.rule_tracker
+    }
+
+    fn before_children_provider(&mut self, provider: &mut Provider) {
+        self.handle_type_bounds(&provider.type_bounds);
+    }
+
+    fn before_children_package(&mut self, package: &mut Package) {
+        self.err
+            .update_match_rule(self.rule_tracker.get_opt_owned());
+        self.handle_type_bounds(&package.type_bounds);
+    }
+
+    fn before_children_event(&mut self, event: &mut Event) {
+        self.err
+            .update_match_rule(self.rule_tracker.get_opt_owned());
+        self.handle_type_bounds(&event.type_bounds);
+    }
+}
+
 impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> Option<DataType> {
         // not printing events and globals now
@@ -279,61 +292,23 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_provider(&mut self, provider: &mut Provider) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&provider.def.name);
-        self.set_curr_rule(Some(provider.def.name.clone()));
-
-        self.handle_type_bounds(&provider.type_bounds);
-
-        provider.packages.values_mut().for_each(|package| {
-            self.visit_package(package);
-        });
-
-        self.table.exit_scope();
-        self.set_curr_rule(None);
-        None
+        self.do_visit_provider(provider)
     }
 
     fn visit_package(&mut self, package: &mut Package) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&package.def.name);
-        self.append_curr_rule(format!(":{}", package.def.name));
-
-        self.handle_type_bounds(&package.type_bounds);
-
-        package.events.values_mut().for_each(|event| {
-            self.visit_event(event);
-        });
-
-        self.table.exit_scope();
-        // Remove this package from `curr_rule`
-        let curr_rule = self.get_curr_rule();
-        self.set_curr_rule(Some(curr_rule[..curr_rule.rfind(':').unwrap()].to_string()));
-        None
+        self.do_visit_package(package)
     }
 
     fn visit_event(&mut self, event: &mut Event) -> Option<DataType> {
-        let _ = self.table.enter_named_scope(&event.def.name);
-        self.append_curr_rule(format!(":{}", event.def.name));
-
-        self.handle_type_bounds(&event.type_bounds);
-
-        // Iterate over the probes in order
-        event.probes.values_mut().for_each(|probe| {
-            probe.iter_mut().for_each(|probe| {
-                self.visit_probe(probe);
-            });
-        });
-
-        self.table.exit_scope();
-        let curr_rule = self.get_curr_rule();
-        let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
-        self.set_curr_rule(Some(new_rule));
-        None
+        self.do_visit_event(event)
     }
 
     fn visit_probe(&mut self, probe: &mut Probe) -> Option<DataType> {
         assert!(self.table.enter_named_scope(&probe.kind.name())); // enter mode scope
         assert!(self.table.enter_named_scope(&probe.scope_id.to_string())); // enter probe scope
-        self.append_curr_rule(format!(":{}", probe.kind.name()));
+        self.rule_tracker.push(&format!(":{}", probe.kind.name()));
+        self.err
+            .update_match_rule(self.rule_tracker.get_opt_owned());
 
         // type check predicate
         if let Some(predicate) = &mut probe.predicate {
@@ -355,8 +330,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
         self.table.exit_scope(); // exit the mode scope
         self.table.exit_scope(); // exit the probe scope
-        let curr_rule = self.get_curr_rule();
-        self.set_curr_rule(Some(curr_rule[..curr_rule.rfind(':').unwrap()].to_string()));
+        self.rule_tracker.pop();
         None
     }
 

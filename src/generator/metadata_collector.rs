@@ -1,5 +1,7 @@
 use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
+use crate::common::rule_tracker::RuleTracker;
+use crate::generator::analysis_visitor::AnalysisVisitor;
 use crate::generator::ast::{Probe, Script, StackReq, WhammParam, WhammParams};
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData, Metadata as ReportMetadata};
 use crate::parser::provider_handler::{Event, ModeKind, Package, Probe as ParserProbe, Provider};
@@ -60,7 +62,7 @@ pub struct MetadataCollector<'a> {
     pub config: &'a Config,
 
     visiting: Visiting,
-    curr_rule: String,
+    rule_tracker: RuleTracker,
     curr_script: Script,
     script_num: u8,
     curr_probe: Probe,
@@ -88,7 +90,7 @@ impl<'a> MetadataCollector<'a> {
             strings_to_emit: Default::default(),
             has_probe_state_init: Default::default(),
             visiting: Default::default(),
-            curr_rule: Default::default(),
+            rule_tracker: Default::default(),
             curr_script: Default::default(),
             script_num: Default::default(),
             curr_probe: Default::default(),
@@ -104,18 +106,6 @@ impl<'a> MetadataCollector<'a> {
         });
 
         new_stmts
-    }
-
-    fn set_curr_rule(&mut self, val: String) {
-        self.curr_rule = val;
-    }
-
-    fn get_curr_rule(&self) -> &String {
-        &self.curr_rule
-    }
-
-    fn append_curr_rule(&mut self, val: String) {
-        self.curr_rule += &val;
     }
 
     fn mark_expr_as_dynamic(&mut self) {
@@ -605,6 +595,20 @@ impl<'a> MetadataCollector<'a> {
         }
     }
 }
+impl AnalysisVisitor for MetadataCollector<'_> {
+    fn enter_named_scope(&mut self, name: &str) {
+        self.table.enter_named_scope(name);
+    }
+
+    fn exit_scope(&mut self) {
+        self.table.exit_scope();
+    }
+
+    fn get_rule_tracker_mut(&mut self) -> &mut RuleTracker {
+        &mut self.rule_tracker
+    }
+}
+
 impl WhammVisitor<()> for MetadataCollector<'_> {
     fn visit_whamm(&mut self, whamm: &Whamm) {
         trace!("Entering: CodeGenerator::visit_whamm");
@@ -644,48 +648,29 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
 
     fn visit_provider(&mut self, provider: &Provider) {
         trace!("Entering: CodeGenerator::visit_provider");
-        self.table.enter_named_scope(&provider.def.name);
-        self.set_curr_rule(provider.def.name.clone());
-
-        // visit the packages
-        provider.packages.values().for_each(|package| {
-            self.visit_package(package);
-        });
-
+        self.do_visit_provider(provider);
         trace!("Exiting: CodeGenerator::visit_provider");
-        self.table.exit_scope();
     }
 
     fn visit_package(&mut self, package: &Package) {
         trace!("Entering: CodeGenerator::visit_package");
-        self.table.enter_named_scope(&package.def.name);
-        self.append_curr_rule(format!(":{}", package.def.name));
-
-        // visit the events
-        package.events.values().for_each(|event| {
-            self.visit_event(event);
-        });
-
+        self.do_visit_package(package);
         trace!("Exiting: CodeGenerator::visit_package");
-        self.table.exit_scope();
-        // Remove this package from `curr_rule`
-        let curr_rule = self.get_curr_rule();
-        self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
     }
 
     fn visit_event(&mut self, event: &Event) {
         trace!("Entering: CodeGenerator::visit_event");
         self.table.enter_named_scope(&event.def.name);
-        self.append_curr_rule(format!(":{}", event.def.name));
+        self.rule_tracker.push(&format!(":{}", event.def.name));
 
         event.probes.iter().for_each(|(_ty, probes)| {
             probes.iter().for_each(|probe| {
                 if !self.config.as_monitor_module {
                     // add the mode when not on the wizard target
-                    self.append_curr_rule(format!(":{}", probe.kind.name()));
+                    self.rule_tracker.push(&format!(":{}", probe.kind.name()));
                 }
                 self.curr_probe = Probe::new(
-                    self.get_curr_rule().clone(),
+                    self.rule_tracker.get_owned(),
                     probe.id,
                     probe.scope_id,
                     self.curr_script.id,
@@ -700,25 +685,21 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
                 // reset per-probe track data
                 if !self.config.as_monitor_module {
                     // remove mode
-                    let curr_rule = self.get_curr_rule();
-                    let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
-                    self.set_curr_rule(new_rule);
+                    self.rule_tracker.pop();
                 }
             });
         });
 
         trace!("Exiting: CodeGenerator::visit_event");
         self.table.exit_scope();
-        let curr_rule = self.get_curr_rule();
-        let new_rule = curr_rule[..curr_rule.rfind(':').unwrap()].to_string();
-        self.set_curr_rule(new_rule);
+        self.rule_tracker.pop();
     }
 
     fn visit_probe(&mut self, probe: &ParserProbe) {
         trace!("Entering: CodeGenerator::visit_probe");
         let _ = self.table.enter_named_scope(&probe.kind.name()); // enter mode scope
         let _ = self.table.enter_named_scope(&probe.scope_id.to_string()); // enter probe scope
-        self.append_curr_rule(format!(":{}", probe.kind.name()));
+        self.rule_tracker.push(&format!(":{}", probe.kind.name()));
         if let Some(pred) = &probe.predicate {
             self.visiting = Visiting::Predicate;
             self.visit_expr(pred);
@@ -742,8 +723,7 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
         trace!("Exiting: CodeGenerator::visit_probe");
         self.table.exit_scope(); // exit the mode scope
         self.table.exit_scope(); // exit the probe scope
-        let curr_rule = self.get_curr_rule();
-        self.set_curr_rule(curr_rule[..curr_rule.rfind(':').unwrap()].to_string());
+        self.rule_tracker.pop();
     }
 
     fn visit_block(&mut self, block: &Block) {

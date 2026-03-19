@@ -15,6 +15,7 @@ pub mod folding;
 pub mod rewriting;
 pub mod wei;
 
+pub mod analysis_visitor;
 pub mod ast;
 pub mod metadata_collector;
 #[cfg(test)]

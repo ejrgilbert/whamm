@@ -10,7 +10,7 @@ use crate::common::error::ErrorGen;
 use crate::common::terminal::{green, grey_italics, magenta, white, yellow};
 use crate::generator::ast::StackReq;
 use crate::parser::provider_handler::{
-    get_matches, BoundVar, Event, Package, Probe, Provider, ProviderDef,
+    get_matches, BoundFunc, BoundVar, Event, Package, Probe, Provider, ProviderDef,
 };
 use pest::pratt_parser::PrattParser;
 use pest_derive::Parser;
@@ -2358,8 +2358,182 @@ impl Display for BinOp {
 // ==== Visitor ====
 // =================
 
+// =========================
+// ==== Visitor Helpers ====
+// =========================
+
+/// Traverse all direct children of `whamm` (bound functions then scripts).
+/// Useful when a visitor wants standard child traversal without any
+/// per-`Whamm` custom logic.
+#[allow(dead_code)]
+pub fn traverse_whamm_mut<T, V: WhammVisitorMut<T>>(visitor: &mut V, whamm: &mut Whamm) {
+    whamm
+        .fns
+        .iter_mut()
+        .for_each(|BoundFunction { function, .. }| {
+            visitor.visit_fn(function);
+        });
+    whamm.scripts.iter_mut().for_each(|s| {
+        visitor.visit_script(s);
+    });
+}
+
+/// Traverse all direct children of `script` (functions then providers).
+#[allow(dead_code)]
+pub fn traverse_script_mut<T, V: WhammVisitorMut<T>>(visitor: &mut V, script: &mut Script) {
+    script.fns.iter_mut().for_each(|f| {
+        visitor.visit_fn(f);
+    });
+    script.providers.iter_mut().for_each(|(_name, provider)| {
+        visitor.visit_provider(provider);
+    });
+}
+
+/// Traverse all direct children of `provider` (bound functions then packages).
+#[allow(dead_code)]
+pub fn traverse_provider_mut<T, V: WhammVisitorMut<T>>(visitor: &mut V, provider: &mut Provider) {
+    provider
+        .def
+        .bound_fns
+        .iter_mut()
+        .for_each(|BoundFunc { func, .. }| {
+            visitor.visit_fn(func);
+        });
+    provider.packages.values_mut().for_each(|package| {
+        visitor.visit_package(package);
+    });
+}
+
+/// Traverse all direct children of `package` (bound functions then events).
+#[allow(dead_code)]
+pub fn traverse_package_mut<T, V: WhammVisitorMut<T>>(visitor: &mut V, package: &mut Package) {
+    package
+        .def
+        .bound_fns
+        .iter_mut()
+        .for_each(|BoundFunc { func, .. }| {
+            visitor.visit_fn(func);
+        });
+    package.events.values_mut().for_each(|event| {
+        visitor.visit_event(event);
+    });
+}
+
+/// Traverse all direct children of `event` (bound functions then probes).
+#[allow(dead_code)]
+pub fn traverse_event_mut<T, V: WhammVisitorMut<T>>(visitor: &mut V, event: &mut Event) {
+    event
+        .def
+        .bound_fns
+        .iter_mut()
+        .for_each(|BoundFunc { func, .. }| {
+            visitor.visit_fn(func);
+        });
+    event.probes.values_mut().for_each(|probes| {
+        probes.iter_mut().for_each(|probe| {
+            visitor.visit_probe(probe);
+        });
+    });
+}
+
+/// Traverse all statements in `block`.
+pub fn traverse_block_mut<T, V: WhammVisitorMut<T>>(visitor: &mut V, block: &mut Block) {
+    block.stmts.iter_mut().for_each(|stmt| {
+        visitor.visit_stmt(stmt);
+    });
+}
+
+/// Structurally traverse `stmt`, recursing into sub-expressions and sub-blocks
+/// via the visitor. Returns `T::default()` for statement variants that have no
+/// meaningful return value (declarations, leaf nodes, etc.).
+///
+/// Visitors whose `visit_stmt` only needs to recurse structurally can delegate
+/// here; visitors with custom per-variant logic (e.g. type-checking) should
+/// match the variants themselves and call this only for the "recurse" parts.
+#[allow(dead_code)]
+pub fn traverse_stmt_mut<T: Default, V: WhammVisitorMut<T>>(
+    visitor: &mut V,
+    stmt: &mut Statement,
+) -> T {
+    match stmt {
+        Statement::Decl { .. } | Statement::LibImport { .. } => T::default(),
+        Statement::Assign { expr, .. }
+        | Statement::Expr { expr, .. }
+        | Statement::Return { expr, .. } => visitor.visit_expr(expr),
+        Statement::If {
+            cond, conseq, alt, ..
+        } => {
+            visitor.visit_expr(cond);
+            visitor.visit_block(conseq);
+            visitor.visit_block(alt);
+            T::default()
+        }
+        Statement::SetMap { map, key, val, .. } => {
+            visitor.visit_expr(map);
+            visitor.visit_expr(key);
+            visitor.visit_expr(val);
+            T::default()
+        }
+        Statement::UnsharedDeclInit { decl, init, .. } => {
+            visitor.visit_stmt(decl);
+            visitor.visit_stmt(init);
+            T::default()
+        }
+        Statement::UnsharedDecl { decl, .. } => visitor.visit_stmt(decl),
+    }
+}
+
+/// Structurally traverse the children of `expr`, calling the appropriate
+/// visitor methods on each sub-expression.  Returns `T::default()` for
+/// variants that have no meaningful return value.
+///
+/// Visitors that only need to recurse (e.g. alias-resolution in the symbol
+/// table builder) can use this as their default `visit_expr` implementation,
+/// handling only the variant(s) they care about before delegating here.
+pub fn traverse_expr_mut<T: Default, V: WhammVisitorMut<T>>(visitor: &mut V, expr: &mut Expr) -> T {
+    match expr {
+        Expr::UnOp { expr, .. } => {
+            visitor.visit_expr(expr);
+            T::default()
+        }
+        Expr::Ternary {
+            cond, conseq, alt, ..
+        } => {
+            visitor.visit_expr(cond);
+            visitor.visit_expr(conseq);
+            visitor.visit_expr(alt);
+            T::default()
+        }
+        Expr::BinOp { lhs, rhs, .. } => {
+            visitor.visit_expr(lhs);
+            visitor.visit_expr(rhs);
+            T::default()
+        }
+        Expr::ObjCall { call, .. } => {
+            visitor.visit_expr(call);
+            T::default()
+        }
+        Expr::Call {
+            fn_target, args, ..
+        } => {
+            visitor.visit_expr(fn_target);
+            args.iter_mut().for_each(|arg| {
+                visitor.visit_expr(arg);
+            });
+            T::default()
+        }
+        Expr::Primitive { val, .. } => visitor.visit_value(val),
+        Expr::VarId { .. } => T::default(),
+        Expr::MapGet { map, key, .. } => {
+            visitor.visit_expr(map);
+            visitor.visit_expr(key);
+            T::default()
+        }
+    }
+}
+
 // TODO add a default visit implementation
-// (take a look at the behavior tree visit trait) that would be good to add to
+// (take a look as the behavior tree visit trait) that would be good to add to
 // the AST visitor as well to make the visit ordering/conventions less annoying.
 pub trait WhammVisitor<T> {
     fn visit_whamm(&mut self, whamm: &Whamm) -> T;
