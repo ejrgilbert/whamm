@@ -313,40 +313,41 @@ fn emit_decl_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     match stmt {
-        Statement::Decl { ty, var_id, .. } => {
+        Statement::Decl {
+            ty,
+            name,
+            definition,
+            ..
+        } => {
             // look up in symbol table
-            let mut addr = if let Expr::VarId { name, .. } = var_id {
-                let var_rec_id = match ctx.table.lookup(name) {
-                    Some(rec_id) => rec_id,
-                    None => {
-                        // add variables from body into symbol table (at this point, the verifier should have run to catch variable initialization without declaration)
-                        ctx.table.put(
-                            name.clone(),
-                            Record::Var {
-                                ty: ty.clone(),
-                                value: None,
-                                def: Definition::User,
-                                addr: None,
-                                times_set: 0,
-                                loc: None,
-                            },
-                        )
-                    }
-                };
-                match ctx.table.get_record_mut(var_rec_id) {
-                    Some(Record::Var { addr, .. }) => addr,
-                    Some(ty) => {
-                        unreachable!(
-                            "{} Incorrect variable record, expected Record::Var, found: {:?}",
-                            ctx.err_msg, ty
-                        );
-                    }
-                    None => {
-                        unreachable!("{} Variable symbol does not exist!", ctx.err_msg);
-                    }
+            let var_rec_id = match ctx.table.lookup(name) {
+                Some(rec_id) => rec_id,
+                None => {
+                    // add variables from body into symbol table (at this point, the verifier should have run to catch variable initialization without declaration)
+                    ctx.table.put(
+                        name.clone(),
+                        Record::Var {
+                            ty: ty.clone(),
+                            value: None,
+                            def: *definition,
+                            addr: None,
+                            times_set: 0,
+                            loc: None,
+                        },
+                    )
                 }
-            } else {
-                unreachable!("{} Expected VarId.", ctx.err_msg);
+            };
+            let mut addr = match ctx.table.get_record_mut(var_rec_id) {
+                Some(Record::Var { addr, .. }) => addr,
+                Some(ty) => {
+                    unreachable!(
+                        "{} Incorrect variable record, expected Record::Var, found: {:?}",
+                        ctx.err_msg, ty
+                    );
+                }
+                None => {
+                    unreachable!("{} Variable symbol does not exist!", ctx.err_msg);
+                }
             };
 
             if let DataType::Map { .. } = ty {
@@ -511,14 +512,8 @@ fn emit_set_map_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     ctx.in_map_op = true;
-    if let Statement::SetMap {
-        map: Expr::VarId { name, .. },
-        key,
-        val,
-        ..
-    } = stmt
-    {
-        let Some((map_addr, key_ty, val_ty)) = get_map_info(name, ctx) else {
+    if let Statement::SetMap { map, key, val, .. } = stmt {
+        let Some((map_addr, key_ty, val_ty)) = get_map_info(map, ctx) else {
             return false;
         };
 
@@ -2311,48 +2306,45 @@ fn emit_map_get<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 ) -> bool {
     ctx.in_map_op = true;
     if let Expr::MapGet { map, key, .. } = expr {
-        let map = &mut (**map);
-        if let Expr::VarId { name, .. } = map {
-            return match get_map_info(name, ctx) {
-                Some((map_addr, key_ty, val_ty)) => {
-                    match map_addr {
-                        VarAddr::MapId { addr } => {
-                            injector.u32_const(addr);
-                        }
-                        VarAddr::Local { addr } => {
-                            injector.local_get(LocalID(addr));
-                        }
-                        VarAddr::MemLoc {
+        return match get_map_info(map, ctx) {
+            Some((map_addr, key_ty, val_ty)) => {
+                match map_addr {
+                    VarAddr::MapId { addr } => {
+                        injector.u32_const(addr);
+                    }
+                    VarAddr::Local { addr } => {
+                        injector.local_get(LocalID(addr));
+                    }
+                    VarAddr::MemLoc {
+                        mem_id,
+                        ty,
+                        var_offset,
+                    } => {
+                        assert!(matches!(ty, DataType::Map { .. }));
+                        // Get the map_id from memory!
+                        ctx.mem_allocator.get_from_mem(
                             mem_id,
-                            ty,
+                            &DataType::I32,
                             var_offset,
-                        } => {
-                            assert!(matches!(ty, DataType::Map { .. }));
-                            // Get the map_id from memory!
-                            ctx.mem_allocator.get_from_mem(
-                                mem_id,
-                                &DataType::I32,
-                                var_offset,
-                                ctx.table,
-                                injector,
-                            );
-                        }
-                        other => unreachable!("Did not expect this address type: {:?}", other),
-                    };
-                    emit_expr(key, None, strategy, injector, ctx);
-                    ctx.map_lib_adapter.map_get(
-                        key_ty,
-                        val_ty,
-                        injector,
-                        ctx.utils_adapter,
-                        ctx.mem_allocator,
-                        ctx.err,
-                    );
-                    true
-                }
-                None => false,
-            };
-        }
+                            ctx.table,
+                            injector,
+                        );
+                    }
+                    other => unreachable!("Did not expect this address type: {:?}", other),
+                };
+                emit_expr(key, None, strategy, injector, ctx);
+                ctx.map_lib_adapter.map_get(
+                    key_ty,
+                    val_ty,
+                    injector,
+                    ctx.utils_adapter,
+                    ctx.mem_allocator,
+                    ctx.err,
+                );
+                true
+            }
+            None => false,
+        };
     }
     unreachable!(
         "{} \

@@ -160,6 +160,21 @@ impl<'a> TypeChecker<'a> {
         );
     }
 
+    fn lookup_var_type(&mut self, name: &str, loc: &Option<Location>) -> Option<DataType> {
+        if let Some(id) = self.table.lookup(name) {
+            if let Some(rec) = self.table.get_record(id) {
+                if let Record::Var { ty, .. } = rec {
+                    return Some(ty.clone());
+                }
+            }
+        }
+        self.err.type_check_error(
+            format!("`{name}` not found in symbol table"),
+            &loc.clone().map(|l| l.line_col),
+        );
+        Some(DataType::AssumeGood)
+    }
+
     fn handle_type_bounds(&mut self, type_bounds: &[(Expr, DataType)]) {
         // TODO -- fix type bounds bug: put them local to the probe, not global to the event
         //         ALSO need to handle type bounds on provider/package/mode as well!
@@ -226,10 +241,18 @@ impl<'a> TypeChecker<'a> {
             if *exp_ty == lhs_ty {
                 if lhs_ty == rhs_ty {
                     return Some(lhs_ty);
-                } else if attempt_implicit_cast(rhs, exp_ty, &rhs_ty, full_line_col, "value", self.err) {
+                } else if attempt_implicit_cast(
+                    rhs,
+                    exp_ty,
+                    &rhs_ty,
+                    full_line_col,
+                    "value",
+                    self.err,
+                ) {
                     return Some(exp_ty.clone());
                 }
-            } else if attempt_implicit_cast(lhs, exp_ty, &lhs_ty, full_line_col, "value", self.err) {
+            } else if attempt_implicit_cast(lhs, exp_ty, &lhs_ty, full_line_col, "value", self.err)
+            {
                 return Some(exp_ty.clone());
             }
         } else if lhs_ty == rhs_ty
@@ -331,7 +354,9 @@ impl<'a> TypeChecker<'a> {
                     None => {
                         let loc = self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
                         self.err.type_check_error(
-                            format!("TypeError: Cannot resolve numeric literal to type {resolved_ty}"),
+                            format!(
+                                "TypeError: Cannot resolve numeric literal to type {resolved_ty}"
+                            ),
                             &loc,
                         );
                         Some(DataType::AssumeGood)
@@ -434,7 +459,11 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    fn visit_expr_impl(&mut self, expr: &mut Expr, expected: Option<&DataType>) -> Option<DataType> {
+    fn visit_expr_impl(
+        &mut self,
+        expr: &mut Expr,
+        expected: Option<&DataType>,
+    ) -> Option<DataType> {
         match expr {
             Expr::Primitive { val, loc } => {
                 self.curr_loc = loc.clone();
@@ -605,7 +634,11 @@ impl<'a> TypeChecker<'a> {
                 // BitwiseNot: result type == operand type, so propagate `expected` so
                 // literals get cast to the target type in place (mirrors old assign_ty behavior).
                 // Cast handles its own target type; Not always produces Boolean — both use None.
-                let inner_expected = if matches!(op, UnOp::BitwiseNot) { expected } else { None };
+                let inner_expected = if matches!(op, UnOp::BitwiseNot) {
+                    expected
+                } else {
+                    None
+                };
                 let expr_ty_op = self.visit_expr_impl(inner_expr, inner_expected);
                 if let Some(expr_ty) = expr_ty_op {
                     *done_on = expr_ty.clone();
@@ -854,7 +887,7 @@ impl<'a> TypeChecker<'a> {
             }
             Expr::MapGet { map, key, loc } => {
                 //ensure that map is a map, then get the other stuff from the map info
-                let map_ty = self.visit_expr_impl(map, None);
+                let map_ty = self.lookup_var_type(map, loc);
                 let key_ty = self.visit_expr_impl(key, None);
                 match (map_ty.clone(), key_ty.clone()) {
                     (None, _) | (_, None) => {
@@ -923,7 +956,7 @@ impl<'a> TypeChecker<'a> {
                                 "Condition must be of type boolean, found {:?}",
                                 cond_ty_clone.unwrap()
                             )
-                                .to_owned(),
+                            .to_owned(),
                             &Some(cond.loc().clone().unwrap().line_col),
                         );
                     }
@@ -947,7 +980,7 @@ impl<'a> TypeChecker<'a> {
                                         &alt.loc().clone().unwrap().line_col,
                                         None,
                                     )
-                                        .line_col,
+                                    .line_col,
                                 ),
                             );
                             Some(DataType::AssumeGood)
@@ -962,7 +995,7 @@ impl<'a> TypeChecker<'a> {
                                     &alt.loc().clone().unwrap().line_col,
                                     None,
                                 )
-                                    .line_col,
+                                .line_col,
                             ),
                         );
                         Some(DataType::AssumeGood)
@@ -1216,7 +1249,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                             ..
                         } = expr
                         {
-                            if lhs_ty == target { None } else { lhs_ty_op.clone() }
+                            if lhs_ty == target {
+                                None
+                            } else {
+                                lhs_ty_op.clone()
+                            }
                         } else {
                             lhs_ty_op.clone()
                         }
@@ -1274,40 +1311,36 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 None
             }
             Statement::Decl {
-                ty, var_id, loc, ..
+                ty,
+                name,
+                definition,
+                loc,
+                ..
             } => {
-                if let Expr::VarId { name, .. } = var_id {
-                    //check that if type is map, key_ty is not a map
-                    if let DataType::Map { key_ty, .. } = ty {
-                        if let DataType::Map { .. } = key_ty.as_ref() {
+                //check that if type is map, key_ty is not a map
+                if let DataType::Map { key_ty, .. } = ty {
+                    if let DataType::Map { .. } = key_ty.as_ref() {
+                        self.err.type_check_error(
+                            "Map keys cannot be maps".to_owned(),
+                            &loc.clone().map(|l| l.line_col),
+                        );
+                        return None;
+                    }
+                }
+                //check to make sure that that if tuple, doesn't contain a map
+                if let DataType::Tuple { ty_info } = ty {
+                    for ty in ty_info {
+                        if let DataType::Map { .. } = ty {
                             self.err.type_check_error(
-                                "Map keys cannot be maps".to_owned(),
+                                "Tuples cannot contain maps".to_owned(),
                                 &loc.clone().map(|l| l.line_col),
                             );
                             return None;
                         }
                     }
-                    //check to make sure that that if tuple, doesn't contain a map
-                    if let DataType::Tuple { ty_info } = ty {
-                        for ty in ty_info {
-                            if let DataType::Map { .. } = ty {
-                                self.err.type_check_error(
-                                    "Tuples cannot contain maps".to_owned(),
-                                    &loc.clone().map(|l| l.line_col),
-                                );
-                                return None;
-                            }
-                        }
-                    }
-                    if !self.in_script_global {
-                        self.add_local(ty.to_owned(), name.to_owned(), Definition::User, loc);
-                    }
-                } else {
-                    unreachable!(
-                        "{} \
-                    Variable declaration var_id is not the correct Expr variant!!",
-                        UNEXPECTED_ERR_MSG
-                    );
+                }
+                if !self.in_script_global {
+                    self.add_local(ty.to_owned(), name.to_owned(), *definition, loc);
                 }
                 None
             }
@@ -1360,7 +1393,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
             }
             Statement::SetMap { map, key, val, loc } => {
                 //ensure that map is a map, then get the other stuff from the map info
-                let map_ty = self.visit_expr(map);
+                let map_ty = self.lookup_var_type(map, loc);
                 let key_ty = self.visit_expr(key);
                 let val_ty = self.visit_expr(val);
                 match (map_ty.clone(), key_ty.clone(), val_ty.clone()) {

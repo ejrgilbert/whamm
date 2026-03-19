@@ -517,10 +517,12 @@ fn handle_decl(pair: &mut Pairs<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     let type_line_col = LineColLocation::from(type_rule.as_span());
     let ty = type_from_rule_handler(type_rule, err);
 
+    let name = var_id_rule.as_str().to_string();
     trace!("Exiting declaration");
     vec![Statement::Decl {
+        name,
         ty,
-        var_id: handle_id(var_id_rule, Definition::User),
+        definition: Definition::User,
         loc: Some(Location::from(&var_id_line_col, &type_line_col, None)),
     }]
 }
@@ -546,8 +548,11 @@ fn handle_assignment(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 
     // create the assignment statement
     if is_map {
+        let Expr::VarId { name: map_name, .. } = var_id else {
+            unreachable!("map assignment target should be VarId");
+        };
         vec![Statement::SetMap {
-            map: var_id,
+            map: map_name,
             key: key.unwrap(),
             val,
             loc: Some(Location::from(&var_id_line_col, &val_line_col, None)),
@@ -612,7 +617,15 @@ fn handle_decrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 fn handle_lhs(pair: Pair<Rule>, err: &mut ErrorGen) -> (Expr, Option<Expr>, bool) {
     match expr_primary(pair) {
         Ok(expr) => match expr {
-            Expr::MapGet { map, key, .. } => (*map, Some(*key), true),
+            Expr::MapGet { map, key, loc } => (
+                Expr::VarId {
+                    definition: Definition::User,
+                    name: map,
+                    loc,
+                },
+                Some(*key),
+                true,
+            ),
             var_id => (var_id, None, false),
         },
         Err(errors) => {
@@ -638,10 +651,16 @@ fn handle_custom_binop(op: BinOp, rhs: Expr, pair: Pair<Rule>, err: &mut ErrorGe
     let (var_id, target_key, is_map) = handle_lhs(var_id_rule, err);
 
     let binop_lhs = if is_map {
+        let Expr::VarId {
+            ref name, ref loc, ..
+        } = var_id
+        else {
+            unreachable!("map assignment target should be VarId");
+        };
         Expr::MapGet {
-            map: Box::new(var_id.clone()),
+            map: name.clone(),
             key: Box::new(target_key.clone().unwrap()),
-            loc: var_id.loc().clone(),
+            loc: loc.clone(),
         }
     } else {
         var_id.clone()
@@ -660,8 +679,11 @@ fn handle_custom_binop(op: BinOp, rhs: Expr, pair: Pair<Rule>, err: &mut ErrorGe
     };
 
     if is_map {
+        let Expr::VarId { name: map_name, .. } = var_id else {
+            unreachable!("map assignment target should be VarId");
+        };
         Statement::SetMap {
-            map: var_id,
+            map: map_name,
             key: target_key.unwrap(),
             val,
             loc: Some(Location {
@@ -755,20 +777,33 @@ fn handle_decl_init(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 .map(|loc| Location::from(&loc.clone(), &expr_line_col, None));
 
             match decl {
-                Statement::Decl { var_id, .. } => {
+                Statement::Decl {
+                    name, definition, ..
+                } => {
                     vec![
                         decl.to_owned(),
                         Statement::Assign {
-                            var_id: var_id.clone(),
+                            var_id: Expr::VarId {
+                                definition: *definition,
+                                name: name.clone(),
+                                loc: None,
+                            },
                             expr,
                             loc,
                         },
                     ]
                 }
                 Statement::UnsharedDecl { decl: inner, .. } => {
-                    if let Statement::Decl { var_id, .. } = &**inner {
+                    if let Statement::Decl {
+                        name, definition, ..
+                    } = &**inner
+                    {
                         let assign = Statement::Assign {
-                            var_id: var_id.clone(),
+                            var_id: Expr::VarId {
+                                definition: *definition,
+                                name: name.clone(),
+                                loc: None,
+                            },
                             expr,
                             loc: loc.clone(),
                         };
@@ -1750,8 +1785,16 @@ fn handle_map_get(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     let key = pairs.next().unwrap();
 
     //this SHOULD be a VarId
-    let map_expr = match expr_primary(map) {
-        Ok(expr) => expr,
+    let map_name = match expr_primary(map) {
+        Ok(Expr::VarId { name, .. }) => name,
+        Ok(_) => {
+            return Err(vec![ErrorGen::get_parse_error(
+                Some("Map access target must be a variable identifier".to_string()),
+                None,
+                vec![],
+                vec![],
+            )]);
+        }
         Err(errors) => {
             return Err(errors);
         }
@@ -1763,7 +1806,7 @@ fn handle_map_get(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         }
     };
     Ok(Expr::MapGet {
-        map: Box::new(map_expr),
+        map: map_name,
         key: Box::new(key_expr),
         loc: Some(Location {
             line_col: loc,

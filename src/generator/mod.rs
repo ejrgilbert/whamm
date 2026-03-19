@@ -411,9 +411,8 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
                 is_success
             }
             Statement::UnsharedDecl { decl, .. } => self.visit_stmt(decl),
-            Statement::SetMap { map, key, val, .. } => {
+            Statement::SetMap { key, val, .. } => {
                 let mut is_success = true;
-                is_success &= self.visit_expr(map);
                 is_success &= self.visit_expr(key);
                 is_success &= self.visit_expr(val);
 
@@ -501,13 +500,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
                     true
                 }
             }
-            Expr::MapGet { map, key, .. } => {
-                let mut is_success = true;
-                is_success &= self.visit_expr(map);
-                is_success &= self.visit_expr(key);
-
-                is_success
-            }
+            Expr::MapGet { key, .. } => self.visit_expr(key),
         }
     }
 
@@ -529,7 +522,9 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
                 true
             }
             Value::NumericLiteral { .. } => {
-                unreachable!("NumericLiteral must be resolved by the type checker before code generation")
+                unreachable!(
+                    "NumericLiteral must be resolved by the type checker before code generation"
+                )
             }
         }
     }
