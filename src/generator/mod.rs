@@ -528,6 +528,9 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
                 // ignore, will not have a string to emit
                 true
             }
+            Value::NumericLiteral { .. } => {
+                unreachable!("NumericLiteral must be resolved by the type checker before code generation")
+            }
         }
     }
 }

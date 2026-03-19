@@ -3080,6 +3080,9 @@ impl LocInfo {
                     loc: None,
                 },
             ),
+            Value::NumericLiteral { .. } => {
+                unreachable!("NumericLiteral must be resolved by the type checker before emission")
+            }
             Value::U32U32Map { val: map_val } => {
                 // create a declaration
                 let decl = Statement::Decl {

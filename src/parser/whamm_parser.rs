@@ -1581,46 +1581,21 @@ fn handle_tuple(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
 pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     let pair = pair.into_inner().next().unwrap();
-    // make uppercase and remove all '_'
+    // Uppercase and strip underscores for uniform parsing.
     let token = pair.as_str().to_uppercase().replace("_", "");
-    let mut digits = token.len() as i32;
-    let is_neg = if let Some(first) = token.chars().next() {
-        if first == '-' {
-            // remove '-' from digits count
-            digits -= 1;
-            true
-        } else {
-            false
-        }
-    } else {
-        // should always be at least two chars to even make it past pest parsing!
-        unreachable!()
-    };
 
     let (to_parse, fmt) = match pair.as_rule() {
         Rule::int_hex => {
-            // remove '0x' from token to parse (required by rust utils)
-            // but still keep '-' if used
-            let delim = "0X";
-            digits -= delim.len() as i32;
-
-            // number of binary digits per hex char
-            digits *= 4;
-            (token.strip_prefix(delim).unwrap().to_string(), NumFmt::Hex)
+            // Strip the "0X" prefix before parsing; hex is always positive per grammar.
+            let to_parse = token.strip_prefix("0X").unwrap().to_string();
+            (to_parse, NumFmt::Hex)
         }
         Rule::int_bin => {
-            // remove '0b' from token to parse (required by rust utils)
-            // but still keep '-' if used
-            let delim = "0B";
-            digits -= delim.len() as i32;
-
-            (token.strip_prefix(delim).unwrap().to_string(), NumFmt::Bin)
+            // Strip the "0B" prefix; binary is always positive per grammar.
+            let to_parse = token.strip_prefix("0B").unwrap().to_string();
+            (to_parse, NumFmt::Bin)
         }
-        Rule::int => {
-            // number of binary digits required to represent is unknown
-            digits = -1;
-            (token.clone(), NumFmt::Dec)
-        }
+        Rule::int => (token.clone(), NumFmt::Dec),
         rule => {
             return Err(vec![ErrorGen::get_parse_error(
                 Some(UNEXPECTED_ERR_MSG.to_string()),
@@ -1631,87 +1606,26 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         }
     };
 
-    let val = if is_neg || fmt == NumFmt::Bin || fmt == NumFmt::Hex {
-        // By default, always parse hex and binary as signed
-        if digits > 32 {
-            if let Ok(val) = i64::from_str_radix(&to_parse, fmt.base()) {
-                Ok(NumLit::i64(val))
-            } else if fmt == NumFmt::Bin || fmt == NumFmt::Hex {
-                if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
-                    // convert and allow wrapping
-                    Ok(NumLit::i64(val as i64))
-                } else {
-                    Err("i32 OR u32")
-                }
-            } else {
-                Err("i64")
-            }
-        } else if digits >= 0 {
-            if let Ok(val) = i32::from_str_radix(&to_parse, fmt.base()) {
-                Ok(NumLit::i32(val))
-            } else if fmt == NumFmt::Bin || fmt == NumFmt::Hex {
-                if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
-                    // convert and allow wrapping
-                    Ok(NumLit::i32(val as i32))
-                } else {
-                    Err("i32 OR u32")
-                }
-            } else {
-                Err("i32")
-            }
-        } else {
-            // num digits required is unknown, figure it out!
-            if let Ok(val) = i32::from_str_radix(&to_parse, fmt.base()) {
-                Ok(NumLit::i32(val))
-            } else if let Ok(val) = i64::from_str_radix(&to_parse, fmt.base()) {
-                Ok(NumLit::i64(val))
-            } else {
-                Err("i32 OR i64")
-            }
-        }
-    } else if digits >= 32 {
-        if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
-            Ok(NumLit::u64(val))
-        } else {
-            Err("u64")
-        }
-    } else if digits >= 0 {
-        if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
-            Ok(NumLit::u32(val))
-        } else {
-            Err("u32")
-        }
-    } else {
-        // num digits required is unknown, figure it out!
-        if let Ok(val) = u32::from_str_radix(&to_parse, fmt.base()) {
-            Ok(NumLit::u32(val))
-        } else if let Ok(val) = u64::from_str_radix(&to_parse, fmt.base()) {
-            Ok(NumLit::u64(val))
-        } else {
-            Err("u32 OR u64")
-        }
-    };
+    // Parse as i128 (covers all signed ranges); fall back to u128 for large
+    // positive hex/bin values (e.g. 0xFFFFFFFFFFFFFFFF = u64::MAX).
+    let raw = i128::from_str_radix(&to_parse, fmt.base())
+        .or_else(|_| u128::from_str_radix(&to_parse, fmt.base()).map(|v| v as i128))
+        .map_err(|_| {
+            vec![ErrorGen::get_parse_error(
+                Some(format!("Failed to parse integer literal: {token}")),
+                Some(LineColLocation::from(pair.as_span())),
+                vec![],
+                vec![],
+            )]
+        })?;
 
-    match val {
-        Ok(val) => Ok(Expr::Primitive {
-            val: Value::Number {
-                val,
-                ty: DataType::U32,
-                token: token.to_string(),
-                fmt,
-            },
-            loc: Some(Location {
-                line_col: LineColLocation::from(pair.as_span()),
-                path: None,
-            }),
+    Ok(Expr::Primitive {
+        val: Value::NumericLiteral { raw, fmt, token },
+        loc: Some(Location {
+            line_col: LineColLocation::from(pair.as_span()),
+            path: None,
         }),
-        Err(ty) => Err(vec![ErrorGen::get_parse_error(
-            Some(format!("Failed to parse value into {ty}: {token}")),
-            Some(LineColLocation::from(pair.as_span())),
-            vec![],
-            vec![],
-        )]),
-    }
+    })
 }
 
 pub fn handle_float(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {

@@ -2191,6 +2191,9 @@ fn emit_value<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 ) -> bool {
     let mut is_success = true;
     match val {
+        Value::NumericLiteral { .. } => {
+            unreachable!("NumericLiteral must be resolved by the type checker before emission")
+        }
         Value::Number { val, .. } => match val {
             NumLit::I8 { val } => {
                 injector.u32_const(*val as u32);

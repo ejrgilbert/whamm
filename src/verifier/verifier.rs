@@ -116,9 +116,6 @@ struct TypeChecker<'a> {
 
     // bookkeeping for casting
     curr_loc: Option<Location>,
-    outer_cast_fixes_assign: bool,
-    assign_ty: Option<DataType>,
-    tuple_index: usize,
 }
 
 impl<'a> TypeChecker<'a> {
@@ -133,9 +130,6 @@ impl<'a> TypeChecker<'a> {
             rule_tracker: RuleTracker::default(),
             curr_obj: vec![],
             curr_loc: None,
-            outer_cast_fixes_assign: false,
-            assign_ty: None,
-            tuple_index: 0,
         }
     }
     fn add_local(
@@ -206,6 +200,226 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
+    /// Shared type-checking logic for arithmetic binary ops: Add, Subtract, Multiply, Divide, Modulo.
+    ///
+    /// `expected` is the assignment target type when this expression is the RHS of an assignment,
+    /// or `None` when there is no assignment context (e.g. a standalone expression or the RHS is
+    /// already wrapped in an explicit cast that handles the coercion).
+    fn check_arithmetic_binop(
+        &mut self,
+        lhs: &mut Expr,
+        rhs: &mut Expr,
+        lhs_ty: DataType,
+        rhs_ty: DataType,
+        expected: Option<&DataType>,
+        full_line_col: &Option<LineColLocation>,
+        rhs_line_col: &Option<LineColLocation>,
+    ) -> Option<DataType> {
+        if matches!(lhs_ty, DataType::AssumeGood) {
+            return Some(rhs_ty);
+        } else if matches!(rhs_ty, DataType::AssumeGood) {
+            return Some(lhs_ty);
+        }
+
+        if let Some(exp_ty) = expected {
+            // Guided by assignment target: try to cast operands toward exp_ty.
+            if *exp_ty == lhs_ty {
+                if lhs_ty == rhs_ty {
+                    return Some(lhs_ty);
+                } else if attempt_implicit_cast(rhs, exp_ty, &rhs_ty, full_line_col, "value", self.err) {
+                    return Some(exp_ty.clone());
+                }
+            } else if attempt_implicit_cast(lhs, exp_ty, &lhs_ty, full_line_col, "value", self.err) {
+                return Some(exp_ty.clone());
+            }
+        } else if lhs_ty == rhs_ty
+            || attempt_implicit_cast(rhs, &lhs_ty, &rhs_ty, rhs_line_col, "value", self.err)
+        {
+            // No assignment context: operands just need to be mutually compatible.
+            return Some(lhs_ty);
+        }
+        Some(DataType::AssumeGood)
+    }
+
+    /// Shared type-checking logic for integer-only binary ops: LShift, RShift, BitAnd, BitOr, BitXor.
+    /// `op_name` is used in the error message when a float operand is detected.
+    fn check_integer_binop(
+        &mut self,
+        op_name: &str,
+        rhs: &mut Expr,
+        lhs_ty: DataType,
+        rhs_ty: DataType,
+        full_line_col: &Option<LineColLocation>,
+        rhs_line_col: &Option<LineColLocation>,
+    ) -> Option<DataType> {
+        if matches!(lhs_ty, DataType::F32 | DataType::F64) {
+            self.err.type_check_error(
+                format!("{op_name} operation not allowed on type: {lhs_ty}"),
+                full_line_col,
+            );
+            return Some(DataType::AssumeGood);
+        } else if matches!(lhs_ty, DataType::AssumeGood) {
+            return Some(DataType::AssumeGood);
+        } else if matches!(rhs_ty, DataType::AssumeGood) {
+            return Some(lhs_ty);
+        }
+
+        if lhs_ty.is_numeric()
+            && (lhs_ty == rhs_ty
+                || attempt_implicit_cast(rhs, &lhs_ty, &rhs_ty, rhs_line_col, "value", self.err))
+        {
+            return Some(lhs_ty);
+        }
+        Some(DataType::AssumeGood)
+    }
+
+    /// Shared type-checking logic for comparison binary ops.
+    /// All comparison ops return `Boolean`.
+    /// `require_ordered` adds a `lhs_ty.can_implicitly_cast()` guard (used for GT/LT/GE/LE).
+    fn check_comparison_binop(
+        &mut self,
+        rhs: &mut Expr,
+        lhs_ty: DataType,
+        rhs_ty: DataType,
+        rhs_line_col: &Option<LineColLocation>,
+        require_ordered: bool,
+    ) -> Option<DataType> {
+        if matches!(lhs_ty, DataType::AssumeGood) || matches!(rhs_ty, DataType::AssumeGood) {
+            return Some(DataType::Boolean);
+        }
+        let types_compatible = if require_ordered {
+            lhs_ty == rhs_ty && lhs_ty.can_implicitly_cast()
+        } else {
+            lhs_ty == rhs_ty
+        };
+        if types_compatible
+            || attempt_implicit_cast(rhs, &lhs_ty, &rhs_ty, rhs_line_col, "value", self.err)
+        {
+            Some(DataType::Boolean)
+        } else {
+            Some(DataType::AssumeGood)
+        }
+    }
+
+    /// Type-check a value literal with an optional expected type.
+    /// When `expected` is `Some(ty)`, tries to implicitly cast the literal to `ty`.
+    /// When `None`, returns the literal's native type unchanged.
+    fn check_value(&mut self, val: &mut Value, expected: Option<&DataType>) -> Option<DataType> {
+        match val {
+            Value::NumericLiteral { raw, fmt, token } => {
+                // Resolve the raw integer to a concrete NumLit.
+                // Use `expected` if present; otherwise default to i32 (fits) or i64 or u64.
+                let resolved_ty = if let Some(exp_ty) = expected {
+                    exp_ty.clone()
+                } else if *raw >= i32::MIN as i128 && *raw <= i32::MAX as i128 {
+                    DataType::I32
+                } else if *raw >= i64::MIN as i128 && *raw <= i64::MAX as i128 {
+                    DataType::I64
+                } else {
+                    DataType::U64
+                };
+                match Value::num_lit_from_raw(*raw, &resolved_ty) {
+                    Some(num_lit) => {
+                        *val = Value::Number {
+                            val: num_lit,
+                            ty: resolved_ty.clone(),
+                            token: token.clone(),
+                            fmt: fmt.clone(),
+                        };
+                        Some(resolved_ty)
+                    }
+                    None => {
+                        let loc = self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
+                        self.err.type_check_error(
+                            format!("TypeError: Cannot resolve numeric literal to type {resolved_ty}"),
+                            &loc,
+                        );
+                        Some(DataType::AssumeGood)
+                    }
+                }
+            }
+            Value::Number { .. } | Value::Boolean { .. } => {
+                if let Some(exp_ty) = expected {
+                    let exp_ty = if let DataType::Tuple { ty_info } = exp_ty {
+                        // We're visiting a tuple element; the caller passes the element type directly.
+                        // If somehow we still get a Tuple here, guard against it.
+                        if let Some(ty) = ty_info.first() {
+                            ty
+                        } else {
+                            let loc = self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
+                            self.err.type_check_error(
+                                "TypeError: Tuple value at this location exceeded the expected tuple length.".to_string(),
+                                &loc,
+                            );
+                            return Some(DataType::AssumeGood);
+                        }
+                    } else {
+                        exp_ty
+                    };
+
+                    let val_ty = val.ty();
+                    return if *exp_ty == val_ty {
+                        Some(val_ty)
+                    } else if exp_ty.can_implicitly_cast() && val_ty.can_implicitly_cast() {
+                        match val.implicit_cast(exp_ty) {
+                            Ok(_) => Some(val.ty()),
+                            Err(msg) => {
+                                let loc = self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
+                                self.err.type_check_error(
+                                    format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."),
+                                    &loc,
+                                );
+                                Some(DataType::AssumeGood)
+                            }
+                        }
+                    } else {
+                        Some(DataType::Unknown)
+                    };
+                }
+                Some(val.ty())
+            }
+            Value::Str { .. } => Some(DataType::Str),
+            Value::U32U32Map { .. } => Some(DataType::Map {
+                key_ty: Box::new(DataType::U32),
+                val_ty: Box::new(DataType::U32),
+            }),
+            Value::Tuple { ty, vals } => {
+                let expected_elems: Option<&Vec<DataType>> = match expected {
+                    Some(DataType::Tuple { ty_info }) => Some(ty_info),
+                    _ => None,
+                };
+                let tys: Vec<DataType> = vals
+                    .iter_mut()
+                    .enumerate()
+                    .map(|(index, val)| {
+                        let elem_expected = expected_elems.and_then(|tys| {
+                            if index >= tys.len() {
+                                let loc = self.curr_loc.as_ref().map(|l| l.line_col.clone());
+                                self.err.type_check_error(
+                                    format!(
+                                        "TypeError: Tuple value at this location exceeded the expected tuple length of: {}.",
+                                        tys.len()
+                                    ),
+                                    &loc,
+                                );
+                                None
+                            } else {
+                                Some(&tys[index])
+                            }
+                        });
+                        self.visit_expr_impl(val, elem_expected)
+                            .unwrap_or_else(|| unreachable!(
+                                "{} ALL types should be set for a tuple value.", UNEXPECTED_ERR_MSG
+                            ))
+                    })
+                    .collect();
+                let tuple_ty = DataType::Tuple { ty_info: tys };
+                *ty = tuple_ty.clone();
+                Some(tuple_ty)
+            }
+        }
+    }
+
     fn get_type_utils(&self, ty: &DataType) -> Option<&HashMap<String, usize>> {
         let Record::Whamm { type_utils, .. } = self.table.lookup_rec("whamm").unwrap() else {
             unreachable!("{UNEXPECTED_ERR_MSG} Expected Whamm type")
@@ -217,6 +431,544 @@ impl<'a> TypeChecker<'a> {
             Some(fns)
         } else {
             None
+        }
+    }
+
+    fn visit_expr_impl(&mut self, expr: &mut Expr, expected: Option<&DataType>) -> Option<DataType> {
+        match expr {
+            Expr::Primitive { val, loc } => {
+                self.curr_loc = loc.clone();
+                self.check_value(val, expected)
+            }
+            Expr::BinOp {
+                lhs,
+                rhs,
+                op,
+                done_on,
+                ..
+            } => {
+                let (full_line_col, rhs_line_col) = match (lhs.loc(), rhs.loc()) {
+                    (Some(lhs_loc), Some(rhs_loc)) => {
+                        let full_line_col =
+                            Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None)
+                                .line_col
+                                .clone();
+                        (Some(full_line_col), Some(rhs_loc.line_col.clone()))
+                    }
+                    (Some(lhs_loc), None) => {
+                        let full_line_col =
+                            Location::from(&lhs_loc.line_col, &lhs_loc.line_col, None)
+                                .line_col
+                                .clone();
+                        (Some(full_line_col), Some(lhs_loc.line_col.clone()))
+                    }
+                    (None, Some(rhs_loc)) => (None, Some(rhs_loc.line_col.clone())),
+                    _ => (None, None),
+                };
+                let lhs_ty_op = self.visit_expr_impl(lhs, expected);
+                let rhs_ty_op = self.visit_expr_impl(rhs, expected);
+                if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
+                    *done_on = lhs_ty.clone();
+                    match op {
+                        BinOp::Add
+                        | BinOp::Subtract
+                        | BinOp::Multiply
+                        | BinOp::Divide
+                        | BinOp::Modulo => self.check_arithmetic_binop(
+                            lhs,
+                            rhs,
+                            lhs_ty,
+                            rhs_ty,
+                            expected,
+                            &full_line_col,
+                            &rhs_line_col,
+                        ),
+                        BinOp::And | BinOp::Or => {
+                            if matches!(lhs_ty, DataType::AssumeGood)
+                                || matches!(rhs_ty, DataType::AssumeGood)
+                            {
+                                return Some(DataType::Boolean);
+                            }
+                            if lhs_ty == DataType::Boolean && rhs_ty == DataType::Boolean {
+                                Some(DataType::Boolean)
+                            } else {
+                                self.err.type_check_error(
+                                    "Different types for lhs and rhs".to_owned(),
+                                    &full_line_col,
+                                );
+                                Some(DataType::AssumeGood)
+                            }
+                        }
+                        BinOp::EQ | BinOp::NE => {
+                            self.check_comparison_binop(rhs, lhs_ty, rhs_ty, &rhs_line_col, false)
+                        }
+                        BinOp::GT | BinOp::LT | BinOp::GE | BinOp::LE => {
+                            self.check_comparison_binop(rhs, lhs_ty, rhs_ty, &rhs_line_col, true)
+                        }
+                        BinOp::LShift => self.check_integer_binop(
+                            "Left shift",
+                            rhs,
+                            lhs_ty,
+                            rhs_ty,
+                            &full_line_col,
+                            &rhs_line_col,
+                        ),
+                        BinOp::RShift => self.check_integer_binop(
+                            "Right shift",
+                            rhs,
+                            lhs_ty,
+                            rhs_ty,
+                            &full_line_col,
+                            &rhs_line_col,
+                        ),
+                        BinOp::BitAnd => self.check_integer_binop(
+                            "The bitwise AND",
+                            rhs,
+                            lhs_ty,
+                            rhs_ty,
+                            &full_line_col,
+                            &rhs_line_col,
+                        ),
+                        BinOp::BitOr => self.check_integer_binop(
+                            "The bitwise OR",
+                            rhs,
+                            lhs_ty,
+                            rhs_ty,
+                            &full_line_col,
+                            &rhs_line_col,
+                        ),
+                        BinOp::BitXor => self.check_integer_binop(
+                            "The bitwise XOR",
+                            rhs,
+                            lhs_ty,
+                            rhs_ty,
+                            &full_line_col,
+                            &rhs_line_col,
+                        ),
+                    }
+                } else {
+                    self.err.type_check_error(
+                        "Can't get type of lhs or rhs of this binary operation".to_string(),
+                        &full_line_col,
+                    );
+
+                    Some(DataType::AssumeGood)
+                }
+            }
+            Expr::VarId {
+                name,
+                loc,
+                definition,
+            } => {
+                // get type from symbol table
+                if let (Some(id), Some(scope_id)) = self.table.lookup_with_scope_id(name) {
+                    if self.restrict_probe_local_state && self.table.scope_is_probe_local(scope_id)
+                    {
+                        self.err.type_check_error(
+                            "Cannot use the probe-local state to initialize this variable with special scoping. Hint: split out the variable's initialization from the declaration.".to_string(),
+                            &loc.clone().map(|l| l.line_col),
+                        );
+                    }
+                    if let Some(rec) = self.table.get_record(id) {
+                        if let Record::Var { ty, def, value, .. } = rec {
+                            *definition = *def;
+                            if let Some(val) = value {
+                                // overwrite with a primitive value expression!
+                                *expr = Expr::Primitive {
+                                    val: val.clone(),
+                                    loc: expr.loc().clone(),
+                                };
+                            }
+                            return Some(ty.clone());
+                        } else if let Record::Library { .. } = rec {
+                            return Some(DataType::Lib);
+                        } else {
+                            // unexpected record type
+                            // TODO: make this look up the local-most var (overshadowing should work)
+                            unreachable!("{} Expected Var type, got: {rec:?}\nHave you overshadowed some bound variable?", UNEXPECTED_ERR_MSG)
+                        }
+                    }
+                }
+                self.err.type_check_error(
+                    format! {"`{}` not found in symbol table", name},
+                    &loc.clone().map(|l| l.line_col),
+                );
+
+                Some(DataType::AssumeGood)
+            }
+            Expr::UnOp {
+                op,
+                expr: inner_expr,
+                done_on,
+                loc,
+            } => {
+                // BitwiseNot: result type == operand type, so propagate `expected` so
+                // literals get cast to the target type in place (mirrors old assign_ty behavior).
+                // Cast handles its own target type; Not always produces Boolean — both use None.
+                let inner_expected = if matches!(op, UnOp::BitwiseNot) { expected } else { None };
+                let expr_ty_op = self.visit_expr_impl(inner_expr, inner_expected);
+                if let Some(expr_ty) = expr_ty_op {
+                    *done_on = expr_ty.clone();
+                    match op {
+                        UnOp::Cast { target } => {
+                            // If the inner expression's type is the same as the cast,
+                            // we can remove the cast from the AST!
+                            let t = target.clone();
+                            Some(t)
+                        }
+                        UnOp::Not => {
+                            if expr_ty == DataType::Boolean {
+                                Some(DataType::Boolean)
+                            } else {
+                                self.err.type_check_error(
+                                    "Not operator can only be applied to boolean".to_owned(),
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                                Some(DataType::AssumeGood)
+                            }
+                        }
+                        UnOp::BitwiseNot => {
+                            if matches!(expr_ty, DataType::F32 | DataType::F64) {
+                                self.err.type_check_error(
+                                    format!(
+                                        "The bitwise NOT operation not allowed on type: {}",
+                                        expr_ty
+                                    ),
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                                return Some(DataType::AssumeGood);
+                            } else if matches!(expr_ty, DataType::AssumeGood) {
+                                return Some(DataType::AssumeGood);
+                            }
+
+                            if expr_ty.is_numeric() {
+                                return Some(expr_ty);
+                            }
+                            Some(DataType::AssumeGood)
+                        }
+                    }
+                } else {
+                    self.err.type_check_error(
+                        "Can't get type of expr of this unary operation".to_owned(),
+                        &loc.clone().map(|l| l.line_col),
+                    );
+                    Some(DataType::AssumeGood)
+                }
+            }
+            Expr::ObjCall {
+                obj_name,
+                call,
+                results,
+                annotation,
+                ..
+            } => {
+                self.curr_obj.push((
+                    obj_name.clone(),
+                    annotation.as_ref().map_or_else(|| false, |a| a.is_static()),
+                ));
+                let res = self.visit_expr_impl(call, None);
+                *results = res.clone();
+                self.curr_obj.pop();
+
+                res
+            }
+            Expr::Call {
+                fn_target,
+                args,
+                loc,
+            } => {
+                // lookup type of function
+                let mut actual_param_tys = vec![];
+
+                for arg in args.iter_mut() {
+                    match self.visit_expr_impl(arg, None) {
+                        Some(ty) => actual_param_tys.push(Some(ty)),
+                        _ => {
+                            self.err.type_check_error(
+                                "Can't get type of argument".to_owned(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            return Some(DataType::AssumeGood);
+                        }
+                    }
+                }
+
+                let fn_name = match fn_target.as_ref() {
+                    Expr::VarId { name, .. } => name,
+                    _ => {
+                        self.err.type_check_error(
+                            "Function target must be a valid identifier.".to_owned(),
+                            &loc.clone().map(|l| l.line_col),
+                        );
+                        return Some(DataType::AssumeGood);
+                    }
+                };
+
+                let curr_obj = self.curr_obj.first();
+                let rec = if let Some((obj_name, _)) = &curr_obj {
+                    let fns = match self.table.lookup_rec(obj_name) {
+                        Some(Record::Library { fns, .. }) => fns,
+                        Some(Record::Var { ty, .. }) => {
+                            if let Some(fns) = self.get_type_utils(ty) {
+                                fns
+                            } else {
+                                self.err.type_check_error(
+                                    "Could not find function for the invocation".to_string(),
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                                return Some(DataType::AssumeGood);
+                            }
+                        }
+                        _ => {
+                            self.err.type_check_error(
+                                format!("Could not find variable `{obj_name}` that this function was called on"),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            return Some(DataType::AssumeGood);
+                        }
+                    };
+                    let rec = fns
+                        .get(fn_name)
+                        .and_then(|rec| self.table.get_record(*rec))
+                        .or_else(|| {
+                            self.err.type_check_error(
+                                "Could not find function for the invocation".to_string(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            None
+                        });
+                    rec
+                } else {
+                    self.table.lookup_fn(fn_name, true)
+                };
+                let rec = rec.unwrap();
+
+                let (params, ret_ty, def, runnable_in_report_decl_init, loc) = match rec {
+                    Record::Fn {
+                        params,
+                        ret_ty,
+                        runnable_in_report_decl_init,
+                        def,
+                        loc,
+                        ..
+                    } => {
+                        // look up param
+                        let mut expected_param_tys = vec![];
+                        for param in params {
+                            if let Some(Record::Var { ty, .. }) = self.table.get_record(*param) {
+                                // check if it matches actual param
+                                expected_param_tys.push(Some(ty.clone()));
+                            }
+                        }
+                        (
+                            expected_param_tys,
+                            ret_ty.clone(),
+                            def,
+                            *runnable_in_report_decl_init,
+                            loc,
+                        )
+                    }
+                    Record::LibFn {
+                        name,
+                        params,
+                        results,
+                        def,
+                        loc,
+                        ..
+                    } => {
+                        let ret_ty = if results.len() > 1 {
+                            panic!(
+                                "We don't support functions with multiple return types: {}.{}",
+                                curr_obj.unwrap().0,
+                                name
+                            );
+                        } else if results.is_empty() {
+                            DataType::Tuple { ty_info: vec![] }
+                        } else {
+                            results.first().unwrap().clone()
+                        };
+                        let mut expected_param_tys = vec![];
+                        for param in params.iter() {
+                            expected_param_tys.push(Some(param.clone()));
+                        }
+                        (expected_param_tys, ret_ty, def, true, loc)
+                    }
+                    other => {
+                        panic!("Got unexpected record type: {:?}", other)
+                    }
+                };
+
+                if curr_obj.is_none()
+                    && self.in_script_global
+                    && !(*def == CompilerDynamic || *def == CompilerStatic)
+                {
+                    //check if in global state and if is_comp_defined is false --> not allowed if both are the case
+                    self.err.type_check_error(
+                        "Function calls to user def functions are not allowed in the global state of the script"
+                            .to_owned(),
+                        &loc.clone().map(|l| l.line_col),
+                    );
+                    //continue to check for other errors even after emitting this one
+                } else if !self.in_script_global
+                    && self.restrict_probe_local_state
+                    && !runnable_in_report_decl_init
+                {
+                    self.err.type_check_error(
+                        "Cannot use a non-static compiler function to initialize this variable with special scoping. Hint: split out the variable's initialization from the declaration.".to_string(),
+                        &loc.clone().map(|l| l.line_col),
+                    );
+                }
+
+                for (i, (expected, actual)) in
+                    params.iter().zip(actual_param_tys.iter()).enumerate()
+                {
+                    match (expected, actual) {
+                        (Some(expected), Some(actual)) => {
+                            // if actual is a tuple, it's not structurally equal
+                            if expected != actual {
+                                let arg = args.get_mut(i).unwrap();
+                                let arg_loc = arg.loc().clone().unwrap();
+                                if expected.can_implicitly_cast() && actual.can_implicitly_cast() {
+                                    // try to implicitly do a cast here
+                                    if let Err(msg) = arg.implicit_cast(expected) {
+                                        self.err.type_check_error(msg, &Some(arg_loc.line_col))
+                                    }
+                                } else {
+                                    self.err.type_check_error(
+                                        format! {"Expected type {:?} param {}, got {:?}", expected, i, actual},
+                                        &Some(arg_loc.line_col)
+                                    );
+                                }
+                            }
+                        }
+                        _ => {
+                            self.err.type_check_error(
+                                "Can't get type of argument".to_owned(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                        }
+                    }
+                }
+
+                Some(ret_ty.clone())
+            }
+            Expr::MapGet { map, key, loc } => {
+                //ensure that map is a map, then get the other stuff from the map info
+                let map_ty = self.visit_expr_impl(map, None);
+                let key_ty = self.visit_expr_impl(key, None);
+                match (map_ty.clone(), key_ty.clone()) {
+                    (None, _) | (_, None) => {
+                        self.err.type_check_error(
+                            "Can't get type of map or key".to_owned(),
+                            &loc.clone().map(|l| l.line_col),
+                        );
+                        Some(DataType::AssumeGood)
+                    }
+                    _ => {
+                        //we know that the types are all "Some"
+                        let key_ty = key_ty.unwrap();
+                        let map_ty = map_ty.unwrap();
+                        if let DataType::Map {
+                            key_ty: map_key_ty,
+                            val_ty,
+                        } = map_ty
+                        {
+                            //ensure that the key_ty matches and the val_ty matches
+                            if key_ty != *map_key_ty {
+                                let key_loc = key.loc().clone().unwrap();
+                                if key_ty.can_implicitly_cast() && map_key_ty.can_implicitly_cast()
+                                {
+                                    // try to implicitly do a cast here
+                                    if let Err(msg) = key.implicit_cast(map_key_ty.as_ref()) {
+                                        self.err.type_check_error(msg, &Some(key_loc.line_col))
+                                    } else {
+                                        return Some(*val_ty);
+                                    }
+                                } else {
+                                    self.err.type_check_error(
+                                        format! {"Type Mismatch, expected key type: {:?}, actual key type:{:?}", map_key_ty, key_ty},
+                                        &Some(key_loc.line_col),
+                                    );
+                                }
+                                return Some(DataType::AssumeGood);
+                            }
+                            Some(*val_ty)
+                        } else if matches!(map_ty, DataType::AssumeGood) {
+                            Some(DataType::AssumeGood)
+                        } else {
+                            self.err.type_check_error(
+                                "Expected Map type".to_string(),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            Some(DataType::AssumeGood)
+                        }
+                    }
+                }
+            }
+            Expr::Ternary {
+                cond,
+                conseq,
+                alt,
+                ty,
+                ..
+            } => {
+                // Condition is always boolean — no expected type to propagate.
+                let cond_ty = self.visit_expr_impl(cond, None);
+                //have to clone before the "if let" block
+                let cond_ty_clone = cond_ty.clone();
+                if let Some(ty) = cond_ty {
+                    if ty != DataType::Boolean {
+                        self.err.type_check_error(
+                            format!(
+                                "Condition must be of type boolean, found {:?}",
+                                cond_ty_clone.unwrap()
+                            )
+                                .to_owned(),
+                            &Some(cond.loc().clone().unwrap().line_col),
+                        );
+                    }
+                }
+
+                // Branches inherit the expected type from the enclosing assignment (if any).
+                let conseq_ty = self.visit_expr_impl(conseq, expected);
+                let alt_ty = self.visit_expr_impl(alt, expected);
+
+                match (alt_ty, conseq_ty.clone()) {
+                    (Some(alt_t), Some(conseq_t)) => {
+                        if alt_t == conseq_t {
+                            *ty = alt_t.clone();
+                            conseq_ty
+                        } else {
+                            self.err.type_check_error(
+                                "Consequent and alternative must have the same type".to_owned(),
+                                &Some(
+                                    Location::from(
+                                        &conseq.loc().clone().unwrap().line_col,
+                                        &alt.loc().clone().unwrap().line_col,
+                                        None,
+                                    )
+                                        .line_col,
+                                ),
+                            );
+                            Some(DataType::AssumeGood)
+                        }
+                    }
+                    _ => {
+                        self.err.type_check_error(
+                            "Can't get type of consequent or alternative".to_owned(),
+                            &Some(
+                                Location::from(
+                                    &conseq.loc().clone().unwrap().line_col,
+                                    &alt.loc().clone().unwrap().line_col,
+                                    None,
+                                )
+                                    .line_col,
+                            ),
+                        );
+                        Some(DataType::AssumeGood)
+                    }
+                }
+            }
         }
     }
 }
@@ -269,7 +1021,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
         None
     }
-
     fn visit_script(&mut self, script: &mut Script) -> Option<DataType> {
         self.table.enter_named_scope(&script.id.to_string());
         self.in_script_global = true;
@@ -455,17 +1206,24 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 let lhs_ty_op = self.visit_expr(var_id);
                 self.restrict_probe_local_state = orig_setting;
 
-                if let Some(lhs_ty) = &lhs_ty_op {
-                    if let Expr::UnOp {
-                        op: UnOp::Cast { target },
-                        ..
-                    } = expr
-                    {
-                        self.outer_cast_fixes_assign = lhs_ty == target;
+                // When the rhs is `expr as T` and T matches the lhs type, the cast already
+                // handles the coercion — pass None so inner expressions check self-compatibility.
+                // Otherwise pass the lhs type as the expected type to guide implicit casting.
+                let effective_expected: Option<DataType> = match &lhs_ty_op {
+                    Some(lhs_ty) => {
+                        if let Expr::UnOp {
+                            op: UnOp::Cast { target },
+                            ..
+                        } = expr
+                        {
+                            if lhs_ty == target { None } else { lhs_ty_op.clone() }
+                        } else {
+                            lhs_ty_op.clone()
+                        }
                     }
-                }
-                self.assign_ty = lhs_ty_op.clone();
-                let rhs_ty_op = self.visit_expr(expr);
+                    None => None,
+                };
+                let rhs_ty_op = self.visit_expr_impl(expr, effective_expected.as_ref());
 
                 let res = if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
                     if lhs_ty == rhs_ty {
@@ -494,9 +1252,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     );
                     None
                 };
-                self.outer_cast_fixes_assign = false;
-                self.assign_ty = None;
-
                 res
             }
             Statement::UnsharedDeclInit { decl, init, .. } => {
@@ -682,806 +1437,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_expr(&mut self, expr: &mut Expr) -> Option<DataType> {
-        match expr {
-            Expr::Primitive { val, loc } => {
-                self.curr_loc = loc.clone();
-                self.visit_value(val)
-            }
-            Expr::BinOp {
-                lhs,
-                rhs,
-                op,
-                done_on,
-                ..
-            } => {
-                let (full_line_col, rhs_line_col) = match (lhs.loc(), rhs.loc()) {
-                    (Some(lhs_loc), Some(rhs_loc)) => {
-                        let full_line_col =
-                            Location::from(&lhs_loc.line_col, &rhs_loc.line_col, None)
-                                .line_col
-                                .clone();
-                        (Some(full_line_col), Some(rhs_loc.line_col.clone()))
-                    }
-                    (Some(lhs_loc), None) => {
-                        let full_line_col =
-                            Location::from(&lhs_loc.line_col, &lhs_loc.line_col, None)
-                                .line_col
-                                .clone();
-                        (Some(full_line_col), Some(lhs_loc.line_col.clone()))
-                    }
-                    (None, Some(rhs_loc)) => (None, Some(rhs_loc.line_col.clone())),
-                    _ => (None, None),
-                };
-                let lhs_ty_op = self.visit_expr(lhs);
-                let rhs_ty_op = self.visit_expr(rhs);
-                if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
-                    *done_on = lhs_ty.clone();
-                    match op {
-                        BinOp::Add
-                        | BinOp::Subtract
-                        | BinOp::Multiply
-                        | BinOp::Divide
-                        | BinOp::Modulo => {
-                            if matches!(lhs_ty, DataType::AssumeGood) {
-                                return Some(rhs_ty);
-                            } else if matches!(rhs_ty, DataType::AssumeGood) {
-                                return Some(lhs_ty);
-                            }
-
-                            if !self.outer_cast_fixes_assign {
-                                if let Some(exp_ty) = &self.assign_ty {
-                                    if *exp_ty == lhs_ty {
-                                        if lhs_ty == rhs_ty {
-                                            return Some(lhs_ty);
-                                        } else if attempt_implicit_cast(
-                                            rhs,
-                                            exp_ty,
-                                            &rhs_ty,
-                                            &full_line_col,
-                                            "value",
-                                            self.err,
-                                        ) {
-                                            return Some(exp_ty.clone());
-                                        }
-                                    } else if attempt_implicit_cast(
-                                        lhs,
-                                        exp_ty,
-                                        &lhs_ty,
-                                        &full_line_col,
-                                        "value",
-                                        self.err,
-                                    ) {
-                                        return Some(exp_ty.clone());
-                                    }
-                                }
-                            } else if lhs_ty == rhs_ty
-                                || attempt_implicit_cast(
-                                    rhs,
-                                    &lhs_ty,
-                                    &rhs_ty,
-                                    &rhs_line_col,
-                                    "value",
-                                    self.err,
-                                )
-                            {
-                                return Some(lhs_ty);
-                            }
-                            Some(DataType::AssumeGood)
-                        }
-                        BinOp::And | BinOp::Or => {
-                            if matches!(lhs_ty, DataType::AssumeGood)
-                                || matches!(rhs_ty, DataType::AssumeGood)
-                            {
-                                return Some(DataType::Boolean);
-                            }
-                            if lhs_ty == DataType::Boolean && rhs_ty == DataType::Boolean {
-                                Some(DataType::Boolean)
-                            } else {
-                                self.err.type_check_error(
-                                    "Different types for lhs and rhs".to_owned(),
-                                    &full_line_col,
-                                );
-                                Some(DataType::AssumeGood)
-                            }
-                        }
-                        BinOp::EQ | BinOp::NE => {
-                            if matches!(lhs_ty, DataType::AssumeGood)
-                                || matches!(rhs_ty, DataType::AssumeGood)
-                            {
-                                return Some(DataType::Boolean);
-                            }
-                            if lhs_ty == rhs_ty
-                                || attempt_implicit_cast(
-                                    rhs,
-                                    &lhs_ty,
-                                    &rhs_ty,
-                                    &rhs_line_col,
-                                    "value",
-                                    self.err,
-                                )
-                            {
-                                Some(DataType::Boolean)
-                            } else {
-                                Some(DataType::AssumeGood)
-                            }
-                        }
-                        BinOp::GT | BinOp::LT | BinOp::GE | BinOp::LE => {
-                            if matches!(lhs_ty, DataType::AssumeGood)
-                                || matches!(rhs_ty, DataType::AssumeGood)
-                            {
-                                return Some(DataType::Boolean);
-                            }
-                            if lhs_ty == rhs_ty && lhs_ty.can_implicitly_cast()
-                                || attempt_implicit_cast(
-                                    rhs,
-                                    &lhs_ty,
-                                    &rhs_ty,
-                                    &rhs_line_col,
-                                    "value",
-                                    self.err,
-                                )
-                            {
-                                Some(DataType::Boolean)
-                            } else {
-                                Some(DataType::AssumeGood)
-                            }
-                        }
-                        BinOp::LShift => {
-                            if matches!(lhs_ty, DataType::F32 | DataType::F64) {
-                                self.err.type_check_error(
-                                    format!("Left shift operation not allowed on type: {}", lhs_ty),
-                                    &full_line_col,
-                                );
-                                return Some(DataType::AssumeGood);
-                            } else if matches!(lhs_ty, DataType::AssumeGood) {
-                                return Some(DataType::AssumeGood);
-                            } else if matches!(rhs_ty, DataType::AssumeGood) {
-                                return Some(lhs_ty);
-                            }
-
-                            if lhs_ty.is_numeric()
-                                && (lhs_ty == rhs_ty
-                                    || attempt_implicit_cast(
-                                        rhs,
-                                        &lhs_ty,
-                                        &rhs_ty,
-                                        &rhs_line_col,
-                                        "value",
-                                        self.err,
-                                    ))
-                            {
-                                return Some(lhs_ty);
-                            }
-                            Some(DataType::AssumeGood)
-                        }
-                        BinOp::RShift => {
-                            if matches!(lhs_ty, DataType::F32 | DataType::F64) {
-                                self.err.type_check_error(
-                                    format!(
-                                        "Right shift operation not allowed on type: {}",
-                                        lhs_ty
-                                    ),
-                                    &full_line_col,
-                                );
-                                return Some(DataType::AssumeGood);
-                            } else if matches!(lhs_ty, DataType::AssumeGood) {
-                                return Some(DataType::AssumeGood);
-                            } else if matches!(rhs_ty, DataType::AssumeGood) {
-                                return Some(lhs_ty);
-                            }
-
-                            if lhs_ty.is_numeric()
-                                && (lhs_ty == rhs_ty
-                                    || attempt_implicit_cast(
-                                        rhs,
-                                        &lhs_ty,
-                                        &rhs_ty,
-                                        &rhs_line_col,
-                                        "value",
-                                        self.err,
-                                    ))
-                            {
-                                return Some(lhs_ty);
-                            }
-                            Some(DataType::AssumeGood)
-                        }
-                        BinOp::BitAnd => {
-                            if matches!(lhs_ty, DataType::F32 | DataType::F64) {
-                                self.err.type_check_error(
-                                    format!(
-                                        "The bitwise AND operation not allowed on type: {}",
-                                        lhs_ty
-                                    ),
-                                    &full_line_col,
-                                );
-                                return Some(DataType::AssumeGood);
-                            } else if matches!(lhs_ty, DataType::AssumeGood) {
-                                return Some(DataType::AssumeGood);
-                            } else if matches!(rhs_ty, DataType::AssumeGood) {
-                                return Some(lhs_ty);
-                            }
-
-                            if lhs_ty.is_numeric()
-                                && (lhs_ty == rhs_ty
-                                    || attempt_implicit_cast(
-                                        rhs,
-                                        &lhs_ty,
-                                        &rhs_ty,
-                                        &rhs_line_col,
-                                        "value",
-                                        self.err,
-                                    ))
-                            {
-                                return Some(lhs_ty);
-                            }
-                            Some(DataType::AssumeGood)
-                        }
-                        BinOp::BitOr => {
-                            if matches!(lhs_ty, DataType::F32 | DataType::F64) {
-                                self.err.type_check_error(
-                                    format!(
-                                        "The bitwise OR operation not allowed on type: {}",
-                                        lhs_ty
-                                    ),
-                                    &full_line_col,
-                                );
-                                return Some(DataType::AssumeGood);
-                            } else if matches!(lhs_ty, DataType::AssumeGood) {
-                                return Some(DataType::AssumeGood);
-                            } else if matches!(rhs_ty, DataType::AssumeGood) {
-                                return Some(lhs_ty);
-                            }
-
-                            if lhs_ty.is_numeric()
-                                && (lhs_ty == rhs_ty
-                                    || attempt_implicit_cast(
-                                        rhs,
-                                        &lhs_ty,
-                                        &rhs_ty,
-                                        &rhs_line_col,
-                                        "value",
-                                        self.err,
-                                    ))
-                            {
-                                return Some(lhs_ty);
-                            }
-                            Some(DataType::AssumeGood)
-                        }
-                        BinOp::BitXor => {
-                            if matches!(lhs_ty, DataType::F32 | DataType::F64) {
-                                self.err.type_check_error(
-                                    format!(
-                                        "The bitwise XOR operation not allowed on type: {}",
-                                        lhs_ty
-                                    ),
-                                    &full_line_col,
-                                );
-                                return Some(DataType::AssumeGood);
-                            } else if matches!(lhs_ty, DataType::AssumeGood) {
-                                return Some(DataType::AssumeGood);
-                            } else if matches!(rhs_ty, DataType::AssumeGood) {
-                                return Some(lhs_ty);
-                            }
-
-                            if lhs_ty.is_numeric()
-                                && (lhs_ty == rhs_ty
-                                    || attempt_implicit_cast(
-                                        rhs,
-                                        &lhs_ty,
-                                        &rhs_ty,
-                                        &rhs_line_col,
-                                        "value",
-                                        self.err,
-                                    ))
-                            {
-                                return Some(lhs_ty);
-                            }
-                            Some(DataType::AssumeGood)
-                        }
-                    }
-                } else {
-                    self.err.type_check_error(
-                        "Can't get type of lhs or rhs of this binary operation".to_string(),
-                        &full_line_col,
-                    );
-
-                    Some(DataType::AssumeGood)
-                }
-            }
-            Expr::VarId {
-                name,
-                loc,
-                definition,
-            } => {
-                // get type from symbol table
-                if let (Some(id), Some(scope_id)) = self.table.lookup_with_scope_id(name) {
-                    if self.restrict_probe_local_state && self.table.scope_is_probe_local(scope_id)
-                    {
-                        self.err.type_check_error(
-                            "Cannot use the probe-local state to initialize this variable with special scoping. Hint: split out the variable's initialization from the declaration.".to_string(),
-                            &loc.clone().map(|l| l.line_col),
-                        );
-                    }
-                    if let Some(rec) = self.table.get_record(id) {
-                        if let Record::Var { ty, def, value, .. } = rec {
-                            *definition = *def;
-                            if let Some(val) = value {
-                                // overwrite with a primitive value expression!
-                                *expr = Expr::Primitive {
-                                    val: val.clone(),
-                                    loc: expr.loc().clone(),
-                                };
-                            }
-                            return Some(ty.clone());
-                        } else if let Record::Library { .. } = rec {
-                            return Some(DataType::Lib);
-                        } else {
-                            // unexpected record type
-                            // TODO: make this look up the local-most var (overshadowing should work)
-                            unreachable!("{} Expected Var type, got: {rec:?}\nHave you overshadowed some bound variable?", UNEXPECTED_ERR_MSG)
-                        }
-                    }
-                }
-                self.err.type_check_error(
-                    format! {"`{}` not found in symbol table", name},
-                    &loc.clone().map(|l| l.line_col),
-                );
-
-                Some(DataType::AssumeGood)
-            }
-            Expr::UnOp {
-                op,
-                expr: inner_expr,
-                done_on,
-                loc,
-            } => {
-                let expr_ty_op = self.visit_expr(inner_expr);
-                if let Some(expr_ty) = expr_ty_op {
-                    *done_on = expr_ty.clone();
-                    match op {
-                        UnOp::Cast { target } => {
-                            // If the inner expression's type is the same as the cast,
-                            // we can remove the cast from the AST!
-                            let t = target.clone();
-                            Some(t)
-                        }
-                        UnOp::Not => {
-                            if expr_ty == DataType::Boolean {
-                                Some(DataType::Boolean)
-                            } else {
-                                self.err.type_check_error(
-                                    "Not operator can only be applied to boolean".to_owned(),
-                                    &loc.clone().map(|l| l.line_col),
-                                );
-                                Some(DataType::AssumeGood)
-                            }
-                        }
-                        UnOp::BitwiseNot => {
-                            if matches!(expr_ty, DataType::F32 | DataType::F64) {
-                                self.err.type_check_error(
-                                    format!(
-                                        "The bitwise NOT operation not allowed on type: {}",
-                                        expr_ty
-                                    ),
-                                    &loc.clone().map(|l| l.line_col),
-                                );
-                                return Some(DataType::AssumeGood);
-                            } else if matches!(expr_ty, DataType::AssumeGood) {
-                                return Some(DataType::AssumeGood);
-                            }
-
-                            if expr_ty.is_numeric() {
-                                return Some(expr_ty);
-                            }
-                            Some(DataType::AssumeGood)
-                        }
-                    }
-                } else {
-                    self.err.type_check_error(
-                        "Can't get type of expr of this unary operation".to_owned(),
-                        &loc.clone().map(|l| l.line_col),
-                    );
-                    Some(DataType::AssumeGood)
-                }
-            }
-            Expr::ObjCall {
-                obj_name,
-                call,
-                results,
-                annotation,
-                ..
-            } => {
-                self.curr_obj.push((
-                    obj_name.clone(),
-                    annotation.as_ref().map_or_else(|| false, |a| a.is_static()),
-                ));
-                let res = self.visit_expr(call);
-                *results = res.clone();
-                self.curr_obj.pop();
-
-                res
-            }
-            Expr::Call {
-                fn_target,
-                args,
-                loc,
-            } => {
-                // lookup type of function
-                let mut actual_param_tys = vec![];
-
-                for arg in args.iter_mut() {
-                    match self.visit_expr(arg) {
-                        Some(ty) => actual_param_tys.push(Some(ty)),
-                        _ => {
-                            self.err.type_check_error(
-                                "Can't get type of argument".to_owned(),
-                                &loc.clone().map(|l| l.line_col),
-                            );
-                            return Some(DataType::AssumeGood);
-                        }
-                    }
-                }
-
-                let fn_name = match fn_target.as_ref() {
-                    Expr::VarId { name, .. } => name,
-                    _ => {
-                        self.err.type_check_error(
-                            "Function target must be a valid identifier.".to_owned(),
-                            &loc.clone().map(|l| l.line_col),
-                        );
-                        return Some(DataType::AssumeGood);
-                    }
-                };
-
-                let curr_obj = self.curr_obj.first();
-                let rec = if let Some((obj_name, _)) = &curr_obj {
-                    let fns = match self.table.lookup_rec(obj_name) {
-                        Some(Record::Library { fns, .. }) => fns,
-                        Some(Record::Var { ty, .. }) => {
-                            if let Some(fns) = self.get_type_utils(ty) {
-                                fns
-                            } else {
-                                self.err.type_check_error(
-                                    "Could not find function for the invocation".to_string(),
-                                    &loc.clone().map(|l| l.line_col),
-                                );
-                                return Some(DataType::AssumeGood);
-                            }
-                        }
-                        _ => {
-                            self.err.type_check_error(
-                                format!("Could not find variable `{obj_name}` that this function was called on"),
-                                &loc.clone().map(|l| l.line_col),
-                            );
-                            return Some(DataType::AssumeGood);
-                        }
-                    };
-                    let rec = fns
-                        .get(fn_name)
-                        .and_then(|rec| self.table.get_record(*rec))
-                        .or_else(|| {
-                            self.err.type_check_error(
-                                "Could not find function for the invocation".to_string(),
-                                &loc.clone().map(|l| l.line_col),
-                            );
-                            None
-                        });
-                    rec
-                } else {
-                    self.table.lookup_fn(fn_name, true)
-                };
-                let rec = rec.unwrap();
-
-                let (params, ret_ty, def, runnable_in_report_decl_init, loc) = match rec {
-                    Record::Fn {
-                        params,
-                        ret_ty,
-                        runnable_in_report_decl_init,
-                        def,
-                        loc,
-                        ..
-                    } => {
-                        // look up param
-                        let mut expected_param_tys = vec![];
-                        for param in params {
-                            if let Some(Record::Var { ty, .. }) = self.table.get_record(*param) {
-                                // check if it matches actual param
-                                expected_param_tys.push(Some(ty.clone()));
-                            }
-                        }
-                        (
-                            expected_param_tys,
-                            ret_ty.clone(),
-                            def,
-                            *runnable_in_report_decl_init,
-                            loc,
-                        )
-                    }
-                    Record::LibFn {
-                        name,
-                        params,
-                        results,
-                        def,
-                        loc,
-                        ..
-                    } => {
-                        let ret_ty = if results.len() > 1 {
-                            panic!(
-                                "We don't support functions with multiple return types: {}.{}",
-                                curr_obj.unwrap().0,
-                                name
-                            );
-                        } else if results.is_empty() {
-                            DataType::Tuple { ty_info: vec![] }
-                        } else {
-                            results.first().unwrap().clone()
-                        };
-                        let mut expected_param_tys = vec![];
-                        for param in params.iter() {
-                            expected_param_tys.push(Some(param.clone()));
-                        }
-                        (expected_param_tys, ret_ty, def, true, loc)
-                    }
-                    other => {
-                        panic!("Got unexpected record type: {:?}", other)
-                    }
-                };
-
-                if curr_obj.is_none()
-                    && self.in_script_global
-                    && !(*def == CompilerDynamic || *def == CompilerStatic)
-                {
-                    //check if in global state and if is_comp_defined is false --> not allowed if both are the case
-                    self.err.type_check_error(
-                        "Function calls to user def functions are not allowed in the global state of the script"
-                            .to_owned(),
-                        &loc.clone().map(|l| l.line_col),
-                    );
-                    //continue to check for other errors even after emitting this one
-                } else if !self.in_script_global
-                    && self.restrict_probe_local_state
-                    && !runnable_in_report_decl_init
-                {
-                    self.err.type_check_error(
-                        "Cannot use a non-static compiler function to initialize this variable with special scoping. Hint: split out the variable's initialization from the declaration.".to_string(),
-                        &loc.clone().map(|l| l.line_col),
-                    );
-                }
-
-                for (i, (expected, actual)) in
-                    params.iter().zip(actual_param_tys.iter()).enumerate()
-                {
-                    match (expected, actual) {
-                        (Some(expected), Some(actual)) => {
-                            // if actual is a tuple, it's not structurally equal
-                            if expected != actual {
-                                let arg = args.get_mut(i).unwrap();
-                                let arg_loc = arg.loc().clone().unwrap();
-                                if expected.can_implicitly_cast() && actual.can_implicitly_cast() {
-                                    // try to implicitly do a cast here
-                                    if let Err(msg) = arg.implicit_cast(expected) {
-                                        self.err.type_check_error(msg, &Some(arg_loc.line_col))
-                                    }
-                                } else {
-                                    self.err.type_check_error(
-                                        format! {"Expected type {:?} param {}, got {:?}", expected, i, actual},
-                                        &Some(arg_loc.line_col)
-                                    );
-                                }
-                            }
-                        }
-                        _ => {
-                            self.err.type_check_error(
-                                "Can't get type of argument".to_owned(),
-                                &loc.clone().map(|l| l.line_col),
-                            );
-                        }
-                    }
-                }
-
-                Some(ret_ty.clone())
-            }
-            Expr::MapGet { map, key, loc } => {
-                //ensure that map is a map, then get the other stuff from the map info
-                let map_ty = self.visit_expr(map);
-                let key_ty = self.visit_expr(key);
-                match (map_ty.clone(), key_ty.clone()) {
-                    (None, _) | (_, None) => {
-                        self.err.type_check_error(
-                            "Can't get type of map or key".to_owned(),
-                            &loc.clone().map(|l| l.line_col),
-                        );
-                        Some(DataType::AssumeGood)
-                    }
-                    _ => {
-                        //we know that the types are all "Some"
-                        let key_ty = key_ty.unwrap();
-                        let map_ty = map_ty.unwrap();
-                        if let DataType::Map {
-                            key_ty: map_key_ty,
-                            val_ty,
-                        } = map_ty
-                        {
-                            //ensure that the key_ty matches and the val_ty matches
-                            if key_ty != *map_key_ty {
-                                let key_loc = key.loc().clone().unwrap();
-                                if key_ty.can_implicitly_cast() && map_key_ty.can_implicitly_cast()
-                                {
-                                    // try to implicitly do a cast here
-                                    if let Err(msg) = key.implicit_cast(map_key_ty.as_ref()) {
-                                        self.err.type_check_error(msg, &Some(key_loc.line_col))
-                                    } else {
-                                        return Some(*val_ty);
-                                    }
-                                } else {
-                                    self.err.type_check_error(
-                                        format! {"Type Mismatch, expected key type: {:?}, actual key type:{:?}", map_key_ty, key_ty},
-                                        &Some(key_loc.line_col),
-                                    );
-                                }
-                                return Some(DataType::AssumeGood);
-                            }
-                            Some(*val_ty)
-                        } else if matches!(map_ty, DataType::AssumeGood) {
-                            Some(DataType::AssumeGood)
-                        } else {
-                            self.err.type_check_error(
-                                "Expected Map type".to_string(),
-                                &loc.clone().map(|l| l.line_col),
-                            );
-                            Some(DataType::AssumeGood)
-                        }
-                    }
-                }
-            }
-            Expr::Ternary {
-                cond,
-                conseq,
-                alt,
-                ty,
-                ..
-            } => {
-                let saved_exp_ty = self.assign_ty.to_owned();
-                self.assign_ty = None;
-                let cond_ty = self.visit_expr(cond);
-                //have to clone before the "if let" block
-                let cond_ty_clone = cond_ty.clone();
-                if let Some(ty) = cond_ty {
-                    if ty != DataType::Boolean {
-                        self.err.type_check_error(
-                            format!(
-                                "Condition must be of type boolean, found {:?}",
-                                cond_ty_clone.unwrap()
-                            )
-                            .to_owned(),
-                            &Some(cond.loc().clone().unwrap().line_col),
-                        );
-                    }
-                }
-
-                self.assign_ty = saved_exp_ty;
-                let conseq_ty = self.visit_expr(conseq);
-                let alt_ty = self.visit_expr(alt);
-
-                match (alt_ty, conseq_ty.clone()) {
-                    (Some(alt_t), Some(conseq_t)) => {
-                        if alt_t == conseq_t {
-                            *ty = alt_t.clone();
-                            conseq_ty
-                        } else {
-                            self.err.type_check_error(
-                                "Consequent and alternative must have the same type".to_owned(),
-                                &Some(
-                                    Location::from(
-                                        &conseq.loc().clone().unwrap().line_col,
-                                        &alt.loc().clone().unwrap().line_col,
-                                        None,
-                                    )
-                                    .line_col,
-                                ),
-                            );
-                            Some(DataType::AssumeGood)
-                        }
-                    }
-                    _ => {
-                        self.err.type_check_error(
-                            "Can't get type of consequent or alternative".to_owned(),
-                            &Some(
-                                Location::from(
-                                    &conseq.loc().clone().unwrap().line_col,
-                                    &alt.loc().clone().unwrap().line_col,
-                                    None,
-                                )
-                                .line_col,
-                            ),
-                        );
-                        Some(DataType::AssumeGood)
-                    }
-                }
-            }
-        }
+        self.visit_expr_impl(expr, None)
     }
 
     fn visit_value(&mut self, val: &mut Value) -> Option<DataType> {
-        match val {
-            Value::Number { .. } | Value::Boolean { .. } => {
-                if !self.outer_cast_fixes_assign {
-                    if let Some(exp_ty) = &self.assign_ty {
-                        let exp_ty = if let DataType::Tuple { ty_info } = exp_ty {
-                            if let Some(ty) = ty_info.get(self.tuple_index) {
-                                ty
-                            } else {
-                                let loc = self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
-                                self.err.type_check_error(
-                                    format!(
-                                        "TypeError: Tuple value at this location exceeded the expected tuple length of: {}.",
-                                        ty_info.len()
-                                    ),
-                                    &loc,
-                                );
-                                return Some(DataType::AssumeGood);
-                            }
-                        } else {
-                            exp_ty
-                        };
-
-                        let val_ty = val.ty();
-                        return if *exp_ty == val_ty {
-                            Some(val_ty)
-                        } else if exp_ty.can_implicitly_cast() && val_ty.can_implicitly_cast() {
-                            match val.implicit_cast(exp_ty) {
-                                Ok(_) => Some(val.ty()),
-                                Err(msg) => {
-                                    let loc =
-                                        self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
-                                    self.err.type_check_error(format!("CastError: Cannot implicitly cast {msg}. Please add an explicit cast."),
-                                                              &loc);
-                                    Some(DataType::AssumeGood)
-                                }
-                            }
-                        } else {
-                            Some(DataType::Unknown)
-                        };
-                    }
-                }
-                Some(val.ty())
-            }
-            Value::Str { .. } => Some(DataType::Str),
-            Value::U32U32Map { .. } => Some(DataType::Map {
-                key_ty: Box::new(DataType::U32),
-                val_ty: Box::new(DataType::U32),
-            }),
-            Value::Tuple { ty, vals } => {
-                // this ty does not contain the DataType in ty_info
-                // Whamm parser doesn't give the ty_info for Tuples
-                let tys = vals
-                    .iter_mut()
-                    .enumerate()
-                    .map(|(index, val)| {
-                        self.tuple_index = index;
-                        self.visit_expr(val)
-                    })
-                    .collect::<Vec<_>>();
-
-                // assume these expressions (actually just values) all parse
-                // and have Some type
-                let mut all_tys: Vec<DataType> = Vec::new();
-                for ty in tys.iter() {
-                    match ty {
-                        Some(ty) => all_tys.push(ty.to_owned()),
-                        _ => {
-                            unreachable!(
-                                "{} ALL types should be set for a tuple value.",
-                                UNEXPECTED_ERR_MSG
-                            )
-                        }
-                    }
-                }
-                let tuple_ty = DataType::Tuple { ty_info: all_tys };
-                *ty = tuple_ty.clone();
-                Some(tuple_ty)
-            }
-        }
+        self.check_value(val, None)
     }
 }
 
