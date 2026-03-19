@@ -3,11 +3,11 @@ use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::utils::{
-    emit_body, emit_expr, emit_global_getter, emit_probes, emit_stmt, whamm_type_to_wasm_global,
-    EmitCtx,
+    emit_expr, emit_global_getter, emit_probes, emit_stmt, whamm_type_to_wasm_global, EmitCtx,
 };
 use crate::emitter::{Emitter, InjectStrategy};
 use crate::generator::ast::{Probe, Script, WhammParams};
+use crate::generator::folding::expr::ExprFolder;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
@@ -713,6 +713,56 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
 
         (fid, was_created)
     }
+
+    fn handle_special_fn_call(
+        &mut self,
+        target_fn_name: String,
+        args: &[Expr],
+        err: &mut ErrorGen,
+    ) -> bool {
+        let mut folded_args = vec![];
+        for arg in args.iter() {
+            folded_args.push(ExprFolder::fold_expr(
+                arg,
+                self.registry,
+                self.strategy.as_monitor_module(),
+                self.table,
+                &self.mem_allocator.emitted_strings,
+                err,
+            ));
+        }
+
+        match target_fn_name.as_str() {
+            "memcpy" => self.handle_memcpy(),
+            "write_str" => self.handle_write_str(),
+            "read_str" => self.handle_read_str(),
+            "dup_at" => unimplemented!("Function not implemented in `wei` yet: {target_fn_name}"),
+            "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
+                panic!("Function unsupported in `wei`: {target_fn_name}")
+            }
+            _ => {
+                unreachable!(
+                    "{} Could not find handler for static function with name: {}",
+                    UNEXPECTED_ERR_MSG, target_fn_name
+                );
+            }
+        }
+    }
+
+    fn handle_memcpy(&mut self) -> bool {
+        // this is handled in the shared emitter utils
+        false
+    }
+
+    fn handle_write_str(&mut self) -> bool {
+        // this is handled in the shared emitter utils
+        false
+    }
+
+    fn handle_read_str(&mut self) -> bool {
+        // this is handled in the shared emitter utils
+        false
+    }
 }
 impl Emitter for ModuleEmitter<'_, '_> {
     fn reset_locals_for_probe(&mut self) {
@@ -724,45 +774,53 @@ impl Emitter for ModuleEmitter<'_, '_> {
     fn reset_locals_for_function(&mut self) {
         self.locals_tracker.reset_function();
     }
+
     fn emit_body(&mut self, body: &Block, err: &mut ErrorGen) -> bool {
-        if let Some(emitting_func) = &mut self.emitting_func {
-            emit_body(
-                body,
-                self.strategy,
-                emitting_func,
-                &mut EmitCtx::new(
-                    self.registry,
-                    self.table,
-                    self.mem_allocator,
-                    &mut self.locals_tracker,
-                    self.utils_adapter,
-                    self.map_lib_adapter,
-                    UNEXPECTED_ERR_MSG,
-                    err,
-                ),
-            )
-        } else {
-            false
+        let mut is_success = true;
+        for stmt in body.stmts.iter() {
+            is_success &= self.emit_stmt(stmt, err);
         }
+        is_success
     }
 
     fn emit_stmt(&mut self, stmt: &Statement, err: &mut ErrorGen) -> bool {
+        // Check if this is calling a bound, static function!
+        if let Statement::Expr {
+            expr: Expr::Call {
+                fn_target, args, ..
+            },
+            ..
+        } = stmt
+        {
+            let fn_name = match &**fn_target {
+                Expr::VarId { name, .. } => name.clone(),
+                _ => return false,
+            };
+            let Some(Record::Fn { def, .. }) = self.table.lookup_fn(fn_name.as_str(), true) else {
+                unreachable!("unexpected type");
+            };
+            if matches!(def, Definition::CompilerStatic) {
+                // We want to handle this as unique logic rather than a simple function call to be emitted
+                if self.handle_special_fn_call(fn_name, args, err) {
+                    return true;
+                }
+            }
+        }
+
+        // everything else can be emitted as normal!
+        let mut ctx = EmitCtx::new(
+            self.registry,
+            self.table,
+            self.mem_allocator,
+            &mut self.locals_tracker,
+            self.utils_adapter,
+            self.map_lib_adapter,
+            UNEXPECTED_ERR_MSG,
+            err,
+        );
+
         if let Some(emitting_func) = &mut self.emitting_func {
-            emit_stmt(
-                stmt,
-                self.strategy,
-                emitting_func,
-                &mut EmitCtx::new(
-                    self.registry,
-                    self.table,
-                    self.mem_allocator,
-                    &mut self.locals_tracker,
-                    self.utils_adapter,
-                    self.map_lib_adapter,
-                    UNEXPECTED_ERR_MSG,
-                    err,
-                ),
-            )
+            emit_stmt(stmt, self.strategy, emitting_func, &mut ctx)
         } else {
             false
         }

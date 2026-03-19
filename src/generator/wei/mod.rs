@@ -7,6 +7,7 @@ use crate::generator::{create_curr_loc, emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::alloc_vars::wei::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::LocationData;
+use crate::parser;
 use crate::parser::types::{Block, DataType, Expr, Location, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::Record;
 use std::collections::{HashMap, HashSet};
@@ -90,7 +91,22 @@ impl WeiGenerator<'_, '_, '_> {
         self.visit_global_stmts(&mut script.global_stmts);
         // visit probes
         script.probes.iter_mut().for_each(|probe| {
+            let probe_rule: crate::emitter::rewriting::rules::ProbeRule = (&probe.rule).into();
+            assert!(
+                self.emitter.table.enter_scope_via_rule(
+                    &self.curr_script_id.to_string(),
+                    &parser::types::ProbeRule {
+                        provider: probe_rule.provider.clone(),
+                        package: probe_rule.package.clone(),
+                        event: probe_rule.event.clone(),
+                        mode: None,
+                    },
+                    probe.scope_id,
+                ),
+                "Failed to enter scope"
+            );
             self.visit_probe(probe);
+            self.emitter.table.exit_scope();
         });
         self.exit_scope();
     }

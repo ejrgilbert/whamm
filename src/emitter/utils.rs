@@ -2375,8 +2375,8 @@ pub fn emit_stack_val<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 ) {
     let param_rec = ctx.table.get_record_mut(param_rec_id);
     if let Some(Record::Var {
-                    addr: Some(addrs), ..
-                }) = param_rec
+        addr: Some(addrs), ..
+    }) = param_rec
     {
         let VarAddr::Local { addr } = addrs.first().unwrap() else {
             assert_eq!(addrs.len(), 1);

@@ -9,7 +9,9 @@ use wirm::ir::types::DataType as WirmType;
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
-use crate::emitter::utils::{block_type_to_wasm, emit_expr, emit_probes, emit_stack_val, emit_stack_vals, emit_stmt, EmitCtx};
+use crate::emitter::utils::{
+    block_type_to_wasm, emit_expr, emit_probes, emit_stack_val, emit_stack_vals, emit_stmt, EmitCtx,
+};
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::ast::UnsharedVar;
 use crate::generator::folding::expr::ExprFolder;
@@ -34,8 +36,8 @@ use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as WirmIter
 use wirm::iterator::module_iterator::ModuleIterator;
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{Instrumenter, MacroOpcode, Opcode};
-use wirm::Location;
 use wirm::wasmparser::Operator;
+use wirm::Location;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
@@ -546,7 +548,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
 
         // duplicate the opcode at the target instr location with new mem_id
         let mut orig = self.app_iter.curr_op_owned().unwrap().clone();
-        override_dst_mem(&mut orig, dst_mem as u32);
+        override_dst_mem(&mut orig, dst_mem);
 
         let loc = self.app_iter.curr_loc().0;
         self.app_iter.add_instr_at(loc, orig);

@@ -1918,7 +1918,9 @@ impl Whamm {
     fn def_data_init_start_addr() -> BoundVar {
         BoundVar {
             name: "DATA_INIT_START".to_string(),
-            docs: "Get the starting address for the union of all active data segments in the module.".to_string(),
+            docs:
+                "Get the starting address for the union of all active data segments in the module."
+                    .to_string(),
             ty: DataType::U32,
             lifetime: Definition::CompilerStatic,
             derived_from: None,
@@ -1927,7 +1929,8 @@ impl Whamm {
     fn def_data_init_len() -> BoundVar {
         BoundVar {
             name: "DATA_INIT_LEN".to_string(),
-            docs: "Get the length of the union of all active data segments in the module.".to_string(),
+            docs: "Get the length of the union of all active data segments in the module."
+                .to_string(),
             ty: DataType::U32,
             lifetime: Definition::CompilerStatic,
             derived_from: None,
