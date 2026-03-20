@@ -6,7 +6,7 @@ use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::generator::{emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::report_vars::LocationData;
-use crate::parser::types::{DataType, Location, Statement, Value, Whamm, WhammVisitorMut};
+use crate::parser::types::{DataType, Expr, Location, Statement, Value, Whamm, WhammVisitorMut};
 use crate::verifier::types::Record;
 use std::collections::{HashMap, HashSet};
 use wirm::ir::id::FunctionID;
@@ -133,7 +133,28 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_> {
     fn visit_global_stmts(&mut self, stmts: &mut [Statement]) -> bool {
         for stmt in stmts.iter_mut() {
             match stmt {
-                Statement::Decl { .. } | Statement::UnsharedDecl { .. } => {} // already handled
+                Statement::VarDecl { init: None, .. } => {} // already handled
+                Statement::VarDecl {
+                    init: Some(init_expr),
+                    name,
+                    definition,
+                    loc,
+                    ..
+                } => {
+                    let mut assign = Statement::Assign {
+                        var_id: Expr::VarId {
+                            name: name.clone(),
+                            definition: *definition,
+                            loc: None,
+                        },
+                        expr: init_expr.clone(),
+                        loc: loc.clone(),
+                    };
+                    maybe_add_start_fn(
+                        self.injected_funcs,
+                        self.emitter.emit_global_stmt(&mut assign, self.err),
+                    )
+                }
                 Statement::LibImport { lib_name, loc, .. } => {
                     self.link_user_lib(lib_name, loc);
                 }
@@ -144,10 +165,6 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_> {
                         self.emitter.emit_global_stmt(stmt, self.err),
                     )
                 }
-                Statement::UnsharedDeclInit { init, .. } => maybe_add_start_fn(
-                    self.injected_funcs,
-                    self.emitter.emit_global_stmt(init, self.err),
-                ),
                 _ => {
                     self.err.add_unimplemented_error(&format!("We don't support this statement type yet in global script scope: {stmt:?}"), stmt.loc());
                 }

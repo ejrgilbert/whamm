@@ -4,11 +4,10 @@ use crate::parser::provider_handler::{get_matches, yml_to_providers, PrintInfo, 
 use crate::parser::types;
 use crate::parser::types::Statement::LibImport;
 use crate::parser::types::{
-    print_bound_vars, print_fns, Annotation, BinOp, Block, DataType, Definition, Expr, FnId,
-    Location, NumFmt, NumLit, ProbeRule, Rule, RulePart, Script, Statement, UnOp, Value, Whamm,
-    WhammParser, PRATT_PARSER,
+    print_bound_vars, print_fns, Annotation, BinOp, Block, DataType, DeclModifiers, Definition,
+    Expr, FnId, Location, NumFmt, NumLit, ProbeRule, Rule, RulePart, Script, Statement, UnOp,
+    Value, Whamm, WhammParser, PRATT_PARSER,
 };
-use log::trace;
 use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
@@ -500,10 +499,12 @@ fn handle_decl(pair: &mut Pairs<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     let ty = type_from_rule_handler(type_rule, err);
 
     let name = var_id_rule.as_str().to_string();
-    vec![Statement::Decl {
+    vec![Statement::VarDecl {
         name,
         ty,
         definition: Definition::User,
+        modifiers: DeclModifiers::default(),
+        init: None,
         loc: Some(Location::from(&var_id_line_col, &type_line_col, None)),
     }]
 }
@@ -755,43 +756,33 @@ fn handle_decl_init(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 .map(|loc| Location::from(&loc.clone(), &expr_line_col, None));
 
             match decl {
-                Statement::Decl {
-                    name, definition, ..
+                Statement::VarDecl {
+                    name,
+                    definition,
+                    modifiers,
+                    ..
                 } => {
-                    vec![
-                        decl.to_owned(),
-                        Statement::Assign {
-                            var_id: Expr::VarId {
-                                definition: *definition,
-                                name: name.clone(),
-                                loc: None,
-                            },
-                            expr,
-                            loc,
-                        },
-                    ]
-                }
-                Statement::UnsharedDecl { decl: inner, .. } => {
-                    if let Statement::Decl {
-                        name, definition, ..
-                    } = &**inner
-                    {
-                        let assign = Statement::Assign {
-                            var_id: Expr::VarId {
-                                definition: *definition,
-                                name: name.clone(),
-                                loc: None,
-                            },
-                            expr,
-                            loc: loc.clone(),
-                        };
-                        vec![Statement::UnsharedDeclInit {
-                            decl: Box::new(decl.to_owned()),
-                            init: Box::new(assign),
-                            loc,
-                        }]
+                    if modifiers.is_unshared {
+                        // Former UnsharedDeclInit: store the init expression in VarDecl
+                        let mut d = decl.to_owned();
+                        if let Statement::VarDecl { init, .. } = &mut d {
+                            *init = Some(expr);
+                        }
+                        vec![d]
                     } else {
-                        vec![]
+                        // Former plain Decl: emit decl + separate Assign
+                        vec![
+                            decl.to_owned(),
+                            Statement::Assign {
+                                var_id: Expr::VarId {
+                                    definition: *definition,
+                                    name: name.clone(),
+                                    loc: None,
+                                },
+                                expr,
+                                loc,
+                            },
+                        ]
                     }
                 }
                 _ => vec![],
@@ -1000,14 +991,16 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 
     // next should be the declaration
     let decl = stmt_from_rule(pairs.next().unwrap(), err);
-    vec![Statement::UnsharedDecl {
-        is_report,
-        decl: Box::new(decl.first().unwrap().to_owned()),
-        loc: Some(Location {
+    // The inner decl is always a VarDecl; promote it to an unshared VarDecl.
+    let mut d = decl.first().unwrap().to_owned();
+    if let Statement::VarDecl { modifiers, loc, .. } = &mut d {
+        *modifiers = DeclModifiers::unshared(is_report);
+        *loc = Some(Location {
             line_col,
             path: None,
-        }),
-    }]
+        });
+    }
+    vec![d]
 }
 // EXPRESSIONS
 
@@ -1447,14 +1440,13 @@ fn probe_rule_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> RulePart {
             let name: String = pair.as_str().parse().unwrap();
             let id_line_col = LineColLocation::from(pair.as_span());
 
-            let part = RulePart::new(
+            RulePart::new(
                 name,
                 Some(Location {
                     line_col: id_line_col,
                     path: None,
                 }),
-            );
-            part
+            )
         }
         rule => {
             err.parse_error(

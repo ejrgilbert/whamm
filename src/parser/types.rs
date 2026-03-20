@@ -1293,13 +1293,6 @@ pub enum Statement {
         lib_name: String,
         loc: Option<Location>,
     },
-    Decl {
-        name: String,
-        ty: DataType,
-        definition: Definition,
-        loc: Option<Location>,
-    },
-
     Assign {
         var_id: Expr, // Should be VarId
         expr: Expr,
@@ -1325,17 +1318,21 @@ pub enum Statement {
         alt: Block,
         loc: Option<Location>,
     },
-    // all report variables must be unshared,
-    // but not all unshared variables must be reported
-    UnsharedDecl {
-        is_report: bool,
-        decl: Box<Statement>,
-        loc: Option<Location>,
-    },
-    // an unshared variable that has a special initialization
-    UnsharedDeclInit {
-        decl: Box<Statement>,
-        init: Box<Statement>,
+    /// Unified variable declaration.
+    ///
+    /// Replaces the old `Decl` / `UnsharedDecl` / `UnsharedDeclInit` trio:
+    /// - `modifiers.is_unshared = false, init = None`  → former `Decl`
+    /// - `modifiers.is_unshared = true,  init = None`  → former `UnsharedDecl`
+    /// - `modifiers.is_unshared = true,  init = Some`  → former `UnsharedDeclInit`
+    VarDecl {
+        name: String,
+        ty: DataType,
+        definition: Definition,
+        modifiers: DeclModifiers,
+        /// Initialization expression for per-probe-instance variables that need a
+        /// one-time setup (former `UnsharedDeclInit`). The full assignment
+        /// `name = init` is reconstructed at emit time.
+        init: Option<Expr>,
         loc: Option<Location>,
     },
 }
@@ -1343,13 +1340,11 @@ impl Statement {
     pub fn loc(&self) -> &Option<Location> {
         match self {
             Statement::LibImport { loc, .. }
-            | Statement::Decl { loc, .. }
+            | Statement::VarDecl { loc, .. }
             | Statement::If { loc, .. }
             | Statement::Return { loc, .. }
             | Statement::Assign { loc, .. }
             | Statement::SetMap { loc, .. }
-            | Statement::UnsharedDecl { loc, .. }
-            | Statement::UnsharedDeclInit { loc, .. }
             | Statement::Expr { loc, .. } => loc,
         }
     }
@@ -1596,6 +1591,25 @@ impl Fn {
 
         white(true, " -> ".to_string(), buffer);
         self.results.print(buffer);
+    }
+}
+
+/// Modifiers for a `Statement::VarDecl`.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct DeclModifiers {
+    /// True for former `UnsharedDecl`/`UnsharedDeclInit` — variable is per-probe-instance
+    /// rather than shared across all probe firings.
+    pub is_unshared: bool,
+    /// True when the per-probe-instance variable's final value is reported at script exit.
+    /// Only meaningful when `is_unshared` is true.
+    pub is_report: bool,
+}
+impl DeclModifiers {
+    pub fn unshared(is_report: bool) -> Self {
+        Self {
+            is_unshared: true,
+            is_report,
+        }
     }
 }
 

@@ -9,7 +9,6 @@ use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::LocationData;
 use crate::parser::types::{Block, DataType, Expr, Location, Statement, Value, WhammVisitorMut};
 use crate::verifier::types::Record;
-use log::trace;
 use std::collections::{HashMap, HashSet};
 use wirm::ir::id::{FunctionID, LocalID};
 use wirm::ir::types::DataType as WirmType;
@@ -380,16 +379,31 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_> {
         // 2. iterate over stmts and emit them! (will be different for Decl stmts)
         for stmt in stmts.iter_mut() {
             match stmt {
-                Statement::Decl { .. } | Statement::UnsharedDecl { .. } => {} // already handled
+                Statement::VarDecl { init: None, .. } => {} // already handled
+                Statement::VarDecl {
+                    init: Some(init_expr),
+                    name,
+                    definition,
+                    loc,
+                    ..
+                } => {
+                    let mut assign = Statement::Assign {
+                        var_id: Expr::VarId {
+                            name: name.clone(),
+                            definition: *definition,
+                            loc: None,
+                        },
+                        expr: init_expr.clone(),
+                        loc: loc.clone(),
+                    };
+                    self.emitter.emit_global_stmt(&mut assign, self.err);
+                }
                 Statement::LibImport { lib_name, loc, .. } => {
                     self.link_user_lib(lib_name, loc);
                 }
                 Statement::Assign { .. } | Statement::Expr { .. } => {
                     // assume this is a valid AST node since we've gone through validation
                     self.emitter.emit_global_stmt(stmt, self.err);
-                }
-                Statement::UnsharedDeclInit { init, .. } => {
-                    self.emitter.emit_global_stmt(init, self.err);
                 }
                 _ => {
                     self.err.add_unimplemented_error(&format!("We have not added support for this statement type in the script global scope: {stmt:?}"), stmt.loc());

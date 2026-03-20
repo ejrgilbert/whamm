@@ -2,7 +2,9 @@ use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::generator::ast::{Probe, StackReq, WhammParam};
 use crate::generator::rewriting::simple_ast::{SimpleAST, SimpleEvt, SimplePkg, SimpleProv};
 use crate::parser::provider_handler::ModeKind;
-use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
+use crate::parser::types::{
+    Block, DataType, DeclModifiers, Definition, Expr, NumLit, RulePart, Statement, Value,
+};
 use crate::verifier::types::VarAddr;
 use log::warn;
 use std::collections::{HashMap, HashSet};
@@ -3080,10 +3082,12 @@ impl LocInfo {
             }
             Value::U32U32Map { val: map_val } => {
                 // create a declaration
-                let decl = Statement::Decl {
+                let decl = Statement::VarDecl {
                     name: name.clone(),
                     ty: val.ty(),
                     definition: Definition::CompilerDynamic,
+                    modifiers: DeclModifiers::default(),
+                    init: None,
                     loc: None,
                 };
                 // create assignments
@@ -3115,10 +3119,12 @@ impl LocInfo {
     }
     fn add_dynamic_assign(&mut self, name: String, ty: DataType, expr: Expr) {
         // create a declaration
-        let decl = Statement::Decl {
+        let decl = Statement::VarDecl {
             name: name.clone(),
             ty,
             definition: Definition::CompilerDynamic,
+            modifiers: DeclModifiers::default(),
+            init: None,
             loc: None,
         };
         // create an assignment
