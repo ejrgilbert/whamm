@@ -10,7 +10,6 @@ use crate::parser::types::{
     Statement, Value, Whamm, WhammVisitor,
 };
 use crate::verifier::types::{Record, SymbolTable};
-use log::trace;
 use std::collections::{HashMap, HashSet};
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -482,29 +481,18 @@ impl<'a> MetadataCollector<'a> {
 
     fn visit_stmt_inner(&mut self, stmt: &Statement) -> Statement {
         match stmt {
-            Statement::UnsharedDeclInit { decl, init, loc } => {
-                let v = self.visiting;
-                self.visiting = Visiting::Init;
-                let decl = self.visit_stmt_inner(decl);
-                let init = self.visit_stmt_inner(init);
-                self.visiting = v;
-
-                self.has_probe_state_init = true;
-                self.curr_probe.add_init_logic(init.clone());
-                Statement::UnsharedDeclInit {
-                    decl: Box::new(decl),
-                    init: Box::new(init),
-                    loc: loc.clone(),
-                }
-            }
-            Statement::UnsharedDecl {
-                is_report, decl, ..
+            Statement::VarDecl {
+                name,
+                ty,
+                definition,
+                modifiers,
+                init,
+                loc,
             } => {
-                if let Statement::Decl { ty, name, loc, .. } = decl.as_ref() {
-                    let report_metadata = if *is_report {
+                if modifiers.is_unshared {
+                    let report_metadata = if modifiers.is_report {
                         // keep track of the used report var datatypes across the whole AST
                         self.used_report_var_dts.insert(ty.clone());
-                        // this needs to also add report_var_metadata (if is_report)!
                         Some(ReportMetadata::new(
                             name.clone(),
                             ty.clone(),
@@ -517,19 +505,31 @@ impl<'a> MetadataCollector<'a> {
                     } else {
                         None
                     };
-                    // change this to save off data to allocate
                     self.curr_probe.add_unshared(
                         name.clone(),
                         ty.clone(),
-                        *is_report,
+                        modifiers.is_report,
                         report_metadata,
                         loc,
                     );
-                } else {
-                    unreachable!(
-                        "{} Incorrect type for a UnsharedDecl's contents!",
-                        UNEXPECTED_ERR_MSG
-                    )
+
+                    if let Some(init_expr) = init {
+                        let v = self.visiting;
+                        self.visiting = Visiting::Init;
+                        let visited_init = self.visit_expr_inner(init_expr);
+                        self.visiting = v;
+                        self.has_probe_state_init = true;
+                        let init_assign = Statement::Assign {
+                            var_id: Expr::VarId {
+                                name: name.clone(),
+                                definition: *definition,
+                                loc: None,
+                            },
+                            expr: visited_init,
+                            loc: None,
+                        };
+                        self.curr_probe.add_init_logic(init_assign);
+                    }
                 }
                 stmt.clone()
             }

@@ -178,31 +178,19 @@ impl AstVisitor<bool> for MapLibPackage {
 
     fn visit_stmt(&mut self, stmt: &Statement) -> bool {
         match stmt {
-            Statement::Decl {
+            Statement::VarDecl {
                 ty: DataType::Map { .. },
                 name,
+                modifiers,
                 ..
             } => {
                 debug!("{name} is a map!");
-                true
-            }
-            Statement::UnsharedDecl { decl, .. } => {
-                if let Statement::Decl {
-                    ty: DataType::Map { .. },
-                    name,
-                    ..
-                } = &**decl
-                {
-                    debug!("{name} is a map!");
-                    if matches!(self.strategy, InjectStrategy::Rewriting) {
-                        // TODO -- this needs to change when I refactor to use
-                        //    allocated memory for probes! (that's the reason it's true here)
-                        self.used_in_global_scope = true;
-                    }
-                    true
-                } else {
-                    false
+                if modifiers.is_unshared && matches!(self.strategy, InjectStrategy::Rewriting) {
+                    // TODO -- this needs to change when I refactor to use
+                    //    allocated memory for probes! (that's the reason it's true here)
+                    self.used_in_global_scope = true;
                 }
+                true
             }
             _ => false,
         }

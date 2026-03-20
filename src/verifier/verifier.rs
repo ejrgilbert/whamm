@@ -1202,37 +1202,31 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
 
     fn visit_stmt(&mut self, stmt: &mut Statement) -> Option<DataType> {
         if self.in_function {
-            if let Statement::UnsharedDecl { .. } = stmt {
-                self.err.type_check_error(
-                    "Special declarations are not allowed in the functions".to_owned(),
-                    &stmt.loc().clone().map(|l| l.line_col),
-                );
-                return None;
+            if let Statement::VarDecl { modifiers, .. } = stmt {
+                if modifiers.is_unshared {
+                    self.err.type_check_error(
+                        "Special declarations are not allowed in the functions".to_owned(),
+                        &stmt.loc().clone().map(|l| l.line_col),
+                    );
+                    return None;
+                }
             }
         }
 
         if self.in_script_global {
             match stmt {
                 //allow declarations and assignment
-                Statement::Decl { .. } | Statement::Assign { .. } | Statement::LibImport { .. } => {
+                Statement::VarDecl { modifiers, .. } => {
+                    if modifiers.is_report {
+                        self.has_reports = true;
+                    }
                 }
+                Statement::Assign { .. } | Statement::LibImport { .. } => {}
                 // allow function calls
                 Statement::Expr {
                     expr: Expr::ObjCall { .. } | Expr::Call { .. },
                     ..
                 } => {}
-                Statement::UnsharedDecl { is_report, .. } => {
-                    if *is_report {
-                        self.has_reports = true;
-                    }
-                }
-                Statement::UnsharedDeclInit { decl, .. } => {
-                    if let Statement::UnsharedDecl { is_report, .. } = **decl {
-                        if is_report {
-                            self.has_reports = true;
-                        }
-                    }
-                }
                 _ => {
                     self.err.type_check_error(
                         format!("Only variable declarations, user lib imports, function calls, library function calls, and assignment are allowed in the global scope, found: {:?}", stmt),
@@ -1312,32 +1306,17 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 };
                 res
             }
-            Statement::UnsharedDeclInit { decl, init, .. } => {
-                self.visit_stmt(decl);
-                self.restrict_probe_local_state = true;
-                self.visit_stmt(init);
-                self.restrict_probe_local_state = false;
-                None
-            }
-            Statement::UnsharedDecl {
-                decl, is_report, ..
-            } => {
-                if *is_report {
-                    self.has_reports = true;
-                }
-                self.visit_stmt(decl)
-            }
-            Statement::Expr { expr, .. } => {
-                self.visit_expr(expr);
-                None
-            }
-            Statement::Decl {
+            Statement::VarDecl {
                 ty,
                 name,
                 definition,
+                modifiers,
+                init,
                 loc,
-                ..
             } => {
+                if modifiers.is_report {
+                    self.has_reports = true;
+                }
                 //check that if type is map, key_ty is not a map
                 if let DataType::Map { key_ty, .. } = ty {
                     if let DataType::Map { .. } = key_ty.as_ref() {
@@ -1350,8 +1329,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
                 //check to make sure that that if tuple, doesn't contain a map
                 if let DataType::Tuple { ty_info } = ty {
-                    for ty in ty_info {
-                        if let DataType::Map { .. } = ty {
+                    for elem_ty in ty_info {
+                        if let DataType::Map { .. } = elem_ty {
                             self.err.type_check_error(
                                 "Tuples cannot contain maps".to_owned(),
                                 &loc.clone().map(|l| l.line_col),
@@ -1363,6 +1342,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 if !self.in_script_global {
                     self.add_local(ty.to_owned(), name.to_owned(), *definition, loc);
                 }
+                if let Some(init_expr) = init {
+                    // Former UnsharedDeclInit: visit init under restricted probe-local state
+                    self.restrict_probe_local_state = true;
+                    self.visit_expr(init_expr);
+                    self.restrict_probe_local_state = false;
+                }
+                None
+            }
+            Statement::Expr { expr, .. } => {
+                self.visit_expr(expr);
                 None
             }
             Statement::Return { expr, loc: _loc } => self.visit_expr(expr),

@@ -145,8 +145,7 @@ impl AstVisitor<bool> for IOPackage {
 
     fn visit_stmt(&mut self, stmt: &Statement) -> bool {
         match stmt {
-            Statement::UnsharedDeclInit { decl, .. } => self.visit_stmt(decl),
-            Statement::UnsharedDecl { is_report, .. } => *is_report,
+            Statement::VarDecl { modifiers, .. } if modifiers.is_unshared => modifiers.is_report,
             _ => false,
         }
     }

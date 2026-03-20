@@ -2,12 +2,13 @@ use crate::common::error::ErrorGen;
 use crate::generator::ast::StackReq;
 use crate::parser::provider_handler::{BoundFunc, BoundVar, Event, Package, Probe, Provider};
 use crate::parser::types as parser_types;
-use crate::parser::types::{BoundFunction, Definition, FnId, Global, WhammVisitorMut};
+use crate::parser::types::{
+    BoundFunction, DeclModifiers, Definition, FnId, Global, WhammVisitorMut,
+};
 use crate::verifier::builder_visitor::parser_types::Location;
 use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier::check_duplicate_id;
 use itertools::Itertools;
-use log::trace;
 use parser_types::{
     traverse_block_mut, traverse_expr_mut, Block, DataType, Expr, Fn, Script, Statement, Value,
     Whamm,
@@ -721,35 +722,19 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
 
         script.fns.iter_mut().for_each(|f| self.visit_fn(f));
         script.global_stmts.iter_mut().for_each(|stmt| {
-            let mut is_report_var = false;
-            let stmt = match stmt {
-                Statement::UnsharedDecl {
-                    decl, is_report, ..
-                } => {
-                    is_report_var = *is_report;
-                    &mut **decl
-                }
-                Statement::UnsharedDeclInit { decl, .. } => {
-                    if let Statement::UnsharedDecl {
-                        decl: d, is_report, ..
-                    } = decl.as_mut()
-                    {
-                        is_report_var = *is_report;
-                        &mut **d
-                    } else {
-                        self.err.add_internal_error(&format!("An unshared decl initialization statement should always contain an unshared declaration, but this was: {decl:?}"), decl.loc());
-                        return;
-                    }
-                }
-                _ => stmt,
-            };
-            if let Statement::Decl { ty, name, .. } = stmt {
+            if let Statement::VarDecl {
+                ty,
+                name,
+                modifiers,
+                ..
+            } = stmt
+            {
                 // Add global variable to script globals (triggers the init_generator to emit them!)
                 script.globals.insert(
                     name.clone(),
                     Global {
                         def: Definition::User,
-                        report: is_report_var,
+                        report: modifiers.is_report,
                         ty: ty.clone(),
                         value: None,
                     },
@@ -863,10 +848,12 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
                     // Only define a derived variable if it's used!
                     body.stmts.insert(
                         0,
-                        Statement::Decl {
+                        Statement::VarDecl {
                             name: var.clone(),
                             ty: ty.clone(),
                             definition: Definition::CompilerDerived,
+                            modifiers: DeclModifiers::default(),
+                            init: None,
                             loc: None,
                         },
                     );
@@ -916,16 +903,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
         {
             // in the global scope!
 
-            let stmt = match &stmt {
-                Statement::UnsharedDecl { decl, .. } => &**decl,
-                Statement::UnsharedDeclInit { decl, .. } => &**decl,
-                _ => stmt,
-            };
             match stmt {
                 Statement::LibImport { lib_name, loc, .. } => {
                     self.add_user_lib(lib_name, loc);
                 }
-                Statement::Decl {
+                Statement::VarDecl {
                     ty,
                     name,
                     definition,
@@ -967,9 +949,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
                     self.visit_block(conseq);
                     self.visit_block(alt);
                 }
-                Statement::UnsharedDeclInit { .. }
-                | Statement::UnsharedDecl { .. }
-                | Statement::Decl { .. } => {}
+                Statement::VarDecl { .. } => {}
                 _ => self.err.add_internal_error(
                     &format!("Should already be handled: {stmt:?}"),
                     stmt.loc(),

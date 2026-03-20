@@ -281,7 +281,10 @@ fn emit_stmt_inner<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 ) -> bool {
     match stmt {
         Statement::LibImport { .. } => true, // already handled!
-        Statement::Decl { .. } => emit_decl_stmt(stmt, injector, ctx),
+        Statement::VarDecl { modifiers, .. } if !modifiers.is_unshared => {
+            emit_decl_stmt(stmt, injector, ctx)
+        }
+        Statement::VarDecl { .. } => emit_unshared_decl_stmt(stmt, ctx),
         Statement::Assign { .. } => emit_assign_stmt(stmt, strategy, injector, ctx),
         Statement::Expr { expr, .. } | Statement::Return { expr, .. } => {
             emit_expr(expr, None, strategy, injector, ctx)
@@ -296,8 +299,6 @@ fn emit_stmt_inner<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                 emit_if_else(cond, conseq, alt, strategy, injector, ctx)
             }
         }
-        Statement::UnsharedDecl { .. } => emit_unshared_decl_stmt(stmt, ctx),
-        Statement::UnsharedDeclInit { decl, .. } => emit_unshared_decl_stmt(decl, ctx),
         Statement::SetMap { .. } => {
             ctx.in_map_op = true;
             let res = emit_set_map_stmt(stmt, strategy, injector, ctx);
@@ -313,7 +314,7 @@ fn emit_decl_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     match stmt {
-        Statement::Decl {
+        Statement::VarDecl {
             ty,
             name,
             definition,
@@ -406,9 +407,11 @@ fn handle_decl<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 }
 
 fn emit_unshared_decl_stmt(stmt: &mut Statement, ctx: &mut EmitCtx) -> bool {
-    if let Statement::UnsharedDecl { .. } = stmt {
-        // ignore, this statement has already been processed!
-        return true;
+    if let Statement::VarDecl { modifiers, .. } = stmt {
+        if modifiers.is_unshared {
+            // ignore, this statement has already been processed!
+            return true;
+        }
     }
     unreachable!(
         "{} Wrong statement type, should be `unshared` decl, got: {:?}",

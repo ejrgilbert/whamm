@@ -7,7 +7,7 @@ use crate::parser::types::{
 };
 use crate::verifier::types::Record;
 use itertools::Itertools;
-use log::{debug, trace, warn};
+use log::{debug, warn};
 use std::collections::{HashMap, HashSet};
 use wirm::ir::id::FunctionID;
 
@@ -362,9 +362,13 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
     fn visit_stmt(&mut self, stmt: &mut Statement) -> bool {
         match stmt {
-            Statement::Decl { .. } => {
-                // ignore, this stmt type will not have a string in it!
-                true
+            Statement::VarDecl { init, .. } => {
+                // The declaration itself won't have a string; only visit init if present.
+                if let Some(init_expr) = init {
+                    self.visit_expr(init_expr)
+                } else {
+                    true
+                }
             }
             Statement::Assign { expr, .. }
             | Statement::Expr { expr, .. }
@@ -379,13 +383,6 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
 
                 is_success
             }
-            Statement::UnsharedDeclInit { decl, init, .. } => {
-                let mut is_success = true;
-                is_success &= self.visit_stmt(decl);
-                is_success &= self.visit_stmt(init);
-                is_success
-            }
-            Statement::UnsharedDecl { decl, .. } => self.visit_stmt(decl),
             Statement::SetMap { key, val, .. } => {
                 let mut is_success = true;
                 is_success &= self.visit_expr(key);
