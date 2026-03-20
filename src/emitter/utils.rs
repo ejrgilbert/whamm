@@ -143,7 +143,7 @@ fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     }
 
     match target_fn_name.as_str() {
-        "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
+        "dup_at" | "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
             unreachable!("static function call should already be handled: {target_fn_name}")
         }
         "memcpy" => handle_memcpy(&folded_args, strategy, injector, ctx),
@@ -2365,23 +2365,30 @@ pub fn emit_stack_vals<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     ctx: &mut EmitCtx,
 ) {
     for (_param_name, param_rec_id) in created_stack_vals.iter() {
-        let param_rec = ctx.table.get_record_mut(*param_rec_id);
-        if let Some(Record::Var {
-            addr: Some(addrs), ..
-        }) = param_rec
-        {
-            let VarAddr::Local { addr } = addrs.first().unwrap() else {
-                assert_eq!(addrs.len(), 1);
-                panic!("arg address should be represented with a single address")
-            };
-            // Inject at tracker.orig_instr_idx to make sure that this actually emits the args
-            // for the instrumented instruction right before that instruction is called!
-            injector.local_get(LocalID(*addr));
-        } else {
-            unreachable!(
-                "{} Could not emit parameters, something went wrong...",
-                ctx.err_msg
-            );
-        }
+        emit_stack_val(*param_rec_id, injector, ctx);
+    }
+}
+pub fn emit_stack_val<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
+    param_rec_id: usize,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) {
+    let param_rec = ctx.table.get_record_mut(param_rec_id);
+    if let Some(Record::Var {
+        addr: Some(addrs), ..
+    }) = param_rec
+    {
+        let VarAddr::Local { addr } = addrs.first().unwrap() else {
+            assert_eq!(addrs.len(), 1);
+            panic!("arg address should be represented with a single address")
+        };
+        // Inject at tracker.orig_instr_idx to make sure that this actually emits the args
+        // for the instrumented instruction right before that instruction is called!
+        injector.local_get(LocalID(*addr));
+    } else {
+        unreachable!(
+            "{} Could not emit parameters, something went wrong...",
+            ctx.err_msg
+        );
     }
 }

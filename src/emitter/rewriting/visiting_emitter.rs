@@ -10,7 +10,7 @@ use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
 use crate::emitter::utils::{
-    block_type_to_wasm, emit_expr, emit_probes, emit_stack_vals, emit_stmt, EmitCtx,
+    block_type_to_wasm, emit_expr, emit_probes, emit_stack_val, emit_stack_vals, emit_stmt, EmitCtx,
 };
 use crate::emitter::{configure_flush_routines, Emitter, InjectStrategy};
 use crate::generator::ast::UnsharedVar;
@@ -36,6 +36,7 @@ use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as WirmIter
 use wirm::iterator::module_iterator::ModuleIterator;
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{Instrumenter, MacroOpcode, Opcode};
+use wirm::wasmparser::Operator;
 use wirm::Location;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -239,6 +240,29 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         }
         emit_stack_vals(
             &self.instr_created_args,
+            &mut self.app_iter,
+            &mut EmitCtx::new(
+                self.registry,
+                self.table,
+                self.mem_allocator,
+                &mut self.locals_tracker,
+                self.utils_adapter,
+                self.map_lib_adapter,
+                UNEXPECTED_ERR_MSG,
+                err,
+            ),
+        );
+        true
+    }
+    fn emit_arg_n(&mut self, n: usize, err: &mut ErrorGen) -> bool {
+        if self.in_init {
+            err.add_instr_error("Cannot re-emit stack values as a variable initialization.");
+            return false;
+        }
+
+        let (_, param_rec_id) = &self.instr_created_args[n];
+        emit_stack_val(
+            *param_rec_id,
             &mut self.app_iter,
             &mut EmitCtx::new(
                 self.registry,
@@ -506,6 +530,32 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         Ok(is_success)
     }
 
+    fn handle_dup_at(&mut self, args: &[Expr], err: &mut ErrorGen) -> bool {
+        // args: vec![dst_mem: u32, dst_addr: u32]
+        // Assume the correct args since we've gone through typechecking at this point!
+
+        // args[0] get target mem_id
+        let dst_mem = ExprFolder::get_u32(&args[0]).unwrap();
+
+        // emit: args[1] (dst addr)
+        let dst_addr = &args[1];
+        self.emit_expr(dst_addr, err);
+
+        // emit: `arg1` (src addr)
+        self.emit_arg_n(1, err);
+        // emit: `arg2` (len)
+        self.emit_arg_n(2, err);
+
+        // duplicate the opcode at the target instr location with new mem_id
+        let mut orig = self.app_iter.curr_op_owned().unwrap().clone();
+        override_dst_mem(&mut orig, dst_mem);
+
+        let loc = self.app_iter.curr_loc().0;
+        self.app_iter.add_instr_at(loc, orig);
+
+        true
+    }
+
     fn handle_alt_call_by_name(&mut self, args: &[Expr], err: &mut ErrorGen) -> bool {
         if self.in_init {
             err.add_instr_error("Cannot call `alt_call_by_name` as a variable initialization.");
@@ -513,7 +563,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         }
         // args: vec![func_name: String]
         // Assume the correct args since we've gone through typechecking at this point!
-        let fn_name = match args.iter().next().unwrap() {
+        let fn_name = match args.first().unwrap() {
             Expr::Primitive {
                 val: Value::Str { val, .. },
                 ..
@@ -540,12 +590,12 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
 
     fn handle_alt_call_by_id(&mut self, args: &[Expr], err: &mut ErrorGen) -> bool {
         if self.in_init {
-            err.add_instr_error("Cannot call `alt_call_by_name` as a variable initialization.");
+            err.add_instr_error("Cannot call `alt_call_by_id` as a variable initialization.");
             return false;
         }
         // args: vec![func_id: i32]
         // Assume the correct args since we've gone through typechecking at this point!
-        let func_id = match args.iter().next().unwrap() {
+        let func_id = match args.first().unwrap() {
             Expr::Primitive {
                 val:
                     Value::Number {
@@ -618,6 +668,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         }
 
         match target_fn_name.as_str() {
+            "dup_at" => self.handle_dup_at(&folded_args, err),
             "alt_call_by_name" => self.handle_alt_call_by_name(&folded_args, err),
             "alt_call_by_id" => self.handle_alt_call_by_id(&folded_args, err),
             "drop_args" => self.handle_drop_args(err),
@@ -1027,4 +1078,150 @@ impl Emitter for VisitingEmitter<'_, '_> {
             ),
         )
     }
+}
+
+fn override_dst_mem<'a>(op: &mut Operator<'a>, dst_mem: u32) {
+    let memarg = match op {
+        // --- Bulk mem ops ---
+        Operator::MemoryCopy { dst_mem: mem, .. }
+        | Operator::MemoryFill { mem }
+        | Operator::MemoryInit { mem, .. } => {
+            *mem = dst_mem;
+            return
+        },
+
+        // --- Scalar loads ---
+        Operator::I32Load { memarg }
+        | Operator::I64Load { memarg }
+        | Operator::F32Load { memarg }
+        | Operator::F64Load { memarg }
+        | Operator::I32Load8S { memarg }
+        | Operator::I32Load8U { memarg }
+        | Operator::I32Load16S { memarg }
+        | Operator::I32Load16U { memarg }
+        | Operator::I64Load8S { memarg }
+        | Operator::I64Load8U { memarg }
+        | Operator::I64Load16S { memarg }
+        | Operator::I64Load16U { memarg }
+        | Operator::I64Load32S { memarg }
+        | Operator::I64Load32U { memarg }
+
+        // --- Scalar stores ---
+        | Operator::I32Store { memarg }
+        | Operator::I64Store { memarg }
+        | Operator::F32Store { memarg }
+        | Operator::F64Store { memarg }
+        | Operator::I32Store8 { memarg }
+        | Operator::I32Store16 { memarg }
+        | Operator::I64Store8 { memarg }
+        | Operator::I64Store16 { memarg }
+        | Operator::I64Store32 { memarg }
+
+        // --- SIMD loads ---
+        | Operator::V128Load { memarg }
+        | Operator::V128Load8x8S { memarg }
+        | Operator::V128Load8x8U { memarg }
+        | Operator::V128Load16x4S { memarg }
+        | Operator::V128Load16x4U { memarg }
+        | Operator::V128Load32x2S { memarg }
+        | Operator::V128Load32x2U { memarg }
+        | Operator::V128Load8Splat { memarg }
+        | Operator::V128Load16Splat { memarg }
+        | Operator::V128Load32Splat { memarg }
+        | Operator::V128Load64Splat { memarg }
+        | Operator::V128Load32Zero { memarg }
+        | Operator::V128Load64Zero { memarg }
+
+        // --- SIMD stores ---
+        | Operator::V128Store { memarg }
+        | Operator::V128Store8Lane { memarg, .. }
+        | Operator::V128Store16Lane { memarg, .. }
+        | Operator::V128Store32Lane { memarg, .. }
+        | Operator::V128Store64Lane { memarg, .. }
+
+        // --- Atomic loads ---
+        | Operator::I32AtomicLoad { memarg }
+        | Operator::I64AtomicLoad { memarg }
+        | Operator::I32AtomicLoad8U { memarg }
+        | Operator::I32AtomicLoad16U { memarg }
+        | Operator::I64AtomicLoad8U { memarg }
+        | Operator::I64AtomicLoad16U { memarg }
+        | Operator::I64AtomicLoad32U { memarg }
+
+        // --- Atomic stores ---
+        | Operator::I32AtomicStore { memarg }
+        | Operator::I64AtomicStore { memarg }
+        | Operator::I32AtomicStore8 { memarg }
+        | Operator::I32AtomicStore16 { memarg }
+        | Operator::I64AtomicStore8 { memarg }
+        | Operator::I64AtomicStore16 { memarg }
+        | Operator::I64AtomicStore32 { memarg }
+
+        // --- Atomic RMW ---
+        | Operator::I32AtomicRmwAdd { memarg }
+        | Operator::I64AtomicRmwAdd { memarg }
+        | Operator::I32AtomicRmw8AddU { memarg }
+        | Operator::I32AtomicRmw16AddU { memarg }
+        | Operator::I64AtomicRmw8AddU { memarg }
+        | Operator::I64AtomicRmw16AddU { memarg }
+        | Operator::I64AtomicRmw32AddU { memarg }
+
+        | Operator::I32AtomicRmwSub { memarg }
+        | Operator::I64AtomicRmwSub { memarg }
+        | Operator::I32AtomicRmw8SubU { memarg }
+        | Operator::I32AtomicRmw16SubU { memarg }
+        | Operator::I64AtomicRmw8SubU { memarg }
+        | Operator::I64AtomicRmw16SubU { memarg }
+        | Operator::I64AtomicRmw32SubU { memarg }
+
+        | Operator::I32AtomicRmwAnd { memarg }
+        | Operator::I64AtomicRmwAnd { memarg }
+        | Operator::I32AtomicRmw8AndU { memarg }
+        | Operator::I32AtomicRmw16AndU { memarg }
+        | Operator::I64AtomicRmw8AndU { memarg }
+        | Operator::I64AtomicRmw16AndU { memarg }
+        | Operator::I64AtomicRmw32AndU { memarg }
+
+        | Operator::I32AtomicRmwOr { memarg }
+        | Operator::I64AtomicRmwOr { memarg }
+        | Operator::I32AtomicRmw8OrU { memarg }
+        | Operator::I32AtomicRmw16OrU { memarg }
+        | Operator::I64AtomicRmw8OrU { memarg }
+        | Operator::I64AtomicRmw16OrU { memarg }
+        | Operator::I64AtomicRmw32OrU { memarg }
+
+        | Operator::I32AtomicRmwXor { memarg }
+        | Operator::I64AtomicRmwXor { memarg }
+        | Operator::I32AtomicRmw8XorU { memarg }
+        | Operator::I32AtomicRmw16XorU { memarg }
+        | Operator::I64AtomicRmw8XorU { memarg }
+        | Operator::I64AtomicRmw16XorU { memarg }
+        | Operator::I64AtomicRmw32XorU { memarg }
+
+        | Operator::I32AtomicRmwXchg { memarg }
+        | Operator::I64AtomicRmwXchg { memarg }
+        | Operator::I32AtomicRmw8XchgU { memarg }
+        | Operator::I32AtomicRmw16XchgU { memarg }
+        | Operator::I64AtomicRmw8XchgU { memarg }
+        | Operator::I64AtomicRmw16XchgU { memarg }
+        | Operator::I64AtomicRmw32XchgU { memarg }
+
+        | Operator::I32AtomicRmwCmpxchg { memarg }
+        | Operator::I64AtomicRmwCmpxchg { memarg }
+        | Operator::I32AtomicRmw8CmpxchgU { memarg }
+        | Operator::I32AtomicRmw16CmpxchgU { memarg }
+        | Operator::I64AtomicRmw8CmpxchgU { memarg }
+        | Operator::I64AtomicRmw16CmpxchgU { memarg }
+        | Operator::I64AtomicRmw32CmpxchgU { memarg }
+
+        // --- Wait ops ---
+        | Operator::MemoryAtomicWait32 { memarg }
+        | Operator::MemoryAtomicWait64 { memarg }
+
+        => memarg,
+
+        _ => panic!("Operator does not contain a MemArg: {:?}", op),
+    };
+
+    memarg.memory = dst_mem;
 }

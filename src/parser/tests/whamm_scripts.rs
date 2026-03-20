@@ -716,7 +716,7 @@ wasm::call:alt /
 
     // script
     assert_eq!(1, ast.scripts.len()); // a single script
-    assert_eq!(0, ast.bound_vars.len());
+    assert_eq!(3, ast.bound_vars.len()); // APP_MEMID, DATA_INIT_START, DATA_INIT_LEN
     assert_eq!(5, ast.fns.len()); // strcmp, mem, memcpy, write_str, write_str
 
     let script = ast.scripts.first().unwrap();

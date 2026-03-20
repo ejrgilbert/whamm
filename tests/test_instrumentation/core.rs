@@ -237,6 +237,24 @@ fn instrument_with_strings_scripts() {
     run_core_suite("strings", processed_scripts, true, true)
 }
 #[test]
+fn instrument_with_bulk_mem_ops_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/bulk-mem-ops");
+    assert!(!processed_scripts.is_empty());
+
+    // TODO need to get dup_at working on `wei`
+    run_core_suite("bulk-mem-ops", processed_scripts, true, false)
+}
+// #[test]
+// fn instrument_with_data_init_scripts() {
+//     setup_logger();
+//     let processed_scripts = setup_tests("core_suite/data-init");
+//     assert!(!processed_scripts.is_empty());
+//
+//     // need to get dup_at working on `wei`
+//     run_core_suite("data-init", processed_scripts, true, true)
+// }
+#[test]
 fn instrument_with_memcpy_scripts() {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/memcpy");

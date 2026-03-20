@@ -1900,7 +1900,41 @@ impl Whamm {
     }
 
     pub(crate) fn get_bound_vars() -> Vec<BoundVar> {
-        vec![]
+        vec![
+            Self::def_app_mem(),
+            Self::def_data_init_start_addr(),
+            Self::def_data_init_len(),
+        ]
+    }
+    fn def_app_mem() -> BoundVar {
+        BoundVar {
+            name: "APP_MEMID".to_string(),
+            docs: "The ID of the application's memory (assume's single memory).".to_string(),
+            ty: DataType::U32,
+            lifetime: Definition::CompilerStatic,
+            derived_from: None,
+        }
+    }
+    fn def_data_init_start_addr() -> BoundVar {
+        BoundVar {
+            name: "DATA_INIT_START".to_string(),
+            docs:
+                "Get the starting address for the union of all active data segments in the module."
+                    .to_string(),
+            ty: DataType::U32,
+            lifetime: Definition::CompilerStatic,
+            derived_from: None,
+        }
+    }
+    fn def_data_init_len() -> BoundVar {
+        BoundVar {
+            name: "DATA_INIT_LEN".to_string(),
+            docs: "Get the length of the union of all active data segments in the module."
+                .to_string(),
+            ty: DataType::U32,
+            lifetime: Definition::CompilerStatic,
+            derived_from: None,
+        }
     }
 
     pub(crate) fn get_utils_strings() -> Vec<BoundFunction> {

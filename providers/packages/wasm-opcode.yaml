@@ -10,7 +10,7 @@ opcode: &opcode
     - name: drop_args
       params: ()
       results: ()
-      req_args: -1
+      req_args: 0   # does not need to pull arguments for this function to work.
       lifetime: static
       docs: Drop the incoming arguments to the instrumented opcode.
   events:
