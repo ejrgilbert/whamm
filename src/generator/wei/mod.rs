@@ -62,7 +62,6 @@ impl WeiGenerator<'_, '_, '_> {
     }
 
     fn visit_script(&mut self, script: &mut Script) {
-        trace!("Entering: CodeGenerator::visit_script");
         self.enter_named_scope(&script.id.to_string());
         self.set_context_name(script.id.to_string());
         self.curr_script_id = script.id;
@@ -83,8 +82,6 @@ impl WeiGenerator<'_, '_, '_> {
         script.probes.iter_mut().for_each(|probe| {
             self.visit_probe(probe);
         });
-
-        trace!("Exiting: CodeGenerator::visit_script");
         self.exit_scope();
     }
 

@@ -629,8 +629,6 @@ impl AnalysisVisitor for MetadataCollector<'_> {
 
 impl WhammVisitor<()> for MetadataCollector<'_> {
     fn visit_whamm(&mut self, whamm: &Whamm) {
-        trace!("Entering: CodeGenerator::visit_whamm");
-
         // visit scripts
         whamm.scripts.iter().for_each(|script| {
             self.curr_script = Script::default();
@@ -645,12 +643,9 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
 
             self.script_num += 1;
         });
-
-        trace!("Exiting: CodeGenerator::visit_whamm");
     }
 
     fn visit_script(&mut self, script: &ParserScript) {
-        trace!("Entering: CodeGenerator::visit_script");
         self.table.enter_named_scope(&script.id.to_string());
 
         self.visit_stmts(&script.global_stmts);
@@ -659,25 +654,18 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
         script.providers.iter().for_each(|(_name, provider)| {
             self.visit_provider(provider);
         });
-
-        trace!("Exiting: CodeGenerator::visit_script");
         self.table.exit_scope();
     }
 
     fn visit_provider(&mut self, provider: &Provider) {
-        trace!("Entering: CodeGenerator::visit_provider");
         self.do_visit_provider(provider);
-        trace!("Exiting: CodeGenerator::visit_provider");
     }
 
     fn visit_package(&mut self, package: &Package) {
-        trace!("Entering: CodeGenerator::visit_package");
         self.do_visit_package(package);
-        trace!("Exiting: CodeGenerator::visit_package");
     }
 
     fn visit_event(&mut self, event: &Event) {
-        trace!("Entering: CodeGenerator::visit_event");
         self.table.enter_named_scope(&event.def.name);
         self.rule_tracker.push(&format!(":{}", event.def.name));
 
@@ -707,14 +695,11 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
                 }
             });
         });
-
-        trace!("Exiting: CodeGenerator::visit_event");
         self.table.exit_scope();
         self.rule_tracker.pop();
     }
 
     fn visit_probe(&mut self, probe: &ParserProbe) {
-        trace!("Entering: CodeGenerator::visit_probe");
         let _ = self.table.enter_named_scope(&probe.kind.name()); // enter mode scope
         let _ = self.table.enter_named_scope(&probe.scope_id.to_string()); // enter probe scope
         self.rule_tracker.push(&format!(":{}", probe.kind.name()));
@@ -738,7 +723,6 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
         self.curr_probe.metadata.body_args.process_stack_reqs();
         self.visiting = Visiting::None;
 
-        trace!("Exiting: CodeGenerator::visit_probe");
         self.table.exit_scope(); // exit the mode scope
         self.table.exit_scope(); // exit the probe scope
         self.rule_tracker.pop();

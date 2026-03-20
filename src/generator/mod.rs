@@ -125,19 +125,16 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
     }
 
     fn visit_before_probes(&mut self, event: &mut Event) -> bool {
-        trace!("Entering: CodeGenerator::visit_before_probes");
         let mut is_success = true;
         if let Some(probes) = event.probes.get_mut(&ModeKind::Before) {
             probes.iter_mut().for_each(|probe| {
                 is_success &= self.visit_probe(probe);
             });
         }
-        trace!("Exiting: CodeGenerator::visit_before_probes");
         is_success
     }
 
     fn visit_alt_probes(&mut self, event: &mut Event) -> bool {
-        trace!("Entering: CodeGenerator::visit_alt_probes");
         let mut is_success = true;
         if let Some(probes) = event.probes.get_mut(&ModeKind::Alt) {
             // only will emit one alt probe!
@@ -149,12 +146,10 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
                 is_success &= self.visit_probe(probe);
             }
         }
-        trace!("Exiting: CodeGenerator::visit_alt_probes");
         is_success
     }
 
     fn visit_after_probes(&mut self, event: &mut Event) -> bool {
-        trace!("Entering: CodeGenerator::visit_after_probes");
         let mut is_success = true;
         if let Some(probes) = event.probes.get_mut(&ModeKind::After) {
             probes.iter_mut().for_each(|probe| {
@@ -162,7 +157,6 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
             });
         }
 
-        trace!("Exiting: CodeGenerator::visit_after_probes");
         is_success
     }
 }
@@ -170,7 +164,6 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
 /// A get-for-free implementation of the GeneratingVisitor
 impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
     fn visit_whamm(&mut self, whamm: &mut Whamm) -> bool {
-        trace!("Entering: CodeGenerator::visit_whamm");
         self.set_context_name("whamm".to_string());
         let mut is_success = true;
         // visit fns
@@ -188,14 +181,12 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
             is_success &= self.visit_script(script);
         });
 
-        trace!("Exiting: CodeGenerator::visit_whamm");
         // Remove from `context_name`
         self.set_context_name("".to_string());
         is_success
     }
 
     fn visit_script(&mut self, script: &mut Script) -> bool {
-        trace!("Entering: CodeGenerator::visit_script");
         self.set_curr_loc(LocationData::Global {
             script_id: script.id,
         });
@@ -216,7 +207,6 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
             is_success &= self.visit_provider(provider);
         });
 
-        trace!("Exiting: CodeGenerator::visit_script");
         self.exit_scope();
         // Remove from `context_name`
         self.remove_last_context();
@@ -224,7 +214,6 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
     }
 
     fn visit_provider(&mut self, provider: &mut Provider) -> bool {
-        trace!("Entering: CodeGenerator::visit_provider");
         self.enter_scope();
         self.append_context_name(format!(":{}", provider.def.name));
         let mut is_success = true;
@@ -245,14 +234,12 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
             is_success &= self.visit_package(package);
         });
 
-        trace!("Exiting: CodeGenerator::visit_provider");
         self.exit_scope();
         self.remove_last_context();
         is_success
     }
 
     fn visit_package(&mut self, package: &mut Package) -> bool {
-        trace!("Entering: CodeGenerator::visit_package");
         self.enter_scope();
         self.append_context_name(format!(":{}", package.def.name));
         let mut is_success = true;
@@ -273,14 +260,12 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
             is_success &= self.visit_event(event);
         });
 
-        trace!("Exiting: CodeGenerator::visit_package");
         self.exit_scope();
         self.remove_last_context();
         is_success
     }
 
     fn visit_event(&mut self, event: &mut Event) -> bool {
-        trace!("Entering: CodeGenerator::visit_event");
         self.enter_scope();
         self.append_context_name(format!(":{}", event.def.name));
         let mut is_success = true;
@@ -304,14 +289,12 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
         // 3. visit the AFTER probes
         self.visit_after_probes(event);
 
-        trace!("Exiting: CodeGenerator::visit_event");
         self.exit_scope();
         self.remove_last_context();
         is_success
     }
 
     fn visit_probe(&mut self, probe: &mut Probe) -> bool {
-        trace!("Entering: CodeGenerator::visit_probe");
         self.enter_scope();
         self.append_context_name(format!(":{}", probe.kind.name()));
         let mut is_success = true;
@@ -340,14 +323,12 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
             is_success &= self.visit_stmts(body.stmts.as_mut_slice());
         }
 
-        trace!("Exiting: CodeGenerator::visit_probe");
         self.exit_scope();
         self.remove_last_context();
         is_success
     }
 
     fn visit_fn(&mut self, f: &mut Fn) -> bool {
-        trace!("Entering: CodeGenerator::visit_fn");
         self.enter_scope();
         let mut is_success = true;
         if f.def == Definition::CompilerDynamic {
@@ -367,18 +348,12 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
             is_success &= self.visit_block(&mut f.body);
             self.emit_func(f);
         }
-        trace!("Exiting: CodeGenerator::visit_fn");
         self.exit_scope();
         is_success
     }
 
     fn visit_formal_param(&mut self, _param: &mut (Expr, DataType)) -> bool {
-        // never called
         unreachable!();
-        // trace!("Entering: CodeGenerator::visit_formal_param");
-        // let is_success = self.emitter.emit_formal_param(param);
-        // trace!("Exiting: CodeGenerator::visit_formal_param");
-        // is_success
     }
 
     fn visit_block(&mut self, block: &mut Block) -> bool {
