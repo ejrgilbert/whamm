@@ -1319,11 +1319,6 @@ pub enum Statement {
         loc: Option<Location>,
     },
     /// Unified variable declaration.
-    ///
-    /// Replaces the old `Decl` / `UnsharedDecl` / `UnsharedDeclInit` trio:
-    /// - `modifiers.is_unshared = false, init = None`  → former `Decl`
-    /// - `modifiers.is_unshared = true,  init = None`  → former `UnsharedDecl`
-    /// - `modifiers.is_unshared = true,  init = Some`  → former `UnsharedDeclInit`
     VarDecl {
         name: String,
         ty: DataType,
@@ -1597,8 +1592,6 @@ impl Fn {
 /// Modifiers for a `Statement::VarDecl`.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DeclModifiers {
-    /// True for former `UnsharedDecl`/`UnsharedDeclInit` — variable is per-probe-instance
-    /// rather than shared across all probe firings.
     pub is_unshared: bool,
     /// True when the per-probe-instance variable's final value is reported at script exit.
     /// Only meaningful when `is_unshared` is true.
