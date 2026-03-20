@@ -672,7 +672,6 @@ impl SymbolTableBuilder<'_, '_> {
 
 impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
     fn visit_whamm(&mut self, whamm: &mut Whamm) {
-        trace!("Entering: visit_whamm");
         let name: String = "whamm".to_string();
         self.table
             .set_curr_scope_info(name.clone(), ScopeType::Whamm);
@@ -714,13 +713,10 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
 
         self.aliases.clear();
         self.derived_vars.clear();
-
-        trace!("Exiting: visit_whamm");
         self.curr_whamm = None;
     }
 
     fn visit_script(&mut self, script: &mut Script) {
-        trace!("Entering: visit_script");
         self.add_script(script);
 
         script.fns.iter_mut().for_each(|f| self.visit_fn(f));
@@ -767,14 +763,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
             .iter_mut()
             .for_each(|(_name, provider)| self.visit_provider(provider));
 
-        trace!("Exiting: visit_script");
         self.table.exit_scope();
         self.curr_script = None;
     }
 
     fn visit_provider(&mut self, provider: &mut Provider) {
-        trace!("Entering: visit_provider");
-
         self.add_provider(provider);
         provider
             .def
@@ -793,14 +786,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
 
         self.remove_bound_data(to_remove_alias, to_remove_vars);
 
-        trace!("Exiting: visit_provider");
         self.table.exit_scope();
         self.curr_provider = None;
     }
 
     fn visit_package(&mut self, package: &mut Package) {
-        trace!("Entering: visit_package");
-
         self.add_package(package);
         package
             .def
@@ -818,15 +808,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
             .for_each(|(_, event)| self.visit_event(event));
 
         self.remove_bound_data(to_remove_alias, to_remove_vars);
-
-        trace!("Exiting: visit_package");
         self.table.exit_scope();
         self.curr_package = None;
     }
 
     fn visit_event(&mut self, event: &mut Event) {
-        trace!("Entering: visit_event");
-
         self.add_event(event);
         event
             .def
@@ -846,15 +832,11 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
         });
 
         self.remove_bound_data(to_remove_alias, to_remove_vars);
-
-        trace!("Exiting: visit_event");
         self.table.exit_scope();
         self.curr_event = None;
     }
 
     fn visit_probe(&mut self, probe: &mut Probe) {
-        trace!("Entering: visit_probe");
-
         self.add_probe(probe);
         probe
             .def
@@ -906,33 +888,20 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
 
         self.remove_bound_data(to_remove_alias, to_remove_vars);
         self.used_derived_vars.clear();
-
-        trace!("Exiting: visit_probe");
         self.table.exit_scope(); // exit the probe scope
         self.table.exit_scope(); // exit the mode scope
         self.curr_probe = None;
     }
 
     fn visit_fn(&mut self, f: &mut Fn) {
-        trace!("Entering: visit_fn");
-
-        // add fn
         self.add_fn(f);
-
         // Will not visit predicate/body at this stage
-
-        trace!("Exiting: visit_fn");
         self.table.exit_scope();
         self.curr_fn = None;
     }
 
     fn visit_formal_param(&mut self, param: &mut (Expr, DataType)) {
-        trace!("Entering: visit_formal_param");
-
-        // add param
         self.add_param(&param.0, &param.1);
-
-        trace!("Exiting: visit_formal_param");
     }
 
     fn visit_block(&mut self, block: &mut Block) {

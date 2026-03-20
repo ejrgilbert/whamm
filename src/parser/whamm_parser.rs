@@ -28,8 +28,6 @@ pub fn print_info(
 ) -> Result<(), Box<ErrorGen>> {
     let def = yml_to_providers(def_yamls)?;
     assert!(!def.is_empty());
-
-    trace!("Entered print_info");
     err.set_script_text(rule.to_owned());
 
     let writer = BufferWriter::stdout(ColorChoice::Always);
@@ -104,7 +102,6 @@ pub fn print_info(
 }
 
 pub fn parse_script(def_yamls: &Vec<String>, script: &String, err: &mut ErrorGen) -> Option<Whamm> {
-    trace!("Entered parse_script");
     err.set_script_text(script.to_owned());
 
     let res = WhammParser::parse(Rule::script, script);
@@ -141,8 +138,6 @@ fn to_ast(
     pair: Pair<Rule>,
     err: &mut ErrorGen,
 ) -> Result<Whamm, Box<Error<Rule>>> {
-    trace!("Entered to_ast");
-
     // Create initial AST with Whamm node
     let mut whamm = Whamm::new();
     let script_count = 0;
@@ -180,35 +175,23 @@ fn parser_entry_point(
 ) -> Result<(), Box<ErrorGen>> {
     let def = yml_to_providers(def_yamls)?;
     assert!(!def.is_empty());
-
-    trace!("Enter process_pair");
     match pair.as_rule() {
         Rule::script => {
-            trace!("Begin process script");
             handle_script(def_yamls, whamm, pair, err)?;
-            trace!("End process script");
         }
         Rule::lib_import => handle_lib_import(whamm, script_count, pair),
         Rule::if_stmt => {
-            trace!("Begin process statement");
             handle_global_if_stmt(whamm, script_count, pair, err);
-            trace!("End process statement");
         }
         Rule::statement => {
-            trace!("Begin process statement");
             handle_global_statements(whamm, script_count, pair, err);
-            trace!("End process statement");
         }
         Rule::probe_def => {
-            trace!("Begin process probe_def");
             handle_probe_def(whamm, &def, script_count, pair, err);
-            trace!("End process probe_def");
         }
         Rule::EOI => {}
         Rule::fn_def => {
-            trace!("Begin process fn_def");
             handle_fn_def(whamm, script_count, pair, err);
-            trace!("End process fn_def");
         }
         rule => {
             err.parse_error(
@@ -225,7 +208,6 @@ fn parser_entry_point(
             );
         }
     }
-    trace!("Exit process_pair");
     Ok(())
 }
 
@@ -518,7 +500,6 @@ fn handle_decl(pair: &mut Pairs<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     let ty = type_from_rule_handler(type_rule, err);
 
     let name = var_id_rule.as_str().to_string();
-    trace!("Exiting declaration");
     vec![Statement::Decl {
         name,
         ty,
@@ -731,9 +712,6 @@ fn handle_ret(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 vec![]
             }
             Ok(expr) => {
-                trace!("Exiting return_stmt");
-                trace!("Exiting stmt_from_rule");
-
                 vec![Statement::Return {
                     expr,
                     loc: Some(Location {
@@ -1460,15 +1438,12 @@ fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
         }
         probe_rule.add_rule_def(rule_part);
     }
-    trace!("Exiting probe_rule_from_rule");
-
     probe_rule
 }
 
 fn probe_rule_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> RulePart {
     match pair.as_rule() {
         Rule::PROBE_ID => {
-            trace!("Entering PROBE_ID");
             let name: String = pair.as_str().parse().unwrap();
             let id_line_col = LineColLocation::from(pair.as_span());
 
@@ -1479,9 +1454,6 @@ fn probe_rule_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> RulePart {
                     path: None,
                 }),
             );
-            trace!("Exiting PROBE_ID");
-
-            trace!("Exiting probe_rule_part_from_rule");
             part
         }
         rule => {
@@ -1508,7 +1480,6 @@ fn type_from_rule_handler(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
 }
 
 pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
-    trace!("Entering type_from_rule");
     match pair.as_rule() {
         Rule::TY_U8 => Ok(DataType::U8),
         Rule::TY_I8 => Ok(DataType::I8),
