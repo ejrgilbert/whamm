@@ -581,7 +581,13 @@ impl SymbolTableBuilder<'_, '_> {
                     } else {
                         val.clone()
                     };
-                    self.add_global(ty.clone(), name.clone(), Some(resolved_val), *lifetime, None);
+                    self.add_global(
+                        ty.clone(),
+                        name.clone(),
+                        Some(resolved_val),
+                        *lifetime,
+                        None,
+                    );
                 } else {
                     // Add derived globals to the probe body itself (to calculate the value)
                     derived.insert(name.clone(), (ty.clone(), derived_from.clone()));

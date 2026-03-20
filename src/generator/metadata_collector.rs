@@ -337,7 +337,11 @@ impl<'a> MetadataCollector<'a> {
                     {
                         (results, def)
                     } else {
-                        let Some(Record::Var { ty, .. }) = self.table.lookup_rec(lib_name) else {
+                        let Some(Record::Var { ty, .. }) = self
+                            .table
+                            .lookup(lib_name)
+                            .and_then(|id| self.table.get_record(id))
+                        else {
                             panic!("should have gotten a var type")
                         };
                         if let Some(Record::LibFn { results, def, .. }) =
@@ -445,7 +449,10 @@ impl<'a> MetadataCollector<'a> {
                 // check if bound, remember in metadata!
                 self.check_strcmp &= matches!(ty, DataType::Str);
 
-                if matches!(def, Definition::CompilerStatic | Definition::CompilerDynamic) {
+                if matches!(
+                    def,
+                    Definition::CompilerStatic | Definition::CompilerDynamic
+                ) {
                     // For wei: Request all engine-provided vars!
                     // For B.R.: Only request dynamic data
                     // CompilerDerived vars are computed locally in the probe body from

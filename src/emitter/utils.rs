@@ -934,7 +934,11 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             let in_obj_call_on = ctx.in_obj_call_on.clone();
 
             let addr = if let Some(obj_name) = &in_obj_call_on {
-                let rec = ctx.table.lookup_rec(obj_name).cloned();
+                let rec = ctx
+                    .table
+                    .lookup(obj_name)
+                    .and_then(|id| ctx.table.get_record(id))
+                    .cloned();
                 match rec {
                     Some(Record::Library { fns, .. }) => {
                         let Some(rec) = fns.get(&fn_name) else {
