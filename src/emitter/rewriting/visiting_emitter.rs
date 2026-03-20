@@ -414,17 +414,15 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         self.instr_created_results.clear();
     }
 
-    pub(crate) fn fold_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {
-        // todo -- create actual registry
-        *expr = ExprFolder::fold_expr(
+    pub(crate) fn fold_expr(&mut self, expr: &Expr, err: &mut ErrorGen) -> Expr {
+        ExprFolder::fold_expr(
             expr,
             self.registry,
             false,
             self.table,
             &self.mem_allocator.emitted_strings,
             err,
-        );
-        true
+        )
     }
 
     pub fn emit_orig(&mut self) -> bool {

@@ -43,6 +43,17 @@ impl WeiGenerator<'_, '_, '_> {
         self.emitter.setup_module(false, has_probe_state_init);
         emit_needed_funcs(used_bound_funcs, &mut self.emitter, self.injected_funcs);
         self.emitter.emit_strings(strings_to_emit);
+
+        // Fold probe bodies now that the string table is finalized.
+        // Predicates are skipped — WEI predicates are evaluated by the engine, not folded here.
+        crate::generator::folding::pass::run(
+            &mut ast,
+            true,
+            self.emitter.table,
+            &self.emitter.mem_allocator.emitted_strings,
+            self.err,
+        );
+
         self.visit_ast(&mut ast);
 
         self.emit_end_func(&ast, used_report_dts);
