@@ -14,7 +14,8 @@ use std::process::exit;
 pub struct Script {
     pub id: u8,
     pub fns: Vec<crate::parser::types::Fn>, // User-provided
-    pub globals: HashMap<String, Global>,   // User-provided, should be VarId
+    pub req_globals: WhammParams,
+    pub globals: HashMap<String, Global>, // User-provided, should be VarId
     pub global_stmts: Vec<Statement>,
     /// The rules of the probes that have been used in the Script.
     pub probes: Vec<Probe>,

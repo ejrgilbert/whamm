@@ -15,7 +15,7 @@ use crate::parser::types::{
 };
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable, VarAddr};
 use wirm::ir::function::FunctionBuilder;
-use wirm::ir::id::{FunctionID, GlobalID, LocalID};
+use wirm::ir::id::{FunctionID, GlobalID, LocalID, MemoryID};
 use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmValue};
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{MacroOpcode, Opcode};
@@ -146,6 +146,8 @@ fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         "dup_at" | "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
             unreachable!("static function call should already be handled: {target_fn_name}")
         }
+        "active_data_start" => handle_active_data_start(&folded_args, strategy, injector, ctx),
+        "active_data_len" => handle_active_data_len(&folded_args, strategy, injector, ctx),
         "memcpy" => handle_memcpy(&folded_args, strategy, injector, ctx),
         "write_str" => handle_write_str(&folded_args, strategy, injector, ctx),
         "read_str" => handle_read_str(&folded_args, strategy, injector, ctx),
@@ -158,13 +160,45 @@ fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     }
 }
 
+fn handle_active_data_start<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
+    args: &[Expr],
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx
+) -> bool {
+    let memid = args[0]
+        .get_primitive_u32()
+        .unwrap_or_else(|| unreachable!());
+
+    todo!()
+    // let start = get_active_data_start(ctx.wasm, MemoryID(memid));
+    // injector.u32_const(start);
+    // true
+}
+
+fn handle_active_data_len<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
+    args: &[Expr],
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx
+) -> bool {
+    let memid = args[0]
+        .get_primitive_u32()
+        .unwrap_or_else(|| unreachable!());
+
+    todo!()
+    // let len = get_active_data_len(ctx.wasm, MemoryID(memid));
+    // injector.u32_const(start);
+    // true
+}
+
 fn handle_memcpy<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     args: &[Expr],
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
-    // usage: `memcpy(dst_mem: u32, src_mem: u32, start_addr: u32, len: u32) -> ()`
+    // usage: `memcpy(src_mem: u32, src_ptr: u32, dst_mem: u32, dst_ptr: u32, len: u32) -> ()`
     let src_mem = args[0]
         .get_primitive_u32()
         .unwrap_or_else(|| unreachable!());
@@ -172,7 +206,6 @@ fn handle_memcpy<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         .get_primitive_u32()
         .unwrap_or_else(|| unreachable!());
 
-    // TODO: Fix utils.rs to not need `&mut Expr` at all (make immutable)
     let src_ptr = args[1].clone();
     let dst_ptr = args[3].clone();
     let src_len = args[4].clone();

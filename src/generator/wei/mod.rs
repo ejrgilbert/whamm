@@ -88,6 +88,13 @@ impl WeiGenerator<'_, '_, '_> {
         // inject globals
         self.visit_globals(&script.globals);
         // visit global statements
+        if !script.req_globals.params.is_empty() {
+            let mut list = String::new();
+            for req in script.req_globals.params.iter() {
+                list.push_str(&format!("- {}: {}\n", req.name, req.ty));
+            }
+            unimplemented!("`wei` does not support engine-provided global definitions yet. You requested:\n{list}")
+        }
         self.visit_global_stmts(&mut script.global_stmts);
         // visit probes
         script.probes.iter_mut().for_each(|probe| {

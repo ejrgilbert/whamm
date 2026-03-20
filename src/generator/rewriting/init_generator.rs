@@ -4,10 +4,12 @@
 
 use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::ModuleEmitter;
+use crate::emitter::rewriting::rules::init_whamm_bound_vars;
 use crate::generator::{emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::report_vars::LocationData;
 use crate::parser::types::{DataType, Expr, Location, Statement, Value, Whamm, WhammVisitorMut};
 use crate::verifier::types::Record;
+use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use wirm::ir::id::FunctionID;
 use wirm::Module;
@@ -131,6 +133,11 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_> {
     }
 
     fn visit_global_stmts(&mut self, stmts: &mut [Statement]) -> bool {
+        let whamm_bound_vars = init_whamm_bound_vars(self.emitter.app_wasm, self.err);
+        self.emitter
+            .table
+            .override_record_vals(&whamm_bound_vars, false);
+
         for stmt in stmts.iter_mut() {
             match stmt {
                 Statement::VarDecl { init: None, .. } => {} // already handled
@@ -177,6 +184,9 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_> {
                 injected_funcs.push(FunctionID(fid));
             }
         }
+        self.emitter
+            .table
+            .reset_record_vals(&whamm_bound_vars.keys().collect_vec());
         true
     }
 }

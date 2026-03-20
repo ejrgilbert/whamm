@@ -11,6 +11,7 @@ use crate::verifier::types::Record::Var;
 use crate::verifier::types::{Record, SymbolTable};
 use std::collections::HashMap;
 use std::ops::{Add, Div, Mul, Rem, Sub};
+
 // =======================================
 // = Constant Propagation via ExprFolder =
 // =======================================

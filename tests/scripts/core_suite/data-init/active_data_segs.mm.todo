@@ -1,9 +1,0 @@
-use whamm_core;
-
-var ptr: i32 = whamm_core.mem_alloc(DATA_INIT_LEN as i32);
-memcpy(APP_MEMID, DATA_INIT_START, memid(whamm_core), ptr as u32, DATA_INIT_LEN);
-whamm_core.puts(ptr, DATA_INIT_LEN as i32);
-
-wasm:opcode:memory.init:before {
-    whamm_core.puts(ptr, DATA_INIT_LEN as i32);
-}

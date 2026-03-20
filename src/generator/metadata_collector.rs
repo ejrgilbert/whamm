@@ -20,6 +20,7 @@ enum Visiting {
     Predicate,
     Body,
     Init,
+    Global,
     #[default]
     None,
 }
@@ -124,6 +125,7 @@ impl<'a> MetadataCollector<'a> {
             return &mut self.curr_lib_call_args;
         }
         match self.visiting {
+            Visiting::Global => &mut self.curr_script.req_globals,
             Visiting::Predicate => &mut self.curr_probe.metadata.pred_args,
             Visiting::Body => &mut self.curr_probe.metadata.body_args,
             Visiting::Init => &mut self.curr_probe.metadata.init_args,
@@ -150,6 +152,13 @@ impl<'a> MetadataCollector<'a> {
             );
         }
         match self.visiting {
+            Visiting::Global => self.curr_script.req_globals.push(
+                WhammParam {
+                    name: name.to_string(),
+                    ty: ty.clone(),
+                },
+                &self.curr_mode,
+            ),
             Visiting::Predicate => {
                 self.curr_probe.metadata.push_pred_req(
                     name.to_string(),
@@ -650,7 +659,9 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
     fn visit_script(&mut self, script: &ParserScript) {
         self.table.enter_named_scope(&script.id.to_string());
 
+        self.visiting = Visiting::Global;
         self.visit_stmts(&script.global_stmts);
+        self.visiting = Visiting::None;
 
         // visit providers
         script.providers.iter().for_each(|(_name, provider)| {

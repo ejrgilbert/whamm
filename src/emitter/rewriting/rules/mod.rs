@@ -1,3 +1,4 @@
+use crate::emitter::rewriting::rules::data_segments::{get_first_local_mem_id};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::generator::ast::{Probe, StackReq, WhammParam};
 use crate::generator::rewriting::simple_ast::{SimpleAST, SimpleEvt, SimplePkg, SimpleProv};
@@ -9,7 +10,7 @@ use crate::verifier::types::VarAddr;
 use log::warn;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
-use wirm::ir::id::{FunctionID, GlobalID, TypeID};
+use wirm::ir::id::{FunctionID, GlobalID, MemoryID, TypeID};
 use wirm::ir::module::module_functions::{FuncKind, ImportedFunction};
 use wirm::ir::module::module_globals::{GlobalKind, ImportedGlobal, LocalGlobal};
 use wirm::ir::module::module_types::Types;
@@ -17,6 +18,9 @@ use wirm::ir::module::Module;
 use wirm::ir::types::{DataType as WirmType, InstrumentationMode};
 use wirm::wasmparser::{BlockType, BrTable, GlobalType, MemArg, Operator};
 use wirm::Location;
+use crate::common::error::ErrorGen;
+
+mod data_segments;
 
 pub fn get_loc_info_for_active_probes(
     app_wasm: &Module,
@@ -25,6 +29,7 @@ pub fn get_loc_info_for_active_probes(
     at_func_end: bool,
     instr: &Operator,
     ast: &mut SimpleAST,
+    err: &mut ErrorGen,
 ) -> Option<LocInfo> {
     let mut res: Option<LocInfo> = None;
     for (provider, packages) in ast.provs.iter_mut() {
@@ -38,7 +43,20 @@ pub fn get_loc_info_for_active_probes(
             }
         }
     }
+    if let Some(r) = &mut res {
+        r.static_data.extend(init_whamm_bound_vars(app_wasm, err));
+    }
     res
+}
+
+pub fn init_whamm_bound_vars(app_wasm: &Module, err: &mut ErrorGen) -> HashMap<String, Option<Value>> {
+    let mut vars = HashMap::new();
+
+    let memid = get_first_local_mem_id(app_wasm)
+        .map_err(|e| err.add_instr_error(&e)).unwrap_or(MemoryID(0));
+    vars.insert("APP_MEMID".to_string(), Some(Value::gen_u32(*memid)));
+
+    vars
 }
 
 fn handle_provider(

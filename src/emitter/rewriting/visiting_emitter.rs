@@ -183,6 +183,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         &self,
         state: &mut MatchState,
         ast: &mut SimpleAST,
+        err: &mut ErrorGen
     ) -> Option<LocInfo> {
         let (loc, at_func_end) = self.app_iter.curr_loc();
 
@@ -194,6 +195,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                 at_func_end,
                 curr_instr,
                 ast,
+                err
             )
         } else {
             None
@@ -383,15 +385,6 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         Ok(true)
     }
 
-    pub(crate) fn define_data(&mut self, var_name: &str, var_val: &Option<Value>) -> bool {
-        // if the record doesn't exist, it's from a different probe being active
-        // at this place in the target application. We can just ignore this (it
-        // won't be defined)...it doesn't matter since we do typechecking :)
-        self.table
-            .override_record_val(var_name, var_val.clone(), false);
-        true
-    }
-
     pub(crate) fn define_alias(
         &mut self,
         var_name: &str,
@@ -408,9 +401,8 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
 
     pub(crate) fn reset_table_data(&mut self, loc_info: &LocInfo) {
         // reset static_data
-        loc_info.static_data.iter().for_each(|(symbol_name, ..)| {
-            self.table.override_record_val(symbol_name, None, false);
-        });
+        self.table
+            .reset_record_vals(&loc_info.static_data.keys().collect_vec());
 
         // reset dynamic_alias
         loc_info

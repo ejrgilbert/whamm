@@ -32,11 +32,7 @@ fn emit_dynamic_compiler_data(
 
 fn add_to_table(info: &LocInfo, emitter: &mut VisitingEmitter) {
     // define static data
-    info.static_data
-        .iter()
-        .for_each(|(dyn_var_name, dyn_var_val)| {
-            emitter.define_data(dyn_var_name, dyn_var_val);
-        });
+    emitter.table.override_record_vals(&info.static_data, false);
     // define dynamic aliases
     info.dynamic_alias
         .iter()
@@ -193,7 +189,7 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
         while first_instr || self.emitter.next_instr() {
             first_instr = false;
             // Check if any of the configured rules match this instruction in the application.
-            if let Some(loc_info) = self.emitter.get_loc_info(&mut match_state, &mut self.ast) {
+            if let Some(loc_info) = self.emitter.get_loc_info(&mut match_state, &mut self.ast, self.err) {
                 // Inject a call to the on-exit flush function
                 self.is_prog_exit = loc_info.is_prog_exit;
                 if loc_info.is_prog_exit {

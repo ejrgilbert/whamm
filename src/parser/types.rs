@@ -1711,6 +1711,8 @@ impl Whamm {
             Self::def_strcmp(),
             Self::def_mem(),
             Self::def_mem_cpy(),
+            Self::def_active_data_start(),
+            Self::def_active_data_len(),
             Self::def_write_str(),
             Self::def_read_str(),
         ]
@@ -1821,6 +1823,50 @@ impl Whamm {
             StackReq::None,
         )
     }
+    fn def_active_data_start() -> BoundFunction {
+        let params = vec![
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "memid".to_string(),
+                    loc: None,
+                },
+                DataType::U32,
+            )
+        ];
+
+        BoundFunction::new(
+            "active_data_start".to_string(),
+            "Get the starting address for the union of all active data segments for a specific memory in the module.".to_string(),
+            params,
+            DataType::U32,
+            true,
+            true,
+            StackReq::None,
+        )
+    }
+    fn def_active_data_len() -> BoundFunction {
+        let params = vec![
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "memid".to_string(),
+                    loc: None,
+                },
+                DataType::U32,
+            )
+        ];
+
+        BoundFunction::new(
+            "active_data_len".to_string(),
+            "Get the length of the union of all active data segments for a specific memory in the module.".to_string(),
+            params,
+            DataType::U32,
+            true,
+            true,
+            StackReq::None,
+        )
+    }
     fn def_write_str() -> BoundFunction {
         let write_params = vec![
             (
@@ -1902,35 +1948,12 @@ impl Whamm {
     pub(crate) fn get_bound_vars() -> Vec<BoundVar> {
         vec![
             Self::def_app_mem(),
-            Self::def_data_init_start_addr(),
-            Self::def_data_init_len(),
         ]
     }
     fn def_app_mem() -> BoundVar {
         BoundVar {
             name: "APP_MEMID".to_string(),
-            docs: "The ID of the application's memory (assume's single memory).".to_string(),
-            ty: DataType::U32,
-            lifetime: Definition::CompilerStatic,
-            derived_from: None,
-        }
-    }
-    fn def_data_init_start_addr() -> BoundVar {
-        BoundVar {
-            name: "DATA_INIT_START".to_string(),
-            docs:
-                "Get the starting address for the union of all active data segments in the module."
-                    .to_string(),
-            ty: DataType::U32,
-            lifetime: Definition::CompilerStatic,
-            derived_from: None,
-        }
-    }
-    fn def_data_init_len() -> BoundVar {
-        BoundVar {
-            name: "DATA_INIT_LEN".to_string(),
-            docs: "Get the length of the union of all active data segments in the module."
-                .to_string(),
+            docs: "The ID of the application's first local memory.".to_string(),
             ty: DataType::U32,
             lifetime: Definition::CompilerStatic,
             derived_from: None,
