@@ -103,7 +103,9 @@ pub fn emit_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     // Probe bodies are pre-folded by FoldPass (dead-branch elimination).
     // Check whether this is a call to a bound, static function.
     if let Statement::Expr {
-        expr: Expr::Call { fn_target, args, .. },
+        expr: Expr::Call {
+            fn_target, args, ..
+        },
         ..
     } = stmt
     {
@@ -144,9 +146,9 @@ fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
             unreachable!("static function call should already be handled: {target_fn_name}")
         }
-        "memcpy" => handle_memcpy(&mut folded_args, strategy, injector, ctx),
-        "write_str" => handle_write_str(&mut folded_args, strategy, injector, ctx),
-        "read_str" => handle_read_str(&mut folded_args, strategy, injector, ctx),
+        "memcpy" => handle_memcpy(&folded_args, strategy, injector, ctx),
+        "write_str" => handle_write_str(&folded_args, strategy, injector, ctx),
+        "read_str" => handle_read_str(&folded_args, strategy, injector, ctx),
         _ => {
             unreachable!(
                 "{} Could not find handler for static function with name: {}",
@@ -1075,9 +1077,7 @@ fn handle_type_utils_string<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     match target_fn_name.as_str() {
         "addr" => StringUtils::addr_of(&target, strategy, injector, ctx),
         "len" => StringUtils::len_dynamic(&target, strategy, injector, ctx),
-        "starts_with" => {
-            StringUtils::starts_with_dynamic(&target, args, strategy, injector, ctx)
-        }
+        "starts_with" => StringUtils::starts_with_dynamic(&target, args, strategy, injector, ctx),
         "ends_with" => StringUtils::ends_with_dynamic(&target, args, strategy, injector, ctx),
         "contains" => StringUtils::contains_dynamic(&target, args, strategy, injector, ctx),
         _ => {

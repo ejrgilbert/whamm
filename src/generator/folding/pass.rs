@@ -22,14 +22,20 @@ use std::collections::HashMap;
 /// compiler-static variables whose values change per opcode and are re-folded
 /// in the rewriting emitter at each instrumentation site.
 pub fn run(
-    ast: &mut Vec<Script>,
+    ast: &mut [Script],
     as_monitor_module: bool,
     table: &SymbolTable,
     emitted_strings: &HashMap<String, StringAddr>,
     err: &mut ErrorGen,
 ) {
     for script in ast.iter_mut() {
-        fold_stmts(&mut script.global_stmts, as_monitor_module, table, emitted_strings, err);
+        fold_stmts(
+            &mut script.global_stmts,
+            as_monitor_module,
+            table,
+            emitted_strings,
+            err,
+        );
         for f in script.fns.iter_mut() {
             fold_fn(f, as_monitor_module, table, emitted_strings, err);
         }
@@ -37,7 +43,13 @@ pub fn run(
             if let Some(body) = &mut probe.body {
                 fold_block(body, as_monitor_module, table, emitted_strings, err);
             }
-            fold_stmts(&mut probe.init_logic, as_monitor_module, table, emitted_strings, err);
+            fold_stmts(
+                &mut probe.init_logic,
+                as_monitor_module,
+                table,
+                emitted_strings,
+                err,
+            );
         }
     }
 }
@@ -59,7 +71,13 @@ fn fold_block(
     emitted_strings: &HashMap<String, StringAddr>,
     err: &mut ErrorGen,
 ) {
-    fold_stmts(&mut block.stmts, as_monitor_module, table, emitted_strings, err);
+    fold_stmts(
+        &mut block.stmts,
+        as_monitor_module,
+        table,
+        emitted_strings,
+        err,
+    );
 }
 
 /// Replace each statement with its `StmtFolder`-folded form.

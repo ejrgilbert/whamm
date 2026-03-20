@@ -521,15 +521,13 @@ impl InstrGenerator<'_, '_> {
                 // emit an unpredicated body
                 (false, true) => self.emit_body(),
                 // emit empty if block
-                (true, false) => {
-                    match self.emitter.emit_if(pred, &Block::default(), self.err) {
-                        Err(e) => {
-                            self.err.add_error(*e);
-                            false
-                        }
-                        Ok(res) => res,
+                (true, false) => match self.emitter.emit_if(pred, &Block::default(), self.err) {
+                    Err(e) => {
+                        self.err.add_error(*e);
+                        false
                     }
-                }
+                    Ok(res) => res,
+                },
                 // emit nothing
                 (true, true) => true,
             }
@@ -555,17 +553,18 @@ impl InstrGenerator<'_, '_> {
                 // unpredicated body
                 (false, true) => self.emit_body(),
                 // empty if stmt
-                (true, false) => match self.emitter.emit_if_with_orig_as_else(
-                    pred,
-                    &Block::default(),
-                    self.err,
-                ) {
-                    Err(e) => {
-                        self.err.add_error(*e);
-                        false
+                (true, false) => {
+                    match self
+                        .emitter
+                        .emit_if_with_orig_as_else(pred, &Block::default(), self.err)
+                    {
+                        Err(e) => {
+                            self.err.add_error(*e);
+                            false
+                        }
+                        Ok(res) => res,
                     }
-                    Ok(res) => res,
-                },
+                }
                 // emit nothing
                 (true, true) => true,
             }
