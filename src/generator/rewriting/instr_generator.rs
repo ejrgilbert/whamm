@@ -522,7 +522,7 @@ impl InstrGenerator<'_, '_> {
                 (false, true) => self.emit_body(),
                 // emit empty if block
                 (true, false) => {
-                    match self.emitter.emit_if(pred, &mut Block::default(), self.err) {
+                    match self.emitter.emit_if(pred, &Block::default(), self.err) {
                         Err(e) => {
                             self.err.add_error(*e);
                             false
@@ -557,7 +557,7 @@ impl InstrGenerator<'_, '_> {
                 // empty if stmt
                 (true, false) => match self.emitter.emit_if_with_orig_as_else(
                     pred,
-                    &mut Block::default(),
+                    &Block::default(),
                     self.err,
                 ) {
                     Err(e) => {

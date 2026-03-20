@@ -208,7 +208,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         for (_, Block { stmts, .. }) in data.iter() {
             for stmt in stmts.iter() {
                 is_success &= emit_stmt(
-                    &mut stmt.clone(),
+                    stmt,
                     self.strategy,
                     &mut self.app_iter,
                     &mut EmitCtx::new(
@@ -435,8 +435,8 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
 
     pub fn emit_if(
         &mut self,
-        condition: &mut Expr,
-        conseq: &mut Block,
+        condition: &Expr,
+        conseq: &Block,
         err: &mut ErrorGen,
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
@@ -456,8 +456,8 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
 
     pub(crate) fn emit_if_with_orig_as_else(
         &mut self,
-        condition: &mut Expr,
-        conseq: &mut Block,
+        condition: &Expr,
+        conseq: &Block,
         err: &mut ErrorGen,
     ) -> Result<bool, Box<WhammError>> {
         let mut is_success = true;
@@ -506,7 +506,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         Ok(is_success)
     }
 
-    fn handle_alt_call_by_name(&mut self, args: &mut [Expr], err: &mut ErrorGen) -> bool {
+    fn handle_alt_call_by_name(&mut self, args: &[Expr], err: &mut ErrorGen) -> bool {
         if self.in_init {
             err.add_instr_error("Cannot call `alt_call_by_name` as a variable initialization.");
             return false;
@@ -538,7 +538,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         }
     }
 
-    fn handle_alt_call_by_id(&mut self, args: &mut [Expr], err: &mut ErrorGen) -> bool {
+    fn handle_alt_call_by_id(&mut self, args: &[Expr], err: &mut ErrorGen) -> bool {
         if self.in_init {
             err.add_instr_error("Cannot call `alt_call_by_name` as a variable initialization.");
             return false;
@@ -602,7 +602,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
     fn handle_special_fn_call(
         &mut self,
         target_fn_name: String,
-        args: &mut [Expr],
+        args: &[Expr],
         err: &mut ErrorGen,
     ) -> bool {
         let mut folded_args = vec![];
@@ -618,8 +618,8 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         }
 
         match target_fn_name.as_str() {
-            "alt_call_by_name" => self.handle_alt_call_by_name(&mut folded_args, err),
-            "alt_call_by_id" => self.handle_alt_call_by_id(&mut folded_args, err),
+            "alt_call_by_name" => self.handle_alt_call_by_name(&folded_args, err),
+            "alt_call_by_id" => self.handle_alt_call_by_id(&folded_args, err),
             "drop_args" => self.handle_drop_args(err),
             "memcpy" => self.handle_memcpy(),
             "write_str" => self.handle_write_str(),
@@ -876,7 +876,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         // initialization logic into the instr_init function
         if !init_logic.is_empty() {
             self.in_init = true;
-            for stmt in init_logic.iter_mut() {
+            for stmt in init_logic.iter() {
                 self.emit_stmt(stmt, err);
             }
             self.in_init = false;
@@ -954,16 +954,16 @@ impl Emitter for VisitingEmitter<'_, '_> {
         self.locals_tracker.reset_function();
     }
 
-    fn emit_body(&mut self, body: &mut Block, err: &mut ErrorGen) -> bool {
+    fn emit_body(&mut self, body: &Block, err: &mut ErrorGen) -> bool {
         let mut is_success = true;
 
-        for stmt in body.stmts.iter_mut() {
+        for stmt in body.stmts.iter() {
             is_success &= self.emit_stmt(stmt, err);
         }
         is_success
     }
 
-    fn emit_stmt(&mut self, stmt: &mut Statement, err: &mut ErrorGen) -> bool {
+    fn emit_stmt(&mut self, stmt: &Statement, err: &mut ErrorGen) -> bool {
         // Check if this is calling a bound, static function!
         if let Statement::Expr {
             expr: Expr::Call {
@@ -1009,7 +1009,7 @@ impl Emitter for VisitingEmitter<'_, '_> {
         }
     }
 
-    fn emit_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {
+    fn emit_expr(&mut self, expr: &Expr, err: &mut ErrorGen) -> bool {
         emit_expr(
             expr,
             None,

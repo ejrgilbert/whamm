@@ -107,7 +107,7 @@ impl WeiGenerator<'_, '_, '_> {
 
                 (None, "".to_string(), Some(pred))
             } else {
-                let mut block = Block {
+                let block = Block {
                     stmts: vec![Statement::Expr {
                         expr: pred.clone(),
                         loc: None,
@@ -121,7 +121,7 @@ impl WeiGenerator<'_, '_, '_> {
                     &probe.metadata.pred_args,
                     None,
                     &[WirmType::I32],
-                    &mut block,
+                    &block,
                     true,
                     &probe.loc,
                     self.err,
@@ -147,7 +147,7 @@ impl WeiGenerator<'_, '_, '_> {
             .static_lib_calls
             .iter()
             .for_each(|(params, lib_call)| {
-                let mut block = Block {
+                let block = Block {
                     stmts: vec![Statement::Expr {
                         expr: lib_call.clone(),
                         loc: None,
@@ -184,7 +184,7 @@ impl WeiGenerator<'_, '_, '_> {
                     params,
                     None,
                     std::slice::from_ref(&wirm_ty),
-                    &mut block,
+                    &block,
                     true,
                     &probe.loc,
                     self.err,
@@ -236,7 +236,7 @@ impl WeiGenerator<'_, '_, '_> {
                 } else {
                     &params
                 },
-                pred,
+                pred.as_deref(),
                 &[],
                 body_block,
                 false,
@@ -398,7 +398,7 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_> {
                     loc,
                     ..
                 } => {
-                    let mut assign = Statement::Assign {
+                    let assign = Statement::Assign {
                         var_id: Expr::VarId {
                             name: name.clone(),
                             definition: *definition,
@@ -407,7 +407,7 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_> {
                         expr: init_expr.clone(),
                         loc: loc.clone(),
                     };
-                    self.emitter.emit_global_stmt(&mut assign, self.err);
+                    self.emitter.emit_global_stmt(&assign, self.err);
                 }
                 Statement::LibImport { lib_name, loc, .. } => {
                     self.link_user_lib(lib_name, loc);
