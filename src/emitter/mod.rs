@@ -37,9 +37,9 @@ impl InjectStrategy {
 pub trait Emitter {
     fn reset_locals_for_probe(&mut self);
     fn reset_locals_for_function(&mut self);
-    fn emit_body(&mut self, body: &mut Block, err: &mut ErrorGen) -> bool;
-    fn emit_stmt(&mut self, stmt: &mut Statement, err: &mut ErrorGen) -> bool;
-    fn emit_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool;
+    fn emit_body(&mut self, body: &Block, err: &mut ErrorGen) -> bool;
+    fn emit_stmt(&mut self, stmt: &Statement, err: &mut ErrorGen) -> bool;
+    fn emit_expr(&mut self, expr: &Expr, err: &mut ErrorGen) -> bool;
 }
 
 /// This should run AFTER emitting the full AST

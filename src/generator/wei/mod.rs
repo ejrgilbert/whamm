@@ -43,6 +43,17 @@ impl WeiGenerator<'_, '_, '_> {
         self.emitter.setup_module(false, has_probe_state_init);
         emit_needed_funcs(used_bound_funcs, &mut self.emitter, self.injected_funcs);
         self.emitter.emit_strings(strings_to_emit);
+
+        // Fold probe bodies now that the string table is finalized.
+        // Predicates are skipped — WEI predicates are evaluated by the engine, not folded here.
+        crate::generator::folding::pass::run(
+            &mut ast,
+            true,
+            self.emitter.table,
+            &self.emitter.mem_allocator.emitted_strings,
+            self.err,
+        );
+
         self.visit_ast(&mut ast);
 
         self.emit_end_func(&ast, used_report_dts);
@@ -96,7 +107,7 @@ impl WeiGenerator<'_, '_, '_> {
 
                 (None, "".to_string(), Some(pred))
             } else {
-                let mut block = Block {
+                let block = Block {
                     stmts: vec![Statement::Expr {
                         expr: pred.clone(),
                         loc: None,
@@ -110,7 +121,7 @@ impl WeiGenerator<'_, '_, '_> {
                     &probe.metadata.pred_args,
                     None,
                     &[WirmType::I32],
-                    &mut block,
+                    &block,
                     true,
                     &probe.loc,
                     self.err,
@@ -136,7 +147,7 @@ impl WeiGenerator<'_, '_, '_> {
             .static_lib_calls
             .iter()
             .for_each(|(params, lib_call)| {
-                let mut block = Block {
+                let block = Block {
                     stmts: vec![Statement::Expr {
                         expr: lib_call.clone(),
                         loc: None,
@@ -173,7 +184,7 @@ impl WeiGenerator<'_, '_, '_> {
                     params,
                     None,
                     std::slice::from_ref(&wirm_ty),
-                    &mut block,
+                    &block,
                     true,
                     &probe.loc,
                     self.err,
@@ -225,7 +236,7 @@ impl WeiGenerator<'_, '_, '_> {
                 } else {
                     &params
                 },
-                pred,
+                pred.as_deref(),
                 &[],
                 body_block,
                 false,
@@ -387,7 +398,7 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_> {
                     loc,
                     ..
                 } => {
-                    let mut assign = Statement::Assign {
+                    let assign = Statement::Assign {
                         var_id: Expr::VarId {
                             name: name.clone(),
                             definition: *definition,
@@ -396,7 +407,7 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_> {
                         expr: init_expr.clone(),
                         loc: loc.clone(),
                     };
-                    self.emitter.emit_global_stmt(&mut assign, self.err);
+                    self.emitter.emit_global_stmt(&assign, self.err);
                 }
                 Statement::LibImport { lib_name, loc, .. } => {
                     self.link_user_lib(lib_name, loc);

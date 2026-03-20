@@ -481,7 +481,7 @@ fn run_instr_rewrite<'lib, 'ir>(
 ) -> Result<(), ()> {
     let table = metadata_collector.table;
     let err = metadata_collector.err;
-    let ast = metadata_collector.ast;
+    let mut ast = metadata_collector.ast;
     let used_funcs = metadata_collector.used_bound_fns;
     let used_strings = metadata_collector.strings_to_emit;
     let has_probe_state_init = metadata_collector.has_probe_state_init;
@@ -489,25 +489,44 @@ fn run_instr_rewrite<'lib, 'ir>(
 
     let mut registry = WasmRegistry::new(&static_libs, &user_lib_paths, err);
 
-    // Phase 0 of instrumentation (emit bound variables and fns)
-    let mut init = InitGenerator {
-        emitter: ModuleEmitter::new(
-            InjectStrategy::Rewriting,
-            target_wasm,
-            table,
-            mem_allocator,
-            utils_adapter,
-            map_lib_adapter,
-            report_vars,
-            &mut registry,
-        ),
-        context_name: "".to_string(),
+    // Phase 0 of instrumentation (emit bound variables and fns).
+    // Scoped so that init's borrows on err, table, and mem_allocator are released
+    // before the fold pass and InstrGenerator need them.
+    {
+        let mut init = InitGenerator {
+            emitter: ModuleEmitter::new(
+                InjectStrategy::Rewriting,
+                target_wasm,
+                table,
+                mem_allocator,
+                utils_adapter,
+                map_lib_adapter,
+                report_vars,
+                &mut registry,
+            ),
+            context_name: "".to_string(),
+            err,
+            used_exports_per_lib,
+            user_lib_modules,
+            injected_funcs,
+        };
+        init.run(whamm, used_funcs, used_strings, has_probe_state_init);
+    } // init dropped: err, table, mem_allocator borrows released
+
+    if err.has_errors {
+        return Err(());
+    }
+
+    // Fold probe bodies (constant propagation + dead-branch elimination) now that
+    // the string table is finalized. Predicates are intentionally skipped here —
+    // they are re-folded per opcode in InstrGenerator with per-site static context.
+    crate::generator::folding::pass::run(
+        &mut ast,
+        false,
+        table,
+        &mem_allocator.emitted_strings,
         err,
-        used_exports_per_lib,
-        user_lib_modules,
-        injected_funcs,
-    };
-    init.run(whamm, used_funcs, used_strings, has_probe_state_init);
+    );
     if err.has_errors {
         return Err(());
     }

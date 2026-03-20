@@ -138,9 +138,9 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
         alloc_base: Option<LocalID>,
         lib_calls: &[(Option<u32>, String, WirmType)],
         whamm_params: &WhammParams,
-        dynamic_pred: Option<&mut Expr>,
+        dynamic_pred: Option<&Expr>,
         results: &[WirmType],
-        body: &mut Block,
+        body: &Block,
         export: bool,
         loc: &Option<Location>,
         err: &mut ErrorGen,
@@ -247,9 +247,9 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
         &mut self,
         name: Option<String>,
         params: &[WirmType],
-        dynamic_pred: Option<&mut Expr>,
+        dynamic_pred: Option<&Expr>,
         results: &[WirmType],
-        block: &mut Block,
+        block: &Block,
         export: bool,
         loc: &Option<Location>,
         err: &mut ErrorGen,
@@ -257,9 +257,9 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
         let func = FunctionBuilder::new(params, results);
         self.emitting_func = Some(func);
 
+        // emit the function body (wrapping with predicate conditional if needed)
         if let Some(dynamic_pred) = dynamic_pred {
-            // overwrite the body by wrapping it with the predicate conditional!
-            *block = Block {
+            let wrapped_block = Block {
                 stmts: vec![Statement::If {
                     cond: dynamic_pred.clone(),
                     conseq: block.clone(),
@@ -269,10 +269,10 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
                 results: None,
                 loc: None,
             };
+            self.emit_body(&wrapped_block, err);
+        } else {
+            self.emit_body(block, err);
         }
-
-        // emit the function body
-        self.emit_body(block, err);
 
         // emit the function
         if let Some(func) = self.emitting_func.take() {
@@ -646,7 +646,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
     /// It is assumed that the statement passed here is a VALID global statement!
     /// (we've gone through several checks before this)
     /// Returns the start_fid (if it was created)
-    pub fn emit_global_stmt(&mut self, stmt: &mut Statement, err: &mut ErrorGen) -> Option<u32> {
+    pub fn emit_global_stmt(&mut self, stmt: &Statement, err: &mut ErrorGen) -> Option<u32> {
         let (start_fid, was_created) = ModuleEmitter::get_or_create_start_func(self.app_wasm);
         let mut start = self
             .app_wasm
@@ -724,7 +724,7 @@ impl Emitter for ModuleEmitter<'_, '_> {
     fn reset_locals_for_function(&mut self) {
         self.locals_tracker.reset_function();
     }
-    fn emit_body(&mut self, body: &mut Block, err: &mut ErrorGen) -> bool {
+    fn emit_body(&mut self, body: &Block, err: &mut ErrorGen) -> bool {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_body(
                 body,
@@ -746,7 +746,7 @@ impl Emitter for ModuleEmitter<'_, '_> {
         }
     }
 
-    fn emit_stmt(&mut self, stmt: &mut Statement, err: &mut ErrorGen) -> bool {
+    fn emit_stmt(&mut self, stmt: &Statement, err: &mut ErrorGen) -> bool {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_stmt(
                 stmt,
@@ -768,7 +768,7 @@ impl Emitter for ModuleEmitter<'_, '_> {
         }
     }
 
-    fn emit_expr(&mut self, expr: &mut Expr, err: &mut ErrorGen) -> bool {
+    fn emit_expr(&mut self, expr: &Expr, err: &mut ErrorGen) -> bool {
         if let Some(emitting_func) = &mut self.emitting_func {
             emit_expr(
                 expr,

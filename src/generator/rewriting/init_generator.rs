@@ -141,7 +141,7 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_> {
                     loc,
                     ..
                 } => {
-                    let mut assign = Statement::Assign {
+                    let assign = Statement::Assign {
                         var_id: Expr::VarId {
                             name: name.clone(),
                             definition: *definition,
@@ -152,7 +152,7 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_> {
                     };
                     maybe_add_start_fn(
                         self.injected_funcs,
-                        self.emitter.emit_global_stmt(&mut assign, self.err),
+                        self.emitter.emit_global_stmt(&assign, self.err),
                     )
                 }
                 Statement::LibImport { lib_name, loc, .. } => {

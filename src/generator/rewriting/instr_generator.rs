@@ -258,13 +258,13 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                         probe.predicate.clone(),
                         probe.loc.clone(),
                     );
-                    if let Some(pred) = &mut pred_clone {
-                        // Fold predicate
-                        is_success = self.emitter.fold_expr(pred, self.err);
+                    pred_clone = if let Some(pred) = pred_clone {
+                        // Fold predicate with per-opcode symbol table context
+                        let folded = self.emitter.fold_expr(&pred, self.err);
 
                         // If the predicate evaluates to false, short-circuit!
                         if let Some(pred_as_bool) = ExprFolder::get_single_bool(
-                            pred,
+                            &folded,
                             self.emitter.registry,
                             &self.emitter.mem_allocator.emitted_strings,
                             false,
@@ -274,7 +274,10 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                                 continue;
                             }
                         }
-                    }
+                        Some(folded)
+                    } else {
+                        None
+                    };
 
                     self.curr_instr_args = loc_info.args.clone(); // must clone so that this lives long enough
                     self.curr_instr_results = loc_info.results.clone(); // must clone so that this lives long enough
@@ -518,15 +521,13 @@ impl InstrGenerator<'_, '_> {
                 // emit an unpredicated body
                 (false, true) => self.emit_body(),
                 // emit empty if block
-                (true, false) => {
-                    match self.emitter.emit_if(pred, &mut Block::default(), self.err) {
-                        Err(e) => {
-                            self.err.add_error(*e);
-                            false
-                        }
-                        Ok(res) => res,
+                (true, false) => match self.emitter.emit_if(pred, &Block::default(), self.err) {
+                    Err(e) => {
+                        self.err.add_error(*e);
+                        false
                     }
-                }
+                    Ok(res) => res,
+                },
                 // emit nothing
                 (true, true) => true,
             }
@@ -552,17 +553,18 @@ impl InstrGenerator<'_, '_> {
                 // unpredicated body
                 (false, true) => self.emit_body(),
                 // empty if stmt
-                (true, false) => match self.emitter.emit_if_with_orig_as_else(
-                    pred,
-                    &mut Block::default(),
-                    self.err,
-                ) {
-                    Err(e) => {
-                        self.err.add_error(*e);
-                        false
+                (true, false) => {
+                    match self
+                        .emitter
+                        .emit_if_with_orig_as_else(pred, &Block::default(), self.err)
+                    {
+                        Err(e) => {
+                            self.err.add_error(*e);
+                            false
+                        }
+                        Ok(res) => res,
                     }
-                    Ok(res) => res,
-                },
+                }
                 // emit nothing
                 (true, true) => true,
             }

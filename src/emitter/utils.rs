@@ -6,7 +6,6 @@ use crate::emitter::tag_handler::get_tag_for;
 use crate::emitter::InjectStrategy;
 use crate::generator::ast::Probe;
 use crate::generator::folding::expr::ExprFolder;
-use crate::generator::folding::stmt::StmtFolder;
 use crate::lang_features::libraries::core::maps::map_adapter::{MapLibAdapter, MAP_LIB_MEM_OFFSET};
 use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::registry::WasmRegistry;
@@ -83,62 +82,50 @@ pub fn emit_probes<'h, T: Opcode<'h> + MacroOpcode<'h> + AddLocal>(
 }
 
 pub fn emit_body<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    body: &mut Block,
+    body: &Block,
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
     let mut is_success = true;
-    for stmt in body.stmts.iter_mut() {
+    for stmt in body.stmts.iter() {
         is_success &= emit_stmt(stmt, strategy, injector, ctx);
     }
     is_success
 }
 
 pub fn emit_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    stmt: &mut Statement,
+    stmt: &Statement,
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
-    let mut is_success = true;
-    let mut folded_stmt = StmtFolder::fold_stmt(
-        stmt,
-        strategy.as_monitor_module(),
-        ctx.table,
-        &ctx.mem_allocator.emitted_strings,
-        ctx.err,
-    );
-    for s in folded_stmt.stmts.iter_mut() {
-        // Check if this is calling a bound, static function!
-        if let Statement::Expr {
-            expr: Expr::Call {
-                fn_target, args, ..
-            },
-            ..
-        } = s
-        {
-            let fn_name = match &**fn_target {
-                Expr::VarId { name, .. } => name.clone(),
-                _ => return false,
-            };
-            let Some(Record::Fn { def, .. }) = ctx.table.lookup_fn(fn_name.as_str(), true) else {
-                unreachable!("unexpected type");
-            };
-            if matches!(def, Definition::CompilerStatic) {
-                // We want to handle this as unique logic rather than a simple function call to be emitted
-                return handle_special_fn_call(fn_name, args, strategy, injector, ctx);
-            }
+    // Probe bodies are pre-folded by FoldPass (dead-branch elimination).
+    // Check whether this is a call to a bound, static function.
+    if let Statement::Expr {
+        expr: Expr::Call {
+            fn_target, args, ..
+        },
+        ..
+    } = stmt
+    {
+        let fn_name = match &**fn_target {
+            Expr::VarId { name, .. } => name.clone(),
+            _ => return false,
+        };
+        let Some(Record::Fn { def, .. }) = ctx.table.lookup_fn(fn_name.as_str(), true) else {
+            unreachable!("unexpected type");
+        };
+        if matches!(def, Definition::CompilerStatic) {
+            return handle_special_fn_call(fn_name, args, strategy, injector, ctx);
         }
-        is_success &= emit_stmt_inner(s, strategy, injector, ctx);
     }
-
-    is_success
+    emit_stmt_inner(stmt, strategy, injector, ctx)
 }
 
 fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     target_fn_name: String,
-    args: &mut [Expr],
+    args: &[Expr],
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -159,9 +146,9 @@ fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
             unreachable!("static function call should already be handled: {target_fn_name}")
         }
-        "memcpy" => handle_memcpy(&mut folded_args, strategy, injector, ctx),
-        "write_str" => handle_write_str(&mut folded_args, strategy, injector, ctx),
-        "read_str" => handle_read_str(&mut folded_args, strategy, injector, ctx),
+        "memcpy" => handle_memcpy(&folded_args, strategy, injector, ctx),
+        "write_str" => handle_write_str(&folded_args, strategy, injector, ctx),
+        "read_str" => handle_read_str(&folded_args, strategy, injector, ctx),
         _ => {
             unreachable!(
                 "{} Could not find handler for static function with name: {}",
@@ -172,7 +159,7 @@ fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 }
 
 fn handle_memcpy<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    args: &mut [Expr],
+    args: &[Expr],
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -203,7 +190,7 @@ fn handle_memcpy<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 }
 
 fn handle_write_str<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    args: &mut [Expr],
+    args: &[Expr],
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -214,7 +201,7 @@ fn handle_write_str<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         .unwrap_or_else(|| unreachable!());
 
     // handle the string parameter
-    emit_expr(&mut args[2], None, strategy, injector, ctx);
+    emit_expr(&args[2], None, strategy, injector, ctx);
     let str_len = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
     injector.local_set(str_len);
     let str_ptr = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
@@ -234,7 +221,7 @@ fn handle_write_str<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 }
 
 fn handle_read_str<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    args: &mut [Expr],
+    args: &[Expr],
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -245,11 +232,11 @@ fn handle_read_str<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         .unwrap_or_else(|| unreachable!());
 
     let str_ptr = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
-    emit_expr(&mut args[1], None, strategy, injector, ctx);
+    emit_expr(&args[1], None, strategy, injector, ctx);
     injector.local_set(str_ptr);
 
     let str_len = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
-    emit_expr(&mut args[2], None, strategy, injector, ctx);
+    emit_expr(&args[2], None, strategy, injector, ctx);
     injector.local_set(str_len);
 
     let dst_ptr = ctx.mem_allocator.mem_tracker_global;
@@ -274,7 +261,7 @@ fn handle_read_str<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 }
 
 fn emit_stmt_inner<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    stmt: &mut Statement,
+    stmt: &Statement,
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -309,7 +296,7 @@ fn emit_stmt_inner<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 }
 
 fn emit_decl_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    stmt: &mut Statement,
+    stmt: &Statement,
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
@@ -389,7 +376,7 @@ fn emit_decl_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 }
 fn handle_decl<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     addr: &mut Option<Vec<VarAddr>>,
-    ty: &mut DataType,
+    ty: &DataType,
     locals_tracker: &mut LocalsTracker,
     injector: &mut T,
 ) -> bool {
@@ -406,7 +393,7 @@ fn handle_decl<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     true
 }
 
-fn emit_unshared_decl_stmt(stmt: &mut Statement, ctx: &mut EmitCtx) -> bool {
+fn emit_unshared_decl_stmt(stmt: &Statement, ctx: &mut EmitCtx) -> bool {
     if let Statement::VarDecl { modifiers, .. } = stmt {
         if modifiers.is_unshared {
             // ignore, this statement has already been processed!
@@ -420,7 +407,7 @@ fn emit_unshared_decl_stmt(stmt: &mut Statement, ctx: &mut EmitCtx) -> bool {
 }
 
 fn emit_assign_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    stmt: &mut Statement,
+    stmt: &Statement,
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -509,7 +496,7 @@ fn emit_assign_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 }
 
 fn emit_set_map_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    stmt: &mut Statement,
+    stmt: &Statement,
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -672,7 +659,7 @@ pub fn block_type_to_wasm(block: &Block) -> BlockType {
 }
 
 fn possibly_emit_memaddr_calc_offset<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    var_id: &mut Expr,
+    var_id: &Expr,
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
@@ -700,7 +687,7 @@ fn possibly_emit_memaddr_calc_offset<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + Ad
 }
 
 fn emit_set<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    var_id: &mut Expr,
+    var_id: &Expr,
     idx: Option<usize>, // optionally specify a specific part of the expression to set
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -766,8 +753,8 @@ fn addr_set<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 }
 
 fn emit_if_preamble<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    condition: &mut Expr,
-    conseq: &mut Block,
+    condition: &Expr,
+    conseq: &Block,
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -786,9 +773,9 @@ fn emit_if_preamble<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 }
 
 fn emit_if_else_preamble<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    condition: &mut Expr,
-    conseq: &mut Block,
-    alternate: &mut Block,
+    condition: &Expr,
+    conseq: &Block,
+    alternate: &Block,
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -809,8 +796,8 @@ fn emit_if_else_preamble<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 }
 
 fn emit_if<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    condition: &mut Expr,
-    conseq: &mut Block,
+    condition: &Expr,
+    conseq: &Block,
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -825,9 +812,9 @@ fn emit_if<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 }
 
 fn emit_if_else<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    condition: &mut Expr,
-    conseq: &mut Block,
-    alternate: &mut Block,
+    condition: &Expr,
+    conseq: &Block,
+    alternate: &Block,
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -841,16 +828,15 @@ fn emit_if_else<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     is_success
 }
 
-// TODO: emit_expr has two mutable references to the name object, the injector has module data in it
 pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    expr: &mut Expr,
+    expr: &Expr,
     idx: Option<usize>, // optionally specify a specific part of the expression to emit
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
     // fold it first!
-    let mut folded_expr = ExprFolder::fold_expr(
+    let folded_expr = ExprFolder::fold_expr(
         expr,
         ctx.registry,
         strategy.as_monitor_module(),
@@ -858,11 +844,11 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         &ctx.mem_allocator.emitted_strings,
         ctx.err,
     );
-    match &mut folded_expr {
+    match &folded_expr {
         Expr::UnOp {
             op, expr, done_on, ..
         } => {
-            let mut is_success = emit_expr(&mut *expr, None, strategy, injector, ctx);
+            let mut is_success = emit_expr(expr, None, strategy, injector, ctx);
             is_success &= emit_unop(op, done_on, injector);
             is_success
         }
@@ -873,8 +859,8 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             done_on,
             ..
         } => {
-            let mut is_success = emit_expr(&mut *lhs, None, strategy, injector, ctx);
-            is_success &= emit_expr(&mut *rhs, None, strategy, injector, ctx);
+            let mut is_success = emit_expr(lhs, None, strategy, injector, ctx);
+            is_success &= emit_expr(rhs, None, strategy, injector, ctx);
             is_success &= emit_binop(op, done_on, injector, ctx);
             is_success
         }
@@ -891,28 +877,23 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                                 The result type of the ternary should have been set in the type checker.", ctx.err_msg);
             }
 
-            emit_if_else(
-                &mut *cond,
-                &mut Block {
-                    stmts: vec![Statement::Expr {
-                        expr: *(*conseq).clone(),
-                        loc: None,
-                    }],
-                    results: Some(ty.clone()),
+            let conseq_block = Block {
+                stmts: vec![Statement::Expr {
+                    expr: *(*conseq).clone(),
                     loc: None,
-                },
-                &mut Block {
-                    stmts: vec![Statement::Expr {
-                        expr: *(*alt).clone(),
-                        loc: None,
-                    }],
-                    results: Some(ty.clone()),
+                }],
+                results: Some(ty.clone()),
+                loc: None,
+            };
+            let alt_block = Block {
+                stmts: vec![Statement::Expr {
+                    expr: *(*alt).clone(),
                     loc: None,
-                },
-                strategy,
-                injector,
-                ctx,
-            )
+                }],
+                results: Some(ty.clone()),
+                loc: None,
+            };
+            emit_if_else(cond, &conseq_block, &alt_block, strategy, injector, ctx)
         }
         Expr::ObjCall {
             obj_name: lib_name,
@@ -920,7 +901,7 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             ..
         } => {
             ctx.in_obj_call_on = Some(lib_name.clone());
-            let is_success = emit_expr(&mut *call, None, strategy, injector, ctx);
+            let is_success = emit_expr(call, None, strategy, injector, ctx);
 
             ctx.in_obj_call_on = None;
             is_success
@@ -974,7 +955,7 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 
             // emit the arguments
             let mut is_success = true;
-            for arg in args.iter_mut() {
+            for arg in args.iter() {
                 is_success = emit_expr(arg, None, strategy, injector, ctx);
             }
 
@@ -991,7 +972,7 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                                                     } else {
                                                         "".to_string()
                                                     },
-                                                    fn_name), expr.loc());
+                                                    fn_name), folded_expr.loc());
             }
             is_success
         }
@@ -1052,7 +1033,7 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             }
         }
         Expr::Primitive { val, .. } => emit_value(val, idx, strategy, injector, ctx),
-        Expr::MapGet { .. } => emit_map_get(expr, strategy, injector, ctx),
+        Expr::MapGet { .. } => emit_map_get(&folded_expr, strategy, injector, ctx),
     }
 }
 
@@ -1061,23 +1042,11 @@ fn handle_type_utils_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     target_var_ty: &DataType,
     target_var_def: Definition,
     target_fn_name: String,
-    args: &mut [Expr],
+    args: &[Expr],
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
-    let mut folded_args = vec![];
-    for arg in args.iter() {
-        folded_args.push(ExprFolder::fold_expr(
-            arg,
-            ctx.registry,
-            strategy.as_monitor_module(),
-            ctx.table,
-            &ctx.mem_allocator.emitted_strings,
-            ctx.err,
-        ));
-    }
-
     match target_var_ty {
         DataType::Str => handle_type_utils_string(
             target_var_name,
@@ -1095,24 +1064,22 @@ fn handle_type_utils_string<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     target_var_name: &str,
     target_var_def: Definition,
     target_fn_name: String,
-    args: &mut [Expr],
+    args: &[Expr],
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
-    let mut target = Expr::VarId {
+    let target = Expr::VarId {
         name: target_var_name.to_string(),
         definition: target_var_def,
         loc: None,
     };
     match target_fn_name.as_str() {
-        "addr" => StringUtils::addr_of(&mut target, strategy, injector, ctx),
-        "len" => StringUtils::len_dynamic(&mut target, strategy, injector, ctx),
-        "starts_with" => {
-            StringUtils::starts_with_dynamic(&mut target, args, strategy, injector, ctx)
-        }
-        "ends_with" => StringUtils::ends_with_dynamic(&mut target, args, strategy, injector, ctx),
-        "contains" => StringUtils::contains_dynamic(&mut target, args, strategy, injector, ctx),
+        "addr" => StringUtils::addr_of(&target, strategy, injector, ctx),
+        "len" => StringUtils::len_dynamic(&target, strategy, injector, ctx),
+        "starts_with" => StringUtils::starts_with_dynamic(&target, args, strategy, injector, ctx),
+        "ends_with" => StringUtils::ends_with_dynamic(&target, args, strategy, injector, ctx),
+        "contains" => StringUtils::contains_dynamic(&target, args, strategy, injector, ctx),
         _ => {
             unreachable!(
                 "{} Could not find handler for static function with name: {}",
@@ -2185,7 +2152,7 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
 }
 
 fn emit_value<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    val: &mut Value,
+    val: &Value,
     idx: Option<usize>, // optionally specify a specific part of the expression to emit
     strategy: InjectStrategy,
     injector: &mut T,
@@ -2279,7 +2246,7 @@ fn emit_value<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             }
         }
         Value::Tuple { vals, .. } => {
-            for val in vals.iter_mut() {
+            for val in vals.iter() {
                 is_success &= emit_expr(val, None, strategy, injector, ctx);
             }
         }
@@ -2306,7 +2273,7 @@ fn emit_value<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 }
 
 fn emit_map_get<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-    expr: &mut Expr,
+    expr: &Expr,
     strategy: InjectStrategy,
     injector: &mut T,
     ctx: &mut EmitCtx,
@@ -2339,7 +2306,7 @@ fn emit_map_get<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                     }
                     other => unreachable!("Did not expect this address type: {:?}", other),
                 };
-                emit_expr(key, None, strategy, injector, ctx);
+                emit_expr(key.as_ref(), None, strategy, injector, ctx);
                 ctx.map_lib_adapter.map_get(
                     key_ty,
                     val_ty,
@@ -2359,7 +2326,7 @@ fn emit_map_get<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         ctx.err_msg
     );
 }
-fn get_map_info(name: &mut str, ctx: &mut EmitCtx) -> Option<(VarAddr, DataType, DataType)> {
+fn get_map_info(name: &str, ctx: &mut EmitCtx) -> Option<(VarAddr, DataType, DataType)> {
     let Some(Record::Var { ty, addr, .. }) = ctx.table.lookup_var(name, true) else {
         unreachable!("unexpected type");
     };

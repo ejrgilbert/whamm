@@ -59,7 +59,7 @@ impl StringUtils {
 }
 impl StringUtils {
     pub(crate) fn addr_of<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-        target: &mut Expr,
+        target: &Expr,
         strategy: InjectStrategy,
         injector: &mut T,
         ctx: &mut EmitCtx,
@@ -71,7 +71,7 @@ impl StringUtils {
         true
     }
     pub(crate) fn len_dynamic<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-        target: &mut Expr,
+        target: &Expr,
         strategy: InjectStrategy,
         injector: &mut T,
         ctx: &mut EmitCtx,
@@ -87,13 +87,13 @@ impl StringUtils {
     }
 
     pub(crate) fn starts_with_dynamic<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-        target: &mut Expr,
-        args: &mut [Expr],
+        target: &Expr,
+        args: &[Expr],
         strategy: InjectStrategy,
         injector: &mut T,
         ctx: &mut EmitCtx,
     ) -> bool {
-        let prefix = &mut args[0];
+        let prefix = &args[0];
 
         // str0_addr = var.addr()
         Self::addr_of(target, strategy, injector, ctx);
@@ -105,7 +105,7 @@ impl StringUtils {
         emit_expr(prefix, None, strategy, injector, ctx);
 
         emit_expr(
-            &mut Expr::Call {
+            &Expr::Call {
                 fn_target: Box::new(Expr::VarId {
                     name: "strcmp".to_string(),
                     definition: Definition::CompilerDynamic,
@@ -122,13 +122,13 @@ impl StringUtils {
     }
 
     pub(crate) fn ends_with_dynamic<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-        target: &mut Expr,
-        args: &mut [Expr],
+        target: &Expr,
+        args: &[Expr],
         strategy: InjectStrategy,
         injector: &mut T,
         ctx: &mut EmitCtx,
     ) -> bool {
-        let suffix = &mut args[0];
+        let suffix = &args[0];
 
         // str0_addr = (var.addr() + (var.len() - 1)) - (suffix.len() - 1)
         Self::addr_of(target, strategy, injector, ctx);
@@ -144,7 +144,7 @@ impl StringUtils {
         emit_expr(suffix, None, strategy, injector, ctx);
 
         emit_expr(
-            &mut Expr::Call {
+            &Expr::Call {
                 fn_target: Box::new(Expr::VarId {
                     name: "strcmp".to_string(),
                     definition: Definition::CompilerDynamic,
@@ -161,13 +161,13 @@ impl StringUtils {
     }
 
     pub(crate) fn contains_dynamic<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
-        target: &mut Expr,
-        args: &mut [Expr],
+        target: &Expr,
+        args: &[Expr],
         strategy: InjectStrategy,
         injector: &mut T,
         ctx: &mut EmitCtx,
     ) -> bool {
-        let needle = &mut args[0];
+        let needle = &args[0];
 
         // --- Locals ---
         let haystack_addr = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
@@ -233,7 +233,7 @@ impl StringUtils {
         injector.local_get(needle_len);
 
         emit_expr(
-            &mut Expr::Call {
+            &Expr::Call {
                 fn_target: Box::new(Expr::VarId {
                     name: "strcmp".to_string(),
                     definition: Definition::CompilerDynamic,
