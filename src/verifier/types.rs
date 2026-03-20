@@ -39,9 +39,14 @@ impl SymbolTable {
     }
 
     pub fn set_curr_scope_info(&mut self, name: String, ty: ScopeType) {
-        let curr = self.get_curr_scope_mut().unwrap();
-        curr.name = name;
-        curr.ty = ty;
+        let curr_id = self.curr_scope;
+        let parent_id = self.scopes[curr_id].parent;
+        self.scopes[curr_id].name = name.clone();
+        self.scopes[curr_id].ty = ty;
+        // Register in parent's child_by_name for O(1) enter_named_scope lookups.
+        if let Some(parent_id) = parent_id {
+            self.scopes[parent_id].child_by_name.insert(name, curr_id);
+        }
     }
 
     pub fn reset(&mut self) {
@@ -51,31 +56,22 @@ impl SymbolTable {
         }
     }
 
+    /// Enter a child scope by name in O(1) via `Scope::child_by_name`.
+    ///
+    /// The old implementation scanned `children: Vec<usize>` linearly; with many
+    /// probes per event the cost adds up across every re-traversal pass
+    /// (verifier, metadata_collector, generator).  `child_by_name` is populated
+    /// once during the build pass (see `set_curr_scope_info`) so subsequent
+    /// lookups are a single hash probe.
     pub fn enter_named_scope(&mut self, scope_name: &str) -> bool {
-        let curr = self.get_curr_scope_mut().unwrap();
-        let children = curr.children.clone();
-
-        let mut new_curr_scope = None;
-        let mut new_next = None;
-        for (i, child_id) in children.iter().enumerate() {
-            if let Some(child_scope) = self.scopes.get_mut(*child_id) {
-                if child_scope.name == scope_name {
-                    new_curr_scope = Some(*child_id);
-                    new_next = Some(i + 1);
-                    child_scope.reset();
-                }
-            }
+        let curr_id = self.curr_scope;
+        if let Some(&child_id) = self.scopes[curr_id].child_by_name.get(scope_name) {
+            self.scopes[child_id].reset();
+            self.curr_scope = child_id;
+            true
+        } else {
+            false
         }
-
-        // create new instance fix Rust's compilation issue.
-        let curr = self.get_curr_scope_mut().unwrap();
-        if let (Some(new_curr), Some(new_next)) = (new_curr_scope, new_next) {
-            curr.next = new_next;
-            self.curr_scope = new_curr;
-            return true;
-        }
-
-        false
     }
 
     pub fn enter_scope_via_rule(
@@ -239,42 +235,21 @@ impl SymbolTable {
 
         new_rec_id
     }
-    pub fn lookup_rec_with_context(&self, key: &str) -> (Option<&Record>, String) {
-        if let (Some(id), _, context) = self.lookup_with_context(key) {
-            if let Some(rec) = self.get_record(id) {
-                return (Some(rec), context);
-            }
-        }
-        (None, "".to_string())
-    }
-    pub fn lookup_rec(&self, key: &str) -> Option<&Record> {
-        if let Some(id) = self.lookup(key) {
-            if let Some(rec) = self.get_record(id) {
-                return Some(rec);
-            }
-        }
-        None
-    }
-    pub fn lookup_rec_mut(&mut self, key: &str) -> Option<(usize, &mut Record)> {
-        let id = self.lookup(key)?;
-        if let Some(rec) = self.get_record_mut(id) {
-            return Some((id, rec));
-        }
-        None
-    }
-
     fn no_match<T: Debug>(rec: T, exp: &str) {
         panic!("Unexpected record type. Expected {}, found: {:?}", exp, rec)
     }
 
     pub fn lookup_lib(&self, key: &str, fail_on_miss: bool) -> Option<&Record> {
-        let res = self.lookup_rec(key).and_then(|rec| {
-            if matches!(rec, Record::Library { .. }) {
-                Some(rec)
-            } else {
-                None
-            }
-        });
+        let res = self
+            .lookup(key)
+            .and_then(|id| self.get_record(id))
+            .and_then(|rec| {
+                if matches!(rec, Record::Library { .. }) {
+                    Some(rec)
+                } else {
+                    None
+                }
+            });
 
         if res.is_none() && fail_on_miss {
             Self::no_match(res, "Library");
@@ -282,13 +257,16 @@ impl SymbolTable {
         res
     }
     pub fn lookup_lib_mut(&mut self, key: &str) -> Option<&mut Record> {
-        let res = self.lookup_rec_mut(key).and_then(|(_, rec)| {
-            if matches!(rec, Record::Library { .. }) {
-                Some(rec)
-            } else {
-                None
-            }
-        });
+        let res = self
+            .lookup(key)
+            .and_then(|id| self.get_record_mut(id))
+            .and_then(|rec| {
+                if matches!(rec, Record::Library { .. }) {
+                    Some(rec)
+                } else {
+                    None
+                }
+            });
 
         if res.is_none() {
             Self::no_match(&res, "Library");
@@ -306,16 +284,17 @@ impl SymbolTable {
         key: &str,
         panic_if_missing: bool,
     ) -> Option<(usize, &mut Record)> {
-        if let Some((id, rec)) = self.lookup_rec_mut(key) {
-            if matches!(rec, Record::Var { .. }) {
-                Some((id, rec))
-            } else {
-                if panic_if_missing {
+        if let Some(id) = self.lookup(key) {
+            if let Some(rec) = self.get_record_mut(id) {
+                if matches!(rec, Record::Var { .. }) {
+                    return Some((id, rec));
+                } else if panic_if_missing {
                     Self::no_match(rec, "Var");
                 }
-                None
+                return None;
             }
-        } else if panic_if_missing {
+        }
+        if panic_if_missing {
             panic!("Could not find var for: {}", key)
         } else {
             None
@@ -323,7 +302,7 @@ impl SymbolTable {
     }
 
     pub fn lookup_var(&self, key: &str, fail_on_miss: bool) -> Option<&Record> {
-        if let Some(rec) = self.lookup_rec(key) {
+        if let Some(rec) = self.lookup(key).and_then(|id| self.get_record(id)) {
             if matches!(rec, Record::Var { .. } | Record::Library { .. }) {
                 Some(rec)
             } else {
@@ -341,7 +320,8 @@ impl SymbolTable {
         }
     }
     pub fn lookup_fn_with_context(&self, key: &str) -> (Option<&Record>, String) {
-        if let (Some(rec), context) = self.lookup_rec_with_context(key) {
+        let (id, _, context) = self.lookup_with_context(key);
+        if let Some(rec) = id.and_then(|id| self.get_record(id)) {
             if matches!(rec, Record::Fn { .. }) {
                 (Some(rec), context)
             } else {
@@ -353,7 +333,7 @@ impl SymbolTable {
         }
     }
     pub fn lookup_fn(&self, key: &str, fail_on_miss: bool) -> Option<&Record> {
-        if let Some(rec) = self.lookup_rec(key) {
+        if let Some(rec) = self.lookup(key).and_then(|id| self.get_record(id)) {
             if matches!(rec, Record::Fn { .. }) {
                 Some(rec)
             } else {
@@ -370,7 +350,7 @@ impl SymbolTable {
         }
     }
     pub fn lookup_fn_mut(&mut self, key: &str) -> Option<&mut Record> {
-        if let Some((_, rec)) = self.lookup_rec_mut(key) {
+        if let Some(rec) = self.lookup(key).and_then(|id| self.get_record_mut(id)) {
             if matches!(rec, Record::Fn { .. }) {
                 Some(rec)
             } else {
@@ -416,7 +396,11 @@ impl SymbolTable {
     }
 
     pub fn lookup_type_util_fn(&self, ty: &DataType, fn_name: &str) -> Option<&Record> {
-        let Record::Whamm { type_utils, .. } = self.lookup_rec("whamm").unwrap() else {
+        let Record::Whamm { type_utils, .. } = self
+            .lookup("whamm")
+            .and_then(|id| self.get_record(id))
+            .unwrap()
+        else {
             unreachable!("{UNEXPECTED_ERR_MSG} Expected Whamm type")
         };
         if let Some(utils_rec_id) = type_utils.get(ty) {
@@ -549,6 +533,12 @@ pub struct Scope {
     children: Vec<usize>,  // indexes into SymbolTable::scopes
     next: usize,           // indexes into this::children
 
+    /// Maps child scope name → child scope id for O(1) `enter_named_scope` lookups.
+    /// Populated lazily by `SymbolTable::set_curr_scope_info` during the build pass;
+    /// `enter_named_scope` previously did an O(n) scan of `children` on every
+    /// re-traversal (verifier, metadata_collector, generator).
+    child_by_name: HashMap<String, usize>, // indexes into SymbolTable::scopes
+
     pub containing_script: Option<usize>, // indexes into SymbolTable::records
     records: HashMap<String, usize>,      // indexes into SymbolTable::records
 }
@@ -563,6 +553,7 @@ impl Scope {
             next: 0,
             parent,
             children: vec![],
+            child_by_name: HashMap::new(),
 
             records: HashMap::new(),
         }

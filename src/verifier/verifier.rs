@@ -162,10 +162,8 @@ impl<'a> TypeChecker<'a> {
 
     fn lookup_var_type(&mut self, name: &str, loc: &Option<Location>) -> Option<DataType> {
         if let Some(id) = self.table.lookup(name) {
-            if let Some(rec) = self.table.get_record(id) {
-                if let Record::Var { ty, .. } = rec {
-                    return Some(ty.clone());
-                }
+            if let Some(Record::Var { ty, .. }) = self.table.get_record(id) {
+                return Some(ty.clone());
             }
         }
         self.err.type_check_error(
@@ -220,6 +218,7 @@ impl<'a> TypeChecker<'a> {
     /// `expected` is the assignment target type when this expression is the RHS of an assignment,
     /// or `None` when there is no assignment context (e.g. a standalone expression or the RHS is
     /// already wrapped in an explicit cast that handles the coercion).
+    #[allow(clippy::too_many_arguments)]
     fn check_arithmetic_binop(
         &mut self,
         lhs: &mut Expr,
@@ -446,7 +445,12 @@ impl<'a> TypeChecker<'a> {
     }
 
     fn get_type_utils(&self, ty: &DataType) -> Option<&HashMap<String, usize>> {
-        let Record::Whamm { type_utils, .. } = self.table.lookup_rec("whamm").unwrap() else {
+        let Record::Whamm { type_utils, .. } = self
+            .table
+            .lookup("whamm")
+            .and_then(|id| self.table.get_record(id))
+            .unwrap()
+        else {
             unreachable!("{UNEXPECTED_ERR_MSG} Expected Whamm type")
         };
         if let Some(utils_rec_id) = type_utils.get(ty) {
@@ -752,7 +756,11 @@ impl<'a> TypeChecker<'a> {
 
                 let curr_obj = self.curr_obj.first();
                 let rec = if let Some((obj_name, _)) = &curr_obj {
-                    let fns = match self.table.lookup_rec(obj_name) {
+                    let fns = match self
+                        .table
+                        .lookup(obj_name)
+                        .and_then(|id| self.table.get_record(id))
+                    {
                         Some(Record::Library { fns, .. }) => fns,
                         Some(Record::Var { ty, .. }) => {
                             if let Some(fns) = self.get_type_utils(ty) {
