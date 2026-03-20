@@ -445,14 +445,23 @@ impl<'a> MetadataCollector<'a> {
                 // check if bound, remember in metadata!
                 self.check_strcmp &= matches!(ty, DataType::Str);
 
-                if def.is_comp_defined() {
-                    // For wei: Request all!
+                if matches!(def, Definition::CompilerStatic | Definition::CompilerDynamic) {
+                    // For wei: Request all engine-provided vars!
                     // For B.R.: Only request dynamic data
+                    // CompilerDerived vars are computed locally in the probe body from
+                    // other engine vars; don't request them directly from the engine.
                     self.push_metadata(name, &ty);
                 }
                 expr.clone()
             }
             Expr::MapGet { map, key, loc } => {
+                let (def, ty, ..) = get_def(map, self.table);
+                if matches!(def, Definition::CompilerDynamic | Definition::User) {
+                    self.mark_expr_as_dynamic();
+                }
+                if def.is_comp_defined() {
+                    self.push_metadata(map, &ty);
+                }
                 let key = self.visit_expr_inner(key);
 
                 Expr::MapGet {
@@ -518,10 +527,18 @@ impl<'a> MetadataCollector<'a> {
                 stmt.clone()
             }
             Statement::Assign { var_id, expr, loc } => {
-                if let Expr::VarId { name, .. } = var_id {
+                if let Expr::VarId {
+                    name,
+                    definition: var_def,
+                    ..
+                } = var_id
+                {
                     let (def, _ty, loc) = get_def(name, self.table);
                     incr_times_set(name, self.table);
-                    if def.is_comp_defined()
+                    // Skip the WEI check for compiler-inserted derived-var assignments
+                    // (builder_visitor marks these with Definition::CompilerDerived in the AST).
+                    if *var_def != Definition::CompilerDerived
+                        && def.is_comp_defined()
                         && self.config.as_monitor_module
                         && !self.config.enable_wei_alt
                     {

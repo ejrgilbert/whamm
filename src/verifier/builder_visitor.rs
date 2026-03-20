@@ -564,8 +564,24 @@ impl SymbolTableBuilder<'_, '_> {
                     // this is a simple alias!
                     aliases.insert(name.clone(), alias.clone());
                 } else if let Expr::Primitive { val, .. } = derived_from {
-                    // This is a simple value that can be folded away
-                    self.add_global(ty.clone(), name.clone(), Some(val.clone()), *lifetime, None);
+                    // This is a simple value that can be folded away.
+                    // Resolve any NumericLiteral to a concrete Number using the declared type
+                    // so that downstream passes (ExprFolder, emitter) never see an unresolved literal.
+                    let resolved_val = if let Value::NumericLiteral { raw, fmt, token } = val {
+                        if let Some(num_lit) = Value::num_lit_from_raw(*raw, ty) {
+                            Value::Number {
+                                val: num_lit,
+                                ty: ty.clone(),
+                                token: token.clone(),
+                                fmt: fmt.clone(),
+                            }
+                        } else {
+                            val.clone()
+                        }
+                    } else {
+                        val.clone()
+                    };
+                    self.add_global(ty.clone(), name.clone(), Some(resolved_val), *lifetime, None);
                 } else {
                     // Add derived globals to the probe body itself (to calculate the value)
                     derived.insert(name.clone(), (ty.clone(), derived_from.clone()));
@@ -1003,6 +1019,14 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
                 } else if self.derived_vars.contains_key(name) {
                     self.used_derived_vars.insert(name.clone());
                 }
+            }
+            Expr::MapGet { map, key, .. } => {
+                if let Some(alias) = self.aliases.get(map.as_str()) {
+                    *map = alias.clone();
+                } else if self.derived_vars.contains_key(map.as_str()) {
+                    self.used_derived_vars.insert(map.clone());
+                }
+                self.visit_expr(key);
             }
             _ => {
                 traverse_expr_mut(self, expr);

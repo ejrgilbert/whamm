@@ -494,8 +494,21 @@ impl<'a> TypeChecker<'a> {
                     (None, Some(rhs_loc)) => (None, Some(rhs_loc.line_col.clone())),
                     _ => (None, None),
                 };
-                let lhs_ty_op = self.visit_expr_impl(lhs, expected);
-                let rhs_ty_op = self.visit_expr_impl(rhs, expected);
+                // Comparison and logical ops produce bool regardless of context;
+                // don't propagate the outer `expected` type to their operands.
+                let operand_expected = match op {
+                    BinOp::EQ
+                    | BinOp::NE
+                    | BinOp::GT
+                    | BinOp::LT
+                    | BinOp::GE
+                    | BinOp::LE
+                    | BinOp::And
+                    | BinOp::Or => None,
+                    _ => expected,
+                };
+                let lhs_ty_op = self.visit_expr_impl(lhs, operand_expected);
+                let rhs_ty_op = self.visit_expr_impl(rhs, operand_expected);
                 if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
                     *done_on = lhs_ty.clone();
                     match op {
