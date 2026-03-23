@@ -119,6 +119,9 @@ impl AstVisitor<bool> for MapLibPackage {
     fn visit_probe(&mut self, probe: &Probe) -> bool {
         // visit ALL!! so we can see if there's global scope maps
         let mut has_maps = self.visit_metadata(&probe.metadata);
+        for stmt in probe.init_logic.iter() {
+            has_maps |= self.visit_stmt(stmt);
+        }
         if let Some(body) = &probe.body {
             for stmt in body.stmts.iter() {
                 has_maps |= self.visit_stmt(stmt);

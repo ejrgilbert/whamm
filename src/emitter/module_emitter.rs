@@ -7,7 +7,6 @@ use crate::emitter::utils::{
 };
 use crate::emitter::{Emitter, InjectStrategy};
 use crate::generator::ast::{Probe, Script, WhammParams};
-use crate::generator::folding::expr::ExprFolder;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::libraries::core::maps::map_adapter::MapLibAdapter;
 use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
@@ -343,7 +342,6 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
                         self.strategy,
                         &mut on_exit,
                         &mut EmitCtx::new(
-                            self.registry,
                             self.table,
                             self.mem_allocator,
                             &mut self.locals_tracker,
@@ -659,7 +657,6 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
             self.strategy,
             &mut start,
             &mut EmitCtx::new(
-                self.registry,
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,
@@ -714,23 +711,9 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
         (fid, was_created)
     }
 
-    fn handle_special_fn_call(
-        &mut self,
-        target_fn_name: String,
-        args: &[Expr],
-        err: &mut ErrorGen,
-    ) -> bool {
-        let mut folded_args = vec![];
-        for arg in args.iter() {
-            folded_args.push(ExprFolder::fold_expr(
-                arg,
-                self.registry,
-                self.strategy.as_monitor_module(),
-                self.table,
-                &self.mem_allocator.emitted_strings,
-                err,
-            ));
-        }
+    fn handle_special_fn_call(&mut self, target_fn_name: String, args: &[Expr]) -> bool {
+        // Args are assumed to be already folded by the pre-emit fold pass (FoldPass / WeiGenerator).
+        let _folded_args = args;
 
         match target_fn_name.as_str() {
             "memcpy" => self.handle_memcpy(),
@@ -801,7 +784,7 @@ impl Emitter for ModuleEmitter<'_, '_> {
             };
             if matches!(def, Definition::CompilerStatic) {
                 // We want to handle this as unique logic rather than a simple function call to be emitted
-                if self.handle_special_fn_call(fn_name, args, err) {
+                if self.handle_special_fn_call(fn_name, args) {
                     return true;
                 }
             }
@@ -809,7 +792,6 @@ impl Emitter for ModuleEmitter<'_, '_> {
 
         // everything else can be emitted as normal!
         let mut ctx = EmitCtx::new(
-            self.registry,
             self.table,
             self.mem_allocator,
             &mut self.locals_tracker,
@@ -834,7 +816,6 @@ impl Emitter for ModuleEmitter<'_, '_> {
                 self.strategy,
                 emitting_func,
                 &mut EmitCtx::new(
-                    self.registry,
                     self.table,
                     self.mem_allocator,
                     &mut self.locals_tracker,

@@ -21,8 +21,8 @@ pub mod metadata_collector;
 #[cfg(test)]
 pub mod tests;
 
-fn create_curr_loc(curr_script_id: u8, probe: &ast::Probe) -> LocationData {
-    let probe_id = format!("{}_{}", probe.probe_number, probe.rule);
+fn create_curr_loc(curr_script_id: u8, probe: &ast::Probe, wei: bool) -> LocationData {
+    let probe_id = probe.to_string(wei);
 
     //set the current location in bytecode and load some new globals for potential report vars
     LocationData::Local {
@@ -97,6 +97,16 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
             is_success &= self.visit_stmt(stmt);
         });
         is_success
+    }
+    fn handle_lib_imports(&mut self, stmts: &mut [Statement]) {
+        for stmt in stmts.iter_mut() {
+            match stmt {
+                Statement::LibImport { lib_name, loc, .. } => {
+                    self.link_user_lib(lib_name, loc);
+                }
+                _ => {}
+            }
+        }
     }
     fn visit_global_stmts(&mut self, stmts: &mut [Statement]) -> bool;
     fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> bool {

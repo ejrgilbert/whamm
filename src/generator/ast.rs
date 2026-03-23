@@ -7,7 +7,6 @@ use crate::parser::types::{
 use itertools::Itertools;
 use log::error;
 use std::collections::{HashMap, HashSet};
-use std::fmt::{Display, Formatter};
 use std::process::exit;
 
 #[derive(Clone, Default)]
@@ -44,11 +43,6 @@ pub struct Probe {
     pub script_id: u8,
     pub loc: Option<Location>,
 }
-impl Display for Probe {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}_{}", self.probe_number, self.rule)
-    }
-}
 impl Probe {
     pub(crate) fn new(
         rule_str: String,
@@ -65,6 +59,9 @@ impl Probe {
             loc: Some(loc),
             ..Default::default()
         }
+    }
+    pub fn to_string(&self, wei: bool) -> String {
+        format!("{}_{}", self.probe_number, self.rule.to_string(wei))
     }
     pub(crate) fn set_pred(&mut self, pred: Option<Expr>) {
         self.predicate = pred;
@@ -138,18 +135,18 @@ impl From<String> for ProbeRule {
         }
     }
 }
-impl Display for ProbeRule {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if self.mode.name.is_empty() {
-            f.write_str(&format!(
+impl ProbeRule {
+    pub fn to_string(&self, wei: bool) -> String {
+        if wei {
+            format!(
                 "{}:{}:{}",
                 self.provider.name, self.package.name, self.event.name
-            ))
+            )
         } else {
-            f.write_str(&format!(
+            format!(
                 "{}:{}:{}:{}",
                 self.provider.name, self.package.name, self.event.name, self.mode.name
-            ))
+            )
         }
     }
 }

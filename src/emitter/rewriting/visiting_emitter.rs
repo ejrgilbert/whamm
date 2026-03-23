@@ -183,7 +183,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         &self,
         state: &mut MatchState,
         ast: &mut SimpleAST,
-        err: &mut ErrorGen
+        err: &mut ErrorGen,
     ) -> Option<LocInfo> {
         let (loc, at_func_end) = self.app_iter.curr_loc();
 
@@ -195,7 +195,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                 at_func_end,
                 curr_instr,
                 ast,
-                err
+                err,
             )
         } else {
             None
@@ -215,7 +215,6 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                     self.strategy,
                     &mut self.app_iter,
                     &mut EmitCtx::new(
-                        self.registry,
                         self.table,
                         self.mem_allocator,
                         &mut self.locals_tracker,
@@ -244,7 +243,6 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             &self.instr_created_args,
             &mut self.app_iter,
             &mut EmitCtx::new(
-                self.registry,
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,
@@ -267,7 +265,6 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             *param_rec_id,
             &mut self.app_iter,
             &mut EmitCtx::new(
-                self.registry,
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,
@@ -362,7 +359,6 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             &self.instr_created_results,
             &mut self.app_iter,
             &mut EmitCtx::new(
-                self.registry,
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,
@@ -437,6 +433,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             false,
             self.table,
             &self.mem_allocator.emitted_strings,
+            &self.app_iter.module,
             err,
         )
     }
@@ -647,17 +644,8 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         args: &[Expr],
         err: &mut ErrorGen,
     ) -> bool {
-        let mut folded_args = vec![];
-        for arg in args.iter() {
-            folded_args.push(ExprFolder::fold_expr(
-                arg,
-                self.registry,
-                self.strategy.as_monitor_module(),
-                self.table,
-                &self.mem_allocator.emitted_strings,
-                err,
-            ));
-        }
+        // Args are assumed to be already folded by the pre-emit fold pass in InstrGenerator.
+        let folded_args = args;
 
         match target_fn_name.as_str() {
             "dup_at" => self.handle_dup_at(&folded_args, err),
@@ -750,7 +738,6 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                         self.strategy,
                         &mut on_exit,
                         &mut EmitCtx::new(
-                            self.registry,
                             self.table,
                             self.mem_allocator,
                             &mut self.locals_tracker,
@@ -785,7 +772,6 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                         self.strategy,
                         &mut on_exit,
                         &mut EmitCtx::new(
-                            self.registry,
                             self.table,
                             self.mem_allocator,
                             &mut self.locals_tracker,
@@ -1032,7 +1018,6 @@ impl Emitter for VisitingEmitter<'_, '_> {
 
         // everything else can be emitted as normal!
         let mut ctx = EmitCtx::new(
-            self.registry,
             self.table,
             self.mem_allocator,
             if self.in_init {
@@ -1059,7 +1044,6 @@ impl Emitter for VisitingEmitter<'_, '_> {
             self.strategy,
             &mut self.app_iter,
             &mut EmitCtx::new(
-                self.registry,
                 self.table,
                 self.mem_allocator,
                 &mut self.locals_tracker,

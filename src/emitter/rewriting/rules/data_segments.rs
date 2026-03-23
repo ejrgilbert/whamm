@@ -1,10 +1,10 @@
+use wirm::ir::id::MemoryID;
 use wirm::ir::module::module_globals::GlobalKind;
+use wirm::ir::module::module_memories::MemKind;
 use wirm::ir::types::InitExpr;
 use wirm::ir::types::Value;
 use wirm::DataSegmentKind;
 use wirm::InitInstr;
-use wirm::ir::id::MemoryID;
-use wirm::ir::module::module_memories::MemKind;
 use wirm::Module;
 
 fn eval_init_expr(app_wasm: &Module, expr: &InitExpr) -> Option<u32> {
@@ -33,12 +33,18 @@ fn eval_init_expr(app_wasm: &Module, expr: &InitExpr) -> Option<u32> {
 }
 
 pub fn do_on_active_segs<F>(app_wasm: &Module, mem_id: MemoryID, mut action: F)
-    where F: FnMut(Option<u32>, usize)
+where
+    F: FnMut(Option<u32>, usize),
 {
     for seg in app_wasm.data.iter() {
         match &seg.kind {
-            DataSegmentKind::Active { offset_expr, memory_index } => {
-                if *memory_index != *mem_id { continue; }
+            DataSegmentKind::Active {
+                offset_expr,
+                memory_index,
+            } => {
+                if *memory_index != *mem_id {
+                    continue;
+                }
                 action(eval_init_expr(app_wasm, offset_expr), seg.data.len());
             }
             DataSegmentKind::Passive => {}
@@ -93,7 +99,7 @@ pub fn get_active_data_len(app_wasm: &Module, mem_id: MemoryID) -> u32 {
 pub fn get_first_local_mem_id(app_wasm: &Module) -> Result<MemoryID, String> {
     for mem in app_wasm.memories.iter() {
         if let MemKind::Local(info) = mem.kind() {
-            return Ok(info.mem_id)
+            return Ok(info.mem_id);
         }
     }
     Err("No local memory found".to_string())

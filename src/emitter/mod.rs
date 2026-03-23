@@ -24,11 +24,6 @@ pub enum InjectStrategy {
     Wei,
     Rewriting,
 }
-impl InjectStrategy {
-    pub fn as_monitor_module(&self) -> bool {
-        matches!(self, InjectStrategy::Wei)
-    }
-}
 
 // =================================================
 // ==== Emitter Trait --> Used By All Emitters! ====

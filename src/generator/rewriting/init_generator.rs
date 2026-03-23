@@ -138,6 +138,18 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_> {
             .table
             .override_record_vals(&whamm_bound_vars, false);
 
+        // handle these first since importing libs affects lib mems (the constant pool for folding)
+        self.handle_lib_imports(stmts);
+
+        crate::generator::folding::pass::fold_stmts_slice(
+            stmts,
+            false,
+            self.emitter.table,
+            self.emitter.registry,
+            &self.emitter.mem_allocator.emitted_strings,
+            self.emitter.app_wasm,
+            self.err,
+        );
         for stmt in stmts.iter_mut() {
             match stmt {
                 Statement::VarDecl { init: None, .. } => {} // already handled
@@ -162,9 +174,6 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_> {
                         self.emitter.emit_global_stmt(&assign, self.err),
                     )
                 }
-                Statement::LibImport { lib_name, loc, .. } => {
-                    self.link_user_lib(lib_name, loc);
-                }
                 Statement::Assign { .. } | Statement::Expr { .. } => {
                     // assume this is a valid AST node since we've gone through validation
                     maybe_add_start_fn(
@@ -172,6 +181,8 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_> {
                         self.emitter.emit_global_stmt(stmt, self.err),
                     )
                 }
+                // already handled in handle_lib_imports
+                Statement::LibImport { .. } => {}
                 _ => {
                     self.err.add_unimplemented_error(&format!("We don't support this statement type yet in global script scope: {stmt:?}"), stmt.loc());
                 }

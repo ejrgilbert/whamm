@@ -510,7 +510,7 @@ impl<'a> MetadataCollector<'a> {
                             &LocationData::Local {
                                 script_id: self.script_num,
                                 bytecode_loc: BytecodeLoc::new(0, 0), // (unused)
-                                probe_id: self.curr_probe.to_string(),
+                                probe_id: self.curr_probe.to_string(self.config.as_monitor_module),
                             },
                         ))
                     } else {
@@ -684,10 +684,7 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
 
         event.probes.iter().for_each(|(_ty, probes)| {
             probes.iter().for_each(|probe| {
-                if !self.config.as_monitor_module {
-                    // add the mode when not on the wizard target
-                    self.rule_tracker.push(&format!(":{}", probe.kind.name()));
-                }
+                self.rule_tracker.push(&format!(":{}", probe.kind.name()));
                 self.curr_probe = Probe::new(
                     self.rule_tracker.get_owned(),
                     probe.id,
@@ -702,10 +699,7 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
                 self.curr_script.probes.push(self.curr_probe.clone());
 
                 // reset per-probe track data
-                if !self.config.as_monitor_module {
-                    // remove mode
-                    self.rule_tracker.pop();
-                }
+                self.rule_tracker.pop();
             });
         });
         self.table.exit_scope();

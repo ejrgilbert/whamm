@@ -108,6 +108,11 @@ impl AstVisitor<bool> for IOPackage {
     }
 
     fn visit_probe(&mut self, probe: &Probe) -> bool {
+        for stmt in probe.init_logic.iter() {
+            if self.visit_stmt(stmt) {
+                return true;
+            }
+        }
         if let Some(body) = &probe.body {
             for stmt in body.stmts.iter() {
                 if self.visit_stmt(stmt) {

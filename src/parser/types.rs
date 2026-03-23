@@ -1824,16 +1824,14 @@ impl Whamm {
         )
     }
     fn def_active_data_start() -> BoundFunction {
-        let params = vec![
-            (
-                Expr::VarId {
-                    definition: Definition::CompilerStatic,
-                    name: "memid".to_string(),
-                    loc: None,
-                },
-                DataType::U32,
-            )
-        ];
+        let params = vec![(
+            Expr::VarId {
+                definition: Definition::CompilerStatic,
+                name: "memid".to_string(),
+                loc: None,
+            },
+            DataType::U32,
+        )];
 
         BoundFunction::new(
             "active_data_start".to_string(),
@@ -1846,16 +1844,14 @@ impl Whamm {
         )
     }
     fn def_active_data_len() -> BoundFunction {
-        let params = vec![
-            (
-                Expr::VarId {
-                    definition: Definition::CompilerStatic,
-                    name: "memid".to_string(),
-                    loc: None,
-                },
-                DataType::U32,
-            )
-        ];
+        let params = vec![(
+            Expr::VarId {
+                definition: Definition::CompilerStatic,
+                name: "memid".to_string(),
+                loc: None,
+            },
+            DataType::U32,
+        )];
 
         BoundFunction::new(
             "active_data_len".to_string(),
@@ -1946,9 +1942,7 @@ impl Whamm {
     }
 
     pub(crate) fn get_bound_vars() -> Vec<BoundVar> {
-        vec![
-            Self::def_app_mem(),
-        ]
+        vec![Self::def_app_mem()]
     }
     fn def_app_mem() -> BoundVar {
         BoundVar {

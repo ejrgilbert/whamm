@@ -1,5 +1,6 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::StringAddr;
+use crate::emitter::rewriting::rules::data_segments::{get_active_data_len, get_active_data_start};
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::type_utils::strings::StringUtils;
 use crate::parser::types::Definition::User;
@@ -11,24 +12,28 @@ use crate::verifier::types::Record::Var;
 use crate::verifier::types::{Record, SymbolTable};
 use std::collections::HashMap;
 use std::ops::{Add, Div, Mul, Rem, Sub};
+use wirm::ir::id::MemoryID;
+use wirm::Module;
 
 // =======================================
 // = Constant Propagation via ExprFolder =
 // =======================================
 
-pub struct ExprFolder<'a> {
+pub struct ExprFolder<'a, 'ir> {
     registry: &'a mut WasmRegistry,
     emitted_strings: &'a HashMap<String, StringAddr>,
     as_monitor_module: bool,
     curr_loc: Option<Location>,
+    app_wasm: &'a Module<'ir>,
 }
-impl<'a> ExprFolder<'a> {
+impl<'a, 'ir> ExprFolder<'a, 'ir> {
     pub fn fold_expr(
         expr: &Expr,
         registry: &'a mut WasmRegistry,
         as_monitor_module: bool,
         table: &SymbolTable,
         emitted_strings: &'a HashMap<String, StringAddr>,
+        app_wasm: &'a Module<'ir>,
         err: &mut ErrorGen,
     ) -> Expr {
         let mut instance = Self {
@@ -36,22 +41,20 @@ impl<'a> ExprFolder<'a> {
             emitted_strings,
             as_monitor_module,
             curr_loc: None,
+            app_wasm,
         };
         instance.fold_expr_inner(expr, table, err)
     }
-    pub fn get_single_bool(
-        expr: &Expr,
-        registry: &'a mut WasmRegistry,
-        emitted_strings: &'a HashMap<String, StringAddr>,
-        as_monitor_module: bool,
-    ) -> Option<bool> {
-        let mut instance = Self {
-            registry,
-            emitted_strings,
-            as_monitor_module,
-            curr_loc: None,
-        };
-        instance.get_single_bool_inner(expr)
+    /// Check whether an already-folded expression is a boolean constant.
+    /// Does not perform any folding — call `fold_expr` first if needed.
+    pub fn get_single_bool(expr: &Expr) -> Option<bool> {
+        match expr {
+            Expr::Primitive {
+                val: Value::Boolean { val },
+                ..
+            } => Some(*val),
+            _ => None,
+        }
     }
     fn fold_expr_inner(&mut self, expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         self.curr_loc = expr.loc().clone();
@@ -502,9 +505,19 @@ impl<'a> ExprFolder<'a> {
                     }
                 }
             }
+            // Could not fold the operation — return a reconstructed BinOp with the
+            // sub-expressions folded. This is important: returning `binop.clone()` here
+            // would discard the locally folded `lhs`/`rhs` and leave compiler-static
+            // VarIds (e.g. `fid`) unresolved inside nested expressions like map keys.
+            return Expr::BinOp {
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                op: op.clone(),
+                done_on: done_on.clone(),
+                loc: loc.clone(),
+            };
         }
 
-        // Cannot fold anymore
         binop.clone()
     }
 
@@ -1579,15 +1592,27 @@ impl<'a> ExprFolder<'a> {
         self.curr_loc = call.loc().clone();
         // Check if this is calling a bound, static function!
         if let Expr::Call {
-            fn_target, args, ..
+            fn_target,
+            args,
+            loc,
         } = call
         {
+            // fold the arguments
+            let mut folded_args = vec![];
+            for arg in args.iter() {
+                folded_args.push(self.fold_expr_inner(arg, table, err));
+            }
+
             let fn_name = match &**fn_target {
                 Expr::VarId { name, .. } => name.clone(),
                 _ => return call.clone(),
             };
             let Some(Record::Fn { def, .. }) = table.lookup_fn(fn_name.as_str(), false) else {
-                return call.clone();
+                return Expr::Call {
+                    args: folded_args,
+                    fn_target: fn_target.clone(),
+                    loc: loc.clone(),
+                };
             };
             if matches!(def, Definition::CompilerStatic) {
                 // We want to handle this as unique logic rather than a simple function call to be emitted
@@ -1613,6 +1638,7 @@ impl<'a> ExprFolder<'a> {
                 self.as_monitor_module,
                 table,
                 self.emitted_strings,
+                self.app_wasm,
                 err,
             ));
         }
@@ -1621,14 +1647,49 @@ impl<'a> ExprFolder<'a> {
             "addr" => self.handle_addr(call, &mut folded_args, table, err),
             "len" => self.handle_len(call, &mut folded_args, table, err),
             "memid" => self.handle_mem(&mut folded_args, table),
-            _ => call.clone(),
+            "active_data_start" => self.handle_active_data_start(call, &folded_args),
+            "active_data_len" => self.handle_active_data_len(call, &folded_args),
+            _ => {
+                let Expr::Call { fn_target, loc, .. } = call else {
+                    unreachable!();
+                };
+                Expr::Call {
+                    fn_target: fn_target.clone(),
+                    args: folded_args,
+                    loc: loc.clone(),
+                }
+            }
+        }
+    }
+
+    fn handle_active_data_start(&self, orig_call: &Expr, args: &[Expr]) -> Expr {
+        let mem_id = match Self::get_u32(&args[0]) {
+            Some(id) => id,
+            None => return orig_call.clone(),
+        };
+        let start = get_active_data_start(self.app_wasm, MemoryID(mem_id));
+        Expr::Primitive {
+            val: Value::gen_u32(start),
+            loc: orig_call.loc().clone(),
+        }
+    }
+
+    fn handle_active_data_len(&self, orig_call: &Expr, args: &[Expr]) -> Expr {
+        let mem_id = match Self::get_u32(&args[0]) {
+            Some(id) => id,
+            None => return orig_call.clone(),
+        };
+        let len = get_active_data_len(self.app_wasm, MemoryID(mem_id));
+        Expr::Primitive {
+            val: Value::gen_u32(len),
+            loc: orig_call.loc().clone(),
         }
     }
 
     fn handle_addr(
         &mut self,
         orig_call: &Expr,
-        args: &mut [Expr],
+        args: &[Expr],
         table: &SymbolTable,
         err: &mut ErrorGen,
     ) -> Expr {
@@ -1652,7 +1713,7 @@ impl<'a> ExprFolder<'a> {
     fn handle_len(
         &mut self,
         orig_call: &Expr,
-        args: &mut [Expr],
+        args: &[Expr],
         table: &SymbolTable,
         err: &mut ErrorGen,
     ) -> Expr {
@@ -1672,14 +1733,14 @@ impl<'a> ExprFolder<'a> {
         }
     }
 
-    fn handle_mem(&mut self, args: &mut [Expr], table: &SymbolTable) -> Expr {
+    fn handle_mem(&mut self, args: &[Expr], table: &SymbolTable) -> Expr {
         // Assume the correct args since we've gone through typechecking at this point!
         let libname = match args.iter().next().unwrap() {
             Expr::VarId { name, .. } => name.clone(),
             _ => unreachable!(),
         };
         let Some(Record::Library { mem_id, .. }) = table.lookup_lib(libname.as_str(), false) else {
-            unreachable!("unexpected type");
+            unreachable!("unexpected type for {libname}");
         };
         if let Some(mem_id) = mem_id {
             Expr::Primitive {
