@@ -100,34 +100,11 @@ pub fn fold_stmts<'ir>(
             app_wasm,
             err,
         );
-        if !is_at_static(&stmt) {
-            // if it's @static call, propagating the assign
-            // would override other probe body values.
-            for new_stmt in &folded.stmts {
-                propagate_primitive_assign(new_stmt, table);
-            }
+        for new_stmt in &folded.stmts {
+            propagate_primitive_assign(new_stmt, table);
         }
         stmts.extend(folded.stmts);
     }
-}
-
-fn is_at_static(stmt: &Statement) -> bool {
-    matches!(
-        stmt,
-        Statement::VarDecl {
-            init: Some(Expr::ObjCall {
-                annotation: Some(Annotation::Static),
-                ..
-            }),
-            ..
-        } | Statement::Assign {
-            expr: Expr::ObjCall {
-                annotation: Some(Annotation::Static),
-                ..
-            },
-            ..
-        }
-    )
 }
 
 /// After folding a statement, if it is a stable user-defined primitive assignment

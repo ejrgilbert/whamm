@@ -102,7 +102,9 @@ impl<'a> MetadataCollector<'a> {
     fn visit_stmts(&mut self, stmts: &[Statement]) -> Vec<Statement> {
         let mut new_stmts = Vec::with_capacity(stmts.len());
         stmts.iter().for_each(|stmt| {
-            new_stmts.push(self.visit_stmt_inner(stmt));
+            if let Some(new_stmt) = self.visit_stmt_inner(stmt) {
+                new_stmts.push(new_stmt);
+            }
         });
 
         new_stmts
@@ -490,7 +492,7 @@ impl<'a> MetadataCollector<'a> {
         }
     }
 
-    fn visit_stmt_inner(&mut self, stmt: &Statement) -> Statement {
+    fn visit_stmt_inner(&mut self, stmt: &Statement) -> Option<Statement> {
         match stmt {
             Statement::VarDecl {
                 name,
@@ -530,6 +532,14 @@ impl<'a> MetadataCollector<'a> {
                         let visited_init = self.visit_expr_inner(init_expr);
                         self.visiting = v;
                         self.has_probe_state_init = true;
+                        let init_decl = Statement::VarDecl {
+                            name: name.clone(),
+                            ty: ty.clone(),
+                            definition: definition.clone(),
+                            modifiers: modifiers.clone(),
+                            loc: loc.clone(),
+                            init: None
+                        };
                         let init_assign = Statement::Assign {
                             var_id: Expr::VarId {
                                 name: name.clone(),
@@ -539,10 +549,12 @@ impl<'a> MetadataCollector<'a> {
                             expr: visited_init,
                             loc: None,
                         };
+                        self.curr_probe.add_init_logic(init_decl);
                         self.curr_probe.add_init_logic(init_assign);
+                        return None;
                     }
                 }
-                stmt.clone()
+                Some(stmt.clone())
             }
             Statement::Assign { var_id, expr, loc } => {
                 if let Expr::VarId {
@@ -571,20 +583,20 @@ impl<'a> MetadataCollector<'a> {
                 let var_id = self.visit_expr_inner(var_id);
                 let expr = self.visit_expr_inner(expr);
 
-                Statement::Assign {
+                Some(Statement::Assign {
                     var_id,
                     expr,
                     loc: loc.clone(),
-                }
+                })
             }
-            Statement::Expr { expr, loc } => Statement::Expr {
+            Statement::Expr { expr, loc } => Some(Statement::Expr {
                 expr: self.visit_expr_inner(expr),
                 loc: loc.clone(),
-            },
-            Statement::Return { expr, loc } => Statement::Return {
+            }),
+            Statement::Return { expr, loc } => Some(Statement::Return {
                 expr: self.visit_expr_inner(expr),
                 loc: loc.clone(),
-            },
+            }),
             Statement::If {
                 cond,
                 conseq:
@@ -600,7 +612,7 @@ impl<'a> MetadataCollector<'a> {
                         loc: alt_loc,
                     },
                 loc,
-            } => Statement::If {
+            } => Some(Statement::If {
                 cond: self.visit_expr_inner(cond),
                 conseq: Block {
                     stmts: self.visit_stmts(conseq_stmts),
@@ -613,14 +625,14 @@ impl<'a> MetadataCollector<'a> {
                     loc: alt_loc.clone(),
                 },
                 loc: loc.clone(),
-            },
-            Statement::SetMap { map, key, val, loc } => Statement::SetMap {
+            }),
+            Statement::SetMap { map, key, val, loc } => Some(Statement::SetMap {
                 map: map.clone(),
                 key: self.visit_expr_inner(key),
                 val: self.visit_expr_inner(val),
                 loc: loc.clone(),
-            },
-            _ => stmt.clone(),
+            }),
+            _ => Some(stmt.clone()),
         }
     }
 }
