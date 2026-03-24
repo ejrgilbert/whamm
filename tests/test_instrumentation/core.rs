@@ -262,3 +262,13 @@ fn instrument_with_memcpy_scripts() {
 
     run_core_suite("memcpy", processed_scripts, true, true)
 }
+
+#[test]
+fn instrument_with_mem_grow_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/grow-failed");
+    assert!(!processed_scripts.is_empty());
+
+    // TODO: need to get `res0` working on `wei`
+    run_core_suite("grow-failed", processed_scripts, true, false)
+}
