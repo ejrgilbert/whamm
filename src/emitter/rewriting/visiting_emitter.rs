@@ -638,19 +638,17 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         false
     }
 
+    // Args are assumed to be already folded by the pre-emit fold pass in InstrGenerator.
     fn handle_special_fn_call(
         &mut self,
         target_fn_name: String,
         args: &[Expr],
         err: &mut ErrorGen,
     ) -> bool {
-        // Args are assumed to be already folded by the pre-emit fold pass in InstrGenerator.
-        let folded_args = args;
-
         match target_fn_name.as_str() {
-            "dup_at" => self.handle_dup_at(folded_args, err),
-            "alt_call_by_name" => self.handle_alt_call_by_name(folded_args, err),
-            "alt_call_by_id" => self.handle_alt_call_by_id(folded_args, err),
+            "dup_at" => self.handle_dup_at(args, err),
+            "alt_call_by_name" => self.handle_alt_call_by_name(args, err),
+            "alt_call_by_id" => self.handle_alt_call_by_id(args, err),
             "drop_args" => self.handle_drop_args(err),
             "memcpy" => self.handle_memcpy(),
             "write_str" => self.handle_write_str(),

@@ -125,11 +125,6 @@ fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
-    // Args are assumed to be already folded to primitives by the pre-emit fold pass
-    // in InstrGenerator::emit_probe. active_data_start/active_data_len in particular
-    // are resolved to u32 constants by ExprFolder during that pass.
-    let folded_args = args;
-
     match target_fn_name.as_str() {
         "dup_at" | "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
             unreachable!("static function call should already be handled: {target_fn_name}")
@@ -140,9 +135,9 @@ fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                  during the pre-emit fold pass"
             )
         }
-        "memcpy" => handle_memcpy(folded_args, strategy, injector, ctx),
-        "write_str" => handle_write_str(folded_args, strategy, injector, ctx),
-        "read_str" => handle_read_str(folded_args, strategy, injector, ctx),
+        "memcpy" => handle_memcpy(args, strategy, injector, ctx),
+        "write_str" => handle_write_str(args, strategy, injector, ctx),
+        "read_str" => handle_read_str(args, strategy, injector, ctx),
         _ => {
             unreachable!(
                 "{} Could not find handler for static function with name: {}",

@@ -47,21 +47,20 @@ impl WeiGenerator<'_, '_, '_> {
         emit_needed_funcs(used_bound_funcs, &mut self.emitter, self.injected_funcs);
         self.emitter.emit_strings(strings_to_emit);
 
-        // Fold probe bodies now that the string table is finalized.
-        // Predicates are skipped — WEI predicates are evaluated by the engine, not folded here.
-        // crate::generator::folding::pass::run(
-        //     &mut ast,
-        //     true,
-        //     self.emitter.table,
-        //     self.emitter.registry,
-        //     &self.emitter.mem_allocator.emitted_strings,
-        //     self.emitter.app_wasm,
-        //     self.err,
-        // );
-
         self.visit_ast(&mut ast);
-
         self.emit_end_func(&ast, used_report_dts);
+    }
+
+    fn fold_stmts(&mut self, stmts: &mut Vec<Statement>) {
+        crate::generator::folding::pass::fold_stmts(
+            stmts,
+            true,
+            self.emitter.table,
+            self.emitter.registry,
+            &self.emitter.mem_allocator.emitted_strings,
+            self.emitter.app_wasm,
+            self.err,
+        );
     }
 
     fn emit_end_func(&mut self, ast: &[Script], used_report_dts: HashSet<DataType>) {
@@ -145,15 +144,7 @@ impl WeiGenerator<'_, '_, '_> {
                     results: None,
                     loc: None,
                 };
-                crate::generator::folding::pass::fold_block(
-                    &mut block,
-                    true,
-                    self.emitter.table,
-                    self.emitter.registry,
-                    &self.emitter.mem_allocator.emitted_strings,
-                    self.emitter.app_wasm,
-                    self.err,
-                );
+                self.fold_stmts(&mut block.stmts);
                 let (fid, str) = self.emitter.emit_special_func(
                     None,
                     &[],
@@ -194,15 +185,7 @@ impl WeiGenerator<'_, '_, '_> {
                     results: None,
                     loc: None,
                 };
-                crate::generator::folding::pass::fold_block(
-                    &mut block,
-                    true,
-                    self.emitter.table,
-                    self.emitter.registry,
-                    &self.emitter.mem_allocator.emitted_strings,
-                    self.emitter.app_wasm,
-                    self.err,
-                );
+                self.fold_stmts(&mut block.stmts);
 
                 let ty = if let Expr::ObjCall { results, .. } = lib_call {
                     results.as_ref().unwrap().clone()
@@ -272,15 +255,7 @@ impl WeiGenerator<'_, '_, '_> {
                 params.extend(probe.metadata.pred_args.clone());
             }
 
-            crate::generator::folding::pass::fold_block(
-                body_block,
-                true,
-                self.emitter.table,
-                self.emitter.registry,
-                &self.emitter.mem_allocator.emitted_strings,
-                self.emitter.app_wasm,
-                self.err,
-            );
+            self.fold_stmts(&mut body_block.stmts);
             self.emitter.emit_special_func(
                 if self.config.no_bundle {
                     None

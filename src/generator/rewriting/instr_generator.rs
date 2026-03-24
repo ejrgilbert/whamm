@@ -283,34 +283,26 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                     // (e.g. active_data_start, active_data_len) are resolved to primitives
                     // before emission.
                     {
-                        let table = &mut *self.emitter.table;
-                        let registry = &mut *self.emitter.registry;
-                        let emitted_strings = &self.emitter.mem_allocator.emitted_strings;
-                        let app_wasm = &*self.emitter.app_iter.module;
                         if let Some((state_init, ..)) = &mut self.curr_probe {
                             crate::generator::folding::pass::fold_stmts(
                                 state_init,
                                 false,
-                                table,
-                                registry,
-                                emitted_strings,
-                                app_wasm,
+                                self.emitter.table,
+                                self.emitter.registry,
+                                &self.emitter.mem_allocator.emitted_strings,
+                                self.emitter.app_iter.module,
                                 self.err,
                             );
                         }
                     }
                     if let Some((_, Some(ref mut body), _)) = &mut self.curr_probe {
-                        let table = &mut *self.emitter.table;
-                        let registry = &mut *self.emitter.registry;
-                        let emitted_strings = &self.emitter.mem_allocator.emitted_strings;
-                        let app_wasm = &*self.emitter.app_iter.module;
                         crate::generator::folding::pass::fold_block(
                             body,
                             false,
-                            table,
-                            registry,
-                            emitted_strings,
-                            app_wasm,
+                            self.emitter.table,
+                            self.emitter.registry,
+                            &self.emitter.mem_allocator.emitted_strings,
+                            self.emitter.app_iter.module,
                             self.err,
                         );
                     }

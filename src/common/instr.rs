@@ -517,22 +517,6 @@ fn run_instr_rewrite<'lib, 'ir>(
         return Err(());
     }
 
-    // Fold probe bodies (constant propagation + dead-branch elimination) now that
-    // the string table is finalized. Predicates are intentionally skipped here —
-    // they are re-folded per opcode in InstrGenerator with per-site static context.
-    // crate::generator::folding::pass::run(
-    //     &mut ast,
-    //     false,
-    //     table,
-    //     &mut registry,
-    //     &mem_allocator.emitted_strings,
-    //     target_wasm,
-    //     err,
-    // );
-    if err.has_errors {
-        return Err(());
-    }
-
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.

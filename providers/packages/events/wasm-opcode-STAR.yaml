@@ -7065,7 +7065,7 @@ i32_atomic_rmw16_add_u: &i32_atomic_rmw16_add_u
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic.rmw16_add_u\""
+      derived_from: "\"i32.atomic.rmw16.add_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
