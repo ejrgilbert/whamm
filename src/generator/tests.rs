@@ -13,6 +13,7 @@ use crate::verifier::types::{Record, ScopeType, SymbolTable};
 use crate::verifier::verifier;
 use log::{debug, error};
 use std::collections::HashMap;
+use wirm::Module;
 
 pub fn setup_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -151,6 +152,7 @@ fn basic_run(script: &str, err: &mut ErrorGen) {
         false,
         &table,
         &HashMap::default(),
+        &Module::default(),
         err,
     );
     assert_simplified_predicate(&folded_expr);
@@ -172,6 +174,7 @@ fn fatal_fold(expr: &Expr) {
             false,
             &SymbolTable::new(),
             &HashMap::default(),
+            &Module::default(),
             &mut err,
         );
     });
@@ -306,6 +309,7 @@ wasm::call:alt /
         false,
         &table,
         &HashMap::default(),
+        &Module::default(),
         &mut err,
     );
     debug!("{:#?}", folded_expr);

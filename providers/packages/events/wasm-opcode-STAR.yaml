@@ -600,6 +600,14 @@ is_write_false: &is_write_false
   lifetime: static
   derived_from: false
 
+dup_at: &dup_at
+  name: dup_at
+  lifetime: static
+  params: "(dst_mem: u32, dst_addr: u32)"
+  results: ()
+  req_args: -1
+  docs: Duplicate the side effect of the bulk memory operation at the target address in the destination memory (useful for maintaining a shadow memory on writes).
+
 # =======================
 # ==== wasm:opcode:* ====
 # =======================
@@ -2153,6 +2161,7 @@ memory_size: &memory_size
     - *category_id_memory
     - *category_name_memory
     - *imm0_u32
+    - *res0_i32
   bound_fns: []
   supported_modes: *default_modes
 
@@ -2171,10 +2180,16 @@ memory_grow: &memory_grow
       docs: The byte(s) that identify this opcode in the Wasm binary format.
       lifetime: static
       derived_from: 0x0040
+    - name: failed
+      type: bool
+      docs: Whether the memory.grow operation failed.
+      lifetime: dynamic
+      derived_from: res0 == -1
     - *category_id_memory
     - *category_name_memory
     - *arg0_u32
     - *imm0_u32
+    - *res0_i32
   bound_fns: []
   supported_modes: *default_modes
 
@@ -6080,7 +6095,11 @@ memory_init: &memory_init
     - *category_name_memory
     - *imm0_u32
     - *imm1_u32
-  bound_fns: []
+    - *arg0_i32
+    - *arg1_i32
+    - *arg2_i32
+  bound_fns:
+    - *dup_at
   supported_modes: *default_modes
 
   docs: "https://pengowray.github.io/wasm-ops/"
@@ -6125,7 +6144,8 @@ memory_copy: &memory_copy
     - *arg0_i32
     - *arg1_i32
     - *arg2_i32
-  bound_fns: []
+  bound_fns:
+    - *dup_at
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Copy"
@@ -6149,7 +6169,8 @@ memory_fill: &memory_fill
     - *arg0_i32
     - *arg1_i32
     - *arg2_i32
-  bound_fns: []
+  bound_fns:
+    - *dup_at
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory/Fill"
@@ -6291,13 +6312,13 @@ table_fill: &table_fill
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
 
 memory_atomic_notify: &memory_atomic_notify
-  name: memory.atomic_notify
+  name: memory.atomic.notify
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"memory.atomic_notify\""
+      derived_from: "\"memory.atomic.notify\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6323,13 +6344,13 @@ memory_atomic_notify: &memory_atomic_notify
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 memory_atomic_wait32: &memory_atomic_wait32
-  name: memory.atomic_wait32
+  name: memory.atomic.wait32
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"memory.atomic_wait32\""
+      derived_from: "\"memory.atomic.wait32\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6356,13 +6377,13 @@ memory_atomic_wait32: &memory_atomic_wait32
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 memory_atomic_wait64: &memory_atomic_wait64
-  name: memory.atomic_wait64
+  name: memory.atomic.wait64
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"memory.atomic_wait64\""
+      derived_from: "\"memory.atomic.wait64\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6409,13 +6430,13 @@ atomic_fence: &atomic_fence
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_load: &i32_atomic_load
-  name: i32.atomic_load
+  name: i32.atomic.load
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_load\""
+      derived_from: "\"i32.atomic.load\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6446,13 +6467,13 @@ i32_atomic_load: &i32_atomic_load
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_load: &i64_atomic_load
-  name: i64.atomic_load
+  name: i64.atomic.load
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_load\""
+      derived_from: "\"i64.atomic.load\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6483,13 +6504,13 @@ i64_atomic_load: &i64_atomic_load
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_load8_u: &i32_atomic_load8_u
-  name: i32.atomic_load8_u
+  name: i32.atomic.load8_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_load8_u\""
+      derived_from: "\"i32.atomic.load8_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6520,13 +6541,13 @@ i32_atomic_load8_u: &i32_atomic_load8_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_load16_u: &i32_atomic_load16_u
-  name: i32.atomic_load16_u
+  name: i32.atomic.load16_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_load16_u\""
+      derived_from: "\"i32.atomic.load16_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6557,13 +6578,13 @@ i32_atomic_load16_u: &i32_atomic_load16_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_load8_u: &i64_atomic_load8_u
-  name: i64.atomic_load8_u
+  name: i64.atomic.load8_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_load8_u\""
+      derived_from: "\"i64.atomic.load8_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6594,13 +6615,13 @@ i64_atomic_load8_u: &i64_atomic_load8_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_load16_u: &i64_atomic_load16_u
-  name: i64.atomic_load16_u
+  name: i64.atomic.load16_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_load16_u\""
+      derived_from: "\"i64.atomic.load16_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6631,13 +6652,13 @@ i64_atomic_load16_u: &i64_atomic_load16_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_load32_u: &i64_atomic_load32_u
-  name: i64.atomic_load32_u
+  name: i64.atomic.load32_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_load32_u\""
+      derived_from: "\"i64.atomic.load32_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6668,13 +6689,13 @@ i64_atomic_load32_u: &i64_atomic_load32_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_store: &i32_atomic_store
-  name: i32.atomic_store
+  name: i32.atomic.store
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_store\""
+      derived_from: "\"i32.atomic.store\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6705,13 +6726,13 @@ i32_atomic_store: &i32_atomic_store
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_store: &i64_atomic_store
-  name: i64.atomic_store
+  name: i64.atomic.store
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_store\""
+      derived_from: "\"i64.atomic.store\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6742,13 +6763,13 @@ i64_atomic_store: &i64_atomic_store
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_store8: &i32_atomic_store8
-  name: i32.atomic_store8
+  name: i32.atomic.store8
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_store8\""
+      derived_from: "\"i32.atomic.store8\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6779,13 +6800,13 @@ i32_atomic_store8: &i32_atomic_store8
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_store16: &i32_atomic_store16
-  name: i32.atomic_store16
+  name: i32.atomic.store16
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_store16\""
+      derived_from: "\"i32.atomic.store16\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6816,13 +6837,13 @@ i32_atomic_store16: &i32_atomic_store16
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_store8: &i64_atomic_store8
-  name: i64.atomic_store8
+  name: i64.atomic.store8
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_store8\""
+      derived_from: "\"i64.atomic.store8\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6853,13 +6874,13 @@ i64_atomic_store8: &i64_atomic_store8
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_store16: &i64_atomic_store16
-  name: i64.atomic_store16
+  name: i64.atomic.store16
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_store16\""
+      derived_from: "\"i64.atomic.store16\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6890,13 +6911,13 @@ i64_atomic_store16: &i64_atomic_store16
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_store32: &i64_atomic_store32
-  name: i64.atomic_store32
+  name: i64.atomic.store32
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_store32\""
+      derived_from: "\"i64.atomic.store32\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6927,13 +6948,13 @@ i64_atomic_store32: &i64_atomic_store32
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw_add: &i32_atomic_rmw_add
-  name: i32.atomic_rmw_add
+  name: i32.atomic.rmw.add
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw_add\""
+      derived_from: "\"i32.atomic.rmw.add\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -6964,13 +6985,13 @@ i32_atomic_rmw_add: &i32_atomic_rmw_add
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw_add: &i64_atomic_rmw_add
-  name: i64.atomic_rmw_add
+  name: i64.atomic.rmw.add
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw_add\""
+      derived_from: "\"i64.atomic.rmw.add\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7001,13 +7022,13 @@ i64_atomic_rmw_add: &i64_atomic_rmw_add
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw8_add_u: &i32_atomic_rmw8_add_u
-  name: i32.atomic_rmw8_add_u
+  name: i32.atomic.rmw8.add_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw8_add_u\""
+      derived_from: "\"i32.atomic.rmw8.add_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7038,13 +7059,13 @@ i32_atomic_rmw8_add_u: &i32_atomic_rmw8_add_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw16_add_u: &i32_atomic_rmw16_add_u
-  name: i32.atomic_rmw16_add_u
+  name: i32.atomic.rmw16.add_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw16_add_u\""
+      derived_from: "\"i32.atomic.rmw16.add_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7075,13 +7096,13 @@ i32_atomic_rmw16_add_u: &i32_atomic_rmw16_add_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw8_add_u: &i64_atomic_rmw8_add_u
-  name: i64.atomic_rmw8_add_u
+  name: i64.atomic.rmw8.add_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw8_add_u\""
+      derived_from: "\"i64.atomic.rmw8.add_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7112,13 +7133,13 @@ i64_atomic_rmw8_add_u: &i64_atomic_rmw8_add_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw16_add_u: &i64_atomic_rmw16_add_u
-  name: i64.atomic_rmw16_add_u
+  name: i64.atomic.rmw16.add_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw16_add_u\""
+      derived_from: "\"i64.atomic.rmw16.add_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7149,13 +7170,13 @@ i64_atomic_rmw16_add_u: &i64_atomic_rmw16_add_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw32_add_u: &i64_atomic_rmw32_add_u
-  name: i64.atomic_rmw32_add_u
+  name: i64.atomic.rmw32.add_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw32_add_u\""
+      derived_from: "\"i64.atomic.rmw32.add_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7186,13 +7207,13 @@ i64_atomic_rmw32_add_u: &i64_atomic_rmw32_add_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw_sub: &i32_atomic_rmw_sub
-  name: i32.atomic_rmw_sub
+  name: i32.atomic.rmw.sub
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw_sub\""
+      derived_from: "\"i32.atomic.rmw.sub\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7223,13 +7244,13 @@ i32_atomic_rmw_sub: &i32_atomic_rmw_sub
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw_sub: &i64_atomic_rmw_sub
-  name: i64.atomic_rmw_sub
+  name: i64.atomic.rmw.sub
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw_sub\""
+      derived_from: "\"i64.atomic.rmw.sub\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7260,13 +7281,13 @@ i64_atomic_rmw_sub: &i64_atomic_rmw_sub
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw8_sub_u: &i32_atomic_rmw8_sub_u
-  name: i32.atomic_rmw8_sub_u
+  name: i32.atomic.rmw8.sub_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw8_sub_u\""
+      derived_from: "\"i32.atomic.rmw8.sub_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7297,13 +7318,13 @@ i32_atomic_rmw8_sub_u: &i32_atomic_rmw8_sub_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw16_sub_u: &i32_atomic_rmw16_sub_u
-  name: i32.atomic_rmw16_sub_u
+  name: i32.atomic.rmw16.sub_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw16_sub_u\""
+      derived_from: "\"i32.atomic.rmw16.sub_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7334,13 +7355,13 @@ i32_atomic_rmw16_sub_u: &i32_atomic_rmw16_sub_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw8_sub_u: &i64_atomic_rmw8_sub_u
-  name: i64.atomic_rmw8_sub_u
+  name: i64.atomic.rmw8.sub_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw8_sub_u\""
+      derived_from: "\"i64.atomic.rmw8.sub_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7371,13 +7392,13 @@ i64_atomic_rmw8_sub_u: &i64_atomic_rmw8_sub_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw16_sub_u: &i64_atomic_rmw16_sub_u
-  name: i64.atomic_rmw16_sub_u
+  name: i64.atomic.rmw16.sub_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw16_sub_u\""
+      derived_from: "\"i64.atomic.rmw16.sub_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7408,13 +7429,13 @@ i64_atomic_rmw16_sub_u: &i64_atomic_rmw16_sub_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw32_sub_u: &i64_atomic_rmw32_sub_u
-  name: i64.atomic_rmw32_sub_u
+  name: i64.atomic.rmw32.sub_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw32_sub_u\""
+      derived_from: "\"i64.atomic.rmw32.sub_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7445,13 +7466,13 @@ i64_atomic_rmw32_sub_u: &i64_atomic_rmw32_sub_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw_and: &i32_atomic_rmw_and
-  name: i32.atomic_rmw_and
+  name: i32.atomic.rmw.and
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw_and\""
+      derived_from: "\"i32.atomic.rmw.and\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7482,13 +7503,13 @@ i32_atomic_rmw_and: &i32_atomic_rmw_and
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw_and: &i64_atomic_rmw_and
-  name: i64.atomic_rmw_and
+  name: i64.atomic.rmw.and
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw_and\""
+      derived_from: "\"i64.atomic.rmw.and\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7519,13 +7540,13 @@ i64_atomic_rmw_and: &i64_atomic_rmw_and
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw8_and_u: &i32_atomic_rmw8_and_u
-  name: i32.atomic_rmw8_and_u
+  name: i32.atomic.rmw8.and_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw8_and_u\""
+      derived_from: "\"i32.atomic.rmw8.and_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7556,13 +7577,13 @@ i32_atomic_rmw8_and_u: &i32_atomic_rmw8_and_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw16_and_u: &i32_atomic_rmw16_and_u
-  name: i32.atomic_rmw16_and_u
+  name: i32.atomic.rmw16.and_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw16_and_u\""
+      derived_from: "\"i32.atomic.rmw16.and_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7593,13 +7614,13 @@ i32_atomic_rmw16_and_u: &i32_atomic_rmw16_and_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw8_and_u: &i64_atomic_rmw8_and_u
-  name: i64.atomic_rmw8_and_u
+  name: i64.atomic.rmw8.and_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw8_and_u\""
+      derived_from: "\"i64.atomic.rmw8.and_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7630,13 +7651,13 @@ i64_atomic_rmw8_and_u: &i64_atomic_rmw8_and_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw16_and_u: &i64_atomic_rmw16_and_u
-  name: i64.atomic_rmw16_and_u
+  name: i64.atomic.rmw16.and_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw16_and_u\""
+      derived_from: "\"i64.atomic.rmw16.and_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7667,13 +7688,13 @@ i64_atomic_rmw16_and_u: &i64_atomic_rmw16_and_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw32_and_u: &i64_atomic_rmw32_and_u
-  name: i64.atomic_rmw32_and_u
+  name: i64.atomic.rmw32.and_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw32_and_u\""
+      derived_from: "\"i64.atomic.rmw32.and_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7704,13 +7725,13 @@ i64_atomic_rmw32_and_u: &i64_atomic_rmw32_and_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw_or: &i32_atomic_rmw_or
-  name: i32.atomic_rmw_or
+  name: i32.atomic.rmw.or
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw_or\""
+      derived_from: "\"i32.atomic.rmw.or\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7741,13 +7762,13 @@ i32_atomic_rmw_or: &i32_atomic_rmw_or
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw_or: &i64_atomic_rmw_or
-  name: i64.atomic_rmw_or
+  name: i64.atomic.rmw.or
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw_or\""
+      derived_from: "\"i64.atomic.rmw.or\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7778,13 +7799,13 @@ i64_atomic_rmw_or: &i64_atomic_rmw_or
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw8_or_u: &i32_atomic_rmw8_or_u
-  name: i32.atomic_rmw8_or_u
+  name: i32.atomic.rmw8.or_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw8_or_u\""
+      derived_from: "\"i32.atomic.rmw8.or_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7815,13 +7836,13 @@ i32_atomic_rmw8_or_u: &i32_atomic_rmw8_or_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw16_or_u: &i32_atomic_rmw16_or_u
-  name: i32.atomic_rmw16_or_u
+  name: i32.atomic.rmw16.or_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw16_or_u\""
+      derived_from: "\"i32.atomic.rmw16.or_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7852,13 +7873,13 @@ i32_atomic_rmw16_or_u: &i32_atomic_rmw16_or_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw8_or_u: &i64_atomic_rmw8_or_u
-  name: i64.atomic_rmw8_or_u
+  name: i64.atomic.rmw8.or_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw8_or_u\""
+      derived_from: "\"i64.atomic.rmw8.or_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7889,13 +7910,13 @@ i64_atomic_rmw8_or_u: &i64_atomic_rmw8_or_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw16_or_u: &i64_atomic_rmw16_or_u
-  name: i64.atomic_rmw16_or_u
+  name: i64.atomic.rmw16.or_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw16_or_u\""
+      derived_from: "\"i64.atomic.rmw16.or_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7926,13 +7947,13 @@ i64_atomic_rmw16_or_u: &i64_atomic_rmw16_or_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw32_or_u: &i64_atomic_rmw32_or_u
-  name: i64.atomic_rmw32_or_u
+  name: i64.atomic.rmw32.or_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw32_or_u\""
+      derived_from: "\"i64.atomic.rmw32.or_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -7963,13 +7984,13 @@ i64_atomic_rmw32_or_u: &i64_atomic_rmw32_or_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw_xor: &i32_atomic_rmw_xor
-  name: i32.atomic_rmw_xor
+  name: i32.atomic.rmw.xor
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw_xor\""
+      derived_from: "\"i32.atomic.rmw.xor\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8000,13 +8021,13 @@ i32_atomic_rmw_xor: &i32_atomic_rmw_xor
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw_xor: &i64_atomic_rmw_xor
-  name: i64.atomic_rmw_xor
+  name: i64.atomic.rmw.xor
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw_xor\""
+      derived_from: "\"i64.atomic.rmw.xor\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8037,13 +8058,13 @@ i64_atomic_rmw_xor: &i64_atomic_rmw_xor
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw8_xor_u: &i32_atomic_rmw8_xor_u
-  name: i32.atomic_rmw8_xor_u
+  name: i32.atomic.rmw8.xor_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw8_xor_u\""
+      derived_from: "\"i32.atomic.rmw8.xor_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8074,13 +8095,13 @@ i32_atomic_rmw8_xor_u: &i32_atomic_rmw8_xor_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw16_xor_u: &i32_atomic_rmw16_xor_u
-  name: i32.atomic_rmw16_xor_u
+  name: i32.atomic.rmw16.xor_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw16_xor_u\""
+      derived_from: "\"i32.atomic.rmw16.xor_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8111,13 +8132,13 @@ i32_atomic_rmw16_xor_u: &i32_atomic_rmw16_xor_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw8_xor_u: &i64_atomic_rmw8_xor_u
-  name: i64.atomic_rmw8_xor_u
+  name: i64.atomic.rmw8.xor_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw8_xor_u\""
+      derived_from: "\"i64.atomic.rmw8.xor_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8148,13 +8169,13 @@ i64_atomic_rmw8_xor_u: &i64_atomic_rmw8_xor_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw16_xor_u: &i64_atomic_rmw16_xor_u
-  name: i64.atomic_rmw16_xor_u
+  name: i64.atomic.rmw16.xor_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw16_xor_u\""
+      derived_from: "\"i64.atomic.rmw16.xor_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8185,13 +8206,13 @@ i64_atomic_rmw16_xor_u: &i64_atomic_rmw16_xor_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw32_xor_u: &i64_atomic_rmw32_xor_u
-  name: i64.atomic_rmw32_xor_u
+  name: i64.atomic.rmw32.xor_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw32_xor_u\""
+      derived_from: "\"i64.atomic.rmw32.xor_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8222,13 +8243,13 @@ i64_atomic_rmw32_xor_u: &i64_atomic_rmw32_xor_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw_xchg: &i32_atomic_rmw_xchg
-  name: i32.atomic_rmw_xchg
+  name: i32.atomic.rmw.xchg
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw_xchg\""
+      derived_from: "\"i32.atomic.rmw.xchg\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8259,13 +8280,13 @@ i32_atomic_rmw_xchg: &i32_atomic_rmw_xchg
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw_xchg: &i64_atomic_rmw_xchg
-  name: i64.atomic_rmw_xchg
+  name: i64.atomic.rmw.xchg
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw_xchg\""
+      derived_from: "\"i64.atomic.rmw.xchg\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8296,13 +8317,13 @@ i64_atomic_rmw_xchg: &i64_atomic_rmw_xchg
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw8_xchg_u: &i32_atomic_rmw8_xchg_u
-  name: i32.atomic_rmw8_xchg_u
+  name: i32.atomic.rmw8.xchg_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw8_xchg_u\""
+      derived_from: "\"i32.atomic.rmw8.xchg_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8333,13 +8354,13 @@ i32_atomic_rmw8_xchg_u: &i32_atomic_rmw8_xchg_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw16_xchg_u: &i32_atomic_rmw16_xchg_u
-  name: i32.atomic_rmw16_xchg_u
+  name: i32.atomic.rmw16.xchg_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw16_xchg_u\""
+      derived_from: "\"i32.atomic.rmw16.xchg_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8370,13 +8391,13 @@ i32_atomic_rmw16_xchg_u: &i32_atomic_rmw16_xchg_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw8_xchg_u: &i64_atomic_rmw8_xchg_u
-  name: i64.atomic_rmw8_xchg_u
+  name: i64.atomic.rmw8.xchg_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw8_xchg_u\""
+      derived_from: "\"i64.atomic.rmw8.xchg_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8407,13 +8428,13 @@ i64_atomic_rmw8_xchg_u: &i64_atomic_rmw8_xchg_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw16_xchg_u: &i64_atomic_rmw16_xchg_u
-  name: i64.atomic_rmw16_xchg_u
+  name: i64.atomic.rmw16.xchg_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw16_xchg_u\""
+      derived_from: "\"i64.atomic.rmw16.xchg_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8444,13 +8465,13 @@ i64_atomic_rmw16_xchg_u: &i64_atomic_rmw16_xchg_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw32_xchg_u: &i64_atomic_rmw32_xchg_u
-  name: i64.atomic_rmw32_xchg_u
+  name: i64.atomic.rmw32.xchg_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw32_xchg_u\""
+      derived_from: "\"i64.atomic.rmw32.xchg_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8481,13 +8502,13 @@ i64_atomic_rmw32_xchg_u: &i64_atomic_rmw32_xchg_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw_cmpxchg: &i32_atomic_rmw_cmpxchg
-  name: i32.atomic_rmw_cmpxchg
+  name: i32.atomic.rmw.cmpxchg
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw_cmpxchg\""
+      derived_from: "\"i32.atomic.rmw.cmpxchg\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8518,13 +8539,13 @@ i32_atomic_rmw_cmpxchg: &i32_atomic_rmw_cmpxchg
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw_cmpxchg: &i64_atomic_rmw_cmpxchg
-  name: i64.atomic_rmw_cmpxchg
+  name: i64.atomic.rmw.cmpxchg
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw_cmpxchg\""
+      derived_from: "\"i64.atomic.rmw.cmpxchg\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8555,13 +8576,13 @@ i64_atomic_rmw_cmpxchg: &i64_atomic_rmw_cmpxchg
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw8_cmpxchg_u: &i32_atomic_rmw8_cmpxchg_u
-  name: i32.atomic_rmw8_cmpxchg_u
+  name: i32.atomic.rmw8.cmpxchg_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw8_cmpxchg_u\""
+      derived_from: "\"i32.atomic.rmw8.cmpxchg_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8592,13 +8613,13 @@ i32_atomic_rmw8_cmpxchg_u: &i32_atomic_rmw8_cmpxchg_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i32_atomic_rmw16_cmpxchg_u: &i32_atomic_rmw16_cmpxchg_u
-  name: i32.atomic_rmw16_cmpxchg_u
+  name: i32.atomic.rmw16.cmpxchg_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i32.atomic_rmw16_cmpxchg_u\""
+      derived_from: "\"i32.atomic.rmw16.cmpxchg_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8629,13 +8650,13 @@ i32_atomic_rmw16_cmpxchg_u: &i32_atomic_rmw16_cmpxchg_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw8_cmpxchg_u: &i64_atomic_rmw8_cmpxchg_u
-  name: i64.atomic_rmw8_cmpxchg_u
+  name: i64.atomic.rmw8.cmpxchg_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw8_cmpxchg_u\""
+      derived_from: "\"i64.atomic.rmw8.cmpxchg_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8666,13 +8687,13 @@ i64_atomic_rmw8_cmpxchg_u: &i64_atomic_rmw8_cmpxchg_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw16_cmpxchg_u: &i64_atomic_rmw16_cmpxchg_u
-  name: i64.atomic_rmw16_cmpxchg_u
+  name: i64.atomic.rmw16.cmpxchg_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw16_cmpxchg_u\""
+      derived_from: "\"i64.atomic.rmw16.cmpxchg_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.
@@ -8703,13 +8724,13 @@ i64_atomic_rmw16_cmpxchg_u: &i64_atomic_rmw16_cmpxchg_u
   docs: "https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md"
 
 i64_atomic_rmw32_cmpxchg_u: &i64_atomic_rmw32_cmpxchg_u
-  name: i64.atomic_rmw32_cmpxchg_u
+  name: i64.atomic.rmw32.cmpxchg_u
   bound_vars:
     - name: opname
       type: str
       docs: The name of the activated opcode.
       lifetime: static
-      derived_from: "\"i64.atomic_rmw32_cmpxchg_u\""
+      derived_from: "\"i64.atomic.rmw32.cmpxchg_u\""
     - name: bytecode
       type: u16
       docs: The byte(s) that identify this opcode in the Wasm binary format.

@@ -481,7 +481,7 @@ fn run_instr_rewrite<'lib, 'ir>(
 ) -> Result<(), ()> {
     let table = metadata_collector.table;
     let err = metadata_collector.err;
-    let mut ast = metadata_collector.ast;
+    let ast = metadata_collector.ast;
     let used_funcs = metadata_collector.used_bound_fns;
     let used_strings = metadata_collector.strings_to_emit;
     let has_probe_state_init = metadata_collector.has_probe_state_init;
@@ -513,20 +513,6 @@ fn run_instr_rewrite<'lib, 'ir>(
         init.run(whamm, used_funcs, used_strings, has_probe_state_init);
     } // init dropped: err, table, mem_allocator borrows released
 
-    if err.has_errors {
-        return Err(());
-    }
-
-    // Fold probe bodies (constant propagation + dead-branch elimination) now that
-    // the string table is finalized. Predicates are intentionally skipped here —
-    // they are re-folded per opcode in InstrGenerator with per-site static context.
-    crate::generator::folding::pass::run(
-        &mut ast,
-        false,
-        table,
-        &mem_allocator.emitted_strings,
-        err,
-    );
     if err.has_errors {
         return Err(());
     }

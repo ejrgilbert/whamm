@@ -949,7 +949,17 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
                     self.visit_block(conseq);
                     self.visit_block(alt);
                 }
-                Statement::VarDecl { .. } => {}
+                Statement::VarDecl { init, .. } => {
+                    // Visit the init expression so that any derived or aliased
+                    // variables it references are recorded in `used_derived_vars`.
+                    // This ensures the derived var gets injected into the probe
+                    // scope before the type-checker runs, which lets the verifier
+                    // produce the correct "cannot use probe-local state" error
+                    // (verifier.rs:613) rather than a confusing "not found" error.
+                    if let Some(init_expr) = init {
+                        self.visit_expr(init_expr);
+                    }
+                }
                 _ => self.err.add_internal_error(
                     &format!("Should already be handled: {stmt:?}"),
                     stmt.loc(),

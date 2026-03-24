@@ -7,7 +7,10 @@ use crate::generator::{create_curr_loc, emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::alloc_vars::wei::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::LocationData;
-use crate::parser::types::{Block, DataType, Expr, Location, Statement, Value, WhammVisitorMut};
+use crate::parser;
+use crate::parser::types::{
+    Block, DataType, Expr, Location, RulePart, Statement, Value, WhammVisitorMut,
+};
 use crate::verifier::types::Record;
 use std::collections::{HashMap, HashSet};
 use wirm::ir::id::{FunctionID, LocalID};
@@ -44,19 +47,20 @@ impl WeiGenerator<'_, '_, '_> {
         emit_needed_funcs(used_bound_funcs, &mut self.emitter, self.injected_funcs);
         self.emitter.emit_strings(strings_to_emit);
 
-        // Fold probe bodies now that the string table is finalized.
-        // Predicates are skipped — WEI predicates are evaluated by the engine, not folded here.
-        crate::generator::folding::pass::run(
-            &mut ast,
+        self.visit_ast(&mut ast);
+        self.emit_end_func(&ast, used_report_dts);
+    }
+
+    fn fold_stmts(&mut self, stmts: &mut Vec<Statement>) {
+        crate::generator::folding::pass::fold_stmts(
+            stmts,
             true,
             self.emitter.table,
+            self.emitter.registry,
             &self.emitter.mem_allocator.emitted_strings,
+            self.emitter.app_wasm,
             self.err,
         );
-
-        self.visit_ast(&mut ast);
-
-        self.emit_end_func(&ast, used_report_dts);
     }
 
     fn emit_end_func(&mut self, ast: &[Script], used_report_dts: HashSet<DataType>) {
@@ -87,16 +91,41 @@ impl WeiGenerator<'_, '_, '_> {
         // inject globals
         self.visit_globals(&script.globals);
         // visit global statements
+        if !script.req_globals.params.is_empty() {
+            let mut list = String::new();
+            for req in script.req_globals.params.iter() {
+                list.push_str(&format!("- {}: {}\n", req.name, req.ty));
+            }
+            unimplemented!("`wei` does not support engine-provided global definitions yet. You requested:\n{list}")
+        }
         self.visit_global_stmts(&mut script.global_stmts);
         // visit probes
         script.probes.iter_mut().for_each(|probe| {
+            let probe_rule: crate::emitter::rewriting::rules::ProbeRule = (&probe.rule).into();
+            assert!(
+                self.emitter.table.enter_scope_via_rule(
+                    &self.curr_script_id.to_string(),
+                    &parser::types::ProbeRule {
+                        provider: probe_rule.provider.clone(),
+                        package: probe_rule.package.clone(),
+                        event: probe_rule.event.clone(),
+                        mode: Some(RulePart::new(
+                            probe_rule.mode.as_ref().unwrap().name(),
+                            None,
+                        )),
+                    },
+                    probe.scope_id,
+                ),
+                "Failed to enter scope"
+            );
             self.visit_probe(probe);
+            self.emitter.table.exit_scope();
         });
         self.exit_scope();
     }
 
     fn visit_probe(&mut self, probe: &mut Probe) {
-        self.set_curr_loc(create_curr_loc(self.curr_script_id, probe));
+        self.set_curr_loc(create_curr_loc(self.curr_script_id, probe, true));
 
         let (pred_fid, pred_param_str, dynamic_pred) = if let Some(pred) = &mut probe.predicate {
             if probe.metadata.pred_is_dynamic {
@@ -107,7 +136,7 @@ impl WeiGenerator<'_, '_, '_> {
 
                 (None, "".to_string(), Some(pred))
             } else {
-                let block = Block {
+                let mut block = Block {
                     stmts: vec![Statement::Expr {
                         expr: pred.clone(),
                         loc: None,
@@ -115,6 +144,7 @@ impl WeiGenerator<'_, '_, '_> {
                     results: None,
                     loc: None,
                 };
+                self.fold_stmts(&mut block.stmts);
                 let (fid, str) = self.emitter.emit_special_func(
                     None,
                     &[],
@@ -147,7 +177,7 @@ impl WeiGenerator<'_, '_, '_> {
             .static_lib_calls
             .iter()
             .for_each(|(params, lib_call)| {
-                let block = Block {
+                let mut block = Block {
                     stmts: vec![Statement::Expr {
                         expr: lib_call.clone(),
                         loc: None,
@@ -155,6 +185,7 @@ impl WeiGenerator<'_, '_, '_> {
                     results: None,
                     loc: None,
                 };
+                self.fold_stmts(&mut block.stmts);
 
                 let ty = if let Expr::ObjCall { results, .. } = lib_call {
                     results.as_ref().unwrap().clone()
@@ -224,6 +255,7 @@ impl WeiGenerator<'_, '_, '_> {
                 params.extend(probe.metadata.pred_args.clone());
             }
 
+            self.fold_stmts(&mut body_block.stmts);
             self.emitter.emit_special_func(
                 if self.config.no_bundle {
                     None
@@ -248,7 +280,7 @@ impl WeiGenerator<'_, '_, '_> {
         };
 
         let match_rule = self.create_wei_match_rule(
-            &probe.rule.to_string(),
+            &probe.rule.to_string(true),
             (pred_fid, &pred_param_str),
             (alloc_fid, &alloc_param_str),
             &all_lib_calls,
@@ -386,6 +418,18 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_> {
     }
 
     fn visit_global_stmts(&mut self, stmts: &mut [Statement]) -> bool {
+        // handle these first since importing libs affects lib mems (the constant pool for folding)
+        self.handle_lib_imports(stmts);
+
+        crate::generator::folding::pass::fold_stmts_slice(
+            stmts,
+            true,
+            self.emitter.table,
+            self.emitter.registry,
+            &self.emitter.mem_allocator.emitted_strings,
+            self.emitter.app_wasm,
+            self.err,
+        );
         // 1. create the emitting_func var, assign in self
         // 2. iterate over stmts and emit them! (will be different for Decl stmts)
         for stmt in stmts.iter_mut() {

@@ -4,7 +4,7 @@ use crate::emitter::InjectStrategy;
 use crate::parser::types::{Definition, Expr, Value};
 use std::collections::HashMap;
 use wirm::ir::id::LocalID;
-use wirm::ir::types::{BlockType, DataType as WirmType};
+use wirm::ir::types::DataType as WirmType;
 use wirm::module_builder::AddLocal;
 use wirm::opcode::MacroOpcode;
 use wirm::Opcode;
@@ -169,73 +169,19 @@ impl StringUtils {
     ) -> bool {
         let needle = &args[0];
 
-        // --- Locals ---
-        let haystack_addr = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
-        let haystack_len = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
-        let needle_addr = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
-        let needle_len = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
-        let i_local = LocalID(ctx.locals_tracker.use_local(WirmType::I32, injector));
+        // Push (hs_addr, hs_len, nd_addr, nd_len) onto the stack and call $strcontains.
+        // Using a proper function call avoids inlining `return` instructions that would
+        // exit the enclosing probe function rather than just this helper.
 
-        // --- Evaluate haystack ---
+        // (hs_addr, hs_len)
         emit_expr(target, None, strategy, injector, ctx);
-        injector.local_set(haystack_len).local_set(haystack_addr);
-
-        // --- Evaluate needle ---
+        // (nd_addr, nd_len)
         emit_expr(needle, None, strategy, injector, ctx);
-        injector.local_set(needle_len).local_set(needle_addr);
-
-        // if needle_len == 0 → true
-        injector
-            .local_get(needle_len)
-            .i32_eqz()
-            .if_stmt(BlockType::Empty)
-            .i32_const(1)
-            .return_stmt()
-            .end();
-
-        // if needle_len > haystack_len → false
-        injector
-            .local_get(needle_len)
-            .local_get(haystack_len)
-            .i32_gt_unsigned()
-            .if_stmt(BlockType::Empty)
-            .i32_const(0)
-            .return_stmt()
-            .end();
-
-        // i = 0
-        injector.i32_const(0).local_set(i_local);
-
-        // block (for FALSE)
-        injector.block(BlockType::Empty);
-        // block (for TRUE)
-        injector.block(BlockType::Empty);
-
-        // loop
-        injector.loop_stmt(BlockType::Empty);
-
-        // if i > haystack_len - needle_len → break false
-        injector.local_get(i_local);
-        injector.local_get(haystack_len);
-        injector.local_get(needle_len);
-        injector.i32_sub();
-        injector.i32_gt_unsigned();
-        injector.br_if(2); // break to FALSE block result
-
-        // strcmp(haystack_addr + i, needle_len, needle_addr, needle_len)
-        injector.local_get(haystack_addr);
-        injector.local_get(i_local);
-        injector.i32_add();
-
-        injector.local_get(needle_len);
-
-        injector.local_get(needle_addr);
-        injector.local_get(needle_len);
 
         emit_expr(
             &Expr::Call {
                 fn_target: Box::new(Expr::VarId {
-                    name: "strcmp".to_string(),
+                    name: "strcontains".to_string(),
                     definition: Definition::CompilerDynamic,
                     loc: None,
                 }),
@@ -247,30 +193,6 @@ impl StringUtils {
             injector,
             ctx,
         );
-
-        // if match → break true
-        injector.br_if(1);
-
-        // i++
-        injector.local_get(i_local);
-        injector.i32_const(1);
-        injector.i32_add();
-        injector.local_set(i_local);
-
-        injector.br(0); // continue loop
-
-        injector.end(); // loop
-        injector.end(); // block (for TRUE)
-
-        // return true
-        injector.i32_const(1);
-        injector.return_stmt();
-
-        injector.end(); // block (for FALSE)
-
-        // return false
-        injector.i32_const(0); // if needle_len > haystack_len OR not found
-        injector.return_stmt();
 
         true
     }
