@@ -1644,9 +1644,9 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
         }
 
         match target_fn_name {
-            "addr" => self.handle_addr(call, &mut folded_args, table, err),
-            "len" => self.handle_len(call, &mut folded_args, table, err),
-            "memid" => self.handle_mem(&mut folded_args, table),
+            "addr" => self.handle_addr(call, &folded_args, table, err),
+            "len" => self.handle_len(call, &folded_args, table, err),
+            "memid" => self.handle_mem(&folded_args, table),
             "active_data_start" => self.handle_active_data_start(call, &folded_args),
             "active_data_len" => self.handle_active_data_len(call, &folded_args),
             _ => {

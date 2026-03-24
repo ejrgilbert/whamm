@@ -36,6 +36,14 @@ fn emit_needed_funcs(
     emitter: &mut ModuleEmitter,
     injected_funcs: &mut Vec<FunctionID>,
 ) {
+    // Sort so that dependencies are emitted before dependents.
+    // strcmp must come before strcontains since strcontains calls strcmp.
+    let mut funcs: Vec<_> = funcs.into_iter().collect();
+    funcs.sort_by_key(|(_, name)| match name.as_str() {
+        "strcmp" => 0,
+        "strcontains" => 1,
+        _ => 2,
+    });
     for (context, fname) in funcs.iter() {
         if let Some(fid) = emitter.emit_bound_fn(
             context,
@@ -100,11 +108,8 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
     }
     fn handle_lib_imports(&mut self, stmts: &mut [Statement]) {
         for stmt in stmts.iter_mut() {
-            match stmt {
-                Statement::LibImport { lib_name, loc, .. } => {
-                    self.link_user_lib(lib_name, loc);
-                }
-                _ => {}
+            if let Statement::LibImport { lib_name, loc, .. } = stmt {
+                self.link_user_lib(lib_name, loc);
             }
         }
     }

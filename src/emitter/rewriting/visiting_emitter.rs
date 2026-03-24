@@ -433,7 +433,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             false,
             self.table,
             &self.mem_allocator.emitted_strings,
-            &self.app_iter.module,
+            self.app_iter.module,
             err,
         )
     }
@@ -648,9 +648,9 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         let folded_args = args;
 
         match target_fn_name.as_str() {
-            "dup_at" => self.handle_dup_at(&folded_args, err),
-            "alt_call_by_name" => self.handle_alt_call_by_name(&folded_args, err),
-            "alt_call_by_id" => self.handle_alt_call_by_id(&folded_args, err),
+            "dup_at" => self.handle_dup_at(folded_args, err),
+            "alt_call_by_name" => self.handle_alt_call_by_name(folded_args, err),
+            "alt_call_by_id" => self.handle_alt_call_by_id(folded_args, err),
             "drop_args" => self.handle_drop_args(err),
             "memcpy" => self.handle_memcpy(),
             "write_str" => self.handle_write_str(),

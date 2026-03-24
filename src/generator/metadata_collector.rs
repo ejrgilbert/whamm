@@ -253,6 +253,25 @@ impl<'a> MetadataCollector<'a> {
                     (false, false)
                 };
 
+                // Check the method name before the type lookup so we can handle
+                // `contains` on any string receiver (including literals or vars not
+                // yet resolved in the symbol table).
+                let method_name = if let Expr::Call { fn_target, .. } = call.as_ref() {
+                    if let Expr::VarId { name, .. } = fn_target.as_ref() {
+                        Some(name.as_str())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+                if method_name == Some("contains") {
+                    self.used_bound_fns
+                        .insert(("whamm".to_string(), "strcmp".to_string()));
+                    self.used_bound_fns
+                        .insert(("whamm".to_string(), "strcontains".to_string()));
+                }
+
                 let is_type_util = if let Some(Record::Var { ty, def, .. }) =
                     self.table.lookup_var(obj_name, false).cloned()
                 {
@@ -535,10 +554,10 @@ impl<'a> MetadataCollector<'a> {
                         let init_decl = Statement::VarDecl {
                             name: name.clone(),
                             ty: ty.clone(),
-                            definition: definition.clone(),
+                            definition: *definition,
                             modifiers: modifiers.clone(),
                             loc: loc.clone(),
-                            init: None
+                            init: None,
                         };
                         let init_assign = Statement::Assign {
                             var_id: Expr::VarId {

@@ -2,30 +2,10 @@ use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::StringAddr;
 use crate::generator::folding::stmt::StmtFolder;
 use crate::lang_features::libraries::registry::WasmRegistry;
-use crate::parser::types::{Annotation, Block, Definition, Expr, Fn, Statement, Value};
+use crate::parser::types::{Block, Definition, Expr, Statement, Value};
 use crate::verifier::types::{Record, SymbolTable};
 use std::collections::HashMap;
 use wirm::Module;
-
-fn fold_fn<'ir>(
-    f: &mut Fn,
-    as_monitor_module: bool,
-    table: &mut SymbolTable,
-    registry: &mut WasmRegistry,
-    emitted_strings: &HashMap<String, StringAddr>,
-    app_wasm: &Module<'ir>,
-    err: &mut ErrorGen,
-) {
-    fold_block(
-        &mut f.body,
-        as_monitor_module,
-        table,
-        registry,
-        emitted_strings,
-        app_wasm,
-        err,
-    );
-}
 
 pub fn fold_block<'ir>(
     block: &mut Block,
@@ -136,9 +116,7 @@ fn propagate_primitive_assign(stmt: &Statement, table: &mut SymbolTable) {
     };
     // Only propagate when the variable is assigned at most once (stable) and is
     // user-defined (not a compiler-injected bound variable).
-    if *times_set <= 1 && matches!(def, Definition::User) {
-        if !matches!(val, Value::Tuple { .. }) {
-            *value = Some(val.clone());
-        }
+    if *times_set <= 1 && matches!(def, Definition::User) && !matches!(val, Value::Tuple { .. }) {
+        *value = Some(val.clone());
     }
 }

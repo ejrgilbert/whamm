@@ -247,7 +247,7 @@ impl WeiGenerator<'_, '_, '_> {
             } else {
                 None
             };
-            let (pred, mut body_block) = match (self.config.no_pred, self.config.no_body) {
+            let (pred, body_block) = match (self.config.no_pred, self.config.no_body) {
                 // as normal
                 (false, false) => (dynamic_pred, body),
                 // empty if statement
@@ -273,7 +273,7 @@ impl WeiGenerator<'_, '_, '_> {
             }
 
             crate::generator::folding::pass::fold_block(
-                &mut body_block,
+                body_block,
                 true,
                 self.emitter.table,
                 self.emitter.registry,

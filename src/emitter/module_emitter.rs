@@ -297,8 +297,12 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
     }
 
     pub(crate) fn emit_bound_fn(&mut self, context: &str, f: &Fn) -> Option<FunctionID> {
-        if context == "whamm" && f.name.name == "strcmp" {
-            self.emit_whamm_strcmp_fn(f)
+        if context == "whamm" {
+            match f.name.name.as_str() {
+                "strcmp" => self.emit_whamm_strcmp_fn(f),
+                "strcontains" => self.emit_whamm_strcontains_fn(f),
+                _ => panic!("Provided function ('{}'), but could not find a context to provide the definition, context: {context}", f.name.name),
+            }
         } else {
             panic!("Provided function ('{}'), but could not find a context to provide the definition, context: {context}", f.name.name);
         }
@@ -503,6 +507,104 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
         };
         *addr = Some(*strcmp_id);
         Some(strcmp_id)
+    }
+
+    fn emit_whamm_strcontains_fn(&mut self, f: &Fn) -> Option<FunctionID> {
+        // strcmp must be emitted before strcontains (emit_needed_funcs guarantees this order).
+        let strcmp_fid = *self
+            .app_wasm
+            .functions
+            .get_local_fid_by_name("strcmp")
+            .expect("strcmp must be emitted before strcontains");
+
+        // strcontains(hs_addr: i32, hs_len: i32, nd_addr: i32, nd_len: i32) -> i32
+        // Returns 1 if haystack contains needle, 0 otherwise.
+        let params = vec![WirmType::I32, WirmType::I32, WirmType::I32, WirmType::I32];
+        let results = vec![WirmType::I32];
+        let mut strcontains = FunctionBuilder::new(&params, &results);
+
+        let hs_addr = LocalID(0);
+        let hs_len = LocalID(1);
+        let nd_addr = LocalID(2);
+        let nd_len = LocalID(3);
+        let i = strcontains.add_local(WirmType::I32);
+
+        #[rustfmt::skip]
+        strcontains
+            // if nd_len == 0 → contains trivially, return 1
+            .local_get(nd_len)
+            .i32_eqz()
+            .if_stmt(WirmBlockType::Empty)
+            .i32_const(1)
+            .return_stmt()
+            .end()
+
+            // if nd_len > hs_len → cannot contain, return 0
+            .local_get(nd_len)
+            .local_get(hs_len)
+            .i32_gt_unsigned()
+            .if_stmt(WirmBlockType::Empty)
+            .i32_const(0)
+            .return_stmt()
+            .end()
+
+            // i = 0
+            .i32_const(0)
+            .local_set(i)
+
+            // outer block: jumped to when needle is not found
+            .block(WirmBlockType::Empty)
+
+            // loop over each starting position in the haystack
+            .loop_stmt(WirmBlockType::Empty)
+
+            // if i > hs_len - nd_len → not found, break to outer block
+            .local_get(i)
+            .local_get(hs_len)
+            .local_get(nd_len)
+            .i32_sub()
+            .i32_gt_unsigned()
+            .br_if(1) // (;@outer_block;)
+
+            // strcmp(hs_addr + i, nd_len, nd_addr, nd_len)
+            .local_get(hs_addr)
+            .local_get(i)
+            .i32_add()
+            .local_get(nd_len)
+            .local_get(nd_addr)
+            .local_get(nd_len)
+            .call(FunctionID(strcmp_fid))
+
+            // if strcmp returned nonzero → match found, return 1
+            .if_stmt(WirmBlockType::Empty)
+            .i32_const(1)
+            .return_stmt()
+            .end()
+
+            // i++
+            .local_get(i)
+            .i32_const(1)
+            .i32_add()
+            .local_set(i)
+
+            .br(0) // continue loop
+            .end() // end loop
+
+            .end() // end outer block (not-found)
+
+            // needle not found, return 0
+            .i32_const(0)
+            .return_stmt();
+
+        let strcontains_id = strcontains.finish_module_with_tag(self.app_wasm, get_tag_for(&None));
+        self.app_wasm
+            .set_fn_name(strcontains_id, "strcontains".to_string());
+
+        let Record::Fn { addr, .. } = self.table.lookup_fn_mut(&f.name.name)? else {
+            unreachable!("unexpected type")
+        };
+        *addr = Some(*strcontains_id);
+        Some(strcontains_id)
     }
 
     // ==========================

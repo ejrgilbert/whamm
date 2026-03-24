@@ -1709,6 +1709,7 @@ impl Whamm {
     pub(crate) fn get_bound_fns() -> Vec<BoundFunction> {
         vec![
             Self::def_strcmp(),
+            Self::def_strcontains(),
             Self::def_mem(),
             Self::def_mem_cpy(),
             Self::def_active_data_start(),
@@ -1716,6 +1717,37 @@ impl Whamm {
             Self::def_write_str(),
             Self::def_read_str(),
         ]
+    }
+    fn def_strcontains() -> BoundFunction {
+        let params = vec![
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "str_addr".to_string(),
+                    loc: None,
+                },
+                DataType::Tuple {
+                    ty_info: vec![DataType::I32, DataType::I32],
+                },
+            ),
+            (
+                Expr::VarId {
+                    definition: Definition::CompilerStatic,
+                    name: "needle".to_string(),
+                    loc: None,
+                },
+                DataType::Str,
+            ),
+        ];
+        BoundFunction::new(
+            "strcontains".to_string(),
+            "Check if a wasm string contains another wasm string as a substring (better to use string utility str.contains(str)).".to_string(),
+            params,
+            DataType::Boolean,
+            false,
+            true,
+            StackReq::None,
+        )
     }
     fn def_strcmp() -> BoundFunction {
         let strcmp_params = vec![

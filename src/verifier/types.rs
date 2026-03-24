@@ -749,12 +749,6 @@ impl Record {
             _ => true,
         }
     }
-    pub fn val_is_stable(&self) -> bool {
-        match self {
-            Record::Var { times_set, .. } => *times_set <= 1,
-            _ => unreachable!("cannot call this function on a non-var record."),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
