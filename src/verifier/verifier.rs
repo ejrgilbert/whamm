@@ -174,8 +174,6 @@ impl<'a> TypeChecker<'a> {
     }
 
     fn handle_type_bounds(&mut self, type_bounds: &[(Expr, DataType)]) {
-        // TODO -- fix type bounds bug: put them local to the probe, not global to the event
-        //         ALSO need to handle type bounds on provider/package/mode as well!
         for (var, ty_bound) in type_bounds.iter() {
             if let Expr::VarId { name, loc, .. } = var {
                 if let Some(id) = self.table.lookup(name) {
@@ -1040,20 +1038,14 @@ impl VerifierVisitorTyped for TypeChecker<'_> {
         &mut self.rule_tracker
     }
 
-    fn before_children_provider(&mut self, provider: &mut Provider) {
-        self.handle_type_bounds(&provider.type_bounds);
-    }
-
-    fn before_children_package(&mut self, package: &mut Package) {
+    fn before_children_package(&mut self, _package: &mut Package) {
         self.err
             .update_match_rule(self.rule_tracker.get_opt_owned());
-        self.handle_type_bounds(&package.type_bounds);
     }
 
-    fn before_children_event(&mut self, event: &mut Event) {
+    fn before_children_event(&mut self, _event: &mut Event) {
         self.err
             .update_match_rule(self.rule_tracker.get_opt_owned());
-        self.handle_type_bounds(&event.type_bounds);
     }
 }
 
@@ -1114,6 +1106,10 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         self.rule_tracker.push(&format!(":{}", probe.kind.name()));
         self.err
             .update_match_rule(self.rule_tracker.get_opt_owned());
+
+        // Apply type bounds (e.g. `wasm(local0: i32)`) into this probe's own scope,
+        // so they are visible only to this probe and not shared across sibling probes.
+        self.handle_type_bounds(&probe.type_bounds);
 
         // type check predicate
         if let Some(predicate) = &mut probe.predicate {

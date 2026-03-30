@@ -42,6 +42,8 @@ pub struct Probe {
     pub scope_id: usize,
     pub script_id: u8,
     pub loc: Option<Location>,
+    /// Type bounds for this probe, collected from all hierarchy levels at parse time.
+    pub type_bounds: Vec<(Expr, DataType)>,
 }
 impl Probe {
     pub(crate) fn new(
