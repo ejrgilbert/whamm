@@ -107,5 +107,3 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 3332, memaddr, reached, bool, i32, script0, main, 5, 65, 14_wasm:opcode:call, true
 3364, memaddr, reached, bool, i32, script0, main, 5, 67, 18_wasm:opcode:drop, true
 3396, memaddr, reached, bool, i32, script0, main, 5, 68, 9_wasm:opcode:end, true
-3428, memaddr, reached, bool, i32, script0, start, 6, 1, 14_wasm:opcode:call, false
-3460, memaddr, reached, bool, i32, script0, start, 6, 3, 9_wasm:opcode:end, false

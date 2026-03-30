@@ -296,6 +296,12 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
         }
     }
 
+    pub fn emit_empty_fn_with_alloc_param(&mut self, loc: &Option<Location>) -> FunctionID {
+        // must be able to accept the alloc param!
+        let func = FunctionBuilder::new(&[WirmType::I32], &[]);
+        func.finish_module_with_tag(self.app_wasm, get_tag_for(loc))
+    }
+
     pub(crate) fn emit_bound_fn(&mut self, context: &str, f: &Fn) -> Option<FunctionID> {
         if context == "whamm" {
             match f.name.name.as_str() {

@@ -21,4 +21,3 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 580, memaddr, count, u32, i32, script0, if_stmt, 3, 14, 0_wasm:block:end, 1
 612, memaddr, count, u32, i32, script0, select_stmt, 4, 9, 0_wasm:block:end, 1
 644, memaddr, count, u32, i32, script0, main, 5, 68, 0_wasm:block:end, 1
-676, memaddr, count, u32, i32, script0, start, 6, 3, 0_wasm:block:end, 0

@@ -105,7 +105,10 @@ impl WeiGenerator<'_, '_, '_> {
         // a single export to avoid duplicate export names.
         // Probes that differ in any of those dimensions already produce unique names and
         // are left in separate groups.
-        let probes = std::mem::take(&mut script.probes);
+        let mut probes = std::mem::take(&mut script.probes);
+        // Sort by probe_number first so that merge groups and final probe order are
+        // deterministic regardless of HashMap iteration order in earlier passes.
+        probes.sort_by_key(|p| p.probe_number);
         script.probes = merge_overlapping_probes(probes);
         script.probes.iter_mut().for_each(|probe| {
             let probe_rule: crate::emitter::rewriting::rules::ProbeRule = (&probe.rule).into();
@@ -231,7 +234,7 @@ impl WeiGenerator<'_, '_, '_> {
             });
 
         // create the probe body function
-        let (body_fid, body_param_str) = if let Some(body) = &mut probe.body {
+        let (mut body_fid, body_param_str) = if let Some(body) = &mut probe.body {
             let alloc_local = if alloc_fid.is_some() {
                 Some(LocalID(0))
             } else {
@@ -285,6 +288,11 @@ impl WeiGenerator<'_, '_, '_> {
         } else {
             (None, "".to_string())
         };
+
+        if body_fid.is_none() && !probe.init_logic.is_empty() {
+            // emit an empty function for the probe body (ensures that the init logic runs!)
+            body_fid = Some(*self.emitter.emit_empty_fn_with_alloc_param(&probe.loc));
+        }
 
         let match_rule = self.create_wei_match_rule(
             &probe.rule.to_string(true),
@@ -515,20 +523,43 @@ fn probe_merge_key(probe: &Probe) -> String {
     // A separate predicate function is emitted only when there is a predicate
     // and it is not dynamic (dynamic preds are pushed into the body instead).
     let has_pred_fn = probe.predicate.is_some() && !probe.metadata.pred_is_dynamic;
-    let pred_sig = if has_pred_fn {
-        fmt_params(&probe.metadata.pred_args.params)
-    } else {
-        String::new()
-    };
+
+    // Probes with non-trivial predicates produce unique export names based on
+    // the pred function's FID, so they must never be merged with each other.
+    // Include the probe's scope_id to make each predicated probe's key unique.
+    if has_pred_fn {
+        return format!(
+            "{}|unique_pred:{}",
+            probe.rule.to_string(true),
+            probe.scope_id
+        );
+    }
+
+    // Type bounds change which variables are in scope and thus which report vars
+    // exist — probes with different type bounds must not be merged.
+    let mut bounds: Vec<String> = probe
+        .type_bounds
+        .iter()
+        .map(|(expr, ty)| {
+            let name = if let Expr::VarId { name, .. } = expr {
+                name.as_str()
+            } else {
+                "_"
+            };
+            format!("{name}:{ty:?}")
+        })
+        .collect();
+    bounds.sort_unstable();
+    let bounds_str = bounds.join(",");
 
     format!(
-        "{}|body:{}|pred:{has_pred_fn}:{}|init:{}|alloc:{}|statics:{}",
-        probe.rule,
+        "{}|body:{}|pred:false:|init:{}|alloc:{}|statics:{}|bounds:{}",
+        probe.rule.to_string(true),
         fmt_params(&probe.metadata.body_args.params),
-        pred_sig,
         fmt_params(&probe.metadata.init_args.params),
         !probe.unshared_to_alloc.is_empty(),
         probe.static_lib_calls.len(),
+        bounds_str,
     )
 }
 

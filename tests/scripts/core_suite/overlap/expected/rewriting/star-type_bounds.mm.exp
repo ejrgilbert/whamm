@@ -214,7 +214,3 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 6756, memaddr, with_bounds, i32, i32, script0, main, 5, 67, 328_wasm:opcode:drop:before, 2
 6788, memaddr, no_bounds, i32, i32, script0, main, 5, 68, 9_wasm:opcode:end:before, 1
 6820, memaddr, with_bounds, i32, i32, script0, main, 5, 68, 319_wasm:opcode:end:before, 2
-6852, memaddr, no_bounds, i32, i32, script0, start, 6, 1, 14_wasm:opcode:call:before, 1
-6884, memaddr, with_bounds, i32, i32, script0, start, 6, 1, 324_wasm:opcode:call:before, 2
-6916, memaddr, no_bounds, i32, i32, script0, start, 6, 3, 9_wasm:opcode:end:before, 1
-6948, memaddr, with_bounds, i32, i32, script0, start, 6, 3, 319_wasm:opcode:end:before, 2
