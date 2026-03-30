@@ -158,12 +158,8 @@ impl SymbolTable {
     ) {
         let rec_id = match self.lookup(symbol_name) {
             Some(rec_id) => rec_id,
-            _ => {
-                panic!(
-                    "{UNEXPECTED_ERR_MSG} \
-                    `{symbol_name}` symbol does not exist in this scope!"
-                );
-            }
+            // if it doesn't exist in the symbol table, that's okay, just ignore
+            _ => return,
         };
         let mut rec = self.get_record_mut(rec_id);
         if let Some(Record::Var { addr, ty, .. }) = &mut rec {

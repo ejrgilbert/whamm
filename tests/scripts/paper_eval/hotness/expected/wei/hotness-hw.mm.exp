@@ -107,5 +107,3 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 3332, memaddr, count, u32, i32, script0, main, 5, 65, 14_wasm:opcode:call, 1
 3364, memaddr, count, u32, i32, script0, main, 5, 67, 18_wasm:opcode:drop, 1
 3396, memaddr, count, u32, i32, script0, main, 5, 68, 9_wasm:opcode:end, 1
-3428, memaddr, count, u32, i32, script0, start, 6, 1, 14_wasm:opcode:call, 0
-3460, memaddr, count, u32, i32, script0, start, 6, 3, 9_wasm:opcode:end, 0
