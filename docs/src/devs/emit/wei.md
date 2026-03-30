@@ -70,3 +70,29 @@ These optimizations are discussed in this paper: https://doi.org/10.1145/3763124
 
 You might also notice that `wei` does not support general glob matching.
 To keep from engines needing to implement this feature, `Whamm` expands globs to their lowest event match.
+
+## Overlapping probes ##
+
+Multiple probes in a script may target the same event (e.g. two `wasm:opcode:call:before` probes).
+For bytecode rewriting this is fine — each probe's body is injected independently at the call site.
+For `wei`, however, each exported probe function is identified by its export name.
+If two probes would produce the **same** export name, the engine would see duplicate exports and the behavior is undefined.
+
+To handle this, `WeiGenerator` merges probes with identical export-name signatures before emitting.
+The merge key encodes everything that determines the export name shape:
+
+- The **rule string** (e.g. `wasm:opcode:call:before`)
+- The **body function parameter types** — derived from `metadata.body_args`; probes that request different application state (e.g. different `localN` type bounds or different engine variables) produce different body signatures and are therefore kept separate
+- The **predicate function parameter types** — from `metadata.pred_args`; only included when a separate predicate function would be emitted (static, non-dynamic predicate)
+- The **init/alloc function parameter types** — from `metadata.init_args`
+- Whether an **alloc function** is present (i.e. the probe has unshared variables)
+- The **number of static library call functions**
+
+Two probes whose keys match are merged into a single probe whose body is the concatenation of both bodies.
+If a component probe carries a predicate, its body is wrapped as `if <pred> { <body> }` so the predicate is evaluated at runtime inside the merged function rather than as a separate pre-check export.
+This makes all inlined predicates "dynamic" in the sense that they are checked inside the body, not exported as a separate predicate function.
+
+Additional bookkeeping performed during the merge:
+
+- **`@static` alias remapping** — each probe's `@staticN` variable references are renumbered by the offset of that probe's static library calls in the merged list (e.g. probe B's `@static0` becomes `@static2` if probe A contributed 2 static calls).
+- **Unshared variable deconfliction** — if two probes declare an unshared variable with the same name, the later probe's variable is renamed with a numeric suffix (`foo` → `foo_1`, etc.) and all references in its body and init logic are rewritten accordingly.
