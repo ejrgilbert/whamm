@@ -99,7 +99,14 @@ impl WeiGenerator<'_, '_, '_> {
             unimplemented!("`wei` does not support engine-provided global definitions yet. You requested:\n{list}")
         }
         self.visit_global_stmts(&mut script.global_stmts);
-        // visit probes
+        // Merge probes with identical export-name signatures before visiting.
+        // Two probes that would produce the same export name (same rule + same body/pred
+        // param types + same alloc/static-lib structure) need their bodies combined into
+        // a single export to avoid duplicate export names.
+        // Probes that differ in any of those dimensions already produce unique names and
+        // are left in separate groups.
+        let probes = std::mem::take(&mut script.probes);
+        script.probes = merge_overlapping_probes(probes);
         script.probes.iter_mut().for_each(|probe| {
             let probe_rule: crate::emitter::rewriting::rules::ProbeRule = (&probe.rule).into();
             assert!(
@@ -467,5 +474,260 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_> {
             }
         }
         true
+    }
+}
+
+// =============================================================================
+// Probe merging for the wei target
+// =============================================================================
+
+/// Groups probes by their export-name signature and merges each group into a
+/// single probe. Groups are processed in insertion order so output is deterministic.
+fn merge_overlapping_probes(probes: Vec<Probe>) -> Vec<Probe> {
+    let mut order: Vec<String> = Vec::new();
+    let mut groups: HashMap<String, Vec<Probe>> = HashMap::new();
+    for probe in probes {
+        let key = probe_merge_key(&probe);
+        if !groups.contains_key(&key) {
+            order.push(key.clone());
+        }
+        groups.entry(key).or_default().push(probe);
+    }
+    order
+        .into_iter()
+        .map(|key| merge_probe_group(groups.remove(&key).unwrap()))
+        .collect()
+}
+
+/// Returns the key that determines whether two probes would produce the same
+/// wei export name. Captures: rule string, body/pred/init param types, whether
+/// a pred function is emitted, alloc presence, and static-lib-call count.
+fn probe_merge_key(probe: &Probe) -> String {
+    let fmt_params = |params: &HashSet<crate::generator::ast::WhammParam>| -> String {
+        let mut v: Vec<String> = params
+            .iter()
+            .map(|p| format!("{}:{:?}", p.name, p.ty))
+            .collect();
+        v.sort_unstable();
+        v.join(",")
+    };
+
+    // A separate predicate function is emitted only when there is a predicate
+    // and it is not dynamic (dynamic preds are pushed into the body instead).
+    let has_pred_fn = probe.predicate.is_some() && !probe.metadata.pred_is_dynamic;
+    let pred_sig = if has_pred_fn {
+        fmt_params(&probe.metadata.pred_args.params)
+    } else {
+        String::new()
+    };
+
+    format!(
+        "{}|body:{}|pred:{has_pred_fn}:{}|init:{}|alloc:{}|statics:{}",
+        probe.rule,
+        fmt_params(&probe.metadata.body_args.params),
+        pred_sig,
+        fmt_params(&probe.metadata.init_args.params),
+        !probe.unshared_to_alloc.is_empty(),
+        probe.static_lib_calls.len(),
+    )
+}
+
+/// Merges a group of probes with identical export-name signatures into one.
+/// - Predicates are inlined as `if pred { body }` blocks so the merged probe
+///   never has a top-level predicate.
+/// - `@staticN` aliases in each probe's body are renumbered relative to the
+///   accumulated `static_lib_calls` list so indices remain correct.
+/// - Conflicting unshared-variable names are suffixed (`foo` → `foo_1`, etc.)
+///   and all references in the body and init_logic are rewritten accordingly.
+fn merge_probe_group(mut probes: Vec<Probe>) -> Probe {
+    if probes.len() == 1 {
+        return probes.swap_remove(0);
+    }
+
+    let first = &probes[0];
+    let mut merged = Probe {
+        rule: first.rule.clone(),
+        probe_number: first.probe_number,
+        scope_id: first.scope_id,
+        script_id: first.script_id,
+        loc: first.loc.clone(),
+        ..Default::default()
+    };
+
+    let mut merged_body_stmts: Vec<Statement> = Vec::new();
+    let mut used_unshared_names: HashSet<String> = HashSet::new();
+
+    for mut probe in probes {
+        // === 1. @static alias remapping ===
+        // The merged probe's static_lib_calls list grows as we fold probes in.
+        // This probe's @staticK references need to become @static(K + offset).
+        let static_offset = merged.static_lib_calls.len();
+        if static_offset > 0 && !probe.static_lib_calls.is_empty() {
+            let renames: HashMap<String, String> = (0..probe.static_lib_calls.len())
+                .map(|i| {
+                    (
+                        Probe::get_call_alias_for(i),
+                        Probe::get_call_alias_for(i + static_offset),
+                    )
+                })
+                .collect();
+            if let Some(ref mut body) = probe.body {
+                rename_vars_in_block(body, &renames);
+            }
+            for stmt in probe.init_logic.iter_mut() {
+                rename_vars_in_stmt(stmt, &renames);
+            }
+        }
+        merged.static_lib_calls.extend(probe.static_lib_calls);
+
+        // === 2. Unshared-var deconfliction ===
+        let mut unshared_renames: HashMap<String, String> = HashMap::new();
+        for var in probe.unshared_to_alloc.iter_mut() {
+            if used_unshared_names.contains(&var.name) {
+                let base = var.name.clone();
+                let mut n = 1u32;
+                let new_name = loop {
+                    let candidate = format!("{base}_{n}");
+                    if !used_unshared_names.contains(&candidate) {
+                        break candidate;
+                    }
+                    n += 1;
+                };
+                unshared_renames.insert(base, new_name.clone());
+                used_unshared_names.insert(new_name.clone());
+                var.name = new_name;
+            } else {
+                used_unshared_names.insert(var.name.clone());
+            }
+        }
+        if !unshared_renames.is_empty() {
+            if let Some(ref mut body) = probe.body {
+                rename_vars_in_block(body, &unshared_renames);
+            }
+            for stmt in probe.init_logic.iter_mut() {
+                rename_vars_in_stmt(stmt, &unshared_renames);
+            }
+        }
+
+        // === 3. Accumulate unshared vars and init logic ===
+        merged.unshared_to_alloc.extend(probe.unshared_to_alloc);
+        merged.init_logic.extend(probe.init_logic);
+
+        // === 4. Merge metadata ===
+        // When a predicate is inlined the pred_args it needed must become body_args.
+        if probe.predicate.is_some() {
+            merged.metadata.body_args.extend(probe.metadata.pred_args);
+        }
+        merged.metadata.body_args.extend(probe.metadata.body_args);
+        merged.metadata.init_args.extend(probe.metadata.init_args);
+        // merged.metadata.pred_is_dynamic stays false (no top-level predicate)
+
+        // === 5. Build merged body (inline predicates) ===
+        match (probe.predicate, probe.body) {
+            (Some(pred), Some(body)) => {
+                merged_body_stmts.push(Statement::If {
+                    cond: pred,
+                    conseq: body,
+                    alt: Block::default(),
+                    loc: None,
+                });
+            }
+            (None, Some(body)) => {
+                merged_body_stmts.extend(body.stmts);
+            }
+            // (Some(pred), None) — pred with no body is a no-op; skip.
+            // (None, None) — empty probe; nothing to add.
+            _ => {}
+        }
+    }
+
+    if !merged_body_stmts.is_empty() {
+        merged.body = Some(Block {
+            stmts: merged_body_stmts,
+            results: None,
+            loc: None,
+        });
+    }
+
+    merged
+}
+
+// --- AST walkers for in-place variable renaming ---
+
+fn rename_vars_in_block(block: &mut Block, renames: &HashMap<String, String>) {
+    for stmt in block.stmts.iter_mut() {
+        rename_vars_in_stmt(stmt, renames);
+    }
+}
+
+fn rename_vars_in_stmt(stmt: &mut Statement, renames: &HashMap<String, String>) {
+    match stmt {
+        Statement::Assign { var_id, expr, .. } => {
+            rename_vars_in_expr(var_id, renames);
+            rename_vars_in_expr(expr, renames);
+        }
+        Statement::SetMap { map, key, val, .. } => {
+            if let Some(new_name) = renames.get(map.as_str()) {
+                *map = new_name.clone();
+            }
+            rename_vars_in_expr(key, renames);
+            rename_vars_in_expr(val, renames);
+        }
+        Statement::Expr { expr, .. } => rename_vars_in_expr(expr, renames),
+        Statement::Return { expr, .. } => rename_vars_in_expr(expr, renames),
+        Statement::If {
+            cond, conseq, alt, ..
+        } => {
+            rename_vars_in_expr(cond, renames);
+            rename_vars_in_block(conseq, renames);
+            rename_vars_in_block(alt, renames);
+        }
+        Statement::VarDecl { name, init, .. } => {
+            if let Some(new_name) = renames.get(name.as_str()) {
+                *name = new_name.clone();
+            }
+            if let Some(init_expr) = init {
+                rename_vars_in_expr(init_expr, renames);
+            }
+        }
+        Statement::LibImport { .. } => {}
+    }
+}
+
+fn rename_vars_in_expr(expr: &mut Expr, renames: &HashMap<String, String>) {
+    match expr {
+        Expr::VarId { name, .. } => {
+            if let Some(new_name) = renames.get(name.as_str()) {
+                *name = new_name.clone();
+            }
+        }
+        Expr::BinOp { lhs, rhs, .. } => {
+            rename_vars_in_expr(lhs, renames);
+            rename_vars_in_expr(rhs, renames);
+        }
+        Expr::UnOp { expr, .. } => rename_vars_in_expr(expr, renames),
+        Expr::Ternary {
+            cond, conseq, alt, ..
+        } => {
+            rename_vars_in_expr(cond, renames);
+            rename_vars_in_expr(conseq, renames);
+            rename_vars_in_expr(alt, renames);
+        }
+        Expr::Call {
+            fn_target, args, ..
+        } => {
+            rename_vars_in_expr(fn_target, renames);
+            for arg in args.iter_mut() {
+                rename_vars_in_expr(arg, renames);
+            }
+        }
+        Expr::ObjCall { call, .. } => rename_vars_in_expr(call, renames),
+        Expr::MapGet { map, key, .. } => {
+            if let Some(new_name) = renames.get(map.as_str()) {
+                *map = new_name.clone();
+            }
+            rename_vars_in_expr(key, renames);
+        }
+        Expr::Primitive { .. } => {}
     }
 }
