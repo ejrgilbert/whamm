@@ -2262,7 +2262,7 @@ impl Script {
             let provider = self
                 .providers
                 .entry(prov_match.def.name.clone())
-                .or_insert(Provider::new(prov_match.def.clone(), probe_rule));
+                .or_insert(Provider::new(prov_match.def.clone()));
 
             provider.add_probes(
                 loc.clone(),

@@ -57,26 +57,15 @@ pub fn get_matches(
 #[derive(Debug)]
 pub struct Provider {
     pub(crate) def: Def,
-    pub(crate) type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub(crate) packages: HashMap<String, Package>,
     next_id: u32,
 }
 impl Provider {
-    pub fn new(def: Def, rule: &ProbeRule) -> Self {
-        if let Some(prov_rule) = &rule.provider {
-            Self {
-                def,
-                type_bounds: prov_rule.ty_info.clone(),
-                packages: HashMap::new(),
-                next_id: 0,
-            }
-        } else {
-            Self {
-                def,
-                type_bounds: vec![],
-                packages: HashMap::new(),
-                next_id: 0,
-            }
+    pub fn new(def: Def) -> Self {
+        Self {
+            def,
+            packages: HashMap::new(),
+            next_id: 0,
         }
     }
     pub fn add_probes(
@@ -91,7 +80,7 @@ impl Provider {
             let pkg = self
                 .packages
                 .entry(matched_pkg.def.name.clone())
-                .or_insert(Package::new(matched_pkg.def.clone(), rule));
+                .or_insert(Package::new(matched_pkg.def.clone()));
 
             pkg.add_probes(
                 loc.clone(),
@@ -108,23 +97,13 @@ impl Provider {
 #[derive(Debug)]
 pub struct Package {
     pub(crate) def: Def,
-    pub(crate) type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub(crate) events: HashMap<String, Event>,
 }
 impl Package {
-    pub fn new(def: Def, rule: &ProbeRule) -> Self {
-        if let Some(pkg_rule) = &rule.package {
-            Self {
-                def,
-                type_bounds: pkg_rule.ty_info.clone(),
-                events: HashMap::new(),
-            }
-        } else {
-            Self {
-                def,
-                type_bounds: vec![],
-                events: HashMap::new(),
-            }
+    pub fn new(def: Def) -> Self {
+        Self {
+            def,
+            events: HashMap::new(),
         }
     }
     pub fn add_probes(
@@ -140,11 +119,12 @@ impl Package {
             let evt = self
                 .events
                 .entry(matched_evt.def.name.clone())
-                .or_insert(Event::new(matched_evt.def.clone(), rule));
+                .or_insert(Event::new(matched_evt.def.clone()));
 
             evt.add_probes(
                 loc.clone(),
                 &matched_evt.modes,
+                rule,
                 predicate.clone(),
                 body.clone(),
                 next_id,
@@ -156,34 +136,36 @@ impl Package {
 #[derive(Debug)]
 pub struct Event {
     pub(crate) def: Def,
-    pub(crate) type_bounds: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
     pub(crate) probes: HashMap<ModeKind, Vec<Probe>>,
 }
 impl Event {
-    pub fn new(def: Def, rule: &ProbeRule) -> Self {
-        if let Some(evt_rule) = &rule.event {
-            Self {
-                def,
-                type_bounds: evt_rule.ty_info.clone(),
-                probes: HashMap::new(),
-            }
-        } else {
-            Self {
-                def,
-                type_bounds: vec![],
-                probes: HashMap::new(),
-            }
+    pub fn new(def: Def) -> Self {
+        Self {
+            def,
+            probes: HashMap::new(),
         }
     }
     pub fn add_probes(
         &mut self,
         loc: Location,
         matched_modes: &[ModeDef],
+        rule: &ProbeRule,
         predicate: Option<Expr>,
         body: Option<Block>,
         next_id: &mut u32,
     ) {
-        // TODO -- type_bounds for all of the hierarchy should be local to the PROBE...not to the prov/pkg/event...or it gets messed up for other probes...
+        // Collect type bounds from all hierarchy levels so each Probe carries its own copy.
+        let mut type_bounds = vec![];
+        if let Some(prov) = &rule.provider {
+            type_bounds.extend(prov.ty_info.iter().cloned());
+        }
+        if let Some(pkg) = &rule.package {
+            type_bounds.extend(pkg.ty_info.iter().cloned());
+        }
+        if let Some(evt) = &rule.event {
+            type_bounds.extend(evt.ty_info.iter().cloned());
+        }
+
         for matched_mode in matched_modes.iter() {
             let probes = self.probes.entry(matched_mode.kind.clone()).or_default();
 
@@ -194,6 +176,7 @@ impl Event {
                 def: matched_mode.def.clone(),
                 predicate: predicate.clone(),
                 body: body.clone(),
+                type_bounds: type_bounds.clone(),
                 loc: loc.clone(),
             });
             *next_id += 1;
@@ -894,6 +877,9 @@ pub struct Probe {
     pub def: Def,
     pub predicate: Option<Expr>,
     pub body: Option<Block>,
+    /// Type bounds collected from all hierarchy levels (provider, package, event) of this probe's rule.
+    /// E.g., `wasm(local0: i32)` contributes `(local0, i32)` here.
+    pub type_bounds: Vec<(Expr, DataType)>,
     pub loc: Location,
 }
 

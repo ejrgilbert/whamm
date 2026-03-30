@@ -682,6 +682,7 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
                     self.curr_script.id,
                     probe.loc.clone(),
                 );
+                self.curr_probe.type_bounds = probe.type_bounds.clone();
                 self.curr_mode = probe.kind.clone();
                 self.visit_probe(probe);
 
