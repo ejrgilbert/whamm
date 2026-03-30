@@ -709,7 +709,7 @@ impl PrintInfo for ModeDef {
 #[derive(Clone, Debug)]
 pub struct BoundVar {
     pub name: String,
-    docs: String,
+    pub docs: String,
     pub ty: DataType,
     pub lifetime: Definition,
     pub derived_from: Option<Expr>,

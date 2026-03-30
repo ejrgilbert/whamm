@@ -1,97 +1,122 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::StringAddr;
-use crate::generator::ast::Script;
 use crate::generator::folding::stmt::StmtFolder;
-use crate::parser::types::{Block, Fn, Statement};
-use crate::verifier::types::SymbolTable;
+use crate::lang_features::libraries::registry::WasmRegistry;
+use crate::parser::types::{Block, Definition, Expr, Statement, Value};
+use crate::verifier::types::{Record, SymbolTable};
 use std::collections::HashMap;
+use wirm::Module;
 
-/// Runs dead-branch elimination over the generator AST (probe bodies,
-/// `init_logic`, `global_stmts`, and user-defined function bodies) before
-/// emission, so that emitters can consume `&Statement` immutably.
-///
-/// This mirrors what `emit_stmt` in `utils.rs` does inline per statement:
-/// call `StmtFolder::fold_stmt`, which eliminates any `Statement::If` whose
-/// condition is statically constant.  Per-expression constant propagation
-/// (`ExprFolder`) is intentionally **not** run here — it is handled by the
-/// emitters for specific expression types (bound-function args, predicates,
-/// etc.) and must not be run on `ObjCall` / static-lib expressions, which
-/// require per-opcode context.
-///
-/// Predicates are also intentionally **not** touched here: they reference
-/// compiler-static variables whose values change per opcode and are re-folded
-/// in the rewriting emitter at each instrumentation site.
-pub fn run(
-    ast: &mut [Script],
-    as_monitor_module: bool,
-    table: &SymbolTable,
-    emitted_strings: &HashMap<String, StringAddr>,
-    err: &mut ErrorGen,
-) {
-    for script in ast.iter_mut() {
-        fold_stmts(
-            &mut script.global_stmts,
-            as_monitor_module,
-            table,
-            emitted_strings,
-            err,
-        );
-        for f in script.fns.iter_mut() {
-            fold_fn(f, as_monitor_module, table, emitted_strings, err);
-        }
-        for probe in script.probes.iter_mut() {
-            if let Some(body) = &mut probe.body {
-                fold_block(body, as_monitor_module, table, emitted_strings, err);
-            }
-            fold_stmts(
-                &mut probe.init_logic,
-                as_monitor_module,
-                table,
-                emitted_strings,
-                err,
-            );
-        }
-    }
-}
-
-fn fold_fn(
-    f: &mut Fn,
-    as_monitor_module: bool,
-    table: &SymbolTable,
-    emitted_strings: &HashMap<String, StringAddr>,
-    err: &mut ErrorGen,
-) {
-    fold_block(&mut f.body, as_monitor_module, table, emitted_strings, err);
-}
-
-fn fold_block(
+pub fn fold_block<'ir>(
     block: &mut Block,
     as_monitor_module: bool,
-    table: &SymbolTable,
+    table: &mut SymbolTable,
+    registry: &mut WasmRegistry,
     emitted_strings: &HashMap<String, StringAddr>,
+    app_wasm: &Module<'ir>,
     err: &mut ErrorGen,
 ) {
     fold_stmts(
         &mut block.stmts,
         as_monitor_module,
         table,
+        registry,
         emitted_strings,
+        app_wasm,
         err,
     );
 }
 
+/// Fold expressions within each statement in a slice in-place (1:1 replacement).
+/// Unlike `fold_stmts`, this does not handle `If`-branch elimination that could change
+/// the number of statements. Use this when the caller holds a `&mut [Statement]`.
+pub fn fold_stmts_slice<'ir>(
+    stmts: &mut [Statement],
+    as_monitor_module: bool,
+    table: &mut SymbolTable,
+    registry: &mut WasmRegistry,
+    emitted_strings: &HashMap<String, StringAddr>,
+    app_wasm: &Module<'ir>,
+    err: &mut ErrorGen,
+) {
+    for stmt in stmts.iter_mut() {
+        let folded = StmtFolder::fold_stmt(
+            stmt,
+            as_monitor_module,
+            table,
+            registry,
+            emitted_strings,
+            app_wasm,
+            err,
+        );
+        // A folded non-If statement always produces exactly one statement.
+        // (If statements are not expected in global_stmts.)
+        if let Some(new_stmt) = folded.stmts.into_iter().next() {
+            propagate_primitive_assign(&new_stmt, table);
+            *stmt = new_stmt;
+        }
+    }
+}
+
 /// Replace each statement with its `StmtFolder`-folded form.
 /// `StmtFolder` eliminates dead `If`-branches; all other statements pass through.
-fn fold_stmts(
+pub fn fold_stmts<'ir>(
     stmts: &mut Vec<Statement>,
     as_monitor_module: bool,
-    table: &SymbolTable,
+    table: &mut SymbolTable,
+    registry: &mut WasmRegistry,
     emitted_strings: &HashMap<String, StringAddr>,
+    app_wasm: &Module<'ir>,
     err: &mut ErrorGen,
 ) {
     let original = std::mem::take(stmts);
     for stmt in original {
-        let folded = StmtFolder::fold_stmt(&stmt, as_monitor_module, table, emitted_strings, err);
+        let folded = StmtFolder::fold_stmt(
+            &stmt,
+            as_monitor_module,
+            table,
+            registry,
+            emitted_strings,
+            app_wasm,
+            err,
+        );
+        for new_stmt in &folded.stmts {
+            propagate_primitive_assign(new_stmt, table);
+        }
         stmts.extend(folded.stmts);
+    }
+}
+
+/// After folding a statement, if it is a stable user-defined primitive assignment
+/// (`var = <constant>` or `var x = <constant>`), record the value in the symbol
+/// table so that subsequent `fold_var_id` calls inline the constant at every use site.
+fn propagate_primitive_assign(stmt: &Statement, table: &mut SymbolTable) {
+    let (name, val) = match stmt {
+        Statement::Assign {
+            var_id: Expr::VarId { name, .. },
+            expr: Expr::Primitive { val, .. },
+            ..
+        } => (name, val),
+        Statement::VarDecl {
+            name,
+            init: Some(Expr::Primitive { val, .. }),
+            ..
+        } => (name, val),
+        _ => return,
+    };
+    let rec = table.lookup_var_mut(name, false);
+    let Some(Record::Var {
+        value,
+        times_set,
+        def,
+        ..
+    }) = rec
+    else {
+        return;
+    };
+    // Only propagate when the variable is assigned at most once (stable) and is
+    // user-defined (not a compiler-injected bound variable).
+    if *times_set <= 1 && matches!(def, Definition::User) && !matches!(val, Value::Tuple { .. }) {
+        *value = Some(val.clone());
     }
 }

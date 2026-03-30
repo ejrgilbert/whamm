@@ -172,6 +172,22 @@ impl SymbolTable {
         }
     }
 
+    pub fn override_record_vals(
+        &mut self,
+        data: &HashMap<String, Option<Value>>,
+        fail_on_dne: bool,
+    ) {
+        data.iter().for_each(|(name, val)| {
+            self.override_record_val(name, val.clone(), fail_on_dne);
+        });
+    }
+
+    pub fn reset_record_vals(&mut self, names: &[&String]) {
+        names.iter().for_each(|symbol_name| {
+            self.override_record_val(symbol_name, None, false);
+        });
+    }
+
     pub fn override_record_val(
         &mut self,
         symbol_name: &str,
@@ -731,12 +747,6 @@ impl Record {
         match self {
             Record::Fn { def, .. } | Record::Var { def, .. } => def.is_comp_defined(),
             _ => true,
-        }
-    }
-    pub fn val_is_stable(&self) -> bool {
-        match self {
-            Record::Var { times_set, .. } => *times_set <= 1,
-            _ => unreachable!("cannot call this function on a non-var record."),
         }
     }
 }

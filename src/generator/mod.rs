@@ -21,8 +21,8 @@ pub mod metadata_collector;
 #[cfg(test)]
 pub mod tests;
 
-fn create_curr_loc(curr_script_id: u8, probe: &ast::Probe) -> LocationData {
-    let probe_id = format!("{}_{}", probe.probe_number, probe.rule);
+fn create_curr_loc(curr_script_id: u8, probe: &ast::Probe, wei: bool) -> LocationData {
+    let probe_id = probe.to_string(wei);
 
     //set the current location in bytecode and load some new globals for potential report vars
     LocationData::Local {
@@ -36,6 +36,14 @@ fn emit_needed_funcs(
     emitter: &mut ModuleEmitter,
     injected_funcs: &mut Vec<FunctionID>,
 ) {
+    // Sort so that dependencies are emitted before dependents.
+    // strcmp must come before strcontains since strcontains calls strcmp.
+    let mut funcs: Vec<_> = funcs.into_iter().collect();
+    funcs.sort_by_key(|(_, name)| match name.as_str() {
+        "strcmp" => 0,
+        "strcontains" => 1,
+        _ => 2,
+    });
     for (context, fname) in funcs.iter() {
         if let Some(fid) = emitter.emit_bound_fn(
             context,
@@ -97,6 +105,13 @@ pub trait GeneratingVisitor: WhammVisitorMut<bool> {
             is_success &= self.visit_stmt(stmt);
         });
         is_success
+    }
+    fn handle_lib_imports(&mut self, stmts: &mut [Statement]) {
+        for stmt in stmts.iter_mut() {
+            if let Statement::LibImport { lib_name, loc, .. } = stmt {
+                self.link_user_lib(lib_name, loc);
+            }
+        }
     }
     fn visit_global_stmts(&mut self, stmts: &mut [Statement]) -> bool;
     fn visit_globals(&mut self, globals: &HashMap<String, Global>) -> bool {

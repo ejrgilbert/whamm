@@ -32,11 +32,7 @@ fn emit_dynamic_compiler_data(
 
 fn add_to_table(info: &LocInfo, emitter: &mut VisitingEmitter) {
     // define static data
-    info.static_data
-        .iter()
-        .for_each(|(dyn_var_name, dyn_var_val)| {
-            emitter.define_data(dyn_var_name, dyn_var_val);
-        });
+    emitter.table.override_record_vals(&info.static_data, false);
     // define dynamic aliases
     info.dynamic_alias
         .iter()
@@ -193,7 +189,10 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
         while first_instr || self.emitter.next_instr() {
             first_instr = false;
             // Check if any of the configured rules match this instruction in the application.
-            if let Some(loc_info) = self.emitter.get_loc_info(&mut match_state, &mut self.ast) {
+            if let Some(loc_info) =
+                self.emitter
+                    .get_loc_info(&mut match_state, &mut self.ast, self.err)
+            {
                 // Inject a call to the on-exit flush function
                 self.is_prog_exit = loc_info.is_prog_exit;
                 if loc_info.is_prog_exit {
@@ -263,12 +262,7 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                         let folded = self.emitter.fold_expr(&pred, self.err);
 
                         // If the predicate evaluates to false, short-circuit!
-                        if let Some(pred_as_bool) = ExprFolder::get_single_bool(
-                            &folded,
-                            self.emitter.registry,
-                            &self.emitter.mem_allocator.emitted_strings,
-                            false,
-                        ) {
+                        if let Some(pred_as_bool) = ExprFolder::get_single_bool(&folded) {
                             if !pred_as_bool {
                                 // predicate is reduced to false, short-circuit!
                                 continue;
@@ -284,6 +278,34 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                     self.curr_probe_rule = probe_rule.clone();
                     self.curr_probe_loc = loc_clone;
                     self.curr_probe = Some((state_init_clone, body_clone, pred_clone));
+
+                    // Fold init_logic and body so that compiler-static bound functions
+                    // (e.g. active_data_start, active_data_len) are resolved to primitives
+                    // before emission.
+                    {
+                        if let Some((state_init, ..)) = &mut self.curr_probe {
+                            crate::generator::folding::pass::fold_stmts(
+                                state_init,
+                                false,
+                                self.emitter.table,
+                                self.emitter.registry,
+                                &self.emitter.mem_allocator.emitted_strings,
+                                self.emitter.app_iter.module,
+                                self.err,
+                            );
+                        }
+                    }
+                    if let Some((_, Some(ref mut body), _)) = &mut self.curr_probe {
+                        crate::generator::folding::pass::fold_block(
+                            body,
+                            false,
+                            self.emitter.table,
+                            self.emitter.registry,
+                            &self.emitter.mem_allocator.emitted_strings,
+                            self.emitter.app_iter.module,
+                            self.err,
+                        );
+                    }
 
                     if !self.config.no_bundle {
                         // since we're only supporting 'no_bundle' when 'no_body' and 'no_pred' are also true
@@ -453,12 +475,7 @@ impl InstrGenerator<'_, '_> {
     fn pred_is_true(&mut self) -> bool {
         if let Some((.., pred)) = &self.curr_probe {
             if let Some(pred) = pred {
-                if let Some(pred_as_bool) = ExprFolder::get_single_bool(
-                    pred,
-                    self.emitter.registry,
-                    &self.emitter.mem_allocator.emitted_strings,
-                    false,
-                ) {
+                if let Some(pred_as_bool) = ExprFolder::get_single_bool(pred) {
                     // predicate has been reduced to a boolean value
                     return pred_as_bool;
                 }

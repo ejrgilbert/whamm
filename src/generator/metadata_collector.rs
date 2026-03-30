@@ -20,6 +20,7 @@ enum Visiting {
     Predicate,
     Body,
     Init,
+    Global,
     #[default]
     None,
 }
@@ -101,7 +102,9 @@ impl<'a> MetadataCollector<'a> {
     fn visit_stmts(&mut self, stmts: &[Statement]) -> Vec<Statement> {
         let mut new_stmts = Vec::with_capacity(stmts.len());
         stmts.iter().for_each(|stmt| {
-            new_stmts.push(self.visit_stmt_inner(stmt));
+            if let Some(new_stmt) = self.visit_stmt_inner(stmt) {
+                new_stmts.push(new_stmt);
+            }
         });
 
         new_stmts
@@ -124,6 +127,7 @@ impl<'a> MetadataCollector<'a> {
             return &mut self.curr_lib_call_args;
         }
         match self.visiting {
+            Visiting::Global => &mut self.curr_script.req_globals,
             Visiting::Predicate => &mut self.curr_probe.metadata.pred_args,
             Visiting::Body => &mut self.curr_probe.metadata.body_args,
             Visiting::Init => &mut self.curr_probe.metadata.init_args,
@@ -150,6 +154,13 @@ impl<'a> MetadataCollector<'a> {
             );
         }
         match self.visiting {
+            Visiting::Global => self.curr_script.req_globals.push(
+                WhammParam {
+                    name: name.to_string(),
+                    ty: ty.clone(),
+                },
+                &self.curr_mode,
+            ),
             Visiting::Predicate => {
                 self.curr_probe.metadata.push_pred_req(
                     name.to_string(),
@@ -241,6 +252,25 @@ impl<'a> MetadataCollector<'a> {
                 } else {
                     (false, false)
                 };
+
+                // Check the method name before the type lookup so we can handle
+                // `contains` on any string receiver (including literals or vars not
+                // yet resolved in the symbol table).
+                let method_name = if let Expr::Call { fn_target, .. } = call.as_ref() {
+                    if let Expr::VarId { name, .. } = fn_target.as_ref() {
+                        Some(name.as_str())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+                if method_name == Some("contains") {
+                    self.used_bound_fns
+                        .insert(("whamm".to_string(), "strcmp".to_string()));
+                    self.used_bound_fns
+                        .insert(("whamm".to_string(), "strcontains".to_string()));
+                }
 
                 let is_type_util = if let Some(Record::Var { ty, def, .. }) =
                     self.table.lookup_var(obj_name, false).cloned()
@@ -391,8 +421,6 @@ impl<'a> MetadataCollector<'a> {
                     if let Some(context) = context {
                         // will need to emit this function!
                         self.used_bound_fns.insert((context, fn_name));
-                        // will need to possibly define arguments!
-                        self.combine_req_args(req_args.clone());
                     }
                 } else if matches!(def, Definition::CompilerStatic) && fn_name == "memid" {
                     let target_lib = args.first().unwrap();
@@ -400,6 +428,10 @@ impl<'a> MetadataCollector<'a> {
                         panic!("not supported")
                     };
                     self.used_user_library_mems.insert(name.clone());
+                }
+                if !matches!(self.visiting, Visiting::None) {
+                    // will need to possibly define arguments!
+                    self.combine_req_args(req_args.clone());
                 }
 
                 let mut new_args = vec![];
@@ -479,7 +511,7 @@ impl<'a> MetadataCollector<'a> {
         }
     }
 
-    fn visit_stmt_inner(&mut self, stmt: &Statement) -> Statement {
+    fn visit_stmt_inner(&mut self, stmt: &Statement) -> Option<Statement> {
         match stmt {
             Statement::VarDecl {
                 name,
@@ -499,7 +531,7 @@ impl<'a> MetadataCollector<'a> {
                             &LocationData::Local {
                                 script_id: self.script_num,
                                 bytecode_loc: BytecodeLoc::new(0, 0), // (unused)
-                                probe_id: self.curr_probe.to_string(),
+                                probe_id: self.curr_probe.to_string(self.config.as_monitor_module),
                             },
                         ))
                     } else {
@@ -519,6 +551,14 @@ impl<'a> MetadataCollector<'a> {
                         let visited_init = self.visit_expr_inner(init_expr);
                         self.visiting = v;
                         self.has_probe_state_init = true;
+                        let init_decl = Statement::VarDecl {
+                            name: name.clone(),
+                            ty: ty.clone(),
+                            definition: *definition,
+                            modifiers: modifiers.clone(),
+                            loc: loc.clone(),
+                            init: None,
+                        };
                         let init_assign = Statement::Assign {
                             var_id: Expr::VarId {
                                 name: name.clone(),
@@ -528,10 +568,12 @@ impl<'a> MetadataCollector<'a> {
                             expr: visited_init,
                             loc: None,
                         };
+                        self.curr_probe.add_init_logic(init_decl);
                         self.curr_probe.add_init_logic(init_assign);
+                        return None;
                     }
                 }
-                stmt.clone()
+                Some(stmt.clone())
             }
             Statement::Assign { var_id, expr, loc } => {
                 if let Expr::VarId {
@@ -560,20 +602,20 @@ impl<'a> MetadataCollector<'a> {
                 let var_id = self.visit_expr_inner(var_id);
                 let expr = self.visit_expr_inner(expr);
 
-                Statement::Assign {
+                Some(Statement::Assign {
                     var_id,
                     expr,
                     loc: loc.clone(),
-                }
+                })
             }
-            Statement::Expr { expr, loc } => Statement::Expr {
+            Statement::Expr { expr, loc } => Some(Statement::Expr {
                 expr: self.visit_expr_inner(expr),
                 loc: loc.clone(),
-            },
-            Statement::Return { expr, loc } => Statement::Return {
+            }),
+            Statement::Return { expr, loc } => Some(Statement::Return {
                 expr: self.visit_expr_inner(expr),
                 loc: loc.clone(),
-            },
+            }),
             Statement::If {
                 cond,
                 conseq:
@@ -589,7 +631,7 @@ impl<'a> MetadataCollector<'a> {
                         loc: alt_loc,
                     },
                 loc,
-            } => Statement::If {
+            } => Some(Statement::If {
                 cond: self.visit_expr_inner(cond),
                 conseq: Block {
                     stmts: self.visit_stmts(conseq_stmts),
@@ -602,14 +644,14 @@ impl<'a> MetadataCollector<'a> {
                     loc: alt_loc.clone(),
                 },
                 loc: loc.clone(),
-            },
-            Statement::SetMap { map, key, val, loc } => Statement::SetMap {
+            }),
+            Statement::SetMap { map, key, val, loc } => Some(Statement::SetMap {
                 map: map.clone(),
                 key: self.visit_expr_inner(key),
                 val: self.visit_expr_inner(val),
                 loc: loc.clone(),
-            },
-            _ => stmt.clone(),
+            }),
+            _ => Some(stmt.clone()),
         }
     }
 }
@@ -648,7 +690,9 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
     fn visit_script(&mut self, script: &ParserScript) {
         self.table.enter_named_scope(&script.id.to_string());
 
+        self.visiting = Visiting::Global;
         self.visit_stmts(&script.global_stmts);
+        self.visiting = Visiting::None;
 
         // visit providers
         script.providers.iter().for_each(|(_name, provider)| {
@@ -671,10 +715,7 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
 
         event.probes.iter().for_each(|(_ty, probes)| {
             probes.iter().for_each(|probe| {
-                if !self.config.as_monitor_module {
-                    // add the mode when not on the wizard target
-                    self.rule_tracker.push(&format!(":{}", probe.kind.name()));
-                }
+                self.rule_tracker.push(&format!(":{}", probe.kind.name()));
                 self.curr_probe = Probe::new(
                     self.rule_tracker.get_owned(),
                     probe.id,
@@ -690,10 +731,7 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
                 self.curr_script.probes.push(self.curr_probe.clone());
 
                 // reset per-probe track data
-                if !self.config.as_monitor_module {
-                    // remove mode
-                    self.rule_tracker.pop();
-                }
+                self.rule_tracker.pop();
             });
         });
         self.table.exit_scope();
