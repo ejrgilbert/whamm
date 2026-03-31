@@ -1,6 +1,6 @@
 use crate::parser::types as parser_types;
+use indexmap::IndexMap;
 use parser_types::Statement;
-use std::collections::HashMap;
 
 use crate::generator::ast::{Probe, Script, WhammParam};
 use crate::parser::provider_handler::ModeKind;
@@ -59,7 +59,7 @@ use crate::parser::provider_handler::ModeKind;
 #[derive(Default)]
 pub struct SimpleAST {
     pub global_stmts: Vec<Statement>,
-    pub provs: HashMap<String, SimpleProv>,
+    pub provs: IndexMap<String, SimpleProv>,
 }
 impl SimpleAST {
     pub fn new(ast: Vec<Script>) -> Self {
@@ -103,7 +103,9 @@ impl SimpleAST {
 }
 #[derive(Default)]
 pub struct SimpleProv {
-    pub pkgs: HashMap<String, SimplePkg>,
+    // IndexMap instead of HashMap: insertion order = script order, so probes that match
+    // the same bytecode location are injected in the order they appear in the script.
+    pub pkgs: IndexMap<String, SimplePkg>,
     all_params: Option<Vec<WhammParam>>,
 }
 impl SimpleProv {
@@ -132,7 +134,9 @@ impl SimpleProv {
 }
 #[derive(Default)]
 pub struct SimplePkg {
-    pub evts: HashMap<String, SimpleEvt>,
+    // IndexMap instead of HashMap: insertion order = script order, so probes that match
+    // the same bytecode location are injected in the order they appear in the script.
+    pub evts: IndexMap<String, SimpleEvt>,
     all_params: Option<Vec<WhammParam>>,
 }
 impl SimplePkg {
@@ -161,7 +165,9 @@ impl SimplePkg {
 }
 #[derive(Default)]
 pub struct SimpleEvt {
-    pub modes: HashMap<ModeKind, Vec<Probe>>,
+    // IndexMap instead of HashMap: insertion order = script order, so probes that match
+    // the same bytecode location are injected in the order they appear in the script.
+    pub modes: IndexMap<ModeKind, Vec<Probe>>,
     all_params: Option<Vec<WhammParam>>,
 }
 impl SimpleEvt {

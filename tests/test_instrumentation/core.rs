@@ -272,3 +272,11 @@ fn instrument_with_mem_grow_scripts() {
     // TODO: need to get `res0` working on `wei`
     run_core_suite("grow-failed", processed_scripts, true, false)
 }
+#[test]
+fn instrument_with_order_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/ordering");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("ordering", processed_scripts, true, true)
+}

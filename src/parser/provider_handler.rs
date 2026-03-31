@@ -9,11 +9,11 @@ use crate::parser::types::{
 };
 use crate::parser::whamm_parser::{expr_from_pair, handle_param, type_from_rule};
 use glob::Pattern;
+use indexmap::IndexMap;
 use log::error;
 use pest::iterators::Pair;
 use pest::Parser;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::process::exit;
 use termcolor::Buffer;
@@ -57,14 +57,16 @@ pub fn get_matches(
 #[derive(Debug)]
 pub struct Provider {
     pub(crate) def: Def,
-    pub(crate) packages: HashMap<String, Package>,
+    // IndexMap instead of HashMap: iteration order must match the order probes appear in
+    // the script so that injection at a shared bytecode location respects script order.
+    pub(crate) packages: IndexMap<String, Package>,
     next_id: u32,
 }
 impl Provider {
     pub fn new(def: Def) -> Self {
         Self {
             def,
-            packages: HashMap::new(),
+            packages: IndexMap::new(),
             next_id: 0,
         }
     }
@@ -97,13 +99,15 @@ impl Provider {
 #[derive(Debug)]
 pub struct Package {
     pub(crate) def: Def,
-    pub(crate) events: HashMap<String, Event>,
+    // IndexMap instead of HashMap: iteration order must match the order probes appear in
+    // the script so that injection at a shared bytecode location respects script order.
+    pub(crate) events: IndexMap<String, Event>,
 }
 impl Package {
     pub fn new(def: Def) -> Self {
         Self {
             def,
-            events: HashMap::new(),
+            events: IndexMap::new(),
         }
     }
     pub fn add_probes(
@@ -136,13 +140,15 @@ impl Package {
 #[derive(Debug)]
 pub struct Event {
     pub(crate) def: Def,
-    pub(crate) probes: HashMap<ModeKind, Vec<Probe>>,
+    // IndexMap instead of HashMap: iteration order must match the order probes appear in
+    // the script so that injection at a shared bytecode location respects script order.
+    pub(crate) probes: IndexMap<ModeKind, Vec<Probe>>,
 }
 impl Event {
     pub fn new(def: Def) -> Self {
         Self {
             def,
-            probes: HashMap::new(),
+            probes: IndexMap::new(),
         }
     }
     pub fn add_probes(

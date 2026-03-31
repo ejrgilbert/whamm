@@ -1,0 +1,6 @@
+================================= REPORT CSV FLUSH ====================================
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
+4, memaddr, at_entry0, i32, i32, script0, loader, 0, 1, 0_wasm:func:entry:<no-mode>, 2
+36, memaddr, at_entry1, i32, i32, script0, loader, 0, 1, 1_wasm:func:entry:<no-mode>, 3
+68, memaddr, at_entry0, i32, i32, script0, _start, 1, 1, 0_wasm:func:entry:<no-mode>, 0
+100, memaddr, at_entry1, i32, i32, script0, _start, 1, 1, 1_wasm:func:entry:<no-mode>, 1
