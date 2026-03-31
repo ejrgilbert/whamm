@@ -759,6 +759,7 @@ fn rename_vars_in_expr(expr: &mut Expr, renames: &HashMap<String, String>) {
             }
             rename_vars_in_expr(key, renames);
         }
+        Expr::TupleGet { tuple, .. } => rename_vars_in_expr(tuple, renames),
         Expr::Primitive { .. } => {}
     }
 }

@@ -488,6 +488,7 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
                 }
             }
             Expr::MapGet { key, .. } => self.visit_expr(key),
+            Expr::TupleGet { tuple, .. } => self.visit_expr(tuple),
         }
     }
 

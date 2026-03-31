@@ -284,7 +284,8 @@ impl DataType {
             DataType::Map { .. } => vec![WirmType::I32],
             DataType::Null => unimplemented!(),
             DataType::Str => vec![WirmType::I32, WirmType::I32],
-            DataType::Tuple { .. } => unimplemented!(),
+            // Flatten each element's wasm types: e.g. (i32, str) → [I32, I32, I32]
+            DataType::Tuple { ty_info } => ty_info.iter().flat_map(|t| t.to_wasm_type()).collect(),
             DataType::Lib => unreachable!(),
             DataType::Unknown => unreachable!(),
             DataType::AssumeGood => unreachable!(),
@@ -1421,6 +1422,11 @@ pub enum Expr {
         key: Box<Expr>,
         loc: Option<Location>,
     },
+    TupleGet {
+        tuple: Box<Expr>, // VarId or nested TupleGet (root must be a VarId)
+        index: u32,
+        loc: Option<Location>,
+    },
 }
 impl Expr {
     pub fn empty_tuple(loc: &Option<Location>) -> Self {
@@ -1477,6 +1483,7 @@ impl Expr {
             | Expr::Call { loc, .. }
             | Expr::VarId { loc, .. }
             | Expr::MapGet { loc, .. }
+            | Expr::TupleGet { loc, .. }
             | Expr::Primitive { loc, .. } => loc,
         }
     }
@@ -1531,6 +1538,7 @@ impl Display for Expr {
             Expr::VarId { name, .. } => write!(f, "{name}"),
             Expr::Primitive { val, .. } => write!(f, "{val}"),
             Expr::MapGet { map, key, .. } => write!(f, "{map}.{}", key),
+            Expr::TupleGet { tuple, index, .. } => write!(f, "{tuple}.{index}"),
         }
     }
 }
@@ -2550,6 +2558,10 @@ pub fn traverse_expr_mut<T: Default, V: WhammVisitorMut<T>>(visitor: &mut V, exp
         Expr::VarId { .. } => T::default(),
         Expr::MapGet { key, .. } => {
             visitor.visit_expr(key);
+            T::default()
+        }
+        Expr::TupleGet { tuple, .. } => {
+            visitor.visit_expr(tuple);
             T::default()
         }
     }

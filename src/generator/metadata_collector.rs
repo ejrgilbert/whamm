@@ -508,6 +508,14 @@ impl<'a> MetadataCollector<'a> {
                     loc: loc.clone(),
                 }
             }
+            Expr::TupleGet { tuple, index, loc } => {
+                let tuple = self.visit_expr_inner(tuple);
+                Expr::TupleGet {
+                    tuple: Box::new(tuple),
+                    index: *index,
+                    loc: loc.clone(),
+                }
+            }
         }
     }
 

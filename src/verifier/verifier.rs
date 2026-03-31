@@ -957,6 +957,36 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
             }
+            Expr::TupleGet { tuple, index, loc } => {
+                let tuple_ty = self.visit_expr_impl(tuple, None);
+                match tuple_ty {
+                    Some(DataType::Tuple { ty_info }) => {
+                        let idx = *index as usize;
+                        if idx < ty_info.len() {
+                            Some(ty_info[idx].clone())
+                        } else {
+                            self.err.type_check_error(
+                                format!(
+                                    "Tuple index {} out of bounds (tuple has {} elements)",
+                                    index,
+                                    ty_info.len()
+                                ),
+                                &loc.clone().map(|l| l.line_col),
+                            );
+                            Some(DataType::AssumeGood)
+                        }
+                    }
+                    Some(DataType::AssumeGood) => Some(DataType::AssumeGood),
+                    Some(other_ty) => {
+                        self.err.type_check_error(
+                            format!("Expected tuple type for element access, got {:?}", other_ty),
+                            &loc.clone().map(|l| l.line_col),
+                        );
+                        Some(DataType::AssumeGood)
+                    }
+                    None => None,
+                }
+            }
             Expr::Ternary {
                 cond,
                 conseq,
@@ -1339,9 +1369,11 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     self.add_local(ty.to_owned(), name.to_owned(), *definition, loc);
                 }
                 if let Some(init_expr) = init {
-                    // Former UnsharedDeclInit: visit init under restricted probe-local state
+                    // Former UnsharedDeclInit: visit init under restricted probe-local state.
+                    // Pass the declared type as `expected` so that tuple/numeric literals are
+                    // resolved to the correct concrete types (e.g. -2 in an i64 field → I64).
                     self.restrict_probe_local_state = true;
-                    self.visit_expr(init_expr);
+                    self.visit_expr_impl(init_expr, Some(ty));
                     self.restrict_probe_local_state = false;
                 }
                 None

@@ -169,7 +169,67 @@ impl MemoryAllocator {
                     memory: mem_id,
                 })
             }
-            DataType::Tuple { .. } | DataType::Map { .. } => todo!(),
+            DataType::Tuple { ty_info } => {
+                // The caller already pushed one base addr (emit_addr at the top of this fn).
+                // For each element: use the addr on the stack for its first load, then
+                // re-push the addr for every subsequent part.
+                let mut byte_offset = var_offset;
+                let mut first = true;
+                for elem_ty in ty_info.iter() {
+                    if !first {
+                        self.emit_addr(table, injector);
+                    }
+                    first = false;
+                    let memarg = MemArg {
+                        align: 0,
+                        max_align: 0,
+                        offset: byte_offset as u64,
+                        memory: mem_id,
+                    };
+                    match elem_ty {
+                        DataType::U8 => {
+                            injector.i32_load8_u(memarg);
+                        }
+                        DataType::I8 => {
+                            injector.i32_load8_s(memarg);
+                        }
+                        DataType::U16 => {
+                            injector.i32_load16_u(memarg);
+                        }
+                        DataType::I16 => {
+                            injector.i32_load16_s(memarg);
+                        }
+                        DataType::U32 | DataType::I32 | DataType::Boolean => {
+                            injector.i32_load(memarg);
+                        }
+                        DataType::F32 => {
+                            injector.f32_load(memarg);
+                        }
+                        DataType::U64 | DataType::I64 => {
+                            injector.i64_load(memarg);
+                        }
+                        DataType::F64 => {
+                            injector.f64_load(memarg);
+                        }
+                        DataType::Str => {
+                            // ptr
+                            injector.i32_load(memarg);
+                            // len (needs its own addr push)
+                            self.emit_addr(table, injector);
+                            injector.i32_load(MemArg {
+                                offset: byte_offset as u64 + 4,
+                                ..memarg
+                            });
+                        }
+                        DataType::Tuple { .. } => todo!("nested tuples in get_from_mem"),
+                        _ => unreachable!(),
+                    }
+                    byte_offset += elem_ty.num_bytes().unwrap() as u32;
+                }
+
+                injector
+            }
+            DataType::Map { .. } => todo!(),
             DataType::Null | DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
                 unreachable!()
             }
@@ -242,7 +302,27 @@ impl MemoryAllocator {
                     memory: mem_id,
                 })
             }
-            DataType::Tuple { .. } | DataType::Map { .. } => todo!(),
+            DataType::Tuple { ty_info } => {
+                // idx is the flat wasm-part index across all elements.
+                // Walk elements to find which element+sub-element it maps to,
+                // then delegate to set_in_mem for that element at its byte offset.
+                // idx=None is treated as 0, consistent with how Str handles None for its ptr part.
+                let idx = idx.unwrap_or(0);
+                let mut byte_offset = var_offset;
+                let mut part_idx = 0usize;
+                for elem_ty in ty_info.iter() {
+                    let n_parts = elem_ty.to_wasm_type().len();
+                    if idx < part_idx + n_parts {
+                        let sub_idx = idx - part_idx;
+                        self.set_in_mem(byte_offset, mem_id, elem_ty, Some(sub_idx), injector);
+                        return;
+                    }
+                    part_idx += n_parts;
+                    byte_offset += elem_ty.num_bytes().unwrap() as u32;
+                }
+                unreachable!("set_in_mem: idx {} out of range for tuple", idx);
+            }
+            DataType::Map { .. } => todo!(),
             DataType::Null | DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
                 unreachable!()
             }

@@ -403,15 +403,22 @@ fn emit_assign_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     match stmt {
         Statement::Assign { var_id, expr, .. } => {
             // Save off primitives to symbol table
-            let part_tys = if let Expr::VarId { name, .. } = &var_id {
-                let rec = ctx.table.lookup_var_mut(name, true).unwrap();
-                let Record::Var { ty, .. } = rec else {
-                    unreachable!("unexpected type");
-                };
-
-                ty.to_wasm_type()
-            } else {
-                unreachable!("{} Expected VarId, got {var_id:?}", ctx.err_msg);
+            let part_tys = match &var_id {
+                Expr::VarId { name, .. } => {
+                    let rec = ctx.table.lookup_var_mut(name, true).unwrap();
+                    let Record::Var { ty, .. } = rec else {
+                        unreachable!("unexpected type");
+                    };
+                    ty.to_wasm_type()
+                }
+                Expr::TupleGet { .. } => {
+                    // Assign to a specific element: part_tys is that element's wasm types
+                    let elem_ty = get_tuple_element_type(var_id, ctx);
+                    elem_ty.to_wasm_type()
+                }
+                _ => {
+                    unreachable!("{} Expected VarId or TupleGet, got {var_id:?}", ctx.err_msg);
+                }
             };
 
             let mut is_success = true;
@@ -419,17 +426,19 @@ fn emit_assign_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                 return false;
             }
             // now the full expression is on the stack
-            // save the parts to local values so we can store 1-by-1
+            // save the parts to local values so we can store 1-by-1.
+            // The stack is LIFO, so the LAST wasm type pushed is at the top.
+            // Iterate part_tys in reverse so each local_set pops the matching type.
             let mut part_locals = vec![];
-            for ty in part_tys.iter() {
+            for ty in part_tys.iter().rev() {
                 let local = LocalID(ctx.locals_tracker.use_local(*ty, injector));
                 part_locals.push(local);
 
                 injector.local_set(local);
             }
 
-            // part_locals is in REVERSE from the assumed order.
-            // e.g. stack is: [ptr, len] -> part_locals: [len, ptr]
+            // part_locals is now [last_ty_local, ..., first_ty_local].
+            // Reversing it gives forward order with idx matching emit_set's idx parameter.
             for (idx, local) in part_locals.iter().rev().enumerate() {
                 // memory offset goes BEFORE the value to store
                 possibly_emit_memaddr_calc_offset(var_id, injector, ctx);
@@ -620,27 +629,31 @@ fn possibly_emit_memaddr_calc_offset<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + Ad
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
-    if let Expr::VarId { name, .. } = var_id {
-        let Some(Record::Var { addr, .. }) = ctx.table.lookup_var_mut(name, true) else {
-            unreachable!("unexpected type");
-        };
+    // Resolve to the root variable name (handles both VarId and TupleGet)
+    let root_name = match var_id {
+        Expr::VarId { name, .. } => name.clone(),
+        Expr::TupleGet { .. } => collect_tuple_get_chain(var_id).0,
+        _ => unreachable!(
+            "{} Expected VarId or TupleGet, got: {var_id:?}",
+            ctx.err_msg
+        ),
+    };
+    let Some(Record::Var { addr, .. }) = ctx.table.lookup_var_mut(&root_name, true) else {
+        unreachable!("unexpected type");
+    };
 
-        // this will be different based on if this is a global or local var
-        let mut is_mem_loc = false;
-        if let Some(addrs) = addr {
-            for addr in addrs.iter() {
-                if let VarAddr::MemLoc { .. } = addr {
-                    is_mem_loc = true;
-                };
-            }
+    let mut is_mem_loc = false;
+    if let Some(addrs) = addr {
+        for addr in addrs.iter() {
+            if let VarAddr::MemLoc { .. } = addr {
+                is_mem_loc = true;
+            };
         }
-        if is_mem_loc {
-            ctx.mem_allocator.emit_addr(ctx.table, injector);
-        }
-        true
-    } else {
-        unreachable!("{} Expected VarId, got: {var_id:?}", ctx.err_msg);
     }
+    if is_mem_loc {
+        ctx.mem_allocator.emit_addr(ctx.table, injector);
+    }
+    true
 }
 
 fn emit_set<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
@@ -649,6 +662,56 @@ fn emit_set<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
+    if let Expr::TupleGet { .. } = var_id {
+        // Setting a specific tuple element: compute the wasm address range and set
+        let (root_name, indices) = collect_tuple_get_chain(var_id);
+        let root_ty = {
+            let Some(Record::Var { ty, .. }) = ctx.table.lookup_var(&root_name, true) else {
+                unreachable!("unexpected type for tuple set");
+            };
+            ty.clone()
+        };
+        let (wasm_start, _wasm_count) = resolve_tuple_access_range(&root_ty, &indices);
+        let addrs = {
+            let Some(Record::Var { addr, loc, .. }) = ctx.table.lookup_var(&root_name, true) else {
+                unreachable!("unexpected type");
+            };
+            let Some(addrs) = addr else {
+                ctx.err.type_check_error(
+                    format!("Variable assigned before declared: {}", root_name),
+                    &line_col_from_loc(loc),
+                );
+                return false;
+            };
+            addrs.clone()
+        };
+        // idx here is the index within the element's wasm types (e.g. 0=ptr, 1=len for str)
+        let effective_idx = wasm_start + idx.unwrap_or(0);
+        if !addrs.is_empty() {
+            match &addrs[0] {
+                VarAddr::MemLoc { .. } => {
+                    // Single MemLoc for the whole tuple; pass effective_idx so set_in_mem
+                    // can walk the tuple to find the right element and byte offset.
+                    addr_set(
+                        &addrs[0].clone(),
+                        Some(effective_idx),
+                        &root_name,
+                        injector,
+                        ctx,
+                    );
+                }
+                VarAddr::Local { .. } | VarAddr::Global { .. } => {
+                    // One addr per WASM element.
+                    if let Some(addr) = addrs.get(effective_idx) {
+                        addr_set(addr, None, &root_name, injector, ctx);
+                    }
+                }
+                _ => {}
+            }
+        }
+        return true;
+    }
+
     if let Expr::VarId { name, .. } = var_id {
         let Some(Record::Var { addr, loc, .. }) = ctx.table.lookup_var(name, true) else {
             unreachable!("unexpected type");
@@ -676,7 +739,7 @@ fn emit_set<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             false
         }
     } else {
-        unreachable!("{} Expected VarId.", ctx.err_msg);
+        unreachable!("{} Expected VarId or TupleGet.", ctx.err_msg);
     }
 }
 
@@ -984,6 +1047,7 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         }
         Expr::Primitive { val, .. } => emit_value(val, idx, strategy, injector, ctx),
         Expr::MapGet { .. } => emit_map_get(expr, strategy, injector, ctx),
+        Expr::TupleGet { .. } => emit_tuple_get(expr, injector, ctx),
     }
 }
 
@@ -2220,6 +2284,139 @@ fn emit_value<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         ),
     }
     is_success
+}
+
+// =============================================================
+// ==================== Tuple access helpers ===================
+// =============================================================
+
+/// Walk a chain of TupleGet nodes to the root VarId, collecting indices along the way.
+/// Returns `(root_var_name, [outermost_idx, ..., innermost_idx])`.
+/// E.g. `b.1.0` → `("b", [1, 0])`.
+fn collect_tuple_get_chain(expr: &Expr) -> (String, Vec<u32>) {
+    match expr {
+        Expr::TupleGet { tuple, index, .. } => {
+            let (name, mut indices) = collect_tuple_get_chain(tuple);
+            indices.push(*index);
+            (name, indices)
+        }
+        Expr::VarId { name, .. } => (name.clone(), vec![]),
+        _ => unreachable!("TupleGet chain must terminate at a VarId"),
+    }
+}
+
+/// Given the root type and a sequence of indices, compute the (wasm_start, wasm_count)
+/// range within the root variable's flattened wasm-type address list.
+fn resolve_tuple_access_range(ty: &DataType, indices: &[u32]) -> (usize, usize) {
+    let mut wasm_start = 0usize;
+    let mut current_ty = ty.clone();
+
+    for &index in indices {
+        let DataType::Tuple { ty_info } = &current_ty else {
+            unreachable!(
+                "Expected Tuple type at each step of TupleGet chain, got {:?}",
+                current_ty
+            );
+        };
+        for elem_ty in &ty_info[..index as usize] {
+            wasm_start += elem_ty.to_wasm_type().len();
+        }
+        current_ty = ty_info[index as usize].clone();
+    }
+
+    let wasm_count = current_ty.to_wasm_type().len();
+    (wasm_start, wasm_count)
+}
+
+/// Look up the type of the element accessed by a TupleGet expression.
+fn get_tuple_element_type(expr: &Expr, ctx: &mut EmitCtx) -> DataType {
+    let (root_name, indices) = collect_tuple_get_chain(expr);
+    let Some(Record::Var { ty, .. }) = ctx.table.lookup_var(&root_name, true) else {
+        unreachable!("unknown variable in TupleGet: {}", root_name);
+    };
+    let root_ty = ty.clone();
+    let mut current_ty = root_ty;
+    for &index in &indices {
+        let DataType::Tuple { ty_info } = &current_ty else {
+            unreachable!("Expected Tuple type at TupleGet step");
+        };
+        current_ty = ty_info[index as usize].clone();
+    }
+    current_ty
+}
+
+/// Compute the byte offset and element type when walking a chain of indices into a tuple.
+fn resolve_tuple_byte_offset(ty: &DataType, indices: &[u32]) -> (u32, DataType) {
+    let mut byte_offset = 0u32;
+    let mut current_ty = ty.clone();
+    for &index in indices {
+        let DataType::Tuple { ty_info } = &current_ty else {
+            unreachable!(
+                "Expected Tuple type at each step of TupleGet chain, got {:?}",
+                current_ty
+            );
+        };
+        for elem_ty in &ty_info[..index as usize] {
+            byte_offset += elem_ty.num_bytes().unwrap_or(0) as u32;
+        }
+        current_ty = ty_info[index as usize].clone();
+    }
+    (byte_offset, current_ty)
+}
+
+/// Emit the value of a `TupleGet` expression: push only the wasm values for the
+/// accessed element onto the stack.
+fn emit_tuple_get<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
+    expr: &Expr,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) -> bool {
+    let (root_name, indices) = collect_tuple_get_chain(expr);
+
+    let (root_ty, root_addrs) = {
+        let Some(Record::Var { ty, addr, .. }) = ctx.table.lookup_var(&root_name, true) else {
+            unreachable!("unknown variable in TupleGet: {}", root_name);
+        };
+        let addrs = addr.clone().unwrap_or_default();
+        (ty.clone(), addrs)
+    };
+
+    if root_addrs.is_empty() {
+        unreachable!("TupleGet on variable '{}' has no address", root_name);
+    }
+
+    match &root_addrs[0] {
+        VarAddr::MemLoc {
+            mem_id, var_offset, ..
+        } => {
+            // A single MemLoc covers the whole tuple variable. Compute the byte
+            // offset to the specific element and load just that element.
+            let mem_id = *mem_id;
+            let base_offset = *var_offset;
+            let (byte_offset, elem_ty) = resolve_tuple_byte_offset(&root_ty, &indices);
+            ctx.mem_allocator.get_from_mem(
+                mem_id,
+                &elem_ty,
+                base_offset + byte_offset,
+                ctx.table,
+                injector,
+            );
+        }
+        VarAddr::Local { .. } | VarAddr::Global { .. } => {
+            // One addr entry per WASM element; skip to the right one.
+            let (wasm_start, wasm_count) = resolve_tuple_access_range(&root_ty, &indices);
+            for addr in root_addrs.iter().skip(wasm_start).take(wasm_count) {
+                match addr {
+                    VarAddr::Local { addr } => injector.local_get(LocalID(*addr)),
+                    VarAddr::Global { addr } => injector.global_get(GlobalID(*addr)),
+                    _ => unreachable!(),
+                };
+            }
+        }
+        other => unreachable!("unexpected address type for tuple element: {:?}", other),
+    }
+
+    true
 }
 
 fn emit_map_get<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
