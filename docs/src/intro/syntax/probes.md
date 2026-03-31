@@ -83,3 +83,32 @@ Note that this does look a bit different for the `wei` target, `Whamm` has to do
 `{ <actions> }`
 
 The `actions` are statements that are executed at the `probe_rule`'s location if the `predicate` evaluates to `true`.
+
+## Probe Injection Ordering ##
+
+When multiple probes match the **same bytecode location**, `whamm` guarantees their injection order under two rules:
+
+### Rule 1: Same probe category — script order is preserved ###
+
+Two probes in the same _injection category_ (e.g., both `opcode:call:before`, or both `func:entry`) are always injected in the order they appear in the script.
+
+```
+// order0.mm — func:entry fires first, then the second func:entry
+wasm:func:entry { /* A */ }
+wasm:func:entry { /* B */ }
+// at any function entry: A runs, then B runs
+```
+
+This guarantee holds across multiple scripts passed to the compiler: probes from the first script are injected before probes from the second.
+
+### Rule 2: Different probe categories — order is determined by the injection target ###
+
+When two probes belong to different injection categories (e.g., `wasm:opcode:call:before` vs. `wasm:func:entry`), their relative order at a shared location is **not** controlled by script order.
+
+The bytecode rewriting target (wirm) uses a two-pass injection model:
+- **Pass 1 (normal):** `before`, `after`, and `alt` probes are injected during the bytecode traversal pass.
+- **Pass 2 (special modes):** `func:entry`, `func:exit`, `block:entry`, `block:exit`, and similar structural probes are resolved and injected at encode time.
+
+Because these two passes are independent, a `before` probe will always be injected _before_ a `func:entry` probe at the same bytecode location (the first instruction of a function), regardless of which appears first in the script.
+
+If you need a specific ordering between probes of different categories, place all of your logic in one probe at the more specific event (e.g., `opcode:call:before` rather than a mix of `func:entry` and `opcode:call:before` at the same location).
