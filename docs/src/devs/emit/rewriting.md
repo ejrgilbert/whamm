@@ -30,6 +30,33 @@ When a probed location is found, the `generator` emits Wasm code into the applic
 
 [`instr_generator.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/generator/rewriting/instr_generator.rs
 
+### Probe Injection Ordering ###
+
+When multiple probes match the same bytecode location, the injection order is determined by two independent factors.
+
+#### Same injection category: script order ####
+
+Probes in the same injection category (e.g., two `opcode:call:before` probes, or two `func:entry` probes) are injected in the order they appear in the script.
+
+This is enforced by using [`IndexMap`](https://docs.rs/indexmap) instead of `HashMap` at every level of the probe hierarchy — `Provider.packages`, `Package.events`, `Event.probes` in `provider_handler.rs`, and the corresponding `SimpleProv.pkgs`, `SimplePkg.evts`, `SimpleEvt.modes` in `simple_ast.rs`.
+`IndexMap` preserves insertion order, which equals the order probes are parsed from the script.
+If plain `HashMap` were used instead, the iteration order would be non-deterministic, silently breaking the ordering guarantee.
+
+#### Different injection categories: wirm's two-pass model ####
+
+wirm (the underlying Wasm IR library) uses a **two-pass injection model**:
+
+- **Pass 1 — normal modes** (`before`, `after`, `alt`): injected during the bytecode traversal, by calling `app_iter.before()` / `.after()` / `.alternate()`.
+- **Pass 2 — special/structural modes** (`func_entry`, `func_exit`, `block_entry`, `block_exit`, branching targets, etc.): resolved and injected at encode time by wirm's own second pass.
+
+The two passes are independent; wirm merges their results at encode time with pass-1 probes preceding pass-2 probes at the same instruction.
+This means the relative order between a `wasm:opcode:call:before` probe and a `wasm:func:entry` probe at the same location (e.g., a `call` that is also the first instruction of a function) is **fixed by wirm**, not by script order:
+`before` probes always execute before `func_entry` probes at that location.
+
+See `probe_mode_for_package` in [`instr_generator.rs`] for where whamm maps probe rules to their wirm mode.
+
+[`instr_generator.rs`]: https://github.com/ejrgilbert/whamm/blob/master/src/generator/rewriting/instr_generator.rs
+
 ### Constant Propagation and Folding!! ###
 
 Constant propagation and folding are a compiler optimizations that serve a special purpose in `Whamm`.
