@@ -350,7 +350,13 @@ impl ReportVars {
 
         // iterate through all the data type flush functions and emit calls
         // sort these by the datatype to make the flush deterministic!
-        let sorted_keys = self.alloc_tracker.keys().sorted_by_key(|ty| ty.id());
+        // Tuple variants all share id()=13, so use the Display string as a secondary key
+        // to get a stable ordering when multiple distinct tuple types are present.
+        let sorted_keys = self.alloc_tracker.keys().sorted_by(|a, b| {
+            a.id()
+                .cmp(&b.id())
+                .then(format!("{a}").cmp(&format!("{b}")))
+        });
         for dt in sorted_keys.into_iter() {
             match dt {
                 DataType::U8 => {
@@ -414,6 +420,19 @@ impl ReportVars {
                 DataType::Str => {
                     let fid =
                         self.emit_flush_str_fn(io_adapter, map_lib_adapter, mem_id, wasm, err);
+                    func.call(FunctionID(fid));
+                }
+                DataType::Tuple { ty_info } => {
+                    let ty_info = ty_info.clone();
+                    let fid = self.emit_flush_tuple_fn(
+                        &ty_info,
+                        dt,
+                        io_adapter,
+                        map_lib_adapter,
+                        mem_id,
+                        wasm,
+                        err,
+                    );
                     func.call(FunctionID(fid));
                 }
                 dt => {
@@ -1169,6 +1188,174 @@ impl ReportVars {
 
         io_adapter.call_puts_internal(flush_fn, err);
         io_adapter.putln(flush_fn, err);
+    }
+
+    fn emit_flush_tuple_fn(
+        &self,
+        ty_info: &[DataType],
+        dt: &DataType,
+        io_adapter: &mut IOAdapter,
+        map_lib_adapter: &mut MapLibAdapter,
+        mem_id: u32,
+        wasm: &mut Module,
+        err: &mut ErrorGen,
+    ) -> u32 {
+        let ty_info = ty_info.to_vec();
+        self.emit_flush_fn(
+            &|flush_fn, curr_addr, mem_arg, io, map_lib, err| {
+                Self::flush_tuple(
+                    flush_fn, curr_addr, mem_arg, io, map_lib, err, &ty_info, true,
+                );
+            },
+            dt.clone(),
+            io_adapter,
+            map_lib_adapter,
+            mem_id,
+            wasm,
+            err,
+        )
+    }
+
+    fn flush_tuple(
+        flush_fn: &mut FunctionBuilder,
+        curr_addr: LocalID,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        map_lib_adapter: &mut MapLibAdapter,
+        err: &mut ErrorGen,
+        ty_info: &[DataType],
+        toplevel: bool,
+    ) {
+        // print opening paren
+        flush_fn.i32_const(b'(' as i32);
+        io_adapter.call_putc(flush_fn, err);
+
+        let mut byte_offset = mem_arg.offset;
+        let last_idx = ty_info.len().saturating_sub(1);
+        for (i, elem_ty) in ty_info.iter().enumerate() {
+            // The first element's base address is already on the stack (from local_tee in
+            // emit_flush_fn). Subsequent elements need it pushed explicitly.
+            if i > 0 {
+                flush_fn.local_get(curr_addr);
+            }
+            let elem_mem_arg = MemArg {
+                offset: byte_offset,
+                ..*mem_arg
+            };
+            Self::flush_tuple_elem(
+                flush_fn,
+                curr_addr,
+                &elem_mem_arg,
+                io_adapter,
+                map_lib_adapter,
+                err,
+                elem_ty,
+            );
+            byte_offset += elem_ty.num_bytes().unwrap() as u64;
+
+            if i < last_idx {
+                flush_fn.i32_const(b';' as i32);
+                io_adapter.call_putc(flush_fn, err);
+                flush_fn.i32_const(b' ' as i32);
+                io_adapter.call_putc(flush_fn, err);
+            }
+        }
+
+        // print closing paren; only emit newline at the top level
+        flush_fn.i32_const(b')' as i32);
+        io_adapter.call_putc(flush_fn, err);
+        if toplevel {
+            io_adapter.putln(flush_fn, err);
+        }
+    }
+
+    fn flush_tuple_elem(
+        flush_fn: &mut FunctionBuilder,
+        curr_addr: LocalID,
+        mem_arg: &MemArg,
+        io_adapter: &mut IOAdapter,
+        map_lib_adapter: &mut MapLibAdapter,
+        err: &mut ErrorGen,
+        ty: &DataType,
+    ) {
+        match ty {
+            DataType::U8 => {
+                flush_fn.i32_load8_u(*mem_arg);
+                io_adapter.call_putu8(flush_fn, err);
+            }
+            DataType::I8 => {
+                flush_fn.i32_load8_s(*mem_arg);
+                io_adapter.call_puti8(flush_fn, err);
+            }
+            DataType::U16 => {
+                flush_fn.i32_load16_u(*mem_arg);
+                io_adapter.call_putu16(flush_fn, err);
+            }
+            DataType::I16 => {
+                flush_fn.i32_load16_s(*mem_arg);
+                io_adapter.call_puti16(flush_fn, err);
+            }
+            DataType::U32 => {
+                flush_fn.i32_load(*mem_arg);
+                io_adapter.call_putu32(flush_fn, err);
+            }
+            DataType::I32 => {
+                flush_fn.i32_load(*mem_arg);
+                io_adapter.call_puti32(flush_fn, err);
+            }
+            DataType::U64 => {
+                flush_fn.i64_load(*mem_arg);
+                io_adapter.call_putu64(flush_fn, err);
+            }
+            DataType::I64 => {
+                flush_fn.i64_load(*mem_arg);
+                io_adapter.call_puti64(flush_fn, err);
+            }
+            DataType::F32 => {
+                flush_fn.f32_load(*mem_arg);
+                io_adapter.call_putf32(flush_fn, err);
+            }
+            DataType::F64 => {
+                flush_fn.f64_load(*mem_arg);
+                io_adapter.call_putf64(flush_fn, err);
+            }
+            DataType::Boolean => {
+                flush_fn.i32_load(*mem_arg);
+                io_adapter.call_putbool(flush_fn, err);
+            }
+            DataType::Str => {
+                // load ptr
+                flush_fn.i32_load(*mem_arg);
+                // load len
+                let len_mem_arg = MemArg {
+                    offset: mem_arg.offset + 4,
+                    ..*mem_arg
+                };
+                flush_fn.local_get(curr_addr).i32_load(len_mem_arg);
+                io_adapter.call_puts_internal(flush_fn, err);
+            }
+            DataType::Map { .. } => {
+                flush_fn.i32_load(*mem_arg);
+                map_lib_adapter.call_print_map(flush_fn, err);
+            }
+            DataType::Tuple { ty_info } => {
+                // nested tuple: recurse
+                let ty_info = ty_info.clone();
+                Self::flush_tuple(
+                    flush_fn,
+                    curr_addr,
+                    mem_arg,
+                    io_adapter,
+                    map_lib_adapter,
+                    err,
+                    &ty_info,
+                    false,
+                );
+            }
+            ty => {
+                unimplemented!("flush_tuple_elem: unsupported element type {ty}")
+            }
+        }
     }
 
     pub fn report_var_header_bytes() -> u32 {

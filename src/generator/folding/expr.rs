@@ -67,6 +67,7 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
             Expr::VarId { .. } => self.fold_var_id(expr, table),
             Expr::Primitive { .. } => self.fold_primitive(expr, table, err),
             Expr::MapGet { .. } => self.fold_map_get(expr, table, err),
+            Expr::TupleGet { .. } => self.fold_tuple_get(expr, table, err),
             Expr::ObjCall { .. } => self.fold_obj_call(expr, table, err),
         }
     }
@@ -563,6 +564,19 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
         expr.clone()
     }
 
+    fn fold_tuple_get(&mut self, expr: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
+        self.curr_loc = expr.loc().clone();
+        if let Expr::TupleGet { tuple, index, loc } = expr {
+            let folded_tuple = self.fold_expr_inner(tuple, table, err);
+            return Expr::TupleGet {
+                tuple: Box::new(folded_tuple),
+                index: *index,
+                loc: loc.clone(),
+            };
+        }
+        expr.clone()
+    }
+
     // similar to the logic of fold_binop
     fn fold_unop(&mut self, unop: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         self.curr_loc = unop.loc().clone();
@@ -596,7 +610,8 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                     | Expr::Call { .. }
                     | Expr::ObjCall { .. }
                     | Expr::VarId { .. }
-                    | Expr::MapGet { .. } => Expr::UnOp {
+                    | Expr::MapGet { .. }
+                    | Expr::TupleGet { .. } => Expr::UnOp {
                         op: UnOp::Cast {
                             target: target.clone(),
                         },

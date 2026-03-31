@@ -1355,6 +1355,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         Rule::BOOL => handle_bool(pair),
         Rule::STRING => handle_string(pair),
         Rule::get_map => handle_map_get(pair),
+        Rule::get_tuple => handle_tuple_get(pair),
         _ => expr_from_pair(pair),
     }
 }
@@ -1557,7 +1558,7 @@ fn handle_tuple(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     let mut vals = vec![];
 
     for inner in pair.into_inner() {
-        match expr_primary(inner) {
+        match expr_from_pair(inner) {
             Ok(expr) => vals.push(expr),
             other => {
                 return other;
@@ -1739,6 +1740,33 @@ fn handle_string(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             path: None,
         }),
     })
+}
+
+fn handle_tuple_get(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+    let loc = LineColLocation::from(pair.clone().as_span());
+    let mut inner = pair.into_inner();
+
+    // First element is the ID (root variable)
+    let id_pair = inner.next().unwrap();
+    let mut expr = handle_id(id_pair, Definition::User);
+
+    // Remaining elements are TUPLE_IDX digit strings, one per access level
+    for idx_pair in inner {
+        let index: u32 = idx_pair
+            .as_str()
+            .parse()
+            .expect("TUPLE_IDX must be a valid u32");
+        expr = Expr::TupleGet {
+            tuple: Box::new(expr),
+            index,
+            loc: Some(Location {
+                line_col: loc.clone(),
+                path: None,
+            }),
+        };
+    }
+
+    Ok(expr)
 }
 
 fn handle_map_get(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {

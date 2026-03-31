@@ -289,3 +289,11 @@ fn instrument_with_order_scripts() {
 
     run_core_suite("ordering", processed_scripts, true, true)
 }
+#[test]
+fn instrument_with_tuples_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/tuples");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("tuples", processed_scripts, true, true)
+}

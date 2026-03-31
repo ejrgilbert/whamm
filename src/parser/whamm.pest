@@ -48,6 +48,8 @@ TY_BOUNDS = { "(" ~ param_list ~ ")" }
 
 //disallowed IDs should have the full list of reserved names like return
 get_map = { ID ~ "[" ~ expr ~ "]"}
+TUPLE_IDX = @{ ASCII_DIGIT+ }
+get_tuple = { ID ~ ("." ~ TUPLE_IDX)+ }
 
 DISALLOWED_ID = _{ "return" | "if" | "while" | "else" | "map" }
 ID = @{ (!DISALLOWED_ID ~ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | "_")+ )*) |
@@ -132,7 +134,7 @@ REPORT = @{ "report" }
 UNSHARED = @{ "unshared" }
 var_decorators = { ( REPORT | UNSHARED )+ }
 special_decl = { var_decorators ~ decl }
-assignment = { (get_map | ID) ~ "=" ~ assignment_rhs }
+assignment = { (get_map | get_tuple | ID) ~ "=" ~ assignment_rhs }
 decl = { "var" ~ !RESERVED_KEYWORDS ~ ID ~ ":" ~ TYPE  }
 decl_init = { (special_decl | decl) ~ "=" ~ assignment_rhs }
 
@@ -152,10 +154,10 @@ prefix = _{ neg | binary_not }
 postfix = _{ cast }
     cast = { "as" ~ TYPE_PRIMITIVE }
 
-val = _{ BOOL | get_map | ID | FLOAT | INT | STRING | tuple }
+val = _{ BOOL | get_map | get_tuple | ID | FLOAT | INT | STRING | tuple }
 operand = _{ prefix? ~ ( lib_call | fn_call | "(" ~ expr ~ ")" | val ) ~ postfix? }
 
-tuple = { "(" ~ ")" | "(" ~ (val) ~ ( "," ~ val )* ~ ")" }
+tuple = { "(" ~ ")" | "(" ~ expr ~ ( "," ~ expr )* ~ ")" }
 
 BINOP = _{ SHIFTOP | LOGOP | BITOP | RELOP | SUMOP | MULOP }
 
