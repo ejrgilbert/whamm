@@ -1,0 +1,6 @@
+================================= REPORT CSV FLUSH ====================================
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
+4, memaddr, val0, i32, i32, script0, _start, 5, 72, 1_wasm:opcode:call_indirect:after, 1
+36, memaddr, val2, i32, i32, script0, _start, 5, 76, 0_wasm:opcode:call:after, 10
+68, memaddr, val0, f32, f32, script0, _start, 5, 76, 0_wasm:opcode:call:after, -1.1e0
+100, memaddr, val1, i64, i64, script0, _start, 5, 76, 0_wasm:opcode:call:after, 12345

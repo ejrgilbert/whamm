@@ -120,6 +120,13 @@ arg2_u32: &arg2_u32
 # ==== resultN Constants ====
 # ===========================
 
+resN: &resN
+  name: res[0:9]+
+  type: unknown
+  docs: The result of the opcode at the specific index, [0:9]+. Can only be used in `after` probes. (For example, the number of `call` results changes based on the targeted function.)
+  lifetime: dynamic
+  derived_from: null
+
 res0_i32: &res0_i32
   name: res0
   type: i32
@@ -927,6 +934,7 @@ call: &call
     - *category_name_control
     - *argN
     - *imm0_u32
+    - *resN
     - *target_imp_module
     - *target_fn_name
     - *target_fn_type
@@ -955,6 +963,7 @@ call_indirect: &call_indirect
     - *argN
     - *imm0_u32
     - *imm1_u32
+    - *resN
   bound_fns: []
   supported_modes: *default_modes
 
