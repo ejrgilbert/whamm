@@ -12,6 +12,7 @@ failure = "0.1.5"
 glob = "0.3.1"
 lazy_static = "1.4.0"
 itertools = "0.14.0"
+indexmap = "2"
 #wirm = { path = "../wirm" }
 wirm = "=2.2.0"
 
@@ -64,6 +65,7 @@ failure = { workspace = true }
 glob = { workspace = true }
 lazy_static = { workspace = true }
 itertools = { workspace = true }
+indexmap = { workspace = true }
 #wirm = { path = "../wirm" }
 wirm = { workspace = true }
 
