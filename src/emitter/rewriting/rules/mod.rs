@@ -1814,6 +1814,8 @@ fn handle_opcode_events(
             }
         }
     }
+    probes_to_remove.sort();
+    probes_to_remove.reverse(); // Sort descending
     for i in probes_to_remove.iter() {
         loc_info.probes.remove(*i);
     }
