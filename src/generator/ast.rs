@@ -205,14 +205,6 @@ impl StackReq {
         !matches!(self, Self::None)
     }
 
-    pub fn matches(&self, num_args: usize) -> bool {
-        // Check if the requested args is within the bounds of the available args
-        match self {
-            Self::None | Self::All => true,
-            Self::FirstN { n } => *n < num_args as u32,
-        }
-    }
-
     /// Make `self` request the most of the two `ReqArgs` instances.
     pub fn combine(&mut self, other: &Self) {
         match self {
