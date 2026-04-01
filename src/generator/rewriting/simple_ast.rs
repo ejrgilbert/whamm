@@ -106,7 +106,6 @@ pub struct SimpleProv {
     // IndexMap instead of HashMap: insertion order = script order, so probes that match
     // the same bytecode location are injected in the order they appear in the script.
     pub pkgs: IndexMap<String, SimplePkg>,
-    all_params: Option<Vec<WhammParam>>,
 }
 impl SimpleProv {
     fn new(package_name: &str, event_name: &str, mode_name: &str, probe: Probe) -> Self {
@@ -122,22 +121,12 @@ impl SimpleProv {
             })
             .or_insert(SimplePkg::new(event_name, mode_name, probe));
     }
-    pub fn all_params(&mut self) -> &Vec<WhammParam> {
-        self.all_params.get_or_insert_with(|| {
-            let mut ps = vec![];
-            for pkg in self.pkgs.values_mut() {
-                ps.extend(pkg.all_params().clone());
-            }
-            ps
-        })
-    }
 }
 #[derive(Default)]
 pub struct SimplePkg {
     // IndexMap instead of HashMap: insertion order = script order, so probes that match
     // the same bytecode location are injected in the order they appear in the script.
     pub evts: IndexMap<String, SimpleEvt>,
-    all_params: Option<Vec<WhammParam>>,
 }
 impl SimplePkg {
     fn new(event_name: &str, mode_name: &str, probe: Probe) -> Self {
@@ -152,15 +141,6 @@ impl SimplePkg {
                 evt.add_probe(mode_name, probe.to_owned());
             })
             .or_insert(SimpleEvt::new(mode_name, probe));
-    }
-    pub fn all_params(&mut self) -> &Vec<WhammParam> {
-        self.all_params.get_or_insert_with(|| {
-            let mut ps = vec![];
-            for evt in self.evts.values_mut() {
-                ps.extend(evt.all_params().clone());
-            }
-            ps
-        })
     }
 }
 #[derive(Default)]

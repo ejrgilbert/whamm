@@ -1,7 +1,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::rules::data_segments::get_first_local_mem_id;
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
-use crate::generator::ast::{Probe, StackReq, WhammParam};
+use crate::generator::ast::{Probe, StackReq, WhammParam, WhammParams};
 use crate::generator::rewriting::simple_ast::{SimpleAST, SimpleEvt, SimplePkg, SimpleProv};
 use crate::parser::provider_handler::ModeKind;
 use crate::parser::types::{
@@ -126,45 +126,6 @@ fn handle_wasm(
         Some(Value::Boolean { val: at_func_end }),
     );
 
-    for param in prov.all_params() {
-        if let Some(n) = param.n_for("local") {
-            let func = app_wasm.functions.get(fid).unwrap_local();
-
-            let wasm_ty = if n < func.args.len() as u32 {
-                // referring to a function argument
-                if let Some(Types::FuncType { params, .. }) = app_wasm.types.get(func.ty_id) {
-                    params.get(n as usize)?
-                } else {
-                    panic!(
-                        "Unable to lookup the function type with ID: {}",
-                        *func.ty_id
-                    );
-                }
-            } else {
-                // referring to a function local variable
-                if let Some((_, wasm_ty)) = func.body.locals.get(n as usize) {
-                    wasm_ty
-                } else {
-                    // no match! not correct local var context in this function
-                    return None;
-                }
-            };
-
-            if param
-                .ty
-                .is_compatible_with(&DataType::from_wasm_type(wasm_ty))
-            {
-                loc_info
-                    .dynamic_alias
-                    .insert(format!("local{n}"), (*wasm_ty, VarAddr::Local { addr: n }));
-                continue;
-            } else {
-                // no match! not correct local var context in this function
-                return None;
-            }
-        }
-    }
-
     let mut res: Option<LocInfo> = Some(loc_info);
     for (package, pkg) in prov.pkgs.iter_mut() {
         if let Some(mut tmp) = handle_wasm_packages(
@@ -184,7 +145,77 @@ fn handle_wasm(
             }
         }
     }
+
+    if let Some(ref mut matches) = res {
+        let mut new_dyn_info = vec![];
+        let all_locals = all_locals(app_wasm, &fid);
+        // figure out which args are requested based on matched probes
+        // (we don't have a match if the requested local is beyond the
+        // length of what's possible or the type doesn't match up)
+        matches.filter_probes(|probe| {
+            let body_params = &probe.metadata.body_args;
+            let pred_params = &probe.metadata.pred_args;
+            fn check(
+                all_locals: &[WirmType],
+                to_check: &WhammParams,
+                info: &mut Vec<(String, (WirmType, VarAddr))>,
+            ) -> bool {
+                for param in to_check.params.iter() {
+                    if let Some(n) = param.n_for("local") {
+                        if let Some(target_local_ty) = all_locals.get(n as usize) {
+                            if param
+                                .ty
+                                .is_compatible_with(&DataType::from_wasm_type(target_local_ty))
+                            {
+                                info.push((
+                                    format!("local{n}"),
+                                    (*target_local_ty, VarAddr::Local { addr: n }),
+                                ));
+                            } else {
+                                // no match! not correct local var context in this function
+                                return false;
+                            }
+                        } else {
+                            // local ID greater than max ID in this function
+                            return false;
+                        }
+                    }
+                }
+                true
+            }
+            check(&all_locals, body_params, &mut new_dyn_info)
+                && check(&all_locals, pred_params, &mut new_dyn_info)
+        });
+
+        for (name, (ty, addr)) in new_dyn_info {
+            matches.dynamic_alias.insert(name, (ty, addr));
+        }
+    }
+
     res
+}
+
+fn all_locals(app_wasm: &Module, fid: &FunctionID) -> Vec<WirmType> {
+    let func = app_wasm.functions.get(*fid).unwrap_local();
+
+    let mut locals = vec![];
+    for arg in func.args.iter() {
+        let wasm_ty = if let Some(Types::FuncType { params, .. }) = app_wasm.types.get(func.ty_id) {
+            params.get(**arg as usize).unwrap()
+        } else {
+            panic!(
+                "Unable to lookup the function type with ID: {}",
+                *func.ty_id
+            );
+        };
+        locals.push(*wasm_ty);
+    }
+
+    for (_, wasm_ty) in func.body.locals.iter() {
+        locals.push(*wasm_ty);
+    }
+
+    locals
 }
 
 fn handle_wasm_packages(
@@ -1785,40 +1816,24 @@ fn handle_opcode_events(
     // figure out which args are requested based on matched probes
     // (we don't have a match if the requested argument or result is beyond the
     // length of what's possible)
-    let mut probes_to_remove = vec![];
     let max_arg_req = all_args.len();
     let max_res_req = all_results.len();
-    for (i, (_, probe, _)) in loc_info.probes.iter_mut().enumerate() {
+    loc_info.filter_probes(|probe| {
         let body_args = &probe.metadata.body_args;
         let pred_params = &probe.metadata.pred_args;
-        if !check_match(&body_args.req_args, max_arg_req, &mut req_args, i, &mut probes_to_remove) {
-            continue;
-        }
-        if !check_match(&body_args.req_results, max_res_req, &mut req_results, i, &mut probes_to_remove) {
-            continue;
-        }
-        if !check_match(&pred_params.req_args, max_arg_req, &mut req_args, i, &mut probes_to_remove) {
-            continue;
-        }
-        if !check_match(&pred_params.req_results, max_res_req, &mut req_results, i, &mut probes_to_remove) {
-            continue;
-        }
-        fn check_match(to_check: &StackReq, max_req: usize, all_reqs: &mut StackReq, curr_probe: usize, to_remove: &mut Vec<usize>) -> bool {
+        fn check(to_check: &StackReq, max_req: usize, all_reqs: &mut StackReq) -> bool {
             if to_check.matches(max_req) {
                 all_reqs.combine(to_check);
                 true
             } else {
-                // remove probe!
-                to_remove.push(curr_probe);
                 false
             }
         }
-    }
-    probes_to_remove.sort();
-    probes_to_remove.reverse(); // Sort descending
-    for i in probes_to_remove.iter() {
-        loc_info.probes.remove(*i);
-    }
+        check(&body_args.req_args, max_arg_req, &mut req_args)
+            && check(&body_args.req_results, max_res_req, &mut req_results)
+            && check(&pred_params.req_args, max_arg_req, &mut req_args)
+            && check(&pred_params.req_results, max_res_req, &mut req_results)
+    });
 
     loc_info.configure_stack_reqs(req_args, all_args, req_results, all_results);
 
@@ -2961,6 +2976,22 @@ impl LocInfo {
                 self.probes.push((rule.clone(), probe.clone(), mode));
             });
         })
+    }
+    fn filter_probes<F>(&mut self, mut keep: F)
+    where
+        F: FnMut(&mut Probe) -> bool,
+    {
+        let mut to_remove = vec![];
+        for (i, (_, probe, _)) in self.probes.iter_mut().enumerate() {
+            if !keep(probe) {
+                to_remove.push(i);
+            }
+        }
+        to_remove.sort();
+        to_remove.reverse();
+        for i in to_remove {
+            self.probes.remove(i);
+        }
     }
     fn add_dynamic_value(&mut self, name: String, val: Value) {
         match &val {
