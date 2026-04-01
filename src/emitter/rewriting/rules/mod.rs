@@ -1816,24 +1816,50 @@ fn handle_opcode_events(
     // figure out which args are requested based on matched probes
     // (we don't have a match if the requested argument or result is beyond the
     // length of what's possible)
-    let max_arg_req = all_args.len();
-    let max_res_req = all_results.len();
     loc_info.filter_probes(|probe| {
-        let body_args = &probe.metadata.body_args;
+        let body_params = &probe.metadata.body_args;
         let pred_params = &probe.metadata.pred_args;
-        fn check(to_check: &StackReq, max_req: usize, all_reqs: &mut StackReq) -> bool {
-            if to_check.matches(max_req) {
-                all_reqs.combine(to_check);
-                true
-            } else {
-                false
+        fn check(
+            stack_vals: &[StackVal],
+            to_check: &WhammParams,
+            prefix: &str
+        ) -> bool {
+            for param in to_check.params.iter() {
+                if let Some(n) = param.n_for(prefix) {
+                    if let Some(target_val) = stack_vals.get(n as usize) {
+                        if let Some(target_ty) = target_val.ty {
+                            if !param
+                            .ty
+                            .is_compatible_with(&DataType::from_wasm_type(&target_ty))
+                            {
+                                // no match! not correct type for matchup
+                                return false;
+                            }
+                        } else {
+                            // no type information for this stack value, assume it's okay
+                            return true;
+                        }
+                    } else {
+                        // local ID greater than max ID in this function
+                        return false;
+                    }
+                }
             }
+            true
         }
-        check(&body_args.req_args, max_arg_req, &mut req_args)
-            && check(&body_args.req_results, max_res_req, &mut req_results)
-            && check(&pred_params.req_args, max_arg_req, &mut req_args)
-            && check(&pred_params.req_results, max_res_req, &mut req_results)
+        check(&all_args, body_params, "arg")
+            && check(&all_args, pred_params, "arg")
+            && check(&all_results, body_params, "res")
+            && check(&all_results, pred_params, "res")
     });
+
+    for (_, probe, _) in loc_info.probes.iter() {
+        req_args.combine(&probe.metadata.body_args.req_args);
+        req_args.combine(&probe.metadata.pred_args.req_args);
+
+        req_results.combine(&probe.metadata.body_args.req_results);
+        req_results.combine(&probe.metadata.pred_args.req_results);
+    }
 
     loc_info.configure_stack_reqs(req_args, all_args, req_results, all_results);
 
