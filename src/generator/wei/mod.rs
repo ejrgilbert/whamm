@@ -147,7 +147,7 @@ impl WeiGenerator<'_, '_, '_> {
                 (None, "".to_string(), Some(pred))
             } else {
                 let mut block = Block {
-                    stmts: vec![Statement::Expr {
+                    stmts: vec![Statement::Return {
                         expr: pred.clone(),
                         loc: None,
                     }],
@@ -188,7 +188,7 @@ impl WeiGenerator<'_, '_, '_> {
             .iter()
             .for_each(|(params, lib_call)| {
                 let mut block = Block {
-                    stmts: vec![Statement::Expr {
+                    stmts: vec![Statement::Return {
                         expr: lib_call.clone(),
                         loc: None,
                     }],

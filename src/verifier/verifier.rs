@@ -835,7 +835,7 @@ impl<'a> TypeChecker<'a> {
                                 name
                             );
                         } else if results.is_empty() {
-                            DataType::Tuple { ty_info: vec![] }
+                            DataType::empty_tuple()
                         } else {
                             results.first().unwrap().clone()
                         };
@@ -1403,7 +1403,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     ret_ty_conseq
                 } else {
                     //check if it is assume good
-                    let empty_tuple = Some(DataType::Tuple { ty_info: vec![] });
+                    let empty_tuple = Some(DataType::empty_tuple());
                     match (ret_ty_conseq, ret_ty_alt) {
                         (None, _) | (_, None) => return None,
                         (Some(DataType::AssumeGood), _) | (_, Some(DataType::AssumeGood)) => {

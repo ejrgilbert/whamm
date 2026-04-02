@@ -392,7 +392,7 @@ impl<'a> MetadataCollector<'a> {
                         self.err.add_unimplemented_error(&format!("We don't support functions with multiple return types: {lib_name}.{fn_name}"), expr.loc());
                         return expr.clone();
                     } else if results.is_empty() {
-                        DataType::Tuple { ty_info: vec![] }
+                        DataType::empty_tuple()
                     } else {
                         results.first().unwrap().clone()
                     };

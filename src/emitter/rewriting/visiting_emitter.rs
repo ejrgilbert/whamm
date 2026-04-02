@@ -1001,14 +1001,23 @@ impl Emitter for VisitingEmitter<'_, '_> {
         {
             let fn_name = match &**fn_target {
                 Expr::VarId { name, .. } => name.clone(),
-                _ => return false,
+                _ => unreachable!("unexpected type: {fn_target:?}"),
             };
-            let Some(Record::Fn { def, .. }) = self.table.lookup_fn(fn_name.as_str(), true) else {
+            let (def, ret_ty) = if let Some(Record::Fn { def, ret_ty, .. }) =
+                self.table.lookup_fn(fn_name.as_str(), true)
+            {
+                (*def, ret_ty.clone())
+            } else {
                 unreachable!("unexpected type");
             };
             if matches!(def, Definition::CompilerStatic) {
                 // We want to handle this as unique logic rather than a simple function call to be emitted
                 if self.handle_special_fn_call(fn_name, args, err) {
+                    if self.in_init {
+                        crate::emitter::utils::drop_results(&ret_ty, self.init_func);
+                    } else {
+                        crate::emitter::utils::drop_results(&ret_ty, &mut self.app_iter);
+                    }
                     return true;
                 }
             }

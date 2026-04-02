@@ -106,16 +106,32 @@ pub fn emit_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     {
         let fn_name = match &**fn_target {
             Expr::VarId { name, .. } => name.clone(),
-            _ => return false,
+            _ => unreachable!("unexpected type: {fn_target:?}"),
         };
-        let Some(Record::Fn { def, .. }) = ctx.table.lookup_fn(fn_name.as_str(), true) else {
+        let (def, ret_ty) = if let Some(Record::Fn { def, ret_ty, .. }) =
+            ctx.table.lookup_fn(fn_name.as_str(), true)
+        {
+            (*def, ret_ty.clone())
+        } else {
             unreachable!("unexpected type");
         };
         if matches!(def, Definition::CompilerStatic) {
-            return handle_special_fn_call(fn_name, args, strategy, injector, ctx);
+            let res = handle_special_fn_call(fn_name, args, strategy, injector, ctx);
+            drop_results(&ret_ty, injector);
+            return res;
         }
     }
     emit_stmt_inner(stmt, strategy, injector, ctx)
+}
+
+pub(crate) fn drop_results<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
+    ret_ty: &DataType,
+    injector: &mut T,
+) {
+    let results = ret_ty.to_wasm_type();
+    for _ in 0..results.len() {
+        injector.drop();
+    }
 }
 
 fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
@@ -261,10 +277,16 @@ fn emit_stmt_inner<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         }
         Statement::VarDecl { .. } => emit_unshared_decl_stmt(stmt, ctx),
         Statement::Assign { .. } => emit_assign_stmt(stmt, strategy, injector, ctx),
-        Statement::Expr { expr, .. } | Statement::Return { expr, .. } => {
-            emit_expr(expr, None, strategy, injector, ctx)
-        }
+        Statement::Expr { expr, .. } => {
+            let ret_tys = get_ret_tys_for(expr, ctx);
+            let res = emit_expr(expr, None, strategy, injector, ctx);
+            ret_tys
+                .iter()
+                .for_each(|ret_ty| drop_results(ret_ty, injector));
 
+            res
+        }
+        Statement::Return { expr, .. } => emit_expr(expr, None, strategy, injector, ctx),
         Statement::If {
             cond, conseq, alt, ..
         } => {
@@ -280,6 +302,38 @@ fn emit_stmt_inner<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             ctx.in_map_op = false;
             res
         }
+    }
+}
+
+fn get_ret_tys_for(expr: &Expr, ctx: &mut EmitCtx) -> Vec<DataType> {
+    match expr {
+        Expr::ObjCall { obj_name, call, .. } => {
+            let fn_name = match &**call {
+                Expr::Call { fn_target, .. } => match &**fn_target {
+                    Expr::VarId { name, .. } => name.clone(),
+                    _ => unreachable!("unexpected type: {fn_target:?}"),
+                },
+                _ => unreachable!("unexpected type: {call:?}"),
+            };
+            let Some(Record::LibFn { results, .. }) =
+                ctx.table.lookup_lib_fn(obj_name, &fn_name, true)
+            else {
+                unreachable!("unexpected type");
+            };
+            results.clone()
+        }
+        Expr::Call { fn_target, .. } => {
+            let fn_name = match &**fn_target {
+                Expr::VarId { name, .. } => name.clone(),
+                _ => unreachable!("unexpected type: {fn_target:?}"),
+            };
+            let Some(Record::Fn { ret_ty, .. }) = ctx.table.lookup_fn(fn_name.as_str(), true)
+            else {
+                unreachable!("unexpected type");
+            };
+            vec![ret_ty.clone()]
+        }
+        _ => vec![DataType::empty_tuple()],
     }
 }
 
@@ -924,7 +978,7 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         } => {
             let fn_name = match fn_target.as_ref() {
                 Expr::VarId { name, .. } => name.clone(),
-                _ => return false,
+                _ => unreachable!("unexpected type: {fn_target:?}"),
             };
 
             // first save off current context's state on whether we're in a lib call

@@ -350,10 +350,10 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
                 next = pairs.next();
                 type_from_rule_handler(pair, err)
             } else {
-                DataType::Tuple { ty_info: vec![] }
+                DataType::empty_tuple()
             }
         }
-        None => DataType::Tuple { ty_info: vec![] },
+        None => DataType::empty_tuple(),
     };
 
     // Get the function body
@@ -693,7 +693,7 @@ fn handle_ret(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             vec![Statement::Return {
                 expr: Expr::Primitive {
                     val: Value::Tuple {
-                        ty: DataType::Tuple { ty_info: vec![] },
+                        ty: DataType::empty_tuple(),
                         vals: vec![],
                     },
                     loc: Some(Location {
@@ -1496,7 +1496,7 @@ pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
                 }
             }
             if tuple_content_types.is_empty() {
-                Ok(DataType::Tuple { ty_info: vec![] })
+                Ok(DataType::empty_tuple())
             } else {
                 Ok(DataType::Tuple {
                     ty_info: tuple_content_types,
@@ -1568,7 +1568,7 @@ fn handle_tuple(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
     Ok(Expr::Primitive {
         val: Value::Tuple {
-            ty: DataType::Tuple { ty_info: vec![] },
+            ty: DataType::empty_tuple(),
             vals,
         },
         loc: Some(Location {
