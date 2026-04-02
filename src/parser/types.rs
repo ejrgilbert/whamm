@@ -515,6 +515,9 @@ impl DataType {
             DataType::AssumeGood => unreachable!()
         }
     }
+    pub fn empty_tuple() -> Self {
+        Self::Tuple { ty_info: vec![] }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -1034,7 +1037,7 @@ impl Value {
     }
     pub fn gen_empty_tuple() -> Self {
         Self::Tuple {
-            ty: DataType::Tuple { ty_info: vec![] },
+            ty: DataType::empty_tuple(),
             vals: Vec::new(),
         }
     }
@@ -1857,7 +1860,7 @@ impl Whamm {
             "memcpy".to_string(),
             "Copy a region of bytes from the source to the destination memory.".to_string(),
             mem_params,
-            DataType::Tuple { ty_info: vec![] },
+            DataType::empty_tuple(),
             true,
             true,
             StackReq::None,
@@ -1935,7 +1938,7 @@ impl Whamm {
             "write_str".to_string(),
             "Write a string to the target ptr address of the specified memory.".to_string(),
             write_params,
-            DataType::Tuple { ty_info: vec![] },
+            DataType::empty_tuple(),
             true,
             true,
             StackReq::None,

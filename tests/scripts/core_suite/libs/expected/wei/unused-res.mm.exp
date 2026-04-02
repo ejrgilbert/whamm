@@ -1,4 +1,13 @@
 ================================= REPORT CSV FLUSH ====================================
 id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
-4, memaddr, result, bool, i32, script0, #0, 0, 5, 0_wasm:opcode:memory.grow:after, false
-36, memaddr, result, bool, i32, script0, #0, 0, 14, 0_wasm:opcode:memory.grow:after, true
+4, memaddr, i, i32, i32, script0, _start, 5, 3, 0_wasm:opcode:call, 1
+36, memaddr, i, i32, i32, script0, _start, 5, 9, 0_wasm:opcode:call, 1
+68, memaddr, i, i32, i32, script0, _start, 5, 18, 0_wasm:opcode:call, 1
+100, memaddr, i, i32, i32, script0, _start, 5, 27, 0_wasm:opcode:call, 1
+132, memaddr, i, i32, i32, script0, _start, 5, 36, 0_wasm:opcode:call, 1
+164, memaddr, i, i32, i32, script0, _start, 5, 45, 0_wasm:opcode:call, 1
+196, memaddr, i, i32, i32, script0, _start, 5, 50, 0_wasm:opcode:call, 1
+228, memaddr, i, i32, i32, script0, _start, 5, 55, 0_wasm:opcode:call, 1
+260, memaddr, i, i32, i32, script0, _start, 5, 60, 0_wasm:opcode:call, 1
+292, memaddr, i, i32, i32, script0, _start, 5, 65, 0_wasm:opcode:call, 1
+324, memaddr, i, i32, i32, script0, _start, 5, 76, 0_wasm:opcode:call, 1

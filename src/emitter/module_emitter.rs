@@ -885,7 +885,7 @@ impl Emitter for ModuleEmitter<'_, '_> {
         {
             let fn_name = match &**fn_target {
                 Expr::VarId { name, .. } => name.clone(),
-                _ => return false,
+                _ => unreachable!("unexpected type: {fn_target:?}"),
             };
             let Some(Record::Fn { def, .. }) = self.table.lookup_fn(fn_name.as_str(), true) else {
                 unreachable!("unexpected type");
