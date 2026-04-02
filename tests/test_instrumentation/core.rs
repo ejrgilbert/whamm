@@ -291,6 +291,14 @@ fn instrument_with_mem_grow_scripts() {
     run_core_suite("grow-failed", processed_scripts, true, false)
 }
 #[test]
+fn instrument_with_libs_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/libs");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("libs", processed_scripts, true, true)
+}
+#[test]
 fn instrument_with_order_scripts() {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/ordering");
