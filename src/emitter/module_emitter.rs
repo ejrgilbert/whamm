@@ -825,6 +825,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
 
         match target_fn_name.as_str() {
             "memcpy" => self.handle_memcpy(),
+            "mem_size" => self.handle_mem_size(),
             "write_str" => self.handle_write_str(),
             "read_str" => self.handle_read_str(),
             "dup_at" => unimplemented!("Function not implemented in `wei` yet: {target_fn_name}"),
@@ -841,6 +842,11 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
     }
 
     fn handle_memcpy(&mut self) -> bool {
+        // this is handled in the shared emitter utils
+        false
+    }
+
+    fn handle_mem_size(&mut self) -> bool {
         // this is handled in the shared emitter utils
         false
     }

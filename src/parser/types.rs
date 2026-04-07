@@ -1725,6 +1725,8 @@ impl Whamm {
             Self::def_mem_cpy(),
             Self::def_active_data_start(),
             Self::def_active_data_len(),
+            Self::def_page_size(),
+            Self::def_mem_size(),
             Self::def_write_str(),
             Self::def_read_str(),
         ]
@@ -1899,6 +1901,46 @@ impl Whamm {
         BoundFunction::new(
             "active_data_len".to_string(),
             "Get the length of the union of all active data segments for a specific memory in the module.".to_string(),
+            params,
+            DataType::U32,
+            true,
+            true,
+            StackReq::None,
+        )
+    }
+    fn def_page_size() -> BoundFunction {
+        let params = vec![(
+            Expr::VarId {
+                definition: Definition::CompilerStatic,
+                name: "memid".to_string(),
+                loc: None,
+            },
+            DataType::U32,
+        )];
+
+        BoundFunction::new(
+            "page_size".to_string(),
+            "Get the page size of the specified memory in KiB.".to_string(),
+            params,
+            DataType::U32,
+            true,
+            true,
+            StackReq::None,
+        )
+    }
+    fn def_mem_size() -> BoundFunction {
+        let params = vec![(
+            Expr::VarId {
+                definition: Definition::CompilerStatic,
+                name: "memid".to_string(),
+                loc: None,
+            },
+            DataType::U32,
+        )];
+
+        BoundFunction::new(
+            "mem_size".to_string(),
+            "Get the current size of the specified memory in pages.".to_string(),
             params,
             DataType::U32,
             true,

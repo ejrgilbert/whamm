@@ -282,6 +282,16 @@ fn instrument_with_memcpy_scripts() {
 }
 
 #[test]
+fn instrument_with_memsize_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/memsize");
+    assert!(!processed_scripts.is_empty());
+
+    // TODO: Support these things in wei
+    run_core_suite("memsize", processed_scripts, true, false)
+}
+
+#[test]
 fn instrument_with_mem_grow_scripts() {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/grow-failed");
