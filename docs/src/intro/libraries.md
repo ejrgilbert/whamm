@@ -38,6 +38,31 @@ wasm:opcode:*load*|*store*:before {
 }
 ```
 
+## Using Libraries at Init Time ##
+
+There may be some libraries that require initialization with some state at the start of program execution.
+This can be accomplished by simply adding the `@init` annotation to such a call.
+
+If a library call is tagged as `@init` in a probe-local scope, the call is guaranteed to be performed at
+probe initialization time (this time is dependent on the backend target, `wei` or rewriting).
+While library calls in the global scope of a script are always guaranteed to be performed in the `start` function
+of a program, users can still tag them with `@init` to more explicitly demonstrate this guarantee in a script.
+
+```
+use toggle;
+
+// both of the following will run in a program's start function
+@init toggle.get_value();
+toggle.get_value();
+
+wasm:opcode:*:before {
+    // will run at probe initialization time
+    // rewriting: in the program's start function
+    // wei: in the probe's initialization function callback
+    @init toggle.get_value();
+}
+```
+
 ## Using Libraries at Match Time ##
 
 Libraries can even be used to extend the match-time capabilities of the `Whamm` DSL.

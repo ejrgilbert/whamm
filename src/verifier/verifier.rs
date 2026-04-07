@@ -107,6 +107,7 @@ struct TypeChecker<'a> {
     err: &'a mut ErrorGen,
     in_script_global: bool,
     in_function: bool,
+    in_stmt_expr: bool,
     restrict_probe_local_state: bool,
     has_reports: bool,
     rule_tracker: RuleTracker,
@@ -125,6 +126,7 @@ impl<'a> TypeChecker<'a> {
             err,
             in_script_global: false,
             in_function: false,
+            in_stmt_expr: false,
             restrict_probe_local_state: false,
             has_reports: false,
             rule_tracker: RuleTracker::default(),
@@ -708,8 +710,17 @@ impl<'a> TypeChecker<'a> {
                 call,
                 results,
                 annotation,
-                ..
+                loc,
             } => {
+                let in_init = annotation.as_ref().map_or_else(|| false, |a| a.is_init());
+                if in_init && !self.in_stmt_expr {
+                    self.err.type_check_error(
+                        "@init must be written as its own statement (e.g. @init foo.bar()), not inside assignments or function calls".to_owned(),
+                        &loc.clone().map(|l| l.line_col),
+                    );
+                    return Some(DataType::AssumeGood);
+                }
+
                 self.curr_obj.push((
                     obj_name.clone(),
                     annotation.as_ref().map_or_else(|| false, |a| a.is_static()),
@@ -1379,7 +1390,9 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 None
             }
             Statement::Expr { expr, .. } => {
+                self.in_stmt_expr = true;
                 self.visit_expr(expr);
+                self.in_stmt_expr = false;
                 None
             }
             Statement::Return { expr, loc: _loc } => self.visit_expr(expr),

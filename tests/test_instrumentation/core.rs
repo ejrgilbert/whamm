@@ -220,6 +220,14 @@ fn instrument_with_res_n_scripts() {
     run_core_suite("resN", processed_scripts, true, false)
 }
 #[test]
+fn instrument_with_at_init_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/@init");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("at_init", processed_scripts, true, true)
+}
+#[test]
 fn instrument_with_at_static_scripts() {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/@static");

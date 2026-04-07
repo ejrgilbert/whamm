@@ -616,10 +616,28 @@ impl<'a> MetadataCollector<'a> {
                     loc: loc.clone(),
                 })
             }
-            Statement::Expr { expr, loc } => Some(Statement::Expr {
-                expr: self.visit_expr_inner(expr),
-                loc: loc.clone(),
-            }),
+            Statement::Expr { expr, loc } => {
+                if let Expr::ObjCall { annotation, .. } = expr {
+                    if matches!(annotation, Some(Annotation::Init)) {
+                        let prev_visiting = self.visiting;
+                        self.visiting = Visiting::Init;
+                        let visited_init = self.visit_expr_inner(expr);
+                        self.visiting = prev_visiting;
+                        self.has_probe_state_init = true;
+
+                        let init = Statement::Expr {
+                            expr: visited_init,
+                            loc: None,
+                        };
+                        self.curr_probe.add_init_logic(init);
+                        return None;
+                    }
+                }
+                Some(Statement::Expr {
+                    expr: self.visit_expr_inner(expr),
+                    loc: loc.clone(),
+                })
+            }
             Statement::Return { expr, loc } => Some(Statement::Return {
                 expr: self.visit_expr_inner(expr),
                 loc: loc.clone(),
