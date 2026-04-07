@@ -419,6 +419,8 @@ fn run_testcase_rewriting(
     let res = cmd
         .arg("--preload")
         .arg(whamm_core_lib_path)
+        .arg("--wasm")
+        .arg("custom-page-sizes=y")
         .arg(instr_app_path)
         .output()
         .expect("failed to run on wasmtime");

@@ -152,6 +152,7 @@ fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             )
         }
         "memcpy" => handle_memcpy(args, strategy, injector, ctx),
+        "mem_size" => handle_mem_size(args, injector),
         "write_str" => handle_write_str(args, strategy, injector, ctx),
         "read_str" => handle_read_str(args, strategy, injector, ctx),
         _ => {
@@ -190,6 +191,18 @@ fn handle_memcpy<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         EmitMode::WithCtx { ctx, strategy },
         injector,
     );
+    true
+}
+
+fn handle_mem_size<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
+    args: &[Expr],
+    injector: &mut T,
+) -> bool {
+    let target_mem = args[0]
+        .get_primitive_u32()
+        .unwrap_or_else(|| unreachable!());
+
+    injector.memory_size(target_mem);
     true
 }
 

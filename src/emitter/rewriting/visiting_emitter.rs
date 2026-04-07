@@ -628,6 +628,11 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         false
     }
 
+    fn handle_mem_size(&mut self) -> bool {
+        // this is handled in the shared emitter utils
+        false
+    }
+
     fn handle_write_str(&mut self) -> bool {
         // this is handled in the shared emitter utils
         false
@@ -651,6 +656,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             "alt_call_by_id" => self.handle_alt_call_by_id(args, err),
             "drop_args" => self.handle_drop_args(err),
             "memcpy" => self.handle_memcpy(),
+            "mem_size" => self.handle_mem_size(),
             "write_str" => self.handle_write_str(),
             "read_str" => self.handle_read_str(),
             _ => {

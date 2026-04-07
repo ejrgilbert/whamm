@@ -94,6 +94,18 @@ pub fn get_active_data_len(app_wasm: &Module, mem_id: MemoryID) -> u32 {
     max - min
 }
 
+const PAGE_SIZE_LOG2: u32 = 16;
+pub fn get_page_size_of(app_wasm: &Module, mid: MemoryID) -> u32 {
+    for mem in app_wasm.memories.iter() {
+        if let MemKind::Local(info) = mem.kind() {
+            if info.mem_id == mid {
+                return 2u32.pow(mem.ty.page_size_log2.unwrap_or(PAGE_SIZE_LOG2));
+            }
+        }
+    }
+    2u32.pow(PAGE_SIZE_LOG2)
+}
+
 // This defaults to the first local memory of the application
 // if it doesn't have one, error!
 pub fn get_first_local_mem_id(app_wasm: &Module) -> Result<MemoryID, String> {

@@ -1,6 +1,8 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::StringAddr;
-use crate::emitter::rewriting::rules::data_segments::{get_active_data_len, get_active_data_start};
+use crate::emitter::rewriting::rules::data_segments::{
+    get_active_data_len, get_active_data_start, get_page_size_of,
+};
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::type_utils::strings::StringUtils;
 use crate::parser::types::Definition::User;
@@ -1664,6 +1666,7 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
             "memid" => self.handle_mem(&folded_args, table),
             "active_data_start" => self.handle_active_data_start(call, &folded_args),
             "active_data_len" => self.handle_active_data_len(call, &folded_args),
+            "page_size" => self.handle_page_size_of(call, &folded_args),
             _ => {
                 let Expr::Call { fn_target, loc, .. } = call else {
                     unreachable!();
@@ -1697,6 +1700,18 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
         let len = get_active_data_len(self.app_wasm, MemoryID(mem_id));
         Expr::Primitive {
             val: Value::gen_u32(len),
+            loc: orig_call.loc().clone(),
+        }
+    }
+
+    fn handle_page_size_of(&self, orig_call: &Expr, args: &[Expr]) -> Expr {
+        let mem_id = match Self::get_u32(&args[0]) {
+            Some(id) => id,
+            None => return orig_call.clone(),
+        };
+        let page_size = get_page_size_of(self.app_wasm, MemoryID(mem_id));
+        Expr::Primitive {
+            val: Value::gen_u32(page_size),
             loc: orig_call.loc().clone(),
         }
     }
