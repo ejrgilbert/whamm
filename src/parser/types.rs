@@ -1355,10 +1355,14 @@ impl Statement {
 #[derive(Clone, Debug)]
 pub enum Annotation {
     Static,
+    Init,
 }
 impl Annotation {
     pub fn is_static(&self) -> bool {
         matches!(self, Self::Static)
+    }
+    pub fn is_init(&self) -> bool {
+        matches!(self, Self::Init)
     }
 }
 impl TryFrom<&str> for Annotation {
@@ -1366,6 +1370,7 @@ impl TryFrom<&str> for Annotation {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
             "static" => Ok(Self::Static),
+            "init" => Ok(Self::Init),
             _ => Err(format!("`@{}` is not a valid annotation", value)),
         }
     }
