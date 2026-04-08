@@ -338,6 +338,7 @@ fn handle_opcode_events(
         "call_indirect" => if let Operator::CallIndirect {type_index,
             table_index,} = instr {
             define_imm0_u32_imm1_u32(*type_index, *table_index, &mut loc_info, all_params);
+            loc_info.funcref_table_idx = Some(*table_index);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "return_call" => if let Operator::ReturnCall {function_index} = instr {
@@ -347,6 +348,7 @@ fn handle_opcode_events(
         },
         "return_call_indirect" => if let Operator::ReturnCallIndirect {type_index, table_index } = instr {
             define_imm0_u32_imm1_u32(*type_index, *table_index, &mut loc_info, all_params);
+            loc_info.funcref_table_idx = Some(*table_index);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "drop" => if let Operator::Drop = instr {
@@ -2134,9 +2136,6 @@ pub fn get_ty_info_for_instr(
             }
             | Operator::Loop {
                 blockty: BlockType::FuncType(ty_id),
-            }
-            | Operator::CallIndirect {
-                type_index: ty_id, ..
             } => {
                 if let Some(ty) = app_wasm.types.get(TypeID(*ty_id)) {
                     let mut args = vec![];
@@ -2149,7 +2148,31 @@ pub fn get_ty_info_for_instr(
                     }
                     (args, results, Some(*ty_id))
                 } else {
-                    // no type info found!!
+                    warn!("No type information found for opcode");
+                    (vec![], vec![], None)
+                }
+            }
+            Operator::CallIndirect {
+                type_index: ty_id, ..
+            }
+            | Operator::ReturnCallIndirect {
+                type_index: ty_id, ..
+            } => {
+                if let Some(ty) = app_wasm.types.get(TypeID(*ty_id)) {
+                    let mut args = vec![];
+                    // The table entry index (i32) is on top of the stack,
+                    // popped first by call_indirect. It must be first in
+                    // the args vec so local_set ordering matches.
+                    args.push(Some(WirmType::I32));
+                    for t in ty.params().unwrap().iter().rev() {
+                        args.push(Some(*t));
+                    }
+                    let mut results = vec![];
+                    for t in ty.results().unwrap().iter().rev() {
+                        results.push(Some(*t));
+                    }
+                    (args, results, Some(*ty_id))
+                } else {
                     warn!("No type information found for opcode");
                     (vec![], vec![], None)
                 }
@@ -2957,6 +2980,10 @@ pub struct LocInfo {
     /// dynamic information corresponding to the results of this location
     pub(crate) results: Vec<StackVal>,
 
+    /// If set, indicates this is a call_indirect/return_call_indirect site.
+    /// The value is the table index (imm1) used to derive target_funcref via table.get.
+    pub funcref_table_idx: Option<u32>,
+
     pub num_alt_probes: usize,
     /// the probes that were matched for this instruction
     /// note the Script ID is contained in Probe
@@ -3271,6 +3298,11 @@ impl LocInfo {
 
         // handle function end
         self.is_prog_exit = self.is_prog_exit || other.is_prog_exit;
+
+        // handle funcref_table_idx
+        if self.funcref_table_idx.is_none() {
+            self.funcref_table_idx = other.funcref_table_idx;
+        }
 
         // handle probes
         self.probes.append(&mut other.probes);

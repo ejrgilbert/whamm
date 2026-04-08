@@ -64,6 +64,8 @@ pub struct InstrGenerator<'a, 'ir> {
     has_reports: bool,
     on_exit_fid: Option<u32>,
     config: &'a Config,
+    /// Whether any probe uses resolve_funcref, requiring element segment lookup tables
+    needs_funcref_lookup: bool,
 }
 impl<'a, 'ir> InstrGenerator<'a, 'ir> {
     pub fn new(
@@ -72,6 +74,7 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
         err: &'a mut ErrorGen,
         config: &'a Config,
         has_reports: bool,
+        needs_funcref_lookup: bool,
     ) -> Self {
         Self {
             emitter,
@@ -86,6 +89,7 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
             has_reports,
             on_exit_fid: None,
             config,
+            needs_funcref_lookup,
         }
     }
 
@@ -166,6 +170,11 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
     }
 
     pub fn run(&mut self) -> bool {
+        // Build funcref lookup tables from element segments (for resolve_funcref)
+        if self.needs_funcref_lookup {
+            self.emitter.build_funcref_lookup_tables();
+        }
+
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
 
@@ -312,7 +321,11 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                         // we can simplify the check to just not emitting the probe altogether
 
                         // emit the probe (since the predicate is not false)
-                        is_success &= self.emit_probe(&loc_info.dynamic_data, mode);
+                        is_success &= self.emit_probe(
+                            &loc_info.dynamic_data,
+                            mode,
+                            loc_info.funcref_table_idx,
+                        );
                     }
 
                     // Now that we've emitted this probe, reset the symbol table's static/dynamic
@@ -365,10 +378,15 @@ impl InstrGenerator<'_, '_> {
         &mut self,
         dynamic_data: &HashMap<String, Block>,
         mode_override: &Option<InstrumentationMode>,
+        funcref_table_idx: Option<u32>,
     ) -> bool {
         let mut is_success = true;
 
         is_success &= self.save_args();
+        // For call_indirect: derive target_funcref from the saved table entry index
+        if let Some(table_idx) = funcref_table_idx {
+            is_success &= self.emitter.derive_target_funcref(table_idx);
+        }
         if matches!(self.curr_probe_rule.mode.as_ref().unwrap(), ModeKind::After) {
             self.emitter.after();
             is_success &= self.save_results();

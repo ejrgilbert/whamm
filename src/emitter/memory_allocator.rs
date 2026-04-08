@@ -23,7 +23,7 @@ const UNEXPECTED_ERR_MSG: &str =
 
 pub struct MemoryAllocator {
     pub mem_id: u32,
-    curr_mem_offset: usize,
+    pub(crate) curr_mem_offset: usize,
     pub mem_tracker_global: GlobalID,
 
     pub alloc_var_mem_id: Option<u32>,
@@ -230,7 +230,11 @@ impl MemoryAllocator {
                 injector
             }
             DataType::Map { .. } => todo!(),
-            DataType::Null | DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+            DataType::FuncRef
+            | DataType::Null
+            | DataType::Lib
+            | DataType::AssumeGood
+            | DataType::Unknown => {
                 unreachable!()
             }
         };
@@ -323,7 +327,11 @@ impl MemoryAllocator {
                 unreachable!("set_in_mem: idx {} out of range for tuple", idx);
             }
             DataType::Map { .. } => todo!(),
-            DataType::Null | DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+            DataType::FuncRef
+            | DataType::Null
+            | DataType::Lib
+            | DataType::AssumeGood
+            | DataType::Unknown => {
                 unreachable!()
             }
         };

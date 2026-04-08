@@ -29,7 +29,8 @@ use itertools::Itertools;
 use log::warn;
 use std::iter::Iterator;
 use wirm::ir::function::FunctionBuilder;
-use wirm::ir::id::{FunctionID, LocalID, TypeID};
+use wirm::ir::id::{FunctionID, LocalID, TableID, TypeID};
+use wirm::ir::module::LocalOrImport;
 use wirm::ir::module::Module;
 use wirm::ir::types::BlockType as WirmBlockType;
 use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as WirmIterator};
@@ -60,6 +61,12 @@ pub struct VisitingEmitter<'a, 'ir> {
     instr_created_args: Vec<(String, usize)>,
     instr_created_results: Vec<(String, usize)>,
     pub curr_unshared: Vec<UnsharedVar>,
+    /// Base memory offset of the funcref lookup array per table.
+    /// Maps table_idx -> (base_offset, num_entries).
+    pub(crate) funcref_lookup_info: HashMap<u32, (u32, u32)>,
+    /// The table index for the current call_indirect being instrumented.
+    /// Set by derive_target_funcref, used by handle_resolve_funcref.
+    pub(crate) curr_funcref_table_idx: Option<u32>,
 
     pub registry: &'a mut WasmRegistry,
 }
@@ -97,6 +104,8 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             instr_created_args: vec![],
             instr_created_results: vec![],
             curr_unshared: vec![],
+            funcref_lookup_info: HashMap::new(),
+            curr_funcref_table_idx: None,
             registry,
         }
     }
@@ -395,6 +404,208 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         true
     }
 
+    /// Derive `target_funcref` for call_indirect by emitting:
+    ///   local.get(arg0_local)    -- push saved table entry index
+    ///   table.get(table_idx)     -- look up funcref in the table
+    ///   local.set(funcref_local) -- save funcref to a new local
+    /// Then wire up the symbol table so `target_funcref` points to the new local.
+    pub(crate) fn derive_target_funcref(&mut self, table_idx: u32) -> bool {
+        // Find the local address for arg0 (table_entry_idx) from saved args
+        let arg0_addr = if let Some((_, rec_id)) = self.instr_created_args.first() {
+            let rec = self.table.get_record(*rec_id);
+            if let Some(Record::Var {
+                addr: Some(addrs), ..
+            }) = rec
+            {
+                if let Some(VarAddr::Local { addr }) = addrs.first() {
+                    *addr
+                } else {
+                    warn!("derive_target_funcref: arg0 not in a local");
+                    return false;
+                }
+            } else {
+                warn!("derive_target_funcref: arg0 record not found");
+                return false;
+            }
+        } else {
+            warn!("derive_target_funcref: no saved args");
+            return false;
+        };
+
+        // Create a nullable funcref-typed local for target_funcref
+        // (table.get returns nullable funcref)
+        let funcref_local_id = self
+            .locals_tracker
+            .use_local(WirmType::FuncRefNull, &mut self.app_iter);
+
+        // Emit: local.get(arg0) -> table.get(table_idx) -> local.set(funcref_local)
+        self.app_iter.local_get(LocalID(arg0_addr));
+        self.app_iter.table_get(TableID(table_idx));
+        self.app_iter.local_set(LocalID(funcref_local_id));
+
+        // Wire up symbol table: target_funcref -> funcref_local
+        let new_addr = Some(vec![VarAddr::Local {
+            addr: funcref_local_id,
+        }]);
+        let rec = self.table.lookup_var_with_id_mut("target_funcref", false);
+        if let Some((_id, Record::Var { addr, .. })) = rec {
+            *addr = new_addr;
+        } else {
+            self.table.put(
+                "target_funcref".to_string(),
+                Record::Var {
+                    ty: DataType::FuncRef,
+                    value: None,
+                    def: Definition::CompilerDynamic,
+                    addr: new_addr,
+                    times_set: 0,
+                    loc: None,
+                },
+            );
+        }
+
+        // Track current table idx for resolve_funcref
+        self.curr_funcref_table_idx = Some(table_idx);
+
+        // Store the lookup base offset in the symbol table so resolve_funcref can find it
+        if let Some((base_offset, _)) = self.funcref_lookup_info.get(&table_idx) {
+            use crate::parser::types::NumFmt;
+            let base_val = Value::Number {
+                val: NumLit::U32 { val: *base_offset },
+                ty: DataType::U32,
+                token: String::new(),
+                fmt: NumFmt::NA,
+            };
+            let rec = self
+                .table
+                .lookup_var_with_id_mut("__funcref_lookup_base", false);
+            if let Some((_id, Record::Var { value, .. })) = rec {
+                *value = Some(base_val);
+            } else {
+                self.table.put(
+                    "__funcref_lookup_base".to_string(),
+                    Record::Var {
+                        ty: DataType::U32,
+                        value: Some(base_val),
+                        def: Definition::CompilerStatic,
+                        addr: None,
+                        times_set: 0,
+                        loc: None,
+                    },
+                );
+            }
+        }
+
+        true
+    }
+
+    /// Build the funcref lookup arrays in linear memory from element segments.
+    /// For each active element segment, allocates memory for an i32 array where
+    /// `memory[base + entry_idx * 4] = function_id`. This is used by resolve_funcref
+    /// at runtime to map a table entry index to a function ID.
+    pub(crate) fn build_funcref_lookup_tables(&mut self) {
+        use wirm::ir::types::Value as WirmValue;
+        use wirm::ir::types::{ElementItems, ElementKind, InitInstr as WirmInitInstr};
+
+        // Collect element segment data first (to avoid borrow issues)
+        let mut table_entries: HashMap<u32, Vec<(u32, u32)>> = HashMap::new(); // table_idx -> [(entry_idx, fid)]
+
+        for element in self.app_iter.module.elements.iter() {
+            if let ElementKind::Active {
+                table_index,
+                offset_expr,
+            } = &element.kind
+            {
+                let table_idx = table_index.unwrap_or(0);
+                let base_offset = match offset_expr.exprs.first() {
+                    Some(WirmInitInstr::Value(WirmValue::I32(val))) => *val as u32,
+                    _ => {
+                        warn!("build_funcref_lookup_tables: unsupported offset expr, skipping segment");
+                        continue;
+                    }
+                };
+
+                if let ElementItems::Functions(func_ids) = &element.items {
+                    let entries = table_entries.entry(table_idx).or_default();
+                    for (i, fid) in func_ids.iter().enumerate() {
+                        entries.push((base_offset + i as u32, **fid));
+                    }
+                }
+            }
+        }
+
+        // Now allocate memory and emit data segments for each table
+        for (table_idx, entries) in table_entries.iter() {
+            if entries.is_empty() {
+                continue;
+            }
+            let max_entry = entries.iter().map(|(idx, _)| *idx).max().unwrap();
+            let num_entries = max_entry + 1;
+            let size_bytes = num_entries as usize * 4; // 4 bytes per i32
+
+            // Build the lookup data: default to u32::MAX (sentinel for "unknown")
+            let mut lookup_data = vec![0xFFu8; size_bytes];
+            for (entry_idx, fid) in entries.iter() {
+                let offset = *entry_idx as usize * 4;
+                let fid_bytes = (*fid as i32).to_le_bytes();
+                lookup_data[offset..offset + 4].copy_from_slice(&fid_bytes);
+            }
+
+            // Allocate in the instrumentation memory
+            let base_offset = self.mem_allocator.curr_mem_offset as u32;
+            let mem_id = self.mem_allocator.mem_id;
+
+            // Emit data segment
+            let data_segment = wirm::ir::types::DataSegment {
+                data: lookup_data,
+                kind: wirm::ir::types::DataSegmentKind::Active {
+                    memory_index: mem_id,
+                    offset_expr: wirm::ir::types::InitExpr::new(vec![WirmInitInstr::Value(
+                        WirmValue::I32(base_offset as i32),
+                    )]),
+                },
+                tag: None,
+            };
+            self.app_iter.module.data.push(data_segment);
+
+            self.mem_allocator.curr_mem_offset += size_bytes;
+            self.funcref_lookup_info
+                .insert(*table_idx, (base_offset, num_entries));
+        }
+
+        // This function is only called when the user uses resolve_funcref.
+        // Warn if the module also has table mutation instructions, since the
+        // static lookup table may become stale at runtime.
+        let has_table_mutations = self.app_iter.module.functions.iter().any(|func| {
+            if func.is_local() {
+                if let Ok(local_func) = func.unwrap_local() {
+                    local_func.body.instructions.get_ops().iter().any(|op| {
+                        matches!(
+                            op,
+                            Operator::TableSet { .. }
+                                | Operator::TableGrow { .. }
+                                | Operator::TableCopy { .. }
+                                | Operator::TableInit { .. }
+                        )
+                    })
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        });
+        if has_table_mutations {
+            warn!(
+                "Module contains dynamic table mutations (table.set/table.grow/table.copy/table.init). \
+                 The resolve_funcref lookup table is built statically from element segments and may not \
+                 reflect runtime table state. In future work, we plan to implement a more robust solution \
+                 using GC funcref comparison capabilities. If you need this for your use case, add a GH issue: \
+                 https://github.com/ejrgilbert/whamm/issues"
+            );
+        }
+    }
+
     pub(crate) fn reset_table_data(&mut self, loc_info: &LocInfo) {
         // reset static_data
         self.table
@@ -659,6 +870,9 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             "mem_size" => self.handle_mem_size(),
             "write_str" => self.handle_write_str(),
             "read_str" => self.handle_read_str(),
+            "resolve_funcref" => {
+                unreachable!("resolve_funcref should be handled in the generic emit_expr path")
+            }
             _ => {
                 unreachable!(
                     "{} Could not find handler for static function with name: {}",
