@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "add"
-version = "0.1.0"
+version = "1.0.0-rc1"
 dependencies = [
  "wasm-bindgen",
 ]
@@ -825,7 +825,7 @@ dependencies = [
 
 [[package]]
 name = "example"
-version = "0.1.0"
+version = "1.0.0-rc1"
 dependencies = [
  "wasm-bindgen",
 ]
@@ -2414,8 +2414,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm-encoder"
+version = "0.244.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "990065f2fe63003fe337b932cfb5e3b80e0b4d0f5ff650e6985b1048f62c8319"
+dependencies = [
+ "leb128fmt",
+ "wasmparser 0.244.0",
+]
+
+[[package]]
 name = "wasm_runner"
-version = "0.1.0"
+version = "1.0.0-rc1"
 dependencies = [
  "wasi-common",
  "wasmtime 38.0.4",
@@ -2454,6 +2464,17 @@ name = "wasmparser"
 version = "0.240.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b722dcf61e0ea47440b53ff83ccb5df8efec57a69d150e4f24882e4eba7e24a4"
+dependencies = [
+ "bitflags",
+ "indexmap",
+ "semver",
+]
+
+[[package]]
+name = "wasmparser"
+version = "0.244.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47b807c72e1bac69382b3a6fb3dbe8ea4c0ed87ff5629b8685ae6b9a611028fe"
 dependencies = [
  "bitflags",
  "hashbrown 0.15.2",
@@ -3019,7 +3040,7 @@ dependencies = [
 
 [[package]]
 name = "whamm"
-version = "0.1.0"
+version = "1.0.0-rc1"
 dependencies = [
  "clap",
  "clap_mangen",
@@ -3043,7 +3064,7 @@ dependencies = [
 
 [[package]]
 name = "whamm_core"
-version = "0.1.0"
+version = "1.0.0-rc1"
 dependencies = [
  "itertools 0.14.0",
  "log",
@@ -3447,15 +3468,15 @@ dependencies = [
 
 [[package]]
 name = "wirm"
-version = "2.2.0"
+version = "4.0.0-rc2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8eba457ca878579c72647612307ef82660b6d4c96460263ee66358489214af39"
+checksum = "585ce0b634a57b65c534f4cabf49e177158d7078132a45ea0db9075c300a9ece"
 dependencies = [
  "log",
  "serde_json",
  "tempfile",
- "wasm-encoder 0.240.0",
- "wasmparser 0.240.0",
+ "wasm-encoder 0.244.0",
+ "wasmparser 0.244.0",
 ]
 
 [[package]]

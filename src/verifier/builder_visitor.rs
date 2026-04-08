@@ -334,11 +334,11 @@ impl SymbolTableBuilder<'_, '_> {
                     let func = lib_module.functions.get(FunctionID(export.index));
                     if let Some(ty) = lib_module.types.get(func.get_type_id()) {
                         let mut params = vec![];
-                        for p in ty.params().iter() {
+                        for p in ty.params().unwrap().iter() {
                             params.push(DataType::from_wasm_type(p));
                         }
                         let mut results = vec![];
-                        for p in ty.results().iter() {
+                        for p in ty.results().unwrap().iter() {
                             results.push(DataType::from_wasm_type(p));
                         }
                         let fn_name = export.name.clone();
