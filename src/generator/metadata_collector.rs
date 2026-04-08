@@ -57,6 +57,7 @@ pub struct MetadataCollector<'a> {
     pub check_strcmp: bool,
     pub strings_to_emit: Vec<String>,
     pub has_probe_state_init: bool,
+    pub needs_funcref_lookup: bool,
 
     pub err: &'a mut ErrorGen,
     pub config: &'a Config,
@@ -89,6 +90,7 @@ impl<'a> MetadataCollector<'a> {
             check_strcmp: Default::default(),
             strings_to_emit: Default::default(),
             has_probe_state_init: Default::default(),
+            needs_funcref_lookup: false,
             visiting: Default::default(),
             rule_tracker: Default::default(),
             curr_script: Default::default(),
@@ -422,6 +424,9 @@ impl<'a> MetadataCollector<'a> {
                         // will need to emit this function!
                         self.used_bound_fns.insert((context, fn_name));
                     }
+                } else if matches!(def, Definition::CompilerStatic) && fn_name == "resolve_funcref"
+                {
+                    self.needs_funcref_lookup = true;
                 } else if matches!(def, Definition::CompilerStatic) && fn_name == "memid" {
                     let target_lib = args.first().unwrap();
                     let Expr::VarId { name, .. } = target_lib else {

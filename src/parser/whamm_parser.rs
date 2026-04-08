@@ -1486,6 +1486,7 @@ pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
         Rule::TY_F64 => Ok(DataType::F64),
         Rule::TY_BOOL => Ok(DataType::Boolean),
         Rule::TY_STRING => Ok(DataType::Str),
+        Rule::TY_FUNCREF => Ok(DataType::FuncRef),
         Rule::TY_UNKNOWN => Ok(DataType::Unknown),
         Rule::TY_TUPLE => {
             let mut tuple_content_types = vec![];

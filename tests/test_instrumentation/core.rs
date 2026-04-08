@@ -255,6 +255,14 @@ fn instrument_with_calls_monitor_rewriting_scripts() {
     run_core_suite("calls-monitor_rewriting", processed_scripts, true, false)
 }
 #[test]
+fn instrument_with_call_indirect_funcref_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/call-indirect-funcref");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("call-indirect-funcref", processed_scripts, true, false)
+}
+#[test]
 fn instrument_with_strings_scripts() {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/strings");
