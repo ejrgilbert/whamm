@@ -262,8 +262,8 @@ fn import_lib_fn_names(
                     let fid = import_func(
                         import_name,
                         fn_name,
-                        &ty.params().clone(),
-                        &ty.results().clone(),
+                        &ty.params().unwrap().clone(),
+                        &ty.results().unwrap().clone(),
                         loc,
                         app_wasm,
                     );

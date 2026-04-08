@@ -492,7 +492,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         let block_ty = match orig_ty_id {
             Some(ty_id) => {
                 let ty = match self.app_iter.module.types.get(TypeID(ty_id)) {
-                    Some(ty) => ty.results().clone(),
+                    Some(ty) => ty.results().unwrap().clone(),
                     None => vec![],
                 };
 
@@ -729,7 +729,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                 .functions
                 .get_local_fid_by_name("on_exit")
             {
-                let Some(mut on_exit) = self.app_iter.module.functions.get_fn_modifier(fid) else {
+                let Ok(mut on_exit) = self.app_iter.module.functions.get_fn_modifier(fid) else {
                     panic!(
                         "{UNEXPECTED_ERR_MSG} \
                                 No on_exit found in the module!"
@@ -971,6 +971,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             {
                 wasm.functions
                     .unwrap_local(*func_idx)
+                    .unwrap()
                     .lookup_pc_offset_for(*instr_idx)
                     .unwrap() as u32
                     + 1

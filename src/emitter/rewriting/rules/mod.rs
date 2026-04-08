@@ -196,7 +196,7 @@ fn handle_wasm(
 }
 
 fn all_locals(app_wasm: &Module, fid: &FunctionID) -> Vec<WirmType> {
-    let func = app_wasm.functions.get(*fid).unwrap_local();
+    let func = app_wasm.functions.get(*fid).unwrap_local().unwrap();
 
     let mut locals = vec![];
     for arg in func.args.iter() {
@@ -2115,11 +2115,11 @@ pub fn get_ty_info_for_instr(
                 };
                 if let Some(ty) = app_wasm.types.get(ty_id) {
                     let mut args = vec![];
-                    for t in ty.params().iter().rev() {
+                    for t in ty.params().unwrap().iter().rev() {
                         args.push(Some(*t));
                     }
                     let mut results = vec![];
-                    for t in ty.results().iter().rev() {
+                    for t in ty.results().unwrap().iter().rev() {
                         results.push(Some(*t));
                     }
                     (args, results, Some(*ty_id))
@@ -2140,11 +2140,11 @@ pub fn get_ty_info_for_instr(
             } => {
                 if let Some(ty) = app_wasm.types.get(TypeID(*ty_id)) {
                     let mut args = vec![];
-                    for t in ty.params().iter().rev() {
+                    for t in ty.params().unwrap().iter().rev() {
                         args.push(Some(*t));
                     }
                     let mut results = vec![];
-                    for t in ty.results().iter().rev() {
+                    for t in ty.results().unwrap().iter().rev() {
                         results.push(Some(*t));
                     }
                     (args, results, Some(*ty_id))

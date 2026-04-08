@@ -104,7 +104,7 @@ pub fn dry_run_on_bytes<'ir>(
     ) {
         Err(err.pull_errs())
     } else {
-        Ok(target_wasm.pull_side_effects())
+        Ok(target_wasm.pull_side_effects().unwrap())
     }
 }
 
@@ -165,7 +165,7 @@ pub fn run_on_module_and_encode<'lib, 'ir>(
         config,
     )?;
 
-    let wasm = target_wasm.encode();
+    let wasm = target_wasm.encode().unwrap();
     metrics.flush();
     Ok(wasm)
 }
@@ -582,7 +582,7 @@ fn call_instr_init_at_start(
 ) {
     if let Some(instr_init_fid) = module.functions.get_local_fid_by_name("instr_init") {
         if let Some(state_init_id) = state_init_id {
-            if let Some(mut instr_init) = module.functions.get_fn_modifier(instr_init_fid) {
+            if let Ok(mut instr_init) = module.functions.get_fn_modifier(instr_init_fid) {
                 instr_init.call(state_init_id);
             } else {
                 unreachable!("Should have found the function in the module.")
@@ -591,7 +591,7 @@ fn call_instr_init_at_start(
 
         // now call `instr_init` in the module's start function
         let (start_fid, _was_created) = ModuleEmitter::get_or_create_start_func(module);
-        if let Some(mut start_func) = module.functions.get_fn_modifier(FunctionID(start_fid)) {
+        if let Ok(mut start_func) = module.functions.get_fn_modifier(FunctionID(start_fid)) {
             start_func.func_entry();
             start_func.call(instr_init_fid);
 

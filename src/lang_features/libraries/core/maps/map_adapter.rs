@@ -474,7 +474,7 @@ impl MapLibAdapter {
         //time to set up the map_init fn
         let init_id = self.get_map_init_fid(app_wasm);
 
-        let Some(mut init_fn) = app_wasm.functions.get_fn_modifier(init_id) else {
+        let Ok(mut init_fn) = app_wasm.functions.get_fn_modifier(init_id) else {
             panic!(
                 "{UNEXPECTED_ERR_MSG} \
                                 No instr_init found in the module!"

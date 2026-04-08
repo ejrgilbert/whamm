@@ -613,7 +613,8 @@ impl MemoryAllocator {
                 InitExpr::new(vec![InitInstr::Value(WirmValue::I32(
                     self.curr_mem_offset as i32,
                 ))]),
-            );
+            )
+            .unwrap();
             ENGINE_BUFFER_MAX_SIZE
         } else {
             // There's no engine buffer!
@@ -626,7 +627,8 @@ impl MemoryAllocator {
             InitExpr::new(vec![InitInstr::Value(WirmValue::I32(
                 self.curr_mem_offset as i32 + buffer_size,
             ))]),
-        );
+        )
+        .unwrap();
     }
 }
 
