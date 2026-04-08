@@ -537,6 +537,36 @@ alt_call_by_name: &alt_call_by_name
   req_args: -1
   docs: Insert an alternate call (targeting the passed function name) into the Wasm bytecode. Will also emit the original parameters onto the stack.
 
+# ========================================
+# ==== *call_indirect* Constants ====
+# ========================================
+
+table_entry_idx: &table_entry_idx
+  name: table_entry_idx
+  type: i32
+  docs: The index into the table used by call_indirect to select the target function. This is the i32 value popped from the top of the stack.
+  lifetime: dynamic
+  derived_from: arg0
+target_funcref: &target_funcref
+  name: target_funcref
+  type: funcref
+  docs: The funcref retrieved from the table targeted by this call_indirect. Derived by performing table.get with the table_entry_idx on the table specified by imm1.
+  lifetime: dynamic
+  derived_from: null
+resolved_fid: &resolved_fid
+  name: resolved_fid
+  type: i32
+  docs: The function index resolved from the target funcref of this call_indirect. Derived by calling resolve_funcref on target_funcref.
+  lifetime: dynamic
+  derived_from: resolve_funcref(target_funcref, table_entry_idx)
+resolve_funcref: &resolve_funcref
+  name: resolve_funcref
+  lifetime: static
+  params: "(target_funcref: funcref, table_entry_idx: i32)"
+  results: i32
+  req_args: -1
+  docs: Resolve a funcref to its function index using a static lookup table built from element segments. Warning - if the module uses table.set/table.grow, the lookup table may be stale.
+
 # ============================
 # ==== *struct* Constants ====
 # ============================
@@ -960,11 +990,16 @@ call_indirect: &call_indirect
       derived_from: 0x0011
     - *category_id_control
     - *category_name_control
+    - *arg0_i32
     - *argN
     - *imm0_u32
     - *imm1_u32
     - *resN
-  bound_fns: []
+    - *table_entry_idx
+    - *target_funcref
+    - *resolved_fid
+  bound_fns:
+    - *resolve_funcref
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
@@ -1011,10 +1046,16 @@ return_call_indirect: &return_call_indirect
       derived_from: 0x0013
     - *category_id_control
     - *category_name_control
+    - *arg0_i32
     - *argN
     - *imm0_u32
     - *imm1_u32
-  bound_fns: []
+    - *resN
+    - *table_entry_idx
+    - *target_funcref
+    - *resolved_fid
+  bound_fns:
+    - *resolve_funcref
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"

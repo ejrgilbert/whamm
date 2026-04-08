@@ -77,6 +77,7 @@ TY_I64 = @{ "i64" }
 TY_F64 = @{ "f64" }
 TY_BOOL = @{ "bool" }
 TY_STRING = @{ "str" }
+TY_FUNCREF = @{ "funcref" }
 
 // a tuple that's used as a type declaration
 TY_TUPLE = { "(" ~ ")"| "(" ~ TYPE ~ ( "," ~ TYPE )* ~ ")" }
@@ -100,7 +101,8 @@ TYPE_PRIMITIVE = _{
     TY_I64 |
     TY_F64 |
     TY_BOOL |
-    TY_STRING
+    TY_STRING |
+    TY_FUNCREF
 }
 TY_UNKNOWN = @{ "unknown" }
 TYPE_YML = _{

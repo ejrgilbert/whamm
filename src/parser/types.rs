@@ -100,6 +100,7 @@ pub enum DataType {
     Boolean,
     Null,
     Str,
+    FuncRef,
     Tuple {
         ty_info: Vec<DataType>,
     },
@@ -128,6 +129,7 @@ impl Hash for DataType {
             | DataType::Boolean
             | DataType::Null
             | DataType::Str
+            | DataType::FuncRef
             | DataType::Lib
             | DataType::AssumeGood
             | DataType::Unknown => {
@@ -163,6 +165,7 @@ impl PartialEq for DataType {
             | (DataType::Boolean, DataType::Boolean)
             | (DataType::Null, DataType::Null)
             | (DataType::Str, DataType::Str)
+            | (DataType::FuncRef, DataType::FuncRef)
             | (DataType::Lib, DataType::Lib)
             | (DataType::Unknown, DataType::Unknown)
             | (_, DataType::AssumeGood)
@@ -205,6 +208,7 @@ impl Display for DataType {
             DataType::Boolean => write!(f, "bool"),
             DataType::Null => write!(f, "null"),
             DataType::Str => write!(f, "str"),
+            DataType::FuncRef => write!(f, "funcref"),
             DataType::Lib => write!(f, "lib"),
             DataType::Tuple { ty_info } => {
                 let mut s = "".to_string();
@@ -255,6 +259,7 @@ impl DataType {
             | DataType::F64
             | DataType::Null
             | DataType::Str
+            | DataType::FuncRef
             | DataType::Lib
             | DataType::AssumeGood
             | DataType::Unknown
@@ -280,6 +285,7 @@ impl DataType {
             DataType::F32 => vec![WirmType::F32],
             DataType::I64 | DataType::U64 => vec![WirmType::I64],
             DataType::F64 => vec![WirmType::F64],
+            DataType::FuncRef => vec![WirmType::FuncRef],
             // the ID used to track this var in the lib
             DataType::Map { .. } => vec![WirmType::I32],
             DataType::Null => unimplemented!(),
@@ -299,8 +305,8 @@ impl DataType {
             WirmType::I64 => DataType::I64,
             WirmType::F32 => DataType::F32,
             WirmType::F64 => DataType::F64,
-            WirmType::FuncRef
-            | WirmType::FuncRefNull
+            WirmType::FuncRef => DataType::FuncRef,
+            WirmType::FuncRefNull
             | WirmType::Cont
             | WirmType::NoCont
             | WirmType::ExternRef
@@ -354,6 +360,7 @@ impl DataType {
             DataType::Boolean
             | DataType::Null
             | DataType::Str
+            | DataType::FuncRef
             // | DataType::Tuple { .. }
             | DataType::Map { .. }
             | DataType::Lib
@@ -375,11 +382,12 @@ impl DataType {
             DataType::Boolean => 10,
             DataType::Null => 11,
             DataType::Str => 12,
-            DataType::Tuple { .. } => 13,
-            DataType::Map { .. } => 14,
-            DataType::Lib => 15,
-            DataType::AssumeGood => 16,
-            DataType::Unknown => 17,
+            DataType::FuncRef => 13,
+            DataType::Tuple { .. } => 14,
+            DataType::Map { .. } => 15,
+            DataType::Lib => 16,
+            DataType::AssumeGood => 17,
+            DataType::Unknown => 18,
         }
     }
     pub fn num_bytes(&self) -> Option<usize> {
@@ -403,6 +411,7 @@ impl DataType {
                 Some(size)
             }
             DataType::Str => Some(8), // (two i32s)
+            DataType::FuncRef |
             DataType::Null |
             DataType::Lib |
             DataType::AssumeGood |
@@ -454,6 +463,9 @@ impl DataType {
             }
             DataType::Str => {
                 yellow(true, "str".to_string(), buffer);
+            }
+            DataType::FuncRef => {
+                yellow(true, "funcref".to_string(), buffer);
             }
             DataType::Lib => {
                 yellow(true, "lib".to_string(), buffer);
@@ -509,6 +521,7 @@ impl DataType {
                 }
                 res
             }
+            DataType::FuncRef |
             DataType::Null |
             DataType::Lib |
             DataType::Unknown |

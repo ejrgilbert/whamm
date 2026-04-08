@@ -17,6 +17,7 @@ use wirm::ir::id::{FunctionID, GlobalID, LocalID};
 use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmValue};
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{MacroOpcode, Opcode};
+use wirm::wasmparser::MemArg;
 use wirm::{InitInstr, Module};
 // ==================================================================
 // ================ Emitter Helper Functions ========================
@@ -184,6 +185,7 @@ fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         "mem_size" => handle_mem_size(args, injector),
         "write_str" => handle_write_str(args, strategy, injector, ctx),
         "read_str" => handle_read_str(args, strategy, injector, ctx),
+        "resolve_funcref" => handle_resolve_funcref(args, strategy, injector, ctx),
         _ => {
             unreachable!(
                 "{} Could not find handler for static function with name: {}",
@@ -233,6 +235,56 @@ fn handle_mem_size<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 
     injector.memory_size(target_mem);
     true
+}
+
+fn handle_resolve_funcref<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
+    args: &[Expr],
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) -> bool {
+    // args: (target_funcref: funcref, table_entry_idx: i32)
+    // Emit the funcref argument (for side effects), then drop it
+    let mut is_success = emit_expr(args.first().unwrap(), None, strategy, injector, ctx);
+    injector.drop();
+
+    // Emit the table_entry_idx argument — this puts the entry index on the stack
+    is_success &= emit_expr(args.get(1).unwrap(), None, strategy, injector, ctx);
+
+    let mem_id = ctx.mem_allocator.mem_id;
+
+    // Look up the base offset of the funcref lookup table from the symbol table
+    let base_offset = if let Some(Record::Var {
+        value: Some(Value::Number {
+            val: NumLit::U32 { val },
+            ..
+        }),
+        ..
+    }) = ctx.table.lookup_var("__funcref_lookup_base", false)
+    {
+        *val
+    } else {
+        ctx.err.add_instr_error(
+            "resolve_funcref: funcref lookup table not initialized. \
+             This function can only be used in call_indirect/return_call_indirect probes.",
+        );
+        return false;
+    };
+
+    // Stack has: [table_entry_idx]
+    // Emit: table_entry_idx * 4 + base_offset → i32.load → function_id
+    injector.i32_const(4);
+    injector.i32_mul();
+    injector.u32_const(base_offset);
+    injector.i32_add();
+    injector.i32_load(MemArg {
+        align: 2,
+        max_align: 0,
+        offset: 0,
+        memory: mem_id,
+    });
+
+    is_success
 }
 
 fn handle_write_str<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
@@ -1220,7 +1272,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     injector.i64_and();
                     injector.f64_reinterpret_i64()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support logical AND for {done_on}")
                 }
                 DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
@@ -1248,7 +1304,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     injector.i64_or();
                     injector.f64_reinterpret_i64()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support logical OR for {done_on}")
                 }
                 DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
@@ -1268,7 +1328,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::U64 | DataType::I64 => injector.i64_eq(),
                 DataType::F32 => injector.f32_eq(),
                 DataType::F64 => injector.f64_eq(),
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     // todo: str
                     unimplemented!("We do not support equal for {done_on}")
                 }
@@ -1289,7 +1353,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::U64 | DataType::I64 => injector.i64_ne(),
                 DataType::F32 => injector.f32_ne(),
                 DataType::F64 => injector.f64_ne(),
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     // todo: str
                     unimplemented!("We do not support not equal for {done_on}")
                 }
@@ -1311,7 +1379,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I64 => injector.i64_gte_signed(),
                 DataType::F32 => injector.f32_ge(),
                 DataType::F64 => injector.f64_ge(),
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support greater than or equal to for {done_on}")
                 }
                 DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
@@ -1332,7 +1404,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I64 => injector.i64_gt_signed(),
                 DataType::F32 => injector.f32_gt(),
                 DataType::F64 => injector.f64_gt(),
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support greater than for {done_on}")
                 }
                 DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
@@ -1353,7 +1429,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I64 => injector.i64_lte_signed(),
                 DataType::F32 => injector.f32_le(),
                 DataType::F64 => injector.f64_le(),
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support less than or equal to for {done_on}")
                 }
                 DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
@@ -1374,7 +1454,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I64 => injector.i64_lt_signed(),
                 DataType::F32 => injector.f32_lt(),
                 DataType::F64 => injector.f64_lt(),
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support less than for {done_on}")
                 }
                 DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
@@ -1418,7 +1502,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::U64 | DataType::I64 => injector.i64_add(),
                 DataType::F32 => injector.f32_add(),
                 DataType::F64 => injector.f64_add(),
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support addition for {done_on}")
                 }
                 DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
@@ -1462,7 +1550,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::U64 | DataType::I64 => injector.i64_sub(),
                 DataType::F32 => injector.f32_sub(),
                 DataType::F64 => injector.f64_sub(),
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support subtract for {done_on}")
                 }
                 DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
@@ -1506,7 +1598,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::U64 | DataType::I64 => injector.i64_mul(),
                 DataType::F32 => injector.f32_mul(),
                 DataType::F64 => injector.f64_mul(),
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support multiply for {done_on}")
                 }
                 DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
@@ -1551,7 +1647,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I64 => injector.i64_div_signed(),
                 DataType::F32 => injector.f32_div(),
                 DataType::F64 => injector.f64_div(),
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support divide for {done_on}")
                 }
                 DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
@@ -1656,7 +1756,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         .local_get(a)
                         .f64_copysign()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support modulo for {done_on}")
                 }
                 DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
@@ -1699,7 +1803,8 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 }
                 DataType::U64 | DataType::I64 => injector.i64_shl(),
                 DataType::F32 | DataType::F64 => unreachable!(),
-                DataType::Null
+                DataType::FuncRef
+                | DataType::Null
                 | DataType::Str     // todo
                 | DataType::Tuple { .. }
                 | DataType::Map { .. }
@@ -1717,7 +1822,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::I8 | DataType::I16 | DataType::I32 => injector.i32_shr_signed(),
                 DataType::U64 => injector.i64_shr_unsigned(),
                 DataType::I64 => injector.i64_shr_signed(),
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support right shift for {done_on}")
                 }
                 DataType::Lib
@@ -1739,7 +1848,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::I32
                 | DataType::Boolean => injector.i32_and(),
                 DataType::U64 | DataType::I64 => injector.i64_and(),
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support bitwise AND for {done_on}")
                 }
                 DataType::Lib
@@ -1761,7 +1874,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::I32
                 | DataType::Boolean => injector.i32_or(),
                 DataType::U64 | DataType::I64 => injector.i64_or(),
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support bitwise OR for {done_on}")
                 }
                 DataType::Lib
@@ -1784,7 +1901,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Boolean => injector.i32_xor(),
                 DataType::U64 | DataType::I64 => injector.i64_xor(),
                 DataType::F32 | DataType::F64 => unreachable!(),
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support bitwise XOR for {done_on}")
                 }
                 DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
@@ -2200,7 +2321,11 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                 injector.f64_const(0f64);
                 injector.f64_eq();
             }
-            DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+            DataType::FuncRef
+            | DataType::Null
+            | DataType::Str
+            | DataType::Tuple { .. }
+            | DataType::Map { .. } => {
                 unimplemented!("We do not support NOT for {done_on}")
             }
             DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
@@ -2239,7 +2364,11 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.i64_const(-1);
                     injector.i64_xor()
                 }
-                DataType::Null | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
+                DataType::FuncRef
+                | DataType::Null
+                | DataType::Str
+                | DataType::Tuple { .. }
+                | DataType::Map { .. } => {
                     unimplemented!("We do not support bitwise NOT for {done_on}")
                 }
                 DataType::Lib

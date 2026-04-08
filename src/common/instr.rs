@@ -485,6 +485,7 @@ fn run_instr_rewrite<'lib, 'ir>(
     let used_funcs = metadata_collector.used_bound_fns;
     let used_strings = metadata_collector.strings_to_emit;
     let has_probe_state_init = metadata_collector.has_probe_state_init;
+    let needs_funcref_lookup = metadata_collector.needs_funcref_lookup;
     let config = metadata_collector.config;
 
     let mut registry = WasmRegistry::new(&static_libs, &user_lib_paths, err);
@@ -541,6 +542,7 @@ fn run_instr_rewrite<'lib, 'ir>(
         err,
         config,
         has_reports,
+        needs_funcref_lookup,
     );
 
     let match_time = "match&inject".to_string();
