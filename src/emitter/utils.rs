@@ -9,7 +9,7 @@ use crate::lang_features::libraries::core::maps::map_adapter::{MapLibAdapter, MA
 use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::type_utils::strings::StringUtils;
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
+    BinOp, Block, CallKind, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
 };
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable, VarAddr};
 use wirm::ir::function::FunctionBuilder;
@@ -33,7 +33,6 @@ pub struct EmitCtx<'a> {
     pub(crate) mem_allocator: &'a MemoryAllocator,
     pub(crate) locals_tracker: &'a mut LocalsTracker,
     in_map_op: bool,
-    in_obj_call_on: Option<String>,
     utils_adapter: &'a mut UtilsAdapter,
     map_lib_adapter: &'a mut MapLibAdapter,
     err_msg: String,
@@ -54,12 +53,18 @@ impl<'a> EmitCtx<'a> {
             mem_allocator,
             locals_tracker,
             in_map_op: false,
-            in_obj_call_on: None,
             utils_adapter,
             map_lib_adapter,
             err_msg: err_msg.to_string(),
             err,
         }
+    }
+
+    /// Resolve a known-builtin function name to a `CallKind::Global`. Used by
+    /// emit-time call synthesizers (e.g. string utilities) that bypass the
+    /// verifier's resolution path.
+    pub(crate) fn resolve_global_call(&self, fn_name: &str) -> CallKind {
+        self.table.resolve_global_call(fn_name)
     }
 }
 
@@ -89,6 +94,50 @@ pub fn emit_body<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     is_success
 }
 
+/// A `Statement::Expr` whose expression is a call to a CompilerStatic
+/// global function. Those get inlined via `handle_special_fn_call` rather
+/// than emitted as a normal `call` instruction. The follow-up emission
+/// (drop the synthesized return value, etc.) varies by caller.
+pub(crate) struct CompilerStaticStmtCall<'a> {
+    pub fn_name: String,
+    pub args: &'a [Expr],
+    pub ret_ty: DataType,
+}
+
+/// Match a stand-alone statement against the CompilerStatic-call pattern.
+/// Returns `None` for any other shape — in particular Lib/TypeUtil calls
+/// don't take this path even when written as their own statement.
+pub(crate) fn as_compiler_static_stmt_call<'a>(
+    stmt: &'a Statement,
+    table: &SymbolTable,
+) -> Option<CompilerStaticStmtCall<'a>> {
+    let Statement::Expr {
+        expr:
+            Expr::Call {
+                fn_target,
+                args,
+                kind: CallKind::Global { rec_id, .. },
+                ..
+            },
+        ..
+    } = stmt
+    else {
+        return None;
+    };
+    let fn_name = match &**fn_target {
+        Expr::VarId { name, .. } => name.clone(),
+        _ => return None,
+    };
+    let Record::Fn { def, ret_ty, .. } = table.get_record(*rec_id)? else {
+        unreachable!("CallKind::Global resolved to non-Fn record");
+    };
+    matches!(def, Definition::CompilerStatic).then(|| CompilerStaticStmtCall {
+        fn_name,
+        args,
+        ret_ty: ret_ty.clone(),
+    })
+}
+
 pub fn emit_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     stmt: &Statement,
     strategy: InjectStrategy,
@@ -96,30 +145,10 @@ pub fn emit_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     // Probe bodies are pre-folded by FoldPass (dead-branch elimination).
-    // Check whether this is a call to a bound, static function.
-    if let Statement::Expr {
-        expr: Expr::Call {
-            fn_target, args, ..
-        },
-        ..
-    } = stmt
-    {
-        let fn_name = match &**fn_target {
-            Expr::VarId { name, .. } => name.clone(),
-            _ => unreachable!("unexpected type: {fn_target:?}"),
-        };
-        let (def, ret_ty) = if let Some(Record::Fn { def, ret_ty, .. }) =
-            ctx.table.lookup_fn(fn_name.as_str(), true)
-        {
-            (*def, ret_ty.clone())
-        } else {
-            unreachable!("unexpected type");
-        };
-        if matches!(def, Definition::CompilerStatic) {
-            let res = handle_special_fn_call(fn_name, args, strategy, injector, ctx);
-            drop_results(&ret_ty, injector);
-            return res;
-        }
+    if let Some(call) = as_compiler_static_stmt_call(stmt, ctx.table) {
+        let res = handle_special_fn_call(call.fn_name, call.args, strategy, injector, ctx);
+        drop_results(&call.ret_ty, injector);
+        return res;
     }
     emit_stmt_inner(stmt, strategy, injector, ctx)
 }
@@ -320,32 +349,21 @@ fn emit_stmt_inner<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 
 fn get_ret_tys_for(expr: &Expr, ctx: &mut EmitCtx) -> Vec<DataType> {
     match expr {
-        Expr::ObjCall { obj_name, call, .. } => {
-            let fn_name = match &**call {
-                Expr::Call { fn_target, .. } => match &**fn_target {
-                    Expr::VarId { name, .. } => name.clone(),
-                    _ => unreachable!("unexpected type: {fn_target:?}"),
-                },
-                _ => unreachable!("unexpected type: {call:?}"),
-            };
-            let Some(Record::LibFn { results, .. }) =
-                ctx.table.lookup_lib_fn(obj_name, &fn_name, true)
-            else {
-                unreachable!("unexpected type");
-            };
-            results.clone()
-        }
-        Expr::Call { fn_target, .. } => {
-            let fn_name = match &**fn_target {
-                Expr::VarId { name, .. } => name.clone(),
-                _ => unreachable!("unexpected type: {fn_target:?}"),
-            };
-            let Some(Record::Fn { ret_ty, .. }) = ctx.table.lookup_fn(fn_name.as_str(), true)
-            else {
-                unreachable!("unexpected type");
-            };
-            vec![ret_ty.clone()]
-        }
+        Expr::Call { kind, .. } => match kind {
+            CallKind::Lib { rec_id, .. } | CallKind::TypeUtil { rec_id, .. } => {
+                let Some(Record::LibFn { results, .. }) = ctx.table.get_record(*rec_id) else {
+                    unreachable!("CallKind::Lib/TypeUtil resolved to non-LibFn record");
+                };
+                results.clone()
+            }
+            CallKind::Global { rec_id, .. } => {
+                let Some(Record::Fn { ret_ty, .. }) = ctx.table.get_record(*rec_id) else {
+                    unreachable!("CallKind::Global resolved to non-Fn record");
+                };
+                vec![ret_ty.clone()]
+            }
+            CallKind::Pending { .. } => unreachable!("unresolved call reached emission"),
+        },
         _ => vec![DataType::empty_tuple()],
     }
 }
@@ -975,84 +993,89 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             };
             emit_if_else(cond, &conseq_block, &alt_block, strategy, injector, ctx)
         }
-        Expr::ObjCall {
-            obj_name: lib_name,
-            call,
-            ..
-        } => {
-            ctx.in_obj_call_on = Some(lib_name.clone());
-            let is_success = emit_expr(call, None, strategy, injector, ctx);
-
-            ctx.in_obj_call_on = None;
-            is_success
-        }
         Expr::Call {
-            fn_target, args, ..
+            fn_target,
+            args,
+            kind,
+            ..
         } => {
             let fn_name = match fn_target.as_ref() {
                 Expr::VarId { name, .. } => name.clone(),
                 _ => unreachable!("unexpected type: {fn_target:?}"),
             };
 
-            // first save off current context's state on whether we're in a lib call
-            let in_obj_call_on = ctx.in_obj_call_on.clone();
+            // Type-utility calls (e.g. `var_str.contains(needle)`) get
+            // dispatched to specialized inlining helpers; they never become
+            // a plain `call` instruction.
+            if let CallKind::TypeUtil {
+                receiver_var,
+                receiver_ty,
+                receiver_def,
+                ..
+            } = kind
+            {
+                return handle_type_utils_call(
+                    receiver_var,
+                    receiver_ty,
+                    *receiver_def,
+                    fn_name,
+                    args,
+                    strategy,
+                    injector,
+                    ctx,
+                );
+            }
 
-            let addr = if let Some(obj_name) = &in_obj_call_on {
-                let rec = ctx
-                    .table
-                    .lookup(obj_name)
-                    .and_then(|id| ctx.table.get_record(id))
-                    .cloned();
-                match rec {
-                    Some(Record::Library { fns, .. }) => {
-                        let Some(rec) = fns.get(&fn_name) else {
-                            unreachable!("should have gotten a rec")
-                        };
-                        let Record::LibFn { addr, .. } = ctx.table.get_record(*rec).unwrap() else {
-                            unreachable!("should have gotten lib func rec")
-                        };
-                        *addr
-                    }
-                    Some(Record::Var { def, ty, .. }) => {
-                        ctx.in_obj_call_on = None;
-                        return handle_type_utils_call(
-                            obj_name, &ty, def, fn_name, args, strategy, injector, ctx,
-                        );
-                    }
-                    _ => unreachable!("unexpected type for {obj_name}: {rec:?}"),
+            // For everything else, look up the addr from the resolved record.
+            // CompilerStatic global calls have their own special-emission path.
+            let addr = match kind {
+                CallKind::Lib { rec_id, .. } => {
+                    let Some(Record::LibFn { addr, .. }) = ctx.table.get_record(*rec_id) else {
+                        unreachable!("CallKind::Lib resolved to non-LibFn record");
+                    };
+                    *addr
                 }
-            } else {
-                let Some(Record::Fn { def, addr, .. }) = ctx.table.lookup_fn(&fn_name, true) else {
-                    unreachable!("unexpected type");
-                };
-                // Check if this is calling a bound, static function!
-                if matches!(def, Definition::CompilerStatic) {
-                    // We want to handle this as unique logic rather than a simple function call to be emitted
-                    return handle_special_fn_call(fn_name, args, strategy, injector, ctx);
+                CallKind::Global { rec_id, .. } => {
+                    let Some(Record::Fn { def, addr, .. }) = ctx.table.get_record(*rec_id) else {
+                        unreachable!("CallKind::Global resolved to non-Fn record");
+                    };
+                    if matches!(def, Definition::CompilerStatic) {
+                        return handle_special_fn_call(fn_name, args, strategy, injector, ctx);
+                    }
+                    *addr
                 }
-                *addr
+                CallKind::Pending { .. } => {
+                    // Should not happen — both the verifier and post-typecheck
+                    // synthesizers (folder, string-utils) populate this.
+                    ctx.err.add_internal_error(
+                        &format!(
+                            "{}\n\tunresolved call reached emission: {fn_name}",
+                            ctx.err_msg
+                        ),
+                        expr.loc(),
+                    );
+                    return false;
+                }
+                CallKind::TypeUtil { .. } => unreachable!("handled above"),
             };
 
-            // emit the arguments
+            // Emit args. Args carry their own CallKind, so there's no ambient
+            // context to clear — issue #305 is structurally impossible here.
             let mut is_success = true;
             for arg in args.iter() {
                 is_success = emit_expr(arg, None, strategy, injector, ctx);
             }
 
-            // now that we've emitted the arguments, restore the original lib call tracking
-            ctx.in_obj_call_on = in_obj_call_on;
-
             if let Some(f_id) = addr {
                 injector.call(FunctionID(f_id));
             } else {
-                ctx.err.add_internal_error(&format!("{}\n\tfn_target address not in symbol table for '{}{}', not emitted yet...",
-                                                    ctx.err_msg,
-                                                    if let Some(lib_name) = &ctx.in_obj_call_on {
-                                                        format!("{lib_name}.")
-                                                    } else {
-                                                        "".to_string()
-                                                    },
-                                                    fn_name), expr.loc());
+                ctx.err.add_internal_error(
+                    &format!(
+                        "{}\n\tfn_target address not in symbol table for '{fn_name}', not emitted yet...",
+                        ctx.err_msg
+                    ),
+                    expr.loc(),
+                );
             }
             is_success
         }

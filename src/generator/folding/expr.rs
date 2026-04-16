@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::StringAddr;
 use crate::emitter::rewriting::rules::data_segments::{
@@ -7,8 +9,8 @@ use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::type_utils::strings::StringUtils;
 use crate::parser::types::Definition::User;
 use crate::parser::types::{
-    expr_to_value, expr_to_wasm_val, BinOp, DataType, Definition, Expr, Location, NumLit, UnOp,
-    Value,
+    expr_to_value, expr_to_wasm_val, BinOp, CallKind, DataType, Definition, Expr, Location, NumLit,
+    UnOp, Value,
 };
 use crate::verifier::types::Record::Var;
 use crate::verifier::types::{Record, SymbolTable};
@@ -70,117 +72,63 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
             Expr::Primitive { .. } => self.fold_primitive(expr, table, err),
             Expr::MapGet { .. } => self.fold_map_get(expr, table, err),
             Expr::TupleGet { .. } => self.fold_tuple_get(expr, table, err),
-            Expr::ObjCall { .. } => self.fold_obj_call(expr, table, err),
         }
     }
 
-    fn fold_obj_call(&mut self, obj_call: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
-        self.curr_loc = obj_call.loc().clone();
-
-        if let Expr::ObjCall {
-            annotation,
-            call,
-            obj_name,
-            results,
-            loc,
-        } = obj_call
-        {
-            if let Some(ann) = annotation {
-                if ann.is_static() && !self.as_monitor_module {
-                    // we're doing bytecode rewriting, so we should statically evaluate this lib call!
-                    return self.fold_static_lib_call(obj_call, table, err);
-                }
-            }
-
-            if let Some(new_expr) = self.fold_type_utils_call(obj_call, table, err) {
-                return new_expr;
-            }
-
-            return Expr::ObjCall {
-                annotation: annotation.clone(),
-                obj_name: obj_name.clone(),
-                results: results.clone(),
-                loc: loc.clone(),
-                call: Box::new(self.fold_expr_inner(call, table, err)),
-            };
-        }
-        obj_call.clone()
-    }
-
+    /// Fold a `var.method(...)` call where `var` constant-folded to a
+    /// primitive value. Used by `fold_call` when the kind is TypeUtil.
     fn fold_type_utils_call(
         &mut self,
-        obj_call: &Expr,
+        receiver_var: &str,
+        receiver_ty: &DataType,
+        fn_target: &Expr,
+        args: &[Expr],
+        loc: &Option<Location>,
         table: &SymbolTable,
         err: &mut ErrorGen,
     ) -> Option<Expr> {
-        if let Expr::ObjCall {
-            call,
-            obj_name,
-            loc: obj_call_loc,
-            ..
-        } = obj_call
-        {
-            if let Expr::Primitive { val, .. } = self.fold_expr_inner(
-                &Expr::VarId {
-                    definition: User,
-                    name: obj_name.clone(),
-                    loc: obj_call_loc.clone(),
-                },
-                table,
-                err,
-            ) {
-                // already made it through typechecking, we can assume the records exist!
-                if let Expr::Call {
-                    fn_target, args, ..
-                } = call.as_ref()
-                {
-                    if let Expr::VarId {
-                        name: func_name, ..
-                    } = fn_target.as_ref()
-                    {
-                        let mut arg_vals = vec![];
-                        for arg in args.iter() {
-                            // fold each of these expressions and add to the arg_vals vector
-                            let new_arg = self.fold_expr_inner(arg, table, err);
-                            if let Some(new_arg) = expr_to_value(&new_arg) {
-                                arg_vals.push(new_arg);
-                            } else {
-                                err.add_internal_error(
-                                    &format!(
-                                        "couldn't convert to a primitive value: {:?}",
-                                        new_arg
-                                    ),
-                                    obj_call_loc,
-                                );
-                            }
-                        }
-                        let ty = val.ty();
-                        return match ty {
-                            DataType::Str => Some(self.fold_string_utils_call(
-                                func_name,
-                                &val,
-                                arg_vals,
-                                obj_call_loc,
-                            )),
-                            _ => unreachable!("Utility functions not supported for type: {ty}"),
-                        };
-                    } else {
-                        err.add_internal_error(
-                            &format!("Expected a name expression, got: {:?}", fn_target),
-                            obj_call_loc,
-                        );
-                        return None;
-                    }
-                } else {
-                    err.add_internal_error(
-                        &format!("Expected call expression, got: {:?}", call),
-                        obj_call_loc,
-                    );
-                    return None;
-                }
+        // Try to constant-fold the receiver var. If it's not a primitive we
+        // bail and the caller leaves the call alone for the emitter to
+        // handle dynamically.
+        let Expr::Primitive { val, .. } = self.fold_expr_inner(
+            &Expr::VarId {
+                definition: User,
+                name: receiver_var.to_string(),
+                loc: loc.clone(),
+            },
+            table,
+            err,
+        ) else {
+            return None;
+        };
+
+        let Expr::VarId {
+            name: func_name, ..
+        } = fn_target
+        else {
+            err.add_internal_error(
+                &format!("Expected a name expression, got: {:?}", fn_target),
+                loc,
+            );
+            return None;
+        };
+
+        let mut arg_vals = vec![];
+        for arg in args.iter() {
+            let new_arg = self.fold_expr_inner(arg, table, err);
+            if let Some(new_arg) = expr_to_value(&new_arg) {
+                arg_vals.push(new_arg);
+            } else {
+                err.add_internal_error(
+                    &format!("couldn't convert to a primitive value: {:?}", new_arg),
+                    loc,
+                );
             }
         }
-        None
+        match receiver_ty {
+            DataType::Str => Some(self.fold_string_utils_call(func_name, &val, arg_vals, loc)),
+            _ => unreachable!("Utility functions not supported for type: {receiver_ty}"),
+        }
     }
 
     fn fold_string_utils_call(
@@ -230,92 +178,100 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
         }
     }
 
+    /// Statically evaluate an `@static lib.method(...)` call (only used in
+    /// the bytecode-rewriting target — for monitor modules we keep the call
+    /// as an injected helper).
     fn fold_static_lib_call(
         &mut self,
-        lib_call: &Expr,
+        lib_name: &str,
+        rec_id: usize,
+        fn_target: &Expr,
+        args: &[Expr],
+        loc: &Option<Location>,
         table: &SymbolTable,
         err: &mut ErrorGen,
     ) -> Expr {
-        if let Expr::ObjCall {
-            obj_name: lib_name,
-            call,
-            results,
-            loc: lib_call_loc,
-            ..
-        } = lib_call
-        {
-            if let Expr::Call {
-                fn_target, args, ..
-            } = call.as_ref()
-            {
-                if let Expr::VarId {
-                    name: func_name, ..
-                } = fn_target.as_ref()
-                {
-                    let mut arg_vals = vec![];
-                    for arg in args.iter() {
-                        // fold each of these expressions and add to the arg_vals vector
-                        let new_arg = self.fold_expr_inner(arg, table, err);
-                        if let Some(new_arg) = expr_to_wasm_val(&new_arg) {
-                            arg_vals.push(new_arg);
-                        } else {
-                            err.add_internal_error(
-                                &format!("couldn't convert to a Wasm value: {:?}", new_arg),
-                                lib_call_loc,
-                            );
-                        }
-                    }
-                    // todo -- assumes results is set
-                    let mut results = if let Some(res) = results.as_ref() {
-                        res.to_default_values()
-                    } else {
-                        err.add_unimplemented_error(
-                            "Results should be set at this point!",
-                            lib_call_loc,
-                        );
-                        return lib_call.clone();
-                    };
-                    if let Some(svc) = self.registry.get_mut(lib_name) {
-                        svc.call(lib_name, func_name, &arg_vals, &mut results, err);
-                    } else {
-                        err.add_internal_error(
-                            &format!("could not find the wasm service for lib: {lib_name}"),
-                            lib_call_loc,
-                        );
-                    }
+        let Expr::VarId {
+            name: func_name, ..
+        } = fn_target
+        else {
+            err.add_internal_error(
+                &format!("Expected a name expression, got: {:?}", fn_target),
+                loc,
+            );
+            return self.unchanged_call(fn_target, args, loc, table, err);
+        };
 
-                    if results.len() > 1 {
-                        todo!("we don't support multiple return values yet!")
-                    }
-
-                    if let Some(res) = results.first() {
-                        Expr::Primitive {
-                            val: Value::from(res),
-                            loc: lib_call_loc.clone(),
-                        }
-                    } else {
-                        Expr::empty_tuple(lib_call_loc)
-                    }
-                } else {
-                    err.add_internal_error(
-                        &format!("Expected a name expression, got: {:?}", fn_target),
-                        lib_call_loc,
-                    );
-                    lib_call.clone()
-                }
+        let mut arg_vals = vec![];
+        for arg in args.iter() {
+            let new_arg = self.fold_expr_inner(arg, table, err);
+            if let Some(new_arg) = expr_to_wasm_val(&new_arg) {
+                arg_vals.push(new_arg);
             } else {
                 err.add_internal_error(
-                    &format!("Expected call expression, got: {:?}", call),
-                    lib_call_loc,
+                    &format!("couldn't convert to a Wasm value: {:?}", new_arg),
+                    loc,
                 );
-                lib_call.clone()
             }
+        }
+
+        // Recover the call's return-type list from the resolved LibFn record.
+        let mut results = match table.get_record(rec_id) {
+            Some(Record::LibFn { results, .. }) => results
+                .first()
+                .map(|ty| ty.to_default_values())
+                .unwrap_or_default(),
+            _ => {
+                err.add_internal_error(
+                    "CallKind::Lib resolved to non-LibFn record at fold time",
+                    loc,
+                );
+                return self.unchanged_call(fn_target, args, loc, table, err);
+            }
+        };
+
+        if let Some(svc) = self.registry.get_mut(lib_name) {
+            svc.call(lib_name, func_name, &arg_vals, &mut results, err);
         } else {
             err.add_internal_error(
-                &format!("Expected library call expression, got: {:?}", lib_call),
-                lib_call.loc(),
+                &format!("could not find the wasm service for lib: {lib_name}"),
+                loc,
             );
-            lib_call.clone()
+        }
+
+        if results.len() > 1 {
+            todo!("we don't support multiple return values yet!")
+        }
+
+        if let Some(res) = results.first() {
+            Expr::Primitive {
+                val: Value::from(res),
+                loc: loc.clone(),
+            }
+        } else {
+            Expr::empty_tuple(loc)
+        }
+    }
+
+    /// Fallback when a fold helper bails: rebuild the Call with folded args
+    /// but no constant-folding result. Used by error paths.
+    fn unchanged_call(
+        &mut self,
+        fn_target: &Expr,
+        args: &[Expr],
+        loc: &Option<Location>,
+        table: &SymbolTable,
+        err: &mut ErrorGen,
+    ) -> Expr {
+        let folded_args = args
+            .iter()
+            .map(|a| self.fold_expr_inner(a, table, err))
+            .collect();
+        Expr::Call {
+            fn_target: Box::new(fn_target.clone()),
+            args: folded_args,
+            kind: CallKind::pending(),
+            loc: loc.clone(),
         }
     }
 
@@ -454,6 +410,7 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                                 loc: None,
                             }),
                             args: vec![lhs, rhs],
+                            kind: table.resolve_global_call("strcmp"),
                             loc: loc.clone(),
                         };
                     }
@@ -482,6 +439,7 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                                     loc: None,
                                 }),
                                 args: vec![lhs, rhs],
+                                kind: table.resolve_global_call("strcmp"),
                                 loc: None,
                             }),
                             done_on: DataType::I32,
@@ -610,7 +568,6 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                     | Expr::Ternary { .. }
                     | Expr::BinOp { .. }
                     | Expr::Call { .. }
-                    | Expr::ObjCall { .. }
                     | Expr::VarId { .. }
                     | Expr::MapGet { .. }
                     | Expr::TupleGet { .. } => Expr::UnOp {
@@ -1607,36 +1564,100 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
 
     fn fold_call(&mut self, call: &Expr, table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         self.curr_loc = call.loc().clone();
-        // Check if this is calling a bound, static function!
-        if let Expr::Call {
+        let Expr::Call {
             fn_target,
             args,
+            kind,
             loc,
         } = call
-        {
-            // fold the arguments
-            let mut folded_args = vec![];
-            for arg in args.iter() {
-                folded_args.push(self.fold_expr_inner(arg, table, err));
-            }
+        else {
+            return call.clone();
+        };
 
-            let fn_name = match &**fn_target {
-                Expr::VarId { name, .. } => name.clone(),
-                _ => return call.clone(),
-            };
-            let Some(Record::Fn { def, .. }) = table.lookup_fn(fn_name.as_str(), false) else {
-                return Expr::Call {
-                    args: folded_args,
+        // Dispatch on the verifier-resolved CallKind. Each kind has its own
+        // fold path; we never fall through between them.
+        match kind {
+            CallKind::Lib {
+                rec_id,
+                lib_name,
+                annotation: Some(ann),
+            } if ann.is_static() && !self.as_monitor_module => {
+                // Bytecode-rewriting target: statically evaluate the call.
+                self.fold_static_lib_call(lib_name, *rec_id, fn_target, args, loc, table, err)
+            }
+            CallKind::Lib { .. } => {
+                // Non-static lib call (or @static under the monitor-module
+                // target). Just fold the args and rebuild — emitter handles
+                // the actual call site.
+                let folded_args = args
+                    .iter()
+                    .map(|a| self.fold_expr_inner(a, table, err))
+                    .collect();
+                Expr::Call {
                     fn_target: fn_target.clone(),
+                    args: folded_args,
+                    kind: kind.clone(),
                     loc: loc.clone(),
+                }
+            }
+            CallKind::TypeUtil {
+                receiver_var,
+                receiver_ty,
+                ..
+            } => {
+                if let Some(folded) = self.fold_type_utils_call(
+                    receiver_var,
+                    receiver_ty,
+                    fn_target,
+                    args,
+                    loc,
+                    table,
+                    err,
+                ) {
+                    return folded;
+                }
+                // Couldn't fold (receiver isn't a constant): rebuild with
+                // folded args, leave the call shape intact for the emitter.
+                let folded_args = args
+                    .iter()
+                    .map(|a| self.fold_expr_inner(a, table, err))
+                    .collect();
+                Expr::Call {
+                    fn_target: fn_target.clone(),
+                    args: folded_args,
+                    kind: kind.clone(),
+                    loc: loc.clone(),
+                }
+            }
+            CallKind::Global { rec_id, .. } => {
+                let fn_name = match &**fn_target {
+                    Expr::VarId { name, .. } => name.clone(),
+                    _ => return call.clone(),
                 };
-            };
-            if matches!(def, Definition::CompilerStatic) {
-                // We want to handle this as unique logic rather than a simple function call to be emitted
-                return self.handle_special_fn_call(call, &fn_name, args, table, err);
+                let Some(Record::Fn { def, .. }) = table.get_record(*rec_id) else {
+                    return self.unchanged_call(fn_target, args, loc, table, err);
+                };
+                if matches!(def, Definition::CompilerStatic) {
+                    return self.handle_special_fn_call(call, &fn_name, args, table, err);
+                }
+                // Plain global call — fold args and rebuild.
+                let folded_args = args
+                    .iter()
+                    .map(|a| self.fold_expr_inner(a, table, err))
+                    .collect();
+                Expr::Call {
+                    fn_target: fn_target.clone(),
+                    args: folded_args,
+                    kind: kind.clone(),
+                    loc: loc.clone(),
+                }
+            }
+            CallKind::Pending { .. } => {
+                // Synthesized post-typecheck (and not resolved). Fold args
+                // and rebuild — emitter will report the unresolved call.
+                self.unchanged_call(fn_target, args, loc, table, err)
             }
         }
-        call.clone()
     }
 
     fn handle_special_fn_call(
@@ -1668,12 +1689,19 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
             "active_data_len" => self.handle_active_data_len(call, &folded_args),
             "page_size" => self.handle_page_size_of(call, &folded_args),
             _ => {
-                let Expr::Call { fn_target, loc, .. } = call else {
+                let Expr::Call {
+                    fn_target,
+                    kind,
+                    loc,
+                    ..
+                } = call
+                else {
                     unreachable!();
                 };
                 Expr::Call {
                     fn_target: fn_target.clone(),
                     args: folded_args,
+                    kind: kind.clone(),
                     loc: loc.clone(),
                 }
             }

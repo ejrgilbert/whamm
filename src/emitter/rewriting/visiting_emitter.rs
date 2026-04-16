@@ -998,35 +998,17 @@ impl Emitter for VisitingEmitter<'_, '_> {
     }
 
     fn emit_stmt(&mut self, stmt: &Statement, err: &mut ErrorGen) -> bool {
-        // Check if this is calling a bound, static function!
-        if let Statement::Expr {
-            expr: Expr::Call {
-                fn_target, args, ..
-            },
-            ..
-        } = stmt
-        {
-            let fn_name = match &**fn_target {
-                Expr::VarId { name, .. } => name.clone(),
-                _ => unreachable!("unexpected type: {fn_target:?}"),
-            };
-            let (def, ret_ty) = if let Some(Record::Fn { def, ret_ty, .. }) =
-                self.table.lookup_fn(fn_name.as_str(), true)
-            {
-                (*def, ret_ty.clone())
-            } else {
-                unreachable!("unexpected type");
-            };
-            if matches!(def, Definition::CompilerStatic) {
-                // We want to handle this as unique logic rather than a simple function call to be emitted
-                if self.handle_special_fn_call(fn_name, args, err) {
-                    if self.in_init {
-                        crate::emitter::utils::drop_results(&ret_ty, self.init_func);
-                    } else {
-                        crate::emitter::utils::drop_results(&ret_ty, &mut self.app_iter);
-                    }
-                    return true;
+        if let Some(call) = crate::emitter::utils::as_compiler_static_stmt_call(stmt, self.table) {
+            // Args is a borrow of the stmt; clone to avoid double-borrow with
+            // `self.handle_special_fn_call(&mut self, ...)` below.
+            let args = call.args.to_vec();
+            if self.handle_special_fn_call(call.fn_name, &args, err) {
+                if self.in_init {
+                    crate::emitter::utils::drop_results(&call.ret_ty, self.init_func);
+                } else {
+                    crate::emitter::utils::drop_results(&call.ret_ty, &mut self.app_iter);
                 }
+                return true;
             }
         }
 

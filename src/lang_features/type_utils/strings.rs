@@ -104,6 +104,7 @@ impl StringUtils {
         // (str1_addr, str1_len)
         emit_expr(prefix, None, strategy, injector, ctx);
 
+        let strcmp_kind = ctx.resolve_global_call("strcmp");
         emit_expr(
             &Expr::Call {
                 fn_target: Box::new(Expr::VarId {
@@ -112,6 +113,7 @@ impl StringUtils {
                     loc: None,
                 }),
                 args: vec![],
+                kind: strcmp_kind,
                 loc: None,
             },
             None,
@@ -143,6 +145,7 @@ impl StringUtils {
         // (str1_addr, str1_len)
         emit_expr(suffix, None, strategy, injector, ctx);
 
+        let strcmp_kind = ctx.resolve_global_call("strcmp");
         emit_expr(
             &Expr::Call {
                 fn_target: Box::new(Expr::VarId {
@@ -151,6 +154,7 @@ impl StringUtils {
                     loc: None,
                 }),
                 args: vec![],
+                kind: strcmp_kind,
                 loc: None,
             },
             None,
@@ -178,6 +182,7 @@ impl StringUtils {
         // (nd_addr, nd_len)
         emit_expr(needle, None, strategy, injector, ctx);
 
+        let strcontains_kind = ctx.resolve_global_call("strcontains");
         emit_expr(
             &Expr::Call {
                 fn_target: Box::new(Expr::VarId {
@@ -186,6 +191,7 @@ impl StringUtils {
                     loc: None,
                 }),
                 args: vec![],
+                kind: strcontains_kind,
                 loc: None,
             },
             None,

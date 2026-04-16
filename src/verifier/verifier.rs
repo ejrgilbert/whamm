@@ -4,8 +4,8 @@ use crate::generator::ast::StackReq;
 use crate::parser::provider_handler::{Event, Package, Probe, Provider};
 use crate::parser::types::Definition::{CompilerDynamic, CompilerStatic};
 use crate::parser::types::{
-    BinOp, Block, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp, Value, Whamm,
-    WhammVisitorMut,
+    BinOp, Block, CallKind, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp,
+    Value, Whamm, WhammVisitorMut,
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
@@ -112,9 +112,6 @@ struct TypeChecker<'a> {
     has_reports: bool,
     rule_tracker: RuleTracker,
 
-    // If a function invocation on an object, use this for lookup
-    curr_obj: Vec<(String, bool)>,
-
     // bookkeeping for casting
     curr_loc: Option<Location>,
 }
@@ -130,7 +127,6 @@ impl<'a> TypeChecker<'a> {
             restrict_probe_local_state: false,
             has_reports: false,
             rule_tracker: RuleTracker::default(),
-            curr_obj: vec![],
             curr_loc: None,
         }
     }
@@ -705,15 +701,27 @@ impl<'a> TypeChecker<'a> {
                     Some(DataType::AssumeGood)
                 }
             }
-            Expr::ObjCall {
-                obj_name,
-                call,
-                results,
-                annotation,
+            Expr::Call {
+                fn_target,
+                args,
+                kind,
                 loc,
             } => {
-                let in_init = annotation.as_ref().map_or_else(|| false, |a| a.is_init());
-                if in_init && !self.in_stmt_expr {
+                // Pull the syntactic obj-receiver and annotation from the
+                // parser-supplied Pending kind. After flattening ObjCall,
+                // each Call is self-contained — there's no ambient
+                // obj-context state to thread through the visitor.
+                let (obj_receiver, annotation) = match kind {
+                    CallKind::Pending {
+                        obj_receiver,
+                        annotation,
+                    } => (obj_receiver.clone(), annotation.clone()),
+                    // Already resolved (synthesized by folder/string-utils
+                    // post-typecheck). Treat as a global call with no obj.
+                    _ => (None, None),
+                };
+
+                if annotation.as_ref().is_some_and(|a| a.is_init()) && !self.in_stmt_expr {
                     self.err.type_check_error(
                         "@init must be written as its own statement (e.g. @init foo.bar()), not inside assignments or function calls".to_owned(),
                         &loc.clone().map(|l| l.line_col),
@@ -721,24 +729,7 @@ impl<'a> TypeChecker<'a> {
                     return Some(DataType::AssumeGood);
                 }
 
-                self.curr_obj.push((
-                    obj_name.clone(),
-                    annotation.as_ref().map_or_else(|| false, |a| a.is_static()),
-                ));
-                let res = self.visit_expr_impl(call, None);
-                *results = res.clone();
-                self.curr_obj.pop();
-
-                res
-            }
-            Expr::Call {
-                fn_target,
-                args,
-                loc,
-            } => {
-                // lookup type of function
                 let mut actual_param_tys = vec![];
-
                 for arg in args.iter_mut() {
                     match self.visit_expr_impl(arg, None) {
                         Some(ty) => actual_param_tys.push(Some(ty)),
@@ -763,48 +754,87 @@ impl<'a> TypeChecker<'a> {
                     }
                 };
 
-                let curr_obj = self.curr_obj.first();
-                let rec = if let Some((obj_name, _)) = &curr_obj {
-                    let fns = match self
-                        .table
-                        .lookup(obj_name)
-                        .and_then(|id| self.table.get_record(id))
-                    {
-                        Some(Record::Library { fns, .. }) => fns,
-                        Some(Record::Var { ty, .. }) => {
-                            if let Some(fns) = self.get_type_utils(ty) {
-                                fns
-                            } else {
+                // Resolve the call into a fully-determined CallKind based on
+                // the obj-receiver from Pending. Downstream passes dispatch
+                // on this discriminant without needing any ambient state.
+                let resolved_kind = match obj_receiver {
+                    Some(obj_name) => {
+                        let obj_rec = self
+                            .table
+                            .lookup(&obj_name)
+                            .and_then(|id| self.table.get_record(id))
+                            .cloned();
+                        match obj_rec {
+                            Some(Record::Library { fns, .. }) => {
+                                let Some(rec_id) = fns.get(fn_name).copied() else {
+                                    self.err.type_check_error(
+                                        "Could not find function for the invocation".to_string(),
+                                        &loc.clone().map(|l| l.line_col),
+                                    );
+                                    return Some(DataType::AssumeGood);
+                                };
+                                CallKind::Lib {
+                                    rec_id,
+                                    lib_name: obj_name,
+                                    annotation,
+                                }
+                            }
+                            Some(Record::Var {
+                                ty, def: var_def, ..
+                            }) => {
+                                let Some(fns) = self.get_type_utils(&ty) else {
+                                    self.err.type_check_error(
+                                        "Could not find function for the invocation".to_string(),
+                                        &loc.clone().map(|l| l.line_col),
+                                    );
+                                    return Some(DataType::AssumeGood);
+                                };
+                                let Some(rec_id) = fns.get(fn_name).copied() else {
+                                    self.err.type_check_error(
+                                        "Could not find function for the invocation".to_string(),
+                                        &loc.clone().map(|l| l.line_col),
+                                    );
+                                    return Some(DataType::AssumeGood);
+                                };
+                                CallKind::TypeUtil {
+                                    rec_id,
+                                    receiver_var: obj_name,
+                                    receiver_ty: ty,
+                                    receiver_def: var_def,
+                                }
+                            }
+                            _ => {
                                 self.err.type_check_error(
-                                    "Could not find function for the invocation".to_string(),
+                                    format!("Could not find variable `{obj_name}` that this function was called on"),
                                     &loc.clone().map(|l| l.line_col),
                                 );
                                 return Some(DataType::AssumeGood);
                             }
                         }
-                        _ => {
-                            self.err.type_check_error(
-                                format!("Could not find variable `{obj_name}` that this function was called on"),
-                                &loc.clone().map(|l| l.line_col),
-                            );
+                    }
+                    None => {
+                        let (rec_id_opt, _, context) = self.table.lookup_with_context(fn_name);
+                        let Some(rec_id) = rec_id_opt.filter(|id| {
+                            matches!(self.table.get_record(*id), Some(Record::Fn { .. }))
+                        }) else {
                             return Some(DataType::AssumeGood);
-                        }
-                    };
-                    let rec = fns
-                        .get(fn_name)
-                        .and_then(|rec| self.table.get_record(*rec))
-                        .or_else(|| {
-                            self.err.type_check_error(
-                                "Could not find function for the invocation".to_string(),
-                                &loc.clone().map(|l| l.line_col),
-                            );
-                            None
-                        });
-                    rec
-                } else {
-                    self.table.lookup_fn(fn_name, true)
+                        };
+                        CallKind::Global { rec_id, context }
+                    }
                 };
-                let rec = rec.unwrap();
+
+                let rec_id = match &resolved_kind {
+                    CallKind::Global { rec_id, .. }
+                    | CallKind::Lib { rec_id, .. }
+                    | CallKind::TypeUtil { rec_id, .. } => *rec_id,
+                    CallKind::Pending { .. } => {
+                        unreachable!("verifier produces only resolved kinds")
+                    }
+                };
+                *kind = resolved_kind;
+                let Some(rec) = self.table.get_record(rec_id) else {
+                    return Some(DataType::AssumeGood);
+                };
 
                 let (params, ret_ty, def, runnable_in_report_decl_init, loc) = match rec {
                     Record::Fn {
@@ -840,10 +870,9 @@ impl<'a> TypeChecker<'a> {
                         ..
                     } => {
                         let ret_ty = if results.len() > 1 {
+                            let qualifier = kind.obj_prefix().unwrap_or("<unknown>");
                             panic!(
-                                "We don't support functions with multiple return types: {}.{}",
-                                curr_obj.unwrap().0,
-                                name
+                                "We don't support functions with multiple return types: {qualifier}.{name}"
                             );
                         } else if results.is_empty() {
                             DataType::empty_tuple()
@@ -861,7 +890,7 @@ impl<'a> TypeChecker<'a> {
                     }
                 };
 
-                if curr_obj.is_none()
+                if matches!(kind, CallKind::Global { .. })
                     && self.in_script_global
                     && !(*def == CompilerDynamic || *def == CompilerStatic)
                 {
@@ -1261,7 +1290,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 Statement::Assign { .. } | Statement::LibImport { .. } => {}
                 // allow function calls
                 Statement::Expr {
-                    expr: Expr::ObjCall { .. } | Expr::Call { .. },
+                    expr: Expr::Call { .. },
                     ..
                 } => {}
                 _ => {
