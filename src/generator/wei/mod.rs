@@ -9,7 +9,7 @@ use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
 use crate::lang_features::report_vars::LocationData;
 use crate::parser;
 use crate::parser::types::{
-    Block, DataType, Expr, Location, RulePart, Statement, Value, WhammVisitorMut,
+    Block, CallKind, DataType, Expr, Location, RulePart, Statement, Value, WhammVisitorMut,
 };
 use crate::verifier::types::Record;
 use std::collections::{HashMap, HashSet};
@@ -197,14 +197,33 @@ impl WeiGenerator<'_, '_, '_> {
                 };
                 self.fold_stmts(&mut block.stmts);
 
-                let ty = if let Expr::ObjCall { results, .. } = lib_call {
-                    results.as_ref().unwrap().clone()
-                } else {
-                    self.err.add_internal_error(
-                        "Results of a library call should have been set by the type checker!",
-                        lib_call.loc(),
-                    );
-                    DataType::AssumeGood
+                // Recover the call's return type from the resolved CallKind.
+                // (Was previously read off of ObjCall.results, which is gone
+                // now that ObjCall is flattened — see issue #305 followup.)
+                let ty = match lib_call {
+                    Expr::Call {
+                        kind: CallKind::Lib { rec_id, .. },
+                        ..
+                    } => match self.emitter.table.get_record(*rec_id) {
+                        Some(Record::LibFn { results, .. }) => results
+                            .first()
+                            .cloned()
+                            .unwrap_or_else(DataType::empty_tuple),
+                        _ => {
+                            self.err.add_internal_error(
+                                "CallKind::Lib resolved to non-LibFn record",
+                                lib_call.loc(),
+                            );
+                            DataType::AssumeGood
+                        }
+                    },
+                    _ => {
+                        self.err.add_internal_error(
+                            "Expected a resolved Lib call here",
+                            lib_call.loc(),
+                        );
+                        DataType::AssumeGood
+                    }
                 };
                 let wirm_ty = match ty.to_wasm_type().first() {
                     Some(ty) => *ty,
@@ -752,7 +771,6 @@ fn rename_vars_in_expr(expr: &mut Expr, renames: &HashMap<String, String>) {
                 rename_vars_in_expr(arg, renames);
             }
         }
-        Expr::ObjCall { call, .. } => rename_vars_in_expr(call, renames),
         Expr::MapGet { map, key, .. } => {
             if let Some(new_name) = renames.get(map.as_str()) {
                 *map = new_name.clone();

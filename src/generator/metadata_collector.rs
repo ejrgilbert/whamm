@@ -6,14 +6,36 @@ use crate::generator::ast::{Probe, Script, StackReq, WhammParam, WhammParams};
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData, Metadata as ReportMetadata};
 use crate::parser::provider_handler::{Event, ModeKind, Package, Probe as ParserProbe, Provider};
 use crate::parser::types::{
-    Annotation, BinOp, Block, DataType, Definition, Expr, Location, Script as ParserScript,
-    Statement, Value, Whamm, WhammVisitor,
+    Annotation, BinOp, Block, CallKind, DataType, Definition, Expr, Location,
+    Script as ParserScript, Statement, Value, Whamm, WhammVisitor,
 };
 use crate::verifier::types::{Record, SymbolTable};
 use std::collections::{HashMap, HashSet};
 
 const UNEXPECTED_ERR_MSG: &str =
     "MetadataCollector: Looks like you've found a bug...please report this behavior!";
+
+/// Compute return type from a LibFn's results list. Reports an
+/// unimplemented-error and returns None for the multi-result case
+/// (which we don't support yet).
+fn single_result_ty(
+    results: &[DataType],
+    qualified: &str,
+    loc: &Option<Location>,
+    err: &mut ErrorGen,
+) -> Option<DataType> {
+    match results.len() {
+        0 => Some(DataType::empty_tuple()),
+        1 => Some(results[0].clone()),
+        _ => {
+            err.add_unimplemented_error(
+                &format!("We don't support functions with multiple return types: {qualified}"),
+                loc,
+            );
+            None
+        }
+    }
+}
 
 #[derive(Clone, Copy, Default)]
 enum Visiting {
@@ -67,7 +89,12 @@ pub struct MetadataCollector<'a> {
     script_num: u8,
     curr_probe: Probe,
     curr_mode: ModeKind,
-    curr_user_lib: Vec<(String, bool)>, // (lib_name, is_static_call)
+    /// Stack of `is_static_call` flags for the lib calls we're currently
+    /// nested inside. Length tells us if we're inside any lib call;
+    /// `last()` tells us whether the innermost one is `@static`.
+    /// (Lib name used to live here too but no consumer needed it after
+    /// the issue #305 refactor — `CallKind::Lib` carries it now.)
+    curr_user_lib: Vec<bool>,
     curr_lib_call_args: WhammParams,
 }
 impl<'a> MetadataCollector<'a> {
@@ -114,11 +141,9 @@ impl<'a> MetadataCollector<'a> {
         // we only care about predicate expressions that are dynamic
         if matches!(self.visiting, Visiting::Predicate) {
             self.curr_probe.metadata.pred_is_dynamic = true;
-            if let Some((_, is_static)) = self.curr_user_lib.last() {
-                if *is_static {
-                    self.err
-                        .add_instr_error("Cannot use dynamic data in a static library call");
-                }
+            if let Some(true) = self.curr_user_lib.last() {
+                self.err
+                    .add_instr_error("Cannot use dynamic data in a static library call");
             }
         }
     }
@@ -239,114 +264,12 @@ impl<'a> MetadataCollector<'a> {
                     loc: loc.clone(),
                 }
             }
-            Expr::ObjCall {
-                annotation,
-                obj_name,
-                call,
-                results,
-                loc,
-            } => {
-                let static_annot = matches!(annotation, Some(Annotation::Static));
-                let (is_nested, _) = if let Some(c) = self.curr_user_lib.first() {
-                    (true, c.1)
-                } else {
-                    (false, false)
-                };
-
-                // Check the method name before the type lookup so we can handle
-                // `contains` on any string receiver (including literals or vars not
-                // yet resolved in the symbol table).
-                let method_name = if let Expr::Call { fn_target, .. } = call.as_ref() {
-                    if let Expr::VarId { name, .. } = fn_target.as_ref() {
-                        Some(name.as_str())
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
-                if method_name == Some("contains") {
-                    self.used_bound_fns
-                        .insert(("whamm".to_string(), "strcmp".to_string()));
-                    self.used_bound_fns
-                        .insert(("whamm".to_string(), "strcontains".to_string()));
-                }
-
-                let is_type_util = if let Some(Record::Var { ty, def, .. }) =
-                    self.table.lookup_var(obj_name, false).cloned()
-                {
-                    if matches!(ty, DataType::Str) {
-                        // this is a type utility
-                        self.used_bound_fns
-                            .insert(("whamm".to_string(), "strcmp".to_string()));
-
-                        if def.is_comp_defined() {
-                            // For wei: Request all!
-                            // For B.R.: Only request dynamic data
-                            self.push_metadata(obj_name, &ty);
-                        }
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                };
-
-                self.curr_user_lib
-                    .push((obj_name.to_string(), static_annot));
-                let new_call = Expr::ObjCall {
-                    annotation: annotation.clone(),
-                    obj_name: obj_name.clone(),
-                    call: Box::new(self.visit_expr_inner(call)),
-                    results: results.clone(),
-                    loc: loc.clone(),
-                };
-                self.curr_user_lib.pop();
-
-                if static_annot {
-                    // this is a static library call, translate this into an optimize-able expression
-                    // BUT ONLY IF we're not in a predicate that's targeting an engine, we want to rewrite this expression
-                    if (matches!(self.visiting, Visiting::Body)) && self.config.as_monitor_module {
-                        return if !is_nested {
-                            // change this expression to something that I can use to pull the result of
-                            // what I do to optimize this case.
-                            // Definition will be put into symbol table by the strategy generator!
-                            // (won't be a problem since we've already done type checking)
-                            let new_expr = self.curr_probe.add_static_lib_call(
-                                self.curr_lib_call_args.to_owned(),
-                                new_call.clone(),
-                            );
-                            self.curr_lib_call_args = WhammParams::default();
-                            new_expr
-                        } else {
-                            // we want to just evaluate nested body lib calls inside a single function
-                            new_call
-                        };
-                    }
-                } else if !is_type_util {
-                    // now we know that the call is not annotated as static
-                    self.mark_expr_as_dynamic();
-                }
-
-                if matches!(self.visiting, Visiting::Predicate) && self.config.as_monitor_module {
-                    // If I'm in the predicate and targeting an engine, I don't care about the lib call args
-                    // Just merge these with the general requests for the entire predicate.
-                    self.curr_probe
-                        .metadata
-                        .pred_args
-                        .extend(self.curr_lib_call_args.clone());
-                }
-
-                self.curr_lib_call_args = WhammParams::default();
-                new_call
-            }
             Expr::Call {
                 args,
                 fn_target,
+                kind,
                 loc,
             } => {
-                // is this a bound function?
                 let fn_name = match &**fn_target {
                     Expr::VarId { name, .. } => name.clone(),
                     _ => {
@@ -358,69 +281,106 @@ impl<'a> MetadataCollector<'a> {
                     }
                 };
 
-                let (def, ret_ty, req_args, context) = if let Some((lib_name, is_static)) =
-                    &self.curr_user_lib.last()
-                {
-                    let (results, def) = if let Some(Record::LibFn { results, def, .. }) =
-                        self.table.lookup_lib_fn(lib_name, &fn_name, false)
-                    {
-                        (results, def)
-                    } else {
-                        let Some(Record::Var { ty, .. }) = self
-                            .table
-                            .lookup(lib_name)
-                            .and_then(|id| self.table.get_record(id))
+                // Resolve the call's record + bookkeeping based on CallKind.
+                // No ambient lookup (issue #305 is structurally impossible).
+                let (def, ret_ty, req_args, context, is_lib, is_static_lib) = match kind {
+                    CallKind::Lib {
+                        rec_id,
+                        lib_name,
+                        annotation,
+                    } => {
+                        let Some(Record::LibFn { results, def, .. }) =
+                            self.table.get_record(*rec_id).cloned()
                         else {
-                            panic!("should have gotten a var type")
+                            self.err.add_internal_error(
+                                &format!("{UNEXPECTED_ERR_MSG} CallKind::Lib resolved to non-LibFn record"),
+                                expr.loc(),
+                            );
+                            return expr.clone();
                         };
-                        if let Some(Record::LibFn { results, def, .. }) =
-                            self.table.lookup_type_util_fn(ty, &fn_name)
-                        {
-                            (results, def)
-                        } else {
-                            panic!("should have gotten a lib func type")
+                        let is_static = annotation.as_ref().is_some_and(|a| a.is_static());
+                        self.used_user_library_fns.add(
+                            lib_name.clone(),
+                            fn_name.to_string(),
+                            is_static,
+                        );
+                        let Some(ret_ty) = single_result_ty(
+                            &results,
+                            &format!("{lib_name}.{fn_name}"),
+                            expr.loc(),
+                            self.err,
+                        ) else {
+                            return expr.clone();
+                        };
+                        (def, ret_ty, StackReq::None, None, true, is_static)
+                    }
+                    CallKind::TypeUtil {
+                        rec_id,
+                        receiver_var,
+                        receiver_ty,
+                        receiver_def,
+                    } => {
+                        let Some(Record::LibFn { results, def, .. }) =
+                            self.table.get_record(*rec_id).cloned()
+                        else {
+                            self.err.add_internal_error(
+                                &format!("{UNEXPECTED_ERR_MSG} CallKind::TypeUtil resolved to non-LibFn record"),
+                                expr.loc(),
+                            );
+                            return expr.clone();
+                        };
+                        // Type-util-specific bookkeeping that the old
+                        // ObjCall arm performed.
+                        if fn_name == "contains" {
+                            self.used_bound_fns
+                                .insert(("whamm".to_string(), "strcmp".to_string()));
+                            self.used_bound_fns
+                                .insert(("whamm".to_string(), "strcontains".to_string()));
                         }
-                    };
-
-                    // Track user library that's being used
-                    self.used_user_library_fns.add(
-                        lib_name.to_string(),
-                        fn_name.to_string(),
-                        *is_static,
-                    );
-                    let ret_ty = if results.len() > 1 {
-                        self.err.add_unimplemented_error(&format!("We don't support functions with multiple return types: {lib_name}.{fn_name}"), expr.loc());
-                        return expr.clone();
-                    } else if results.is_empty() {
-                        DataType::empty_tuple()
-                    } else {
-                        results.first().unwrap().clone()
-                    };
-
-                    (def, ret_ty, StackReq::None, None)
-                } else {
-                    let (
-                        Some(Record::Fn {
+                        if matches!(receiver_ty, DataType::Str) {
+                            self.used_bound_fns
+                                .insert(("whamm".to_string(), "strcmp".to_string()));
+                            if receiver_def.is_comp_defined() {
+                                self.push_metadata(receiver_var, receiver_ty);
+                            }
+                        }
+                        let Some(ret_ty) =
+                            single_result_ty(&results, &fn_name, expr.loc(), self.err)
+                        else {
+                            return expr.clone();
+                        };
+                        (def, ret_ty, StackReq::None, None, false, false)
+                    }
+                    CallKind::Global { rec_id, context } => {
+                        let Some(Record::Fn {
                             def,
                             ret_ty,
                             req_args,
                             ..
-                        }),
-                        context,
-                    ) = self.table.lookup_fn_with_context(&fn_name)
-                    else {
-                        self.err
-                            .add_unimplemented_error("unexpected type", expr.loc());
+                        }) = self.table.get_record(*rec_id).cloned()
+                        else {
+                            self.err.add_internal_error(
+                                &format!("{UNEXPECTED_ERR_MSG} CallKind::Global resolved to non-Fn record"),
+                                expr.loc(),
+                            );
+                            return expr.clone();
+                        };
+                        (def, ret_ty, req_args, Some(context.clone()), false, false)
+                    }
+                    CallKind::Pending { .. } => {
+                        self.err.add_internal_error(
+                            &format!("{UNEXPECTED_ERR_MSG} unresolved call reached metadata collection: {fn_name}"),
+                            expr.loc(),
+                        );
                         return expr.clone();
-                    };
-                    (def, ret_ty.clone(), req_args.clone(), Some(context))
+                    }
                 };
 
                 self.check_strcmp &= matches!(ret_ty, DataType::Str);
                 if matches!(def, Definition::CompilerDynamic) {
                     if let Some(context) = context {
                         // will need to emit this function!
-                        self.used_bound_fns.insert((context, fn_name));
+                        self.used_bound_fns.insert((context, fn_name.clone()));
                     }
                 } else if matches!(def, Definition::CompilerStatic) && fn_name == "memid" {
                     let target_lib = args.first().unwrap();
@@ -434,15 +394,61 @@ impl<'a> MetadataCollector<'a> {
                     self.combine_req_args(req_args.clone());
                 }
 
+                // For lib calls, record nesting depth in curr_user_lib so
+                // inner expressions know they're inside a (possibly static)
+                // bound call. This was previously the ObjCall arm's job.
+                let is_nested_lib = is_lib && !self.curr_user_lib.is_empty();
+                if is_lib {
+                    self.curr_user_lib.push(is_static_lib);
+                }
                 let mut new_args = vec![];
                 args.iter().for_each(|arg| {
                     new_args.push(self.visit_expr_inner(arg));
                 });
-                Expr::Call {
+                if is_lib {
+                    self.curr_user_lib.pop();
+                }
+
+                let new_call = Expr::Call {
                     fn_target: fn_target.clone(),
                     args: new_args,
+                    kind: kind.clone(),
                     loc: loc.clone(),
+                };
+
+                // Static-call lifting: replace this expression with a
+                // synthesized one whose evaluation runs in a generated
+                // helper function (only at the outermost static lib call).
+                if is_static_lib {
+                    if matches!(self.visiting, Visiting::Body) && self.config.as_monitor_module {
+                        return if !is_nested_lib {
+                            let new_expr = self.curr_probe.add_static_lib_call(
+                                self.curr_lib_call_args.to_owned(),
+                                new_call.clone(),
+                            );
+                            self.curr_lib_call_args = WhammParams::default();
+                            new_expr
+                        } else {
+                            new_call
+                        };
+                    }
+                } else if is_lib {
+                    // Lib call without @static: surfaces as dynamic data.
+                    self.mark_expr_as_dynamic();
                 }
+
+                if is_lib {
+                    if matches!(self.visiting, Visiting::Predicate) && self.config.as_monitor_module
+                    {
+                        self.curr_probe
+                            .metadata
+                            .pred_args
+                            .extend(self.curr_lib_call_args.clone());
+                    }
+                    self.curr_lib_call_args = WhammParams::default();
+                }
+
+                new_call
             }
             Expr::Primitive { val, loc } => {
                 let (val, strcmp) = match val {
@@ -617,7 +623,11 @@ impl<'a> MetadataCollector<'a> {
                 })
             }
             Statement::Expr { expr, loc } => {
-                if let Expr::ObjCall { annotation, .. } = expr {
+                if let Expr::Call {
+                    kind: CallKind::Lib { annotation, .. },
+                    ..
+                } = expr
+                {
                     if matches!(annotation, Some(Annotation::Init)) {
                         let prev_visiting = self.visiting;
                         self.visiting = Visiting::Init;

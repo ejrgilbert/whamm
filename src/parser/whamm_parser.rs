@@ -4,9 +4,9 @@ use crate::parser::provider_handler::{get_matches, yml_to_providers, PrintInfo, 
 use crate::parser::types;
 use crate::parser::types::Statement::LibImport;
 use crate::parser::types::{
-    print_bound_vars, print_fns, Annotation, BinOp, Block, DataType, DeclModifiers, Definition,
-    Expr, FnId, Location, NumFmt, NumLit, ProbeRule, Rule, RulePart, Script, Statement, UnOp,
-    Value, Whamm, WhammParser, PRATT_PARSER,
+    print_bound_vars, print_fns, Annotation, BinOp, Block, CallKind, DataType, DeclModifiers,
+    Definition, Expr, FnId, Location, NumFmt, NumLit, ProbeRule, Rule, RulePart, Script, Statement,
+    UnOp, Value, Whamm, WhammParser, PRATT_PARSER,
 };
 use pest::error::{Error, LineColLocation};
 use pest::iterators::{Pair, Pairs};
@@ -1034,18 +1034,33 @@ fn handle_lib_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         (None, s.as_str().to_string())
     };
 
-    // handle lib func call
+    // Build the inner Call with the obj-receiver/annotation lifted onto its
+    // CallKind::Pending, so the verifier resolves it directly without needing
+    // an ambient stack. The wrapping ObjCall is no longer part of the AST.
     let lib_func_call = handle_fn_call(pairs.next().unwrap())?;
-
-    Ok(Expr::ObjCall {
-        annotation,
-        obj_name: lib_name,
-        call: Box::new(lib_func_call),
-        results: None,
-        loc: Some(Location {
-            line_col: loc,
-            path: None,
-        }),
+    let Expr::Call {
+        fn_target,
+        args,
+        loc: inner_loc,
+        ..
+    } = lib_func_call
+    else {
+        unreachable!("handle_fn_call always returns Expr::Call");
+    };
+    let outer_loc = Some(Location {
+        line_col: loc,
+        path: None,
+    });
+    Ok(Expr::Call {
+        fn_target,
+        args,
+        kind: CallKind::Pending {
+            obj_receiver: Some(lib_name),
+            annotation,
+        },
+        // Prefer the outer span (covers `obj.method(...)`) for diagnostics;
+        // fall back to the inner span if construction is odd.
+        loc: outer_loc.or(inner_loc),
     })
 }
 
@@ -1103,12 +1118,14 @@ fn handle_fn_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         Ok(Expr::Call {
             fn_target: Box::new(fn_target),
             args,
+            kind: CallKind::pending(),
             loc: Some(Location::from(&fn_target_line_col, &last_arg_loc, None)),
         })
     } else {
         Ok(Expr::Call {
             fn_target: Box::new(fn_target),
             args,
+            kind: CallKind::pending(),
             loc: Some(Location {
                 line_col: fn_target_line_col.clone(),
                 path: None,

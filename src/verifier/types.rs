@@ -1,5 +1,5 @@
 use crate::generator::ast::StackReq;
-use crate::parser::types::{DataType, Definition, FnId, Location, ProbeRule, Value};
+use crate::parser::types::{CallKind, DataType, Definition, FnId, Location, ProbeRule, Value};
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt;
@@ -331,17 +331,19 @@ impl SymbolTable {
             None
         }
     }
-    pub fn lookup_fn_with_context(&self, key: &str) -> (Option<&Record>, String) {
-        let (id, _, context) = self.lookup_with_context(key);
-        if let Some(rec) = id.and_then(|id| self.get_record(id)) {
-            if matches!(rec, Record::Fn { .. }) {
-                (Some(rec), context)
-            } else {
-                Self::no_match(rec, "Fn");
-                (None, context)
+    /// Build a `CallKind::Global` for a known function name. Used by passes
+    /// that synthesize call expressions after type-checking (the expression
+    /// folder, the string-utils emitter) so those Calls don't need to be
+    /// re-resolved by downstream consumers. Falls back to
+    /// `CallKind::Pending` (with no obj/annotation) if the name doesn't bind
+    /// to a `Fn` record — downstream emission then reports an error.
+    pub fn resolve_global_call(&self, fn_name: &str) -> CallKind {
+        let (rec_id_opt, _, context) = self.lookup_with_context(fn_name);
+        match rec_id_opt {
+            Some(rec_id) if matches!(self.get_record(rec_id), Some(Record::Fn { .. })) => {
+                CallKind::Global { rec_id, context }
             }
-        } else {
-            unreachable!("Could not find fn for: {}", key)
+            _ => CallKind::pending(),
         }
     }
     pub fn lookup_fn(&self, key: &str, fail_on_miss: bool) -> Option<&Record> {
@@ -374,22 +376,6 @@ impl SymbolTable {
         }
     }
 
-    pub fn lookup_lib_fn(
-        &self,
-        lib_name: &str,
-        lib_fn_name: &str,
-        fail_on_miss: bool,
-    ) -> Option<&Record> {
-        if let Some(Record::Library { fns, .. }) = self.lookup_lib(lib_name, fail_on_miss) {
-            if let Some(rec) = fns.get(lib_fn_name) {
-                if let Some(rec) = self.get_record(*rec) {
-                    return Some(rec);
-                }
-            }
-        }
-        None
-    }
-
     pub fn lookup_lib_fn_mut(&mut self, lib_name: &str, lib_fn_name: &str) -> Option<&mut Record> {
         let rec_id = if let Some(Record::Library { fns, .. }) = self.lookup_lib_mut(lib_name) {
             if let Some(rec) = fns.get(lib_fn_name) {
@@ -404,24 +390,6 @@ impl SymbolTable {
             Some(rec)
         } else {
             panic!("Could not find match for library function: {lib_name}.{lib_fn_name}");
-        }
-    }
-
-    pub fn lookup_type_util_fn(&self, ty: &DataType, fn_name: &str) -> Option<&Record> {
-        let Record::Whamm { type_utils, .. } = self
-            .lookup("whamm")
-            .and_then(|id| self.get_record(id))
-            .unwrap()
-        else {
-            unreachable!("{UNEXPECTED_ERR_MSG} Expected Whamm type")
-        };
-        if let Some(utils_rec_id) = type_utils.get(ty) {
-            let Record::Library { fns, .. } = self.get_record(*utils_rec_id).unwrap() else {
-                unreachable!("{UNEXPECTED_ERR_MSG} Expected Library type")
-            };
-            fns.get(fn_name).and_then(|rec| self.get_record(*rec))
-        } else {
-            None
         }
     }
 

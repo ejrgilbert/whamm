@@ -1376,6 +1376,78 @@ impl TryFrom<&str> for Annotation {
     }
 }
 
+/// Dispatch information for a function-call expression.
+///
+/// Populated by the parser as `Pending` (carrying the syntactic obj-receiver
+/// and annotation), then resolved by the verifier into one of the concrete
+/// variants. Downstream passes match on this discriminant directly instead
+/// of consulting ambient state — eliminating the bug class behind issue #305
+/// where a nested call inside `obj.foo(bar(...))` would resolve `bar`
+/// against `obj`'s namespace.
+#[derive(Clone, Debug)]
+pub enum CallKind {
+    /// Parser default — the verifier has not yet visited this Call. Carries
+    /// the syntactic context the verifier needs to resolve dispatch:
+    /// the obj receiver from `obj.method(...)` syntax, and any `@static` /
+    /// `@init` annotation from `@static obj.method(...)` etc.
+    Pending {
+        obj_receiver: Option<String>,
+        annotation: Option<Annotation>,
+    },
+    /// A bare global-scope function call: `foo(...)`. `context` is the
+    /// scope-context string returned by `lookup_with_context` and is used by
+    /// the metadata collector for bound-fn emission tracking.
+    Global { rec_id: usize, context: String },
+    /// A library function call: `lib.foo(...)` where `lib` is a `use`d
+    /// library or `whamm_core`. Carries the parser-supplied annotation
+    /// (`@static` / `@init`) so downstream passes don't need to look it up.
+    Lib {
+        rec_id: usize,
+        lib_name: String,
+        annotation: Option<Annotation>,
+    },
+    /// A type-utility method call on a value receiver: `var.method(...)`
+    /// where `var`'s type carries bound methods (e.g. `str.contains`).
+    TypeUtil {
+        rec_id: usize,
+        receiver_var: String,
+        receiver_ty: DataType,
+        receiver_def: Definition,
+    },
+}
+
+impl CallKind {
+    /// Convenience for the parser/folder default when no syntactic context
+    /// has been captured.
+    pub fn pending() -> Self {
+        Self::Pending {
+            obj_receiver: None,
+            annotation: None,
+        }
+    }
+
+    /// The obj-receiver name of `obj.method(...)` syntax, if any. Returns the
+    /// pending receiver, the resolved lib name, or the resolved type-util
+    /// receiver var — whichever is populated for the call's current state.
+    /// `None` for bare global calls.
+    pub fn obj_prefix(&self) -> Option<&str> {
+        match self {
+            Self::Pending {
+                obj_receiver: Some(name),
+                ..
+            }
+            | Self::Lib { lib_name: name, .. }
+            | Self::TypeUtil {
+                receiver_var: name, ..
+            } => Some(name),
+            Self::Pending {
+                obj_receiver: None, ..
+            }
+            | Self::Global { .. } => None,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Expr {
     UnOp {
@@ -1406,13 +1478,12 @@ pub enum Expr {
         // Type is fn_target.return_ty, should be VarId
         fn_target: Box<Expr>,
         args: Vec<Expr>,
-        loc: Option<Location>,
-    },
-    ObjCall {
-        annotation: Option<Annotation>,
-        obj_name: String,
-        call: Box<Expr>,           // should be Expr::Call
-        results: Option<DataType>, // set by the type checker!
+        // Dispatch info: starts as `CallKind::Pending` (parser default),
+        // gets resolved into `Global`/`Lib`/`TypeUtil` by the verifier.
+        // Downstream passes match on this discriminant directly instead of
+        // redoing the lookup with ambient obj-context, which is error-prone
+        // (see issue #305).
+        kind: CallKind,
         loc: Option<Location>,
     },
     VarId {
@@ -1487,7 +1558,6 @@ impl Expr {
             Expr::UnOp { loc, .. }
             | Expr::Ternary { loc, .. }
             | Expr::BinOp { loc, .. }
-            | Expr::ObjCall { loc, .. }
             | Expr::Call { loc, .. }
             | Expr::VarId { loc, .. }
             | Expr::MapGet { loc, .. }
@@ -1528,20 +1598,20 @@ impl Display for Expr {
                 write!(f, "{} {} {}", lhs, op, rhs)
             }
             Expr::Call {
-                fn_target, args, ..
+                fn_target,
+                args,
+                kind,
+                ..
             } => {
                 let mut args_str = "".to_string();
                 for arg in args.iter() {
                     args_str = format!("{args_str}. {arg}");
                 }
-                write!(f, "{fn_target}({args_str})")
-            }
-            Expr::ObjCall {
-                obj_name: lib_name,
-                call,
-                ..
-            } => {
-                write!(f, "{lib_name}.{}", call)
+                let prefix = kind
+                    .obj_prefix()
+                    .map(|obj| format!("{obj}."))
+                    .unwrap_or_default();
+                write!(f, "{prefix}{fn_target}({args_str})")
             }
             Expr::VarId { name, .. } => write!(f, "{name}"),
             Expr::Primitive { val, .. } => write!(f, "{val}"),
@@ -2589,10 +2659,6 @@ pub fn traverse_expr_mut<T: Default, V: WhammVisitorMut<T>>(visitor: &mut V, exp
         Expr::BinOp { lhs, rhs, .. } => {
             visitor.visit_expr(lhs);
             visitor.visit_expr(rhs);
-            T::default()
-        }
-        Expr::ObjCall { call, .. } => {
-            visitor.visit_expr(call);
             T::default()
         }
         Expr::Call {
