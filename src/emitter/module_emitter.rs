@@ -445,7 +445,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
             // Check if we've reached the end of the string
             .local_get(i)
             .local_get(str0_size)  // (can compare with either str size, equal at this point)
-            .i32_lt_unsigned()
+            .i32_lt_u()
             .i32_eqz()
             .br_if(1) // (;2;),  We've reached the end without failing equality checks!
 
@@ -548,7 +548,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
             // if nd_len > hs_len → cannot contain, return 0
             .local_get(nd_len)
             .local_get(hs_len)
-            .i32_gt_unsigned()
+            .i32_gt_u()
             .if_stmt(WirmBlockType::Empty)
             .i32_const(0)
             .return_stmt()
@@ -569,7 +569,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
             .local_get(hs_len)
             .local_get(nd_len)
             .i32_sub()
-            .i32_gt_unsigned()
+            .i32_gt_u()
             .br_if(1) // (;@outer_block;)
 
             // strcmp(hs_addr + i, nd_len, nd_addr, nd_len)

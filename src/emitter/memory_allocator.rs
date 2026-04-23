@@ -382,7 +382,7 @@ impl MemoryAllocator {
         mode.emit(src_len, func);
 
         // the copy operation
-        func.memory_copy(dst_mem_id, src_mem_id);
+        func.memory_copy(MemoryID(dst_mem_id), MemoryID(src_mem_id));
     }
 
     // =====================
@@ -419,7 +419,9 @@ impl MemoryAllocator {
         check_memsize
             .u32_const(WASM_PAGE_SIZE)
             .local_set(bytes_per_page);
-        check_memsize.memory_size(mem_id).local_set(curr_pages);
+        check_memsize
+            .memory_size(MemoryID(mem_id))
+            .local_set(curr_pages);
 
         check_memsize
             .global_get(tracker)
@@ -433,13 +435,13 @@ impl MemoryAllocator {
             .local_get(curr_pages)
             .i32_mul()
             .local_get(max_needed_addr)
-            .i32_lt_unsigned();
+            .i32_lt_u();
 
         // If it is larger, grow memory by a page
         check_memsize
             .if_stmt(BlockType::Empty)
             .i32_const(1)
-            .memory_grow(mem_id)
+            .memory_grow(MemoryID(mem_id))
             .drop()
             .end();
 

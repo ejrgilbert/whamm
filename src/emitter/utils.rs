@@ -13,7 +13,7 @@ use crate::parser::types::{
 };
 use crate::verifier::types::{line_col_from_loc, Record, SymbolTable, VarAddr};
 use wirm::ir::function::FunctionBuilder;
-use wirm::ir::id::{FunctionID, GlobalID, LocalID};
+use wirm::ir::id::{FunctionID, GlobalID, LocalID, MemoryID};
 use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmValue};
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{MacroOpcode, Opcode};
@@ -233,7 +233,7 @@ fn handle_mem_size<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         .get_primitive_u32()
         .unwrap_or_else(|| unreachable!());
 
-    injector.memory_size(target_mem);
+    injector.memory_size(MemoryID(target_mem));
     true
 }
 
@@ -1373,10 +1373,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::U16
                 | DataType::I16
                 | DataType::I32
-                | DataType::Boolean => injector.i32_gte_signed(),
-                DataType::U32 => injector.i32_gte_unsigned(),
-                DataType::U64 => injector.i64_gte_unsigned(),
-                DataType::I64 => injector.i64_gte_signed(),
+                | DataType::Boolean => injector.i32_ge_s(),
+                DataType::U32 => injector.i32_ge_u(),
+                DataType::U64 => injector.i64_ge_u(),
+                DataType::I64 => injector.i64_ge_s(),
                 DataType::F32 => injector.f32_ge(),
                 DataType::F64 => injector.f64_ge(),
                 DataType::FuncRef
@@ -1398,10 +1398,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::U16
                 | DataType::I16
                 | DataType::I32
-                | DataType::Boolean => injector.i32_gt_signed(),
-                DataType::U32 => injector.i32_gt_unsigned(),
-                DataType::U64 => injector.i64_gt_unsigned(),
-                DataType::I64 => injector.i64_gt_signed(),
+                | DataType::Boolean => injector.i32_gt_s(),
+                DataType::U32 => injector.i32_gt_u(),
+                DataType::U64 => injector.i64_gt_u(),
+                DataType::I64 => injector.i64_gt_s(),
                 DataType::F32 => injector.f32_gt(),
                 DataType::F64 => injector.f64_gt(),
                 DataType::FuncRef
@@ -1423,10 +1423,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::U16
                 | DataType::I16
                 | DataType::I32
-                | DataType::Boolean => injector.i32_lte_signed(),
-                DataType::U32 => injector.i32_lte_unsigned(),
-                DataType::U64 => injector.i64_lte_unsigned(),
-                DataType::I64 => injector.i64_lte_signed(),
+                | DataType::Boolean => injector.i32_le_s(),
+                DataType::U32 => injector.i32_le_u(),
+                DataType::U64 => injector.i64_le_u(),
+                DataType::I64 => injector.i64_le_s(),
                 DataType::F32 => injector.f32_le(),
                 DataType::F64 => injector.f64_le(),
                 DataType::FuncRef
@@ -1448,10 +1448,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::U16
                 | DataType::I16
                 | DataType::I32
-                | DataType::Boolean => injector.i32_lt_signed(),
-                DataType::U32 => injector.i32_lt_unsigned(),
-                DataType::U64 => injector.i64_lt_unsigned(),
-                DataType::I64 => injector.i64_lt_signed(),
+                | DataType::Boolean => injector.i32_lt_s(),
+                DataType::U32 => injector.i32_lt_u(),
+                DataType::U64 => injector.i64_lt_u(),
+                DataType::I64 => injector.i64_lt_s(),
                 DataType::F32 => injector.f32_lt(),
                 DataType::F64 => injector.f64_lt(),
                 DataType::FuncRef
@@ -1485,7 +1485,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         DataType::I8 => {
                             injector.i32_const(0xFF);
                             injector.i32_and();
-                            injector.i32_extend_8s()
+                            injector.i32_extend8_s()
                         }
                         DataType::U16 => {
                             injector.i32_const(0xFFFF);
@@ -1494,7 +1494,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         DataType::I16 => {
                             injector.i32_const(0xFFFF);
                             injector.i32_and();
-                            injector.i32_extend_16s()
+                            injector.i32_extend16_s()
                         }
                         _ => injector,
                     }
@@ -1533,7 +1533,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         DataType::I8 => {
                             injector.i32_const(0xFF);
                             injector.i32_and();
-                            injector.i32_extend_8s()
+                            injector.i32_extend8_s()
                         }
                         DataType::U16 => {
                             injector.i32_const(0xFFFF);
@@ -1542,7 +1542,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         DataType::I16 => {
                             injector.i32_const(0xFFFF);
                             injector.i32_and();
-                            injector.i32_extend_16s()
+                            injector.i32_extend16_s()
                         }
                         _ => injector,
                     }
@@ -1581,7 +1581,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         DataType::I8 => {
                             injector.i32_const(0xFF);
                             injector.i32_and();
-                            injector.i32_extend_8s()
+                            injector.i32_extend8_s()
                         }
                         DataType::U16 => {
                             injector.i32_const(0xFFFF);
@@ -1590,7 +1590,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         DataType::I16 => {
                             injector.i32_const(0xFFFF);
                             injector.i32_and();
-                            injector.i32_extend_16s()
+                            injector.i32_extend16_s()
                         }
                         _ => injector,
                     }
@@ -1618,7 +1618,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::I16
                 | DataType::I32
                 | DataType::Boolean => {
-                    injector.i32_div_signed();
+                    injector.i32_div_s();
                     // convert back if smaller than i32 and signed
                     match done_on {
                         DataType::U8 => {
@@ -1628,7 +1628,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         DataType::I8 => {
                             injector.i32_const(0xFF);
                             injector.i32_and();
-                            injector.i32_extend_8s()
+                            injector.i32_extend8_s()
                         }
                         DataType::U16 => {
                             injector.i32_const(0xFFFF);
@@ -1637,14 +1637,14 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         DataType::I16 => {
                             injector.i32_const(0xFFFF);
                             injector.i32_and();
-                            injector.i32_extend_16s()
+                            injector.i32_extend16_s()
                         }
                         _ => injector,
                     }
                 }
-                DataType::U32 => injector.i32_div_unsigned(),
-                DataType::U64 => injector.i64_div_unsigned(),
-                DataType::I64 => injector.i64_div_signed(),
+                DataType::U32 => injector.i32_div_u(),
+                DataType::U64 => injector.i64_div_u(),
+                DataType::I64 => injector.i64_div_s(),
                 DataType::F32 => injector.f32_div(),
                 DataType::F64 => injector.f64_div(),
                 DataType::FuncRef
@@ -1667,7 +1667,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::I16
                 | DataType::I32
                 | DataType::Boolean => {
-                    injector.i32_rem_signed();
+                    injector.i32_rem_s();
                     // convert back if smaller than i32 and signed
                     match done_on {
                         DataType::U8 => {
@@ -1677,7 +1677,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         DataType::I8 => {
                             injector.i32_const(0xFF);
                             injector.i32_and();
-                            injector.i32_extend_8s()
+                            injector.i32_extend8_s()
                         }
                         DataType::U16 => {
                             injector.i32_const(0xFFFF);
@@ -1686,14 +1686,14 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         DataType::I16 => {
                             injector.i32_const(0xFFFF);
                             injector.i32_and();
-                            injector.i32_extend_16s()
+                            injector.i32_extend16_s()
                         }
                         _ => injector,
                     }
                 }
-                DataType::U32 => injector.i32_rem_unsigned(),
-                DataType::U64 => injector.i64_rem_unsigned(),
-                DataType::I64 => injector.i64_rem_signed(),
+                DataType::U32 => injector.i32_rem_u(),
+                DataType::U64 => injector.i64_rem_u(),
+                DataType::I64 => injector.i64_rem_s(),
                 #[rustfmt::skip]
                 DataType::F32 => {
                     let a = LocalID(ctx.locals_tracker.use_local(WirmType::F32, injector));
@@ -1787,7 +1787,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         DataType::I8 => {
                             injector.i32_const(0xFF);
                             injector.i32_and();
-                            injector.i32_extend_8s()
+                            injector.i32_extend8_s()
                         }
                         DataType::U16 => {
                             injector.i32_const(0xFFFF);
@@ -1796,7 +1796,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         DataType::I16 => {
                             injector.i32_const(0xFFFF);
                             injector.i32_and();
-                            injector.i32_extend_16s()
+                            injector.i32_extend16_s()
                         }
                         _ => injector,
                     }
@@ -1817,11 +1817,11 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
         BinOp::RShift => {
             match done_on {
                 DataType::U8 | DataType::U16 | DataType::U32 | DataType::Boolean => {
-                    injector.i32_shr_unsigned()
+                    injector.i32_shr_u()
                 }
-                DataType::I8 | DataType::I16 | DataType::I32 => injector.i32_shr_signed(),
-                DataType::U64 => injector.i64_shr_unsigned(),
-                DataType::I64 => injector.i64_shr_signed(),
+                DataType::I8 | DataType::I16 | DataType::I32 => injector.i32_shr_s(),
+                DataType::U64 => injector.i64_shr_u(),
+                DataType::I64 => injector.i64_shr_s(),
                 DataType::FuncRef
                 | DataType::Null
                 | DataType::Str
@@ -1937,13 +1937,13 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.i32_eqz();
                 }
                 (DataType::U8, DataType::U64 | DataType::I64) => {
-                    injector.i64_extend_i32u();
+                    injector.i64_extend_i32_u();
                 }
                 (DataType::U8, DataType::F32) => {
-                    injector.f32_convert_i32u();
+                    injector.f32_convert_i32_u();
                 }
                 (DataType::U8, DataType::F64) => {
-                    injector.f64_convert_i32u();
+                    injector.f64_convert_i32_u();
                 }
                 (DataType::U8, _) => {
                     // should've been handled by type checker
@@ -1959,18 +1959,18 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                 (DataType::I8, DataType::I8) => {} // nothing to do
                 (DataType::I8, DataType::U16) => {
                     // sign extend
-                    injector.i32_extend_8s();
+                    injector.i32_extend8_s();
                     //  truncating cast for ints (zero out higher bits)
                     injector.i32_const(0xFFFF);
                     injector.i32_and();
                 }
                 (DataType::I8, DataType::I16) => {
                     // sign extend
-                    injector.i32_extend_8s();
+                    injector.i32_extend8_s();
                 }
                 (DataType::I8, DataType::I32 | DataType::U32) => {
                     // sign extend
-                    injector.i32_extend_8s();
+                    injector.i32_extend8_s();
                 }
                 (DataType::I8, DataType::Boolean) => {
                     // "truthy" (if it DOES NOT equal 0)
@@ -1978,16 +1978,16 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.i32_eqz();
                 }
                 (DataType::I8, DataType::U64 | DataType::I64) => {
-                    injector.i32_extend_8s();
-                    injector.i64_extend_i32s();
+                    injector.i32_extend8_s();
+                    injector.i64_extend_i32_s();
                 }
                 (DataType::I8, DataType::F32) => {
-                    injector.i32_extend_8s();
-                    injector.f32_convert_i32s();
+                    injector.i32_extend8_s();
+                    injector.f32_convert_i32_s();
                 }
                 (DataType::I8, DataType::F64) => {
-                    injector.i32_extend_8s();
-                    injector.f64_convert_i32s();
+                    injector.i32_extend8_s();
+                    injector.f64_convert_i32_s();
                 }
                 (DataType::I8, _) => {
                     // should've been handled by type checker
@@ -2007,13 +2007,13 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.i32_eqz();
                 }
                 (DataType::U16, DataType::U64 | DataType::I64) => {
-                    injector.i64_extend_i32u();
+                    injector.i64_extend_i32_u();
                 }
                 (DataType::U16, DataType::F32) => {
-                    injector.f32_convert_i32u();
+                    injector.f32_convert_i32_u();
                 }
                 (DataType::U16, DataType::F64) => {
-                    injector.f64_convert_i32u();
+                    injector.f64_convert_i32_u();
                 }
                 (DataType::U16, _) => {
                     // should've been handled by type checker
@@ -2033,19 +2033,19 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.i32_eqz();
                 }
                 (DataType::I16, DataType::I32 | DataType::U32) => {
-                    injector.i32_extend_16s();
+                    injector.i32_extend16_s();
                 }
                 (DataType::I16, DataType::U64 | DataType::I64) => {
-                    injector.i32_extend_16s();
-                    injector.i64_extend_i32s();
+                    injector.i32_extend16_s();
+                    injector.i64_extend_i32_s();
                 }
                 (DataType::I16, DataType::F32) => {
-                    injector.i32_extend_16s();
-                    injector.f32_convert_i32s();
+                    injector.i32_extend16_s();
+                    injector.f32_convert_i32_s();
                 }
                 (DataType::I16, DataType::F64) => {
-                    injector.i32_extend_16s();
-                    injector.f64_convert_i32s();
+                    injector.i32_extend16_s();
+                    injector.f64_convert_i32_s();
                 }
                 (DataType::I16, _) => {
                     // should've been handled by type checker
@@ -2070,13 +2070,13 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.i32_eqz();
                 }
                 (DataType::U32, DataType::U64 | DataType::I64) => {
-                    injector.i64_extend_i32u();
+                    injector.i64_extend_i32_u();
                 }
                 (DataType::U32, DataType::F32) => {
-                    injector.f32_convert_i32u();
+                    injector.f32_convert_i32_u();
                 }
                 (DataType::U32, DataType::F64) => {
-                    injector.f64_convert_i32u();
+                    injector.f64_convert_i32_u();
                 }
                 (DataType::U32, _) => {
                     // should've been handled by type checker
@@ -2101,13 +2101,13 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.i32_eqz();
                 }
                 (DataType::I32, DataType::U64 | DataType::I64) => {
-                    injector.i64_extend_i32s();
+                    injector.i64_extend_i32_s();
                 }
                 (DataType::I32, DataType::F32) => {
-                    injector.f32_convert_i32s();
+                    injector.f32_convert_i32_s();
                 }
                 (DataType::I32, DataType::F64) => {
-                    injector.f64_convert_i32s();
+                    injector.f64_convert_i32_s();
                 }
                 (DataType::I32, _) => {
                     // should've been handled by type checker
@@ -2138,10 +2138,10 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                 }
                 (DataType::U64, DataType::U64 | DataType::I64) => {} // nothing to do
                 (DataType::U64, DataType::F32) => {
-                    injector.f32_convert_i64u();
+                    injector.f32_convert_i64_u();
                 }
                 (DataType::U64, DataType::F64) => {
-                    injector.f64_convert_i64u();
+                    injector.f64_convert_i64_u();
                 }
                 (DataType::U64, _) => {
                     // should've been handled by type checker
@@ -2172,10 +2172,10 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                 }
                 (DataType::I64, DataType::U64 | DataType::I64) => {} // nothing to do
                 (DataType::I64, DataType::F32) => {
-                    injector.f32_convert_i64s();
+                    injector.f32_convert_i64_s();
                 }
                 (DataType::I64, DataType::F64) => {
-                    injector.f64_convert_i64s();
+                    injector.f64_convert_i64_s();
                 }
                 (DataType::I64, _) => {
                     // should've been handled by type checker
@@ -2185,33 +2185,33 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                 // From F32
                 (DataType::F32, DataType::U8) => {
                     // truncating cast for floats
-                    injector.i32_trunc_f32u();
+                    injector.i32_trunc_f32_u();
                     injector.i32_const(0xFF);
                     injector.i32_and();
                 }
                 (DataType::F32, DataType::I8) => {
                     // truncating cast for floats
-                    injector.i32_trunc_f32s();
+                    injector.i32_trunc_f32_s();
                     injector.i32_const(0xFF);
                     injector.i32_and();
                 }
                 (DataType::F32, DataType::U16) => {
                     // truncating cast for floats
-                    injector.i32_trunc_f32u();
+                    injector.i32_trunc_f32_u();
                     injector.i32_const(0xFFFF);
                     injector.i32_and();
                 }
                 (DataType::F32, DataType::I16) => {
                     // truncating cast for floats
-                    injector.i32_trunc_f32s();
+                    injector.i32_trunc_f32_s();
                     injector.i32_const(0xFFFF);
                     injector.i32_and();
                 }
                 (DataType::F32, DataType::U32) => {
-                    injector.i32_trunc_f32u();
+                    injector.i32_trunc_f32_u();
                 }
                 (DataType::F32, DataType::I32) => {
-                    injector.i32_trunc_f32s();
+                    injector.i32_trunc_f32_s();
                 }
                 (DataType::F32, DataType::Boolean) => {
                     // "truthy" (if it DOES NOT equal 0)
@@ -2220,10 +2220,10 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.i32_eqz();
                 }
                 (DataType::F32, DataType::U64) => {
-                    injector.i64_trunc_f32u();
+                    injector.i64_trunc_f32_u();
                 }
                 (DataType::F32, DataType::I64) => {
-                    injector.i64_trunc_f32s();
+                    injector.i64_trunc_f32_s();
                 }
                 (DataType::F32, DataType::F32) => {} // nothing to do
                 (DataType::F32, DataType::F64) => {
@@ -2237,33 +2237,33 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                 // From F64
                 (DataType::F64, DataType::U8) => {
                     // truncating cast for floats
-                    injector.i32_trunc_f64u();
+                    injector.i32_trunc_f64_u();
                     injector.i32_const(0xFF);
                     injector.i32_and();
                 }
                 (DataType::F64, DataType::I8) => {
                     // truncating cast for floats
-                    injector.i32_trunc_f64s();
+                    injector.i32_trunc_f64_s();
                     injector.i32_const(0xFF);
                     injector.i32_and();
                 }
                 (DataType::F64, DataType::U16) => {
                     // truncating cast for floats
-                    injector.i32_trunc_f64u();
+                    injector.i32_trunc_f64_u();
                     injector.i32_const(0xFFFF);
                     injector.i32_and();
                 }
                 (DataType::F64, DataType::I16) => {
                     // truncating cast for floats
-                    injector.i32_trunc_f64s();
+                    injector.i32_trunc_f64_s();
                     injector.i32_const(0xFFFF);
                     injector.i32_and();
                 }
                 (DataType::F64, DataType::U32) => {
-                    injector.i32_trunc_f64u();
+                    injector.i32_trunc_f64_u();
                 }
                 (DataType::F64, DataType::I32) => {
-                    injector.i32_trunc_f64s();
+                    injector.i32_trunc_f64_s();
                 }
                 (DataType::F64, DataType::Boolean) => {
                     // "truthy" (if it DOES NOT equal 0)
@@ -2272,10 +2272,10 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.i32_eqz();
                 }
                 (DataType::F64, DataType::U64) => {
-                    injector.i64_trunc_f64u();
+                    injector.i64_trunc_f64_u();
                 }
                 (DataType::F64, DataType::I64) => {
-                    injector.i64_trunc_f64s();
+                    injector.i64_trunc_f64_s();
                 }
                 (DataType::F64, DataType::F32) => {
                     injector.f32_demote_f64();
@@ -2399,7 +2399,7 @@ fn emit_value<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         Value::Number { val, .. } => match val {
             NumLit::I8 { val } => {
                 injector.u32_const(*val as u32);
-                injector.i32_extend_8s();
+                injector.i32_extend8_s();
                 is_success &= true;
             }
             NumLit::U8 { val } => {
@@ -2408,7 +2408,7 @@ fn emit_value<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             }
             NumLit::I16 { val } => {
                 injector.u32_const(*val as u32);
-                injector.i32_extend_16s();
+                injector.i32_extend16_s();
                 is_success &= true;
             }
             NumLit::U16 { val } => {
