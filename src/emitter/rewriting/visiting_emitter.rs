@@ -30,7 +30,6 @@ use log::warn;
 use std::iter::Iterator;
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::{FunctionID, LocalID, TableID, TypeID};
-use wirm::ir::module::LocalOrImport;
 use wirm::ir::module::Module;
 use wirm::ir::types::BlockType as WirmBlockType;
 use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as WirmIterator};
@@ -61,8 +60,10 @@ pub struct VisitingEmitter<'a, 'ir> {
     instr_created_args: Vec<(String, usize)>,
     instr_created_results: Vec<(String, usize)>,
     pub curr_unshared: Vec<UnsharedVar>,
-    /// Base memory offset of the funcref lookup array per table.
-    /// Maps table_idx -> (base_offset, num_entries).
+    /// Per-table shadow region tracking for funcref→fid resolution.
+    /// Maps `table_idx` → `(base_offset in instrumentation memory, shadow_size in entries)`.
+    /// Each entry is an `i32`; `-1` means "unknown" — either not statically
+    /// populated, or written by an op whose fid provenance couldn't be recovered.
     pub(crate) funcref_lookup_info: HashMap<u32, (u32, u32)>,
     /// The table index for the current call_indirect being instrumented.
     /// Set by derive_target_funcref, used by handle_resolve_funcref.
@@ -467,143 +468,160 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         // Track current table idx for resolve_funcref
         self.curr_funcref_table_idx = Some(table_idx);
 
-        // Store the lookup base offset in the symbol table so resolve_funcref can find it
-        if let Some((base_offset, _)) = self.funcref_lookup_info.get(&table_idx) {
-            use crate::parser::types::NumFmt;
-            let base_val = Value::Number {
-                val: NumLit::U32 { val: *base_offset },
-                ty: DataType::U32,
-                token: String::new(),
-                fmt: NumFmt::NA,
-            };
-            let rec = self
-                .table
-                .lookup_var_with_id_mut("__funcref_lookup_base", false);
-            if let Some((_id, Record::Var { value, .. })) = rec {
-                *value = Some(base_val);
-            } else {
-                self.table.put(
-                    "__funcref_lookup_base".to_string(),
-                    Record::Var {
-                        ty: DataType::U32,
-                        value: Some(base_val),
-                        def: Definition::CompilerStatic,
-                        addr: None,
-                        times_set: 0,
-                        loc: None,
-                    },
-                );
-            }
+        // Allocate a shadow for this table on first use, then publish the shadow
+        // base offset + size to the symbol table so resolve_funcref can bounds-check.
+        self.ensure_funcref_shadow_for_table(table_idx);
+        if let Some((base_offset, shadow_size)) = self.funcref_lookup_info.get(&table_idx).copied()
+        {
+            self.put_compiler_static_u32("__funcref_lookup_base", base_offset);
+            self.put_compiler_static_u32("__funcref_shadow_size", shadow_size);
         }
 
         true
     }
 
-    /// Build the funcref lookup arrays in linear memory from element segments.
-    /// For each active element segment, allocates memory for an i32 array where
-    /// `memory[base + entry_idx * 4] = function_id`. This is used by resolve_funcref
-    /// at runtime to map a table entry index to a function ID.
-    pub(crate) fn build_funcref_lookup_tables(&mut self) {
+    /// Helper: install-or-update a compiler-static u32 value in the symbol table.
+    fn put_compiler_static_u32(&mut self, name: &str, val: u32) {
+        use crate::parser::types::NumFmt;
+        let num_val = Value::Number {
+            val: NumLit::U32 { val },
+            ty: DataType::U32,
+            token: String::new(),
+            fmt: NumFmt::NA,
+        };
+        let rec = self.table.lookup_var_with_id_mut(name, false);
+        if let Some((_id, Record::Var { value, .. })) = rec {
+            *value = Some(num_val);
+        } else {
+            self.table.put(
+                name.to_string(),
+                Record::Var {
+                    ty: DataType::U32,
+                    value: Some(num_val),
+                    def: Definition::CompilerStatic,
+                    addr: None,
+                    times_set: 0,
+                    loc: None,
+                },
+            );
+        }
+    }
+
+    /// Allocate (if not already allocated) the funcref shadow region for
+    /// `table_idx`. Called from any derivation helper that's about to need the
+    /// shadow. Idempotent.
+    ///
+    /// Slot layout: one `i32` per table entry, indexed by table entry index.
+    ///   - `fid` (>= 0): entry holds a funcref whose fid we recovered statically.
+    ///   - `-1`: "unknown" — not statically populated, written by an op whose fid
+    ///     provenance couldn't be recovered, or past the shadow's bounds (e.g.
+    ///     the table was grown; `table.grow` is not instrumented).
+    ///
+    /// Initial state: all `-1`, overlaid with fids from active element segments
+    /// targeting this table. Shadow size is `table.initial`.
+    ///
+    /// Returns `true` if a shadow exists (or was just allocated) for this table,
+    /// `false` if one can't be produced (not a funcref table, oversized initial,
+    /// zero-sized, or the table index is out of range).
+    pub(crate) fn ensure_funcref_shadow_for_table(&mut self, table_idx: u32) -> bool {
         use wirm::ir::types::Value as WirmValue;
         use wirm::ir::types::{ElementItems, ElementKind, InitInstr as WirmInitInstr};
+        use wirm::wasmparser::RefType;
 
-        // Collect element segment data first (to avoid borrow issues)
-        let mut table_entries: HashMap<u32, Vec<(u32, u32)>> = HashMap::new(); // table_idx -> [(entry_idx, fid)]
+        if self.funcref_lookup_info.contains_key(&table_idx) {
+            return true;
+        }
 
+        // Validate: must be a funcref table.
+        let table = match self.app_iter.module.tables.iter().nth(table_idx as usize) {
+            Some(t) => t,
+            None => {
+                warn!(
+                    "ensure_funcref_shadow_for_table: table {} not found",
+                    table_idx
+                );
+                return false;
+            }
+        };
+        if table.ty.element_type != RefType::FUNCREF {
+            // A call_indirect/ref-resolution event against a non-funcref table
+            // shouldn't validate in wasm, but skip defensively.
+            return false;
+        }
+        let shadow_size = match u32::try_from(table.ty.initial) {
+            Ok(v) => v,
+            Err(_) => {
+                warn!(
+                    "ensure_funcref_shadow_for_table: table {} initial size {} exceeds u32, skipping",
+                    table_idx, table.ty.initial
+                );
+                return false;
+            }
+        };
+        if shadow_size == 0 {
+            // Zero-size table: nothing to shadow. Record nothing — reads for this
+            // table will fall through the "no shadow" error path.
+            return false;
+        }
+
+        // Build the shadow bytes: -1 across (i32 LE = 0xFF 0xFF 0xFF 0xFF),
+        // overlaid with any active element-segment fids targeting this table.
+        let size_bytes = (shadow_size as usize) * 4;
+        let mut shadow_data = vec![0xFFu8; size_bytes];
         for element in self.app_iter.module.elements.iter() {
-            if let ElementKind::Active {
+            let ElementKind::Active {
                 table_index,
                 offset_expr,
             } = &element.kind
-            {
-                let table_idx = table_index.unwrap_or(0);
-                let base_offset = match offset_expr.exprs.first() {
-                    Some(WirmInitInstr::Value(WirmValue::I32(val))) => *val as u32,
-                    _ => {
-                        warn!("build_funcref_lookup_tables: unsupported offset expr, skipping segment");
-                        continue;
-                    }
-                };
-
-                if let ElementItems::Functions(func_ids) = &element.items {
-                    let entries = table_entries.entry(table_idx).or_default();
-                    for (i, fid) in func_ids.iter().enumerate() {
-                        entries.push((base_offset + i as u32, **fid));
-                    }
-                }
-            }
-        }
-
-        // Now allocate memory and emit data segments for each table
-        for (table_idx, entries) in table_entries.iter() {
-            if entries.is_empty() {
+            else {
+                continue;
+            };
+            if table_index.unwrap_or(0) != table_idx {
                 continue;
             }
-            let max_entry = entries.iter().map(|(idx, _)| *idx).max().unwrap();
-            let num_entries = max_entry + 1;
-            let size_bytes = num_entries as usize * 4; // 4 bytes per i32
-
-            // Build the lookup data: default to u32::MAX (sentinel for "unknown")
-            let mut lookup_data = vec![0xFFu8; size_bytes];
-            for (entry_idx, fid) in entries.iter() {
-                let offset = *entry_idx as usize * 4;
-                let fid_bytes = (*fid as i32).to_le_bytes();
-                lookup_data[offset..offset + 4].copy_from_slice(&fid_bytes);
-            }
-
-            // Allocate in the instrumentation memory
-            let base_offset = self.mem_allocator.curr_mem_offset as u32;
-            let mem_id = self.mem_allocator.mem_id;
-
-            // Emit data segment
-            let data_segment = wirm::ir::types::DataSegment {
-                data: lookup_data,
-                kind: wirm::ir::types::DataSegmentKind::Active {
-                    memory_index: mem_id,
-                    offset_expr: wirm::ir::types::InitExpr::new(vec![WirmInitInstr::Value(
-                        WirmValue::I32(base_offset as i32),
-                    )]),
-                },
-                tag: None,
-            };
-            self.app_iter.module.data.push(data_segment);
-
-            self.mem_allocator.curr_mem_offset += size_bytes;
-            self.funcref_lookup_info
-                .insert(*table_idx, (base_offset, num_entries));
-        }
-
-        // This function is only called when the user uses resolve_funcref.
-        // Warn if the module also has table mutation instructions, since the
-        // static lookup table may become stale at runtime.
-        let has_table_mutations = self.app_iter.module.functions.iter().any(|func| {
-            if func.is_local() {
-                if let Ok(local_func) = func.unwrap_local() {
-                    local_func.body.instructions.get_ops().iter().any(|op| {
-                        matches!(
-                            op,
-                            Operator::TableSet { .. }
-                                | Operator::TableGrow { .. }
-                                | Operator::TableCopy { .. }
-                                | Operator::TableInit { .. }
-                        )
-                    })
-                } else {
-                    false
+            let base = match offset_expr.exprs.first() {
+                Some(WirmInitInstr::Value(WirmValue::I32(val))) => *val as u32,
+                _ => {
+                    warn!(
+                        "ensure_funcref_shadow_for_table: table {} has element segment \
+                         with unsupported offset expr; skipping that segment",
+                        table_idx
+                    );
+                    continue;
                 }
-            } else {
-                false
+            };
+            let ElementItems::Functions(func_ids) = &element.items else {
+                continue;
+            };
+            for (i, fid) in func_ids.iter().enumerate() {
+                let entry_idx = base + i as u32;
+                if entry_idx >= shadow_size {
+                    continue;
+                }
+                let off = entry_idx as usize * 4;
+                shadow_data[off..off + 4].copy_from_slice(&(**fid as i32).to_le_bytes());
             }
-        });
-        if has_table_mutations {
-            warn!(
-                "Module contains dynamic table mutations (table.set/table.grow/table.copy/table.init). \
-                 The resolve_funcref lookup table is built statically from element segments and may not \
-                 reflect runtime table state. In future work, we plan to implement a more robust solution \
-                 using GC funcref comparison capabilities. If you need this for your use case, add a GH issue: \
-                 https://github.com/ejrgilbert/whamm/issues"
-            );
         }
+
+        // Allocate the shadow in the instrumentation memory and emit an active
+        // data segment so it's populated at module instantiation.
+        let base_offset = self.mem_allocator.curr_mem_offset as u32;
+        let mem_id = self.mem_allocator.mem_id;
+        let data_segment = wirm::ir::types::DataSegment {
+            data: shadow_data,
+            kind: wirm::ir::types::DataSegmentKind::Active {
+                memory_index: mem_id,
+                offset_expr: wirm::ir::types::InitExpr::new(vec![WirmInitInstr::Value(
+                    WirmValue::I32(base_offset as i32),
+                )]),
+            },
+            tag: None,
+        };
+        self.app_iter.module.data.push(data_segment);
+        self.mem_allocator.curr_mem_offset += size_bytes;
+        self.funcref_lookup_info
+            .insert(table_idx, (base_offset, shadow_size));
+        true
     }
 
     pub(crate) fn reset_table_data(&mut self, loc_info: &LocInfo) {

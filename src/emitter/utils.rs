@@ -244,35 +244,73 @@ fn handle_resolve_funcref<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     ctx: &mut EmitCtx,
 ) -> bool {
     // args: (target_funcref: funcref, table_entry_idx: i32)
-    // Emit the funcref argument (for side effects), then drop it
+    // Emit the funcref argument (for side effects), then drop it.
     let mut is_success = emit_expr(args.first().unwrap(), None, strategy, injector, ctx);
     injector.drop();
 
-    // Emit the table_entry_idx argument — this puts the entry index on the stack
+    // Emit the table_entry_idx argument — this puts the entry index on the stack.
     is_success &= emit_expr(args.get(1).unwrap(), None, strategy, injector, ctx);
 
     let mem_id = ctx.mem_allocator.mem_id;
 
-    // Look up the base offset of the funcref lookup table from the symbol table
-    let base_offset = if let Some(Record::Var {
-        value: Some(Value::Number {
-            val: NumLit::U32 { val },
+    // Look up the shadow base offset and shadow size (set by derive_target_funcref
+    // for this call_indirect's table).
+    let base_offset = match ctx.table.lookup_var("__funcref_lookup_base", false) {
+        Some(Record::Var {
+            value:
+                Some(Value::Number {
+                    val: NumLit::U32 { val },
+                    ..
+                }),
             ..
-        }),
-        ..
-    }) = ctx.table.lookup_var("__funcref_lookup_base", false)
-    {
-        *val
-    } else {
-        ctx.err.add_instr_error(
-            "resolve_funcref: funcref lookup table not initialized. \
-             This function can only be used in call_indirect/return_call_indirect probes.",
-        );
-        return false;
+        }) => *val,
+        _ => {
+            ctx.err.add_instr_error(
+                "resolve_funcref: funcref shadow table not initialized. \
+                 This function can only be used in call_indirect/return_call_indirect probes.",
+            );
+            return false;
+        }
+    };
+    let shadow_size = match ctx.table.lookup_var("__funcref_shadow_size", false) {
+        Some(Record::Var {
+            value:
+                Some(Value::Number {
+                    val: NumLit::U32 { val },
+                    ..
+                }),
+            ..
+        }) => *val,
+        _ => {
+            ctx.err
+                .add_instr_error("resolve_funcref: funcref shadow size not initialized.");
+            return false;
+        }
     };
 
-    // Stack has: [table_entry_idx]
-    // Emit: table_entry_idx * 4 + base_offset → i32.load → function_id
+    // Bounds-check, then read. Emit roughly:
+    //   local.tee $idx
+    //   i32.const shadow_size
+    //   i32.lt_u
+    //   if (result i32)
+    //     local.get $idx
+    //     i32.const 4
+    //     i32.mul
+    //     i32.const base_offset
+    //     i32.add
+    //     i32.load (mem)
+    //   else
+    //     i32.const -1
+    //   end
+    //
+    // Out-of-bounds resolves to -1, matching the "observable approximation"
+    // contract (e.g. when `table.grow` extends the table past our shadow).
+    let idx_local = injector.add_local(WirmType::I32);
+    injector.local_tee(idx_local);
+    injector.i32_const(shadow_size as i32);
+    injector.i32_lt_u();
+    injector.if_stmt(BlockType::Type(WirmType::I32));
+    injector.local_get(idx_local);
     injector.i32_const(4);
     injector.i32_mul();
     injector.u32_const(base_offset);
@@ -283,6 +321,9 @@ fn handle_resolve_funcref<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         offset: 0,
         memory: mem_id,
     });
+    injector.else_stmt();
+    injector.i32_const(-1);
+    injector.end();
 
     is_success
 }

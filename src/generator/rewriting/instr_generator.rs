@@ -64,8 +64,6 @@ pub struct InstrGenerator<'a, 'ir> {
     has_reports: bool,
     on_exit_fid: Option<u32>,
     config: &'a Config,
-    /// Whether any probe uses resolve_funcref, requiring element segment lookup tables
-    needs_funcref_lookup: bool,
 }
 impl<'a, 'ir> InstrGenerator<'a, 'ir> {
     pub fn new(
@@ -74,7 +72,6 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
         err: &'a mut ErrorGen,
         config: &'a Config,
         has_reports: bool,
-        needs_funcref_lookup: bool,
     ) -> Self {
         Self {
             emitter,
@@ -89,7 +86,6 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
             has_reports,
             on_exit_fid: None,
             config,
-            needs_funcref_lookup,
         }
     }
 
@@ -170,11 +166,6 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
     }
 
     pub fn run(&mut self) -> bool {
-        // Build funcref lookup tables from element segments (for resolve_funcref)
-        if self.needs_funcref_lookup {
-            self.emitter.build_funcref_lookup_tables();
-        }
-
         // Reset the symbol table in the emitter just in case
         self.emitter.reset_table();
 
