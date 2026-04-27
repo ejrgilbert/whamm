@@ -556,7 +556,7 @@ target_funcref: &target_funcref
 resolved_fid: &resolved_fid
   name: resolved_fid
   type: i32
-  docs: "The function index resolved from the target funcref of this opcode, via the per-table funcref shadow. Returns the fid (>= 0) when the shadow has a known value for this slot, or `-1` when unknown — either the slot was never statically populated, was written by an op whose fid provenance couldn't be recovered, or the index is past the shadow's bounds (e.g. the table grew)."
+  docs: "The function index resolved from the target funcref of this opcode, via the per-table funcref shadow. Returns the fid (>= 0) when the shadow has a known value for this slot, or `-1` when unknown. This can happen when the slot was never statically populated, was written by an op whose fid provenance couldn't be recovered, or the index is past the shadow's bounds (e.g. the table grew)."
   lifetime: dynamic
   derived_from: resolve_funcref(target_funcref, table_entry_idx)
 resolve_funcref: &resolve_funcref
