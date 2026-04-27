@@ -322,7 +322,7 @@ fn handle_resolve_funcref<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         memory: mem_id,
     });
     injector.else_stmt();
-    injector.i32_const(-1);
+    injector.i32_const(crate::emitter::rewriting::visiting_emitter::UNKNOWN_FID);
     injector.end();
 
     is_success

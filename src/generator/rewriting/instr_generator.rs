@@ -325,6 +325,11 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                 }
             };
         }
+        // After the main probe-matching pass, walk the module once more to
+        // keep funcref shadow tables consistent with runtime mutations
+        // (table.set/init/copy/fill). Only does work for tables that the main
+        // pass actually allocated shadows for.
+        self.emitter.instrument_table_mutations();
         is_success &= self.after_run();
         is_success
     }

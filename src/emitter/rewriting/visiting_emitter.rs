@@ -29,7 +29,7 @@ use itertools::Itertools;
 use log::warn;
 use std::iter::Iterator;
 use wirm::ir::function::FunctionBuilder;
-use wirm::ir::id::{FunctionID, LocalID, TableID, TypeID};
+use wirm::ir::id::{FunctionID, LocalID, MemoryID, TableID, TypeID};
 use wirm::ir::module::Module;
 use wirm::ir::types::BlockType as WirmBlockType;
 use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as WirmIterator};
@@ -41,6 +41,33 @@ use wirm::Location;
 
 const UNEXPECTED_ERR_MSG: &str =
     "VisitingEmitter: Looks like you've found a bug...please report this behavior!";
+
+/// Bytes per funcref shadow entry. Each shadow slot is an `i32` fid.
+const SHADOW_ENTRY_BYTES: i32 = 4;
+
+/// Sentinel value written to a shadow slot when the fid is unknown — either
+/// not statically populated, written by an op whose fid provenance couldn't be
+/// recovered, or read past the shadow's bounds. User probes can branch on
+/// `fid < 0` as a fast "unresolved?" check.
+pub(crate) const UNKNOWN_FID: i32 = -1;
+
+/// Byte pattern that, when filled uniformly across `SHADOW_ENTRY_BYTES`, encodes
+/// `UNKNOWN_FID` in little-endian. Used by `memory.fill` and bulk shadow-region
+/// initialization. If `UNKNOWN_FID` is ever changed to a value whose LE bytes
+/// aren't uniform, `memory.fill`-based shadow updates will need to switch to a
+/// loop or per-value `memory.copy` source.
+pub(crate) const UNKNOWN_FID_BYTE: u8 = 0xFF;
+
+const _: () = {
+    let bytes = UNKNOWN_FID.to_le_bytes();
+    assert!(
+        bytes[0] == UNKNOWN_FID_BYTE
+            && bytes[1] == UNKNOWN_FID_BYTE
+            && bytes[2] == UNKNOWN_FID_BYTE
+            && bytes[3] == UNKNOWN_FID_BYTE,
+        "UNKNOWN_FID's LE bytes must equal UNKNOWN_FID_BYTE repeated"
+    );
+};
 
 pub struct VisitingEmitter<'a, 'ir> {
     pub strategy: InjectStrategy,
@@ -564,10 +591,10 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             return false;
         }
 
-        // Build the shadow bytes: -1 across (i32 LE = 0xFF 0xFF 0xFF 0xFF),
-        // overlaid with any active element-segment fids targeting this table.
-        let size_bytes = (shadow_size as usize) * 4;
-        let mut shadow_data = vec![0xFFu8; size_bytes];
+        // Build the shadow bytes: UNKNOWN_FID across, overlaid with any active
+        // element-segment fids targeting this table.
+        let size_bytes = (shadow_size as usize) * SHADOW_ENTRY_BYTES as usize;
+        let mut shadow_data = vec![UNKNOWN_FID_BYTE; size_bytes];
         for element in self.app_iter.module.elements.iter() {
             let ElementKind::Active {
                 table_index,
@@ -598,8 +625,9 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                 if entry_idx >= shadow_size {
                     continue;
                 }
-                let off = entry_idx as usize * 4;
-                shadow_data[off..off + 4].copy_from_slice(&(**fid as i32).to_le_bytes());
+                let off = entry_idx as usize * SHADOW_ENTRY_BYTES as usize;
+                shadow_data[off..off + SHADOW_ENTRY_BYTES as usize]
+                    .copy_from_slice(&(**fid as i32).to_le_bytes());
             }
         }
 
@@ -622,6 +650,304 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         self.funcref_lookup_info
             .insert(table_idx, (base_offset, shadow_size));
         true
+    }
+
+    /// Walk every local function via the module iterator and inject "before"
+    /// instrumentation at every table-mutating op whose target table has a
+    /// shadow region, keeping the shadow consistent with runtime table state.
+    ///
+    /// Per-op behavior — acceptable approximations are written as `-1`, the
+    /// "unknown" sentinel; user probes can branch on `fid < 0`:
+    ///
+    ///   * `table.set tbl, idx, fref`: writes fid `N` into `shadow[tbl][idx]`
+    ///     when the immediately preceding instruction is `ref.func $N`,
+    ///     otherwise `-1`. Bounds-checked.
+    ///
+    ///   * `table.fill tbl, idx, fref, n`: writes `-1` across
+    ///     `shadow[tbl][idx..idx+n]` (lossy). Could be made precise with a
+    ///     small loop that stores a `ref.func`-recovered fid; deferred.
+    ///
+    ///   * `table.copy dst, src, n`: copies source shadow → destination
+    ///     shadow when both are shadowed; writes `-1` across the destination
+    ///     range when only the destination is shadowed; otherwise no-op.
+    ///
+    ///   * `table.init dst, elem, n`: writes `-1` across the destination
+    ///     range (lossy). Could be made precise by emitting a per-passive-
+    ///     element-segment fid data segment and `memory.copy`-ing into the
+    ///     shadow; deferred.
+    ///
+    /// `table.grow` is not instrumented; reads past the shadow's bounds
+    /// resolve to `-1` via the consumer-side bounds check.
+    pub(crate) fn instrument_table_mutations(&mut self) {
+        if self.funcref_lookup_info.is_empty() {
+            return;
+        }
+
+        self.app_iter.reset();
+        let mut prev_ref_func_fid: Option<u32> = None;
+
+        while self.app_iter.next().is_some() {
+            // Capture "is this a ref.func?" before dispatching, since the
+            // dispatch arms take `&mut self` and we'd otherwise be holding a
+            // borrow on `self.app_iter.curr_op()` past the call.
+            let next_prev = if let Some(Operator::RefFunc { function_index }) =
+                self.app_iter.curr_op()
+            {
+                Some(*function_index)
+            } else {
+                None
+            };
+
+            match self.app_iter.curr_op() {
+                Some(Operator::TableSet { table }) => {
+                    let table = *table;
+                    self.handle_table_set_mutation(table, prev_ref_func_fid);
+                }
+                Some(Operator::TableFill { table }) => {
+                    let table = *table;
+                    self.handle_table_fill_mutation(table);
+                }
+                Some(Operator::TableInit { table, .. }) => {
+                    let table = *table;
+                    self.handle_table_init_mutation(table);
+                }
+                Some(Operator::TableCopy {
+                    dst_table,
+                    src_table,
+                }) => {
+                    let (dst, src) = (*dst_table, *src_table);
+                    self.handle_table_copy_mutation(dst, src);
+                }
+                _ => {}
+            }
+
+            prev_ref_func_fid = next_prev;
+        }
+    }
+
+    fn handle_table_set_mutation(&mut self, table: u32, prev_ref_func_fid: Option<u32>) {
+        let Some((base, shadow_size)) = self.funcref_lookup_info.get(&table).copied() else {
+            return;
+        };
+        let fid_to_store = prev_ref_func_fid.map(|n| n as i32).unwrap_or(UNKNOWN_FID);
+        let mem_id = self.mem_allocator.mem_id;
+        let memarg = wirm::wasmparser::MemArg {
+            align: 2,
+            max_align: 0,
+            offset: 0,
+            memory: mem_id,
+        };
+
+        // Stack on entry: [..., idx, fref]. Save both, bounds-check, store fid,
+        // then restore the stack so the real table.set sees what it expects.
+        let tmp_fref = self.app_iter.add_local(WirmType::FuncRefNull);
+        let tmp_idx = self.app_iter.add_local(WirmType::I32);
+
+        self.app_iter.before();
+        self.app_iter.local_set(tmp_fref);
+        self.app_iter.local_set(tmp_idx);
+
+        self.app_iter.local_get(tmp_idx);
+        self.app_iter.u32_const(shadow_size);
+        self.app_iter.i32_lt_u();
+        self.app_iter.if_stmt(WirmBlockType::Empty);
+        self.app_iter.u32_const(base);
+        self.app_iter.local_get(tmp_idx);
+        // Convert entry index/count to byte offset/count.
+        self.app_iter.i32_const(SHADOW_ENTRY_BYTES);
+        self.app_iter.i32_mul();
+        self.app_iter.i32_add();
+        self.app_iter.i32_const(fid_to_store);
+        self.app_iter.i32_store(memarg);
+        self.app_iter.end();
+
+        self.app_iter.local_get(tmp_idx);
+        self.app_iter.local_get(tmp_fref);
+    }
+
+    fn handle_table_fill_mutation(&mut self, table: u32) {
+        let Some((base, shadow_size)) = self.funcref_lookup_info.get(&table).copied() else {
+            return;
+        };
+
+        // Stack on entry: [..., idx, fref, n]. Save all three, fill the shadow
+        // range with -1 (bounds-checked), then restore.
+        let tmp_n = self.app_iter.add_local(WirmType::I32);
+        let tmp_fref = self.app_iter.add_local(WirmType::FuncRefNull);
+        let tmp_idx = self.app_iter.add_local(WirmType::I32);
+
+        self.app_iter.before();
+        self.app_iter.local_set(tmp_n);
+        self.app_iter.local_set(tmp_fref);
+        self.app_iter.local_set(tmp_idx);
+
+        self.emit_bounded_shadow_fill_unknown(base, shadow_size, tmp_idx, tmp_n);
+
+        self.app_iter.local_get(tmp_idx);
+        self.app_iter.local_get(tmp_fref);
+        self.app_iter.local_get(tmp_n);
+    }
+
+    fn handle_table_init_mutation(&mut self, dst_table: u32) {
+        let Some((base, shadow_size)) = self.funcref_lookup_info.get(&dst_table).copied() else {
+            return;
+        };
+
+        // Stack on entry: [..., dst, src, n]. Save all three, fill the
+        // destination shadow range with -1, then restore.
+        let tmp_n = self.app_iter.add_local(WirmType::I32);
+        let tmp_src = self.app_iter.add_local(WirmType::I32);
+        let tmp_dst = self.app_iter.add_local(WirmType::I32);
+
+        self.app_iter.before();
+        self.app_iter.local_set(tmp_n);
+        self.app_iter.local_set(tmp_src);
+        self.app_iter.local_set(tmp_dst);
+
+        self.emit_bounded_shadow_fill_unknown(base, shadow_size, tmp_dst, tmp_n);
+
+        self.app_iter.local_get(tmp_dst);
+        self.app_iter.local_get(tmp_src);
+        self.app_iter.local_get(tmp_n);
+    }
+
+    fn handle_table_copy_mutation(&mut self, dst_table: u32, src_table: u32) {
+        let Some((dst_base, dst_size)) = self.funcref_lookup_info.get(&dst_table).copied() else {
+            return; // destination not shadowed → nothing to maintain
+        };
+        let src_shadow = self.funcref_lookup_info.get(&src_table).copied();
+
+        // Stack on entry: [..., dst, src, n]. Save all three, update the
+        // destination shadow, then restore.
+        let tmp_n = self.app_iter.add_local(WirmType::I32);
+        let tmp_src = self.app_iter.add_local(WirmType::I32);
+        let tmp_dst = self.app_iter.add_local(WirmType::I32);
+
+        self.app_iter.before();
+        self.app_iter.local_set(tmp_n);
+        self.app_iter.local_set(tmp_src);
+        self.app_iter.local_set(tmp_dst);
+
+        if let Some((src_base, src_size)) = src_shadow {
+            self.emit_bounded_shadow_copy(
+                dst_base, dst_size, src_base, src_size, tmp_dst, tmp_src, tmp_n,
+            );
+        } else {
+            // Source isn't shadowed — we can't recover its fids.
+            self.emit_bounded_shadow_fill_unknown(dst_base, dst_size, tmp_dst, tmp_n);
+        }
+
+        self.app_iter.local_get(tmp_dst);
+        self.app_iter.local_get(tmp_src);
+        self.app_iter.local_get(tmp_n);
+    }
+
+    /// Emit a bounds-checked `memory.fill` that writes `UNKNOWN_FID` across
+    /// `shadow[base + idx*SHADOW_ENTRY_BYTES .. base + (idx+n)*SHADOW_ENTRY_BYTES]`.
+    /// Skips the fill entirely if `idx + n` exceeds `shadow_size`. `idx` and `n`
+    /// are read from the given i32 locals.
+    fn emit_bounded_shadow_fill_unknown(
+        &mut self,
+        base: u32,
+        shadow_size: u32,
+        idx_local: LocalID,
+        n_local: LocalID,
+    ) {
+        let mem_id = self.mem_allocator.mem_id;
+
+        // block $skip
+        self.app_iter.block(WirmBlockType::Empty);
+        // if idx >= shadow_size: br $skip
+        self.app_iter.local_get(idx_local);
+        self.app_iter.u32_const(shadow_size);
+        self.app_iter.i32_ge_u();
+        self.app_iter.br_if(0);
+        // if n > shadow_size - idx: br $skip   (idx <= shadow_size, so subtraction is safe)
+        self.app_iter.local_get(n_local);
+        self.app_iter.u32_const(shadow_size);
+        self.app_iter.local_get(idx_local);
+        self.app_iter.i32_sub();
+        self.app_iter.i32_gt_u();
+        self.app_iter.br_if(0);
+        // memory.fill(base + idx*4, 0xFF, n*4)
+        self.app_iter.u32_const(base);
+        self.app_iter.local_get(idx_local);
+        // Convert entry index/count to byte offset/count.
+        self.app_iter.i32_const(SHADOW_ENTRY_BYTES);
+        self.app_iter.i32_mul();
+        self.app_iter.i32_add();
+        self.app_iter.i32_const(UNKNOWN_FID_BYTE as i32);
+        self.app_iter.local_get(n_local);
+        // Convert entry index/count to byte offset/count.
+        self.app_iter.i32_const(SHADOW_ENTRY_BYTES);
+        self.app_iter.i32_mul();
+        self.app_iter.memory_fill(MemoryID(mem_id));
+        // end $skip
+        self.app_iter.end();
+    }
+
+    /// Emit a bounds-checked `memory.copy` from src shadow → dst shadow.
+    /// Skips the copy entirely if either side's range falls outside its shadow
+    /// (the dst slots stay at whatever value they held — readers will get that
+    /// stale value, since out-of-bounds writes are a precision loss we accept
+    /// rather than partial-update).
+    fn emit_bounded_shadow_copy(
+        &mut self,
+        dst_base: u32,
+        dst_size: u32,
+        src_base: u32,
+        src_size: u32,
+        dst_local: LocalID,
+        src_local: LocalID,
+        n_local: LocalID,
+    ) {
+        let mem_id = self.mem_allocator.mem_id;
+
+        self.app_iter.block(WirmBlockType::Empty);
+        // dst >= dst_size → skip
+        self.app_iter.local_get(dst_local);
+        self.app_iter.u32_const(dst_size);
+        self.app_iter.i32_ge_u();
+        self.app_iter.br_if(0);
+        // n > dst_size - dst → skip
+        self.app_iter.local_get(n_local);
+        self.app_iter.u32_const(dst_size);
+        self.app_iter.local_get(dst_local);
+        self.app_iter.i32_sub();
+        self.app_iter.i32_gt_u();
+        self.app_iter.br_if(0);
+        // src >= src_size → skip
+        self.app_iter.local_get(src_local);
+        self.app_iter.u32_const(src_size);
+        self.app_iter.i32_ge_u();
+        self.app_iter.br_if(0);
+        // n > src_size - src → skip
+        self.app_iter.local_get(n_local);
+        self.app_iter.u32_const(src_size);
+        self.app_iter.local_get(src_local);
+        self.app_iter.i32_sub();
+        self.app_iter.i32_gt_u();
+        self.app_iter.br_if(0);
+        // memory.copy(dst_base + dst*4, src_base + src*4, n*4)
+        self.app_iter.u32_const(dst_base);
+        self.app_iter.local_get(dst_local);
+        // Convert entry index/count to byte offset/count.
+        self.app_iter.i32_const(SHADOW_ENTRY_BYTES);
+        self.app_iter.i32_mul();
+        self.app_iter.i32_add();
+        self.app_iter.u32_const(src_base);
+        self.app_iter.local_get(src_local);
+        // Convert entry index/count to byte offset/count.
+        self.app_iter.i32_const(SHADOW_ENTRY_BYTES);
+        self.app_iter.i32_mul();
+        self.app_iter.i32_add();
+        self.app_iter.local_get(n_local);
+        // Convert entry index/count to byte offset/count.
+        self.app_iter.i32_const(SHADOW_ENTRY_BYTES);
+        self.app_iter.i32_mul();
+        self.app_iter
+            .memory_copy(MemoryID(mem_id), MemoryID(mem_id));
+        self.app_iter.end();
     }
 
     pub(crate) fn reset_table_data(&mut self, loc_info: &LocInfo) {
