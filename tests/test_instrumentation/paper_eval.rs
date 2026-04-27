@@ -94,7 +94,12 @@ fn call_graph_resolved() {
     let processed_scripts = setup_tests("paper_eval/call_graph_resolved");
     assert!(!processed_scripts.is_empty());
 
-    run_core_suite("paper_eval-call_graph_resolved", processed_scripts, true, false)
+    run_core_suite(
+        "paper_eval-call_graph_resolved",
+        processed_scripts,
+        true,
+        false,
+    )
 }
 
 #[test]

@@ -87,9 +87,9 @@ pub struct VisitingEmitter<'a, 'ir> {
     instr_created_args: Vec<(String, usize)>,
     instr_created_results: Vec<(String, usize)>,
     pub curr_unshared: Vec<UnsharedVar>,
-    /// Per-table shadow region tracking for funcref→fid resolution.
-    /// Maps `table_idx` → `(base_offset in instrumentation memory, shadow_size in entries)`.
-    /// Each entry is an `i32`; `-1` means "unknown" — either not statically
+    /// Per-table shadow region tracking for funcref -> fid resolution.
+    /// Maps `table_idx` -> `(base_offset in instrumentation memory, shadow_size in entries)`.
+    /// Each entry is an `i32`; `-1` means "unknown" -- it's either not statically
     /// populated, or written by an op whose fid provenance couldn't be recovered.
     pub(crate) funcref_lookup_info: HashMap<u32, (u32, u32)>,
     /// The table index for the current call_indirect being instrumented.
@@ -690,13 +690,12 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             // Capture "is this a ref.func?" before dispatching, since the
             // dispatch arms take `&mut self` and we'd otherwise be holding a
             // borrow on `self.app_iter.curr_op()` past the call.
-            let next_prev = if let Some(Operator::RefFunc { function_index }) =
-                self.app_iter.curr_op()
-            {
-                Some(*function_index)
-            } else {
-                None
-            };
+            let next_prev =
+                if let Some(Operator::RefFunc { function_index }) = self.app_iter.curr_op() {
+                    Some(*function_index)
+                } else {
+                    None
+                };
 
             match self.app_iter.curr_op() {
                 Some(Operator::TableSet { table }) => {
