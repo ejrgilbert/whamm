@@ -85,6 +85,18 @@ fn call_graph() {
     run_core_suite("paper_eval-call_graph", processed_scripts, true, true)
 }
 
+// Sibling test that builds the same call graph using `resolved_fid` directly
+// at call_indirect sites (no callee-tagging workaround). Rewriting-only:
+// the wei backend doesn't yet support `resolve_funcref`.
+#[test]
+fn call_graph_resolved() {
+    setup_logger();
+    let processed_scripts = setup_tests("paper_eval/call_graph_resolved");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("paper_eval-call_graph_resolved", processed_scripts, true, false)
+}
+
 #[test]
 fn basic_block_profiling() {
     setup_logger();
