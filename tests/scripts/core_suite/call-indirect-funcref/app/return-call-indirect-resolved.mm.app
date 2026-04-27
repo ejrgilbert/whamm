@@ -1,0 +1,1 @@
+tests/apps/core_suite/handwritten/funcref_events.wasm

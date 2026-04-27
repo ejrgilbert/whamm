@@ -421,6 +421,10 @@ fn run_testcase_rewriting(
         .arg(whamm_core_lib_path)
         .arg("--wasm")
         .arg("custom-page-sizes=y")
+        .arg("--wasm")
+        .arg("function-references=y")
+        .arg("--wasm")
+        .arg("gc=y")
         .arg(instr_app_path)
         .output()
         .expect("failed to run on wasmtime");

@@ -550,13 +550,13 @@ table_entry_idx: &table_entry_idx
 target_funcref: &target_funcref
   name: target_funcref
   type: funcref
-  docs: The funcref retrieved from the table targeted by this call_indirect. Derived by performing table.get with the table_entry_idx on the table specified by imm1.
+  docs: The funcref retrieved from the table targeted by this opcode. Derived by performing table.get with the table_entry_idx on the table specified by imm1.
   lifetime: dynamic
   derived_from: null
 resolved_fid: &resolved_fid
   name: resolved_fid
   type: i32
-  docs: The function index resolved from the target funcref of this call_indirect. Derived by calling resolve_funcref on target_funcref.
+  docs: "The function index resolved from the target funcref of this opcode, via the per-table funcref shadow. Returns the fid (>= 0) when the shadow has a known value for this slot, or `-1` when unknown — either the slot was never statically populated, was written by an op whose fid provenance couldn't be recovered, or the index is past the shadow's bounds (e.g. the table grew)."
   lifetime: dynamic
   derived_from: resolve_funcref(target_funcref, table_entry_idx)
 resolve_funcref: &resolve_funcref
@@ -565,7 +565,27 @@ resolve_funcref: &resolve_funcref
   params: "(target_funcref: funcref, table_entry_idx: i32)"
   results: i32
   req_args: -1
-  docs: Resolve a funcref to its function index using a static lookup table built from element segments. Warning - if the module uses table.set/table.grow, the lookup table may be stale.
+  docs: "Resolve a funcref to its function index via the per-table funcref shadow. Returns the fid (>= 0) when known, or `-1` when unknown (slot not populated by an instruction whose fid origin could be statically recovered, or index past shadow bounds). The shadow is maintained in lockstep with table.set/table.init/table.copy/table.fill, but does not track table.grow."
+
+# Static-lifetime resolved_fid for events whose fid is statically encoded in
+# the immediate (e.g. ref.func), reusing the same `resolved_fid` user-facing
+# name so probes can use one binding name across all funcref-resolving events.
+resolved_fid_imm0: &resolved_fid_imm0
+  name: resolved_fid
+  type: i32
+  docs: The function index of this opcode's funcref, recovered from its immediate operand.
+  lifetime: static
+  derived_from: imm0 as i32
+
+# Static-lifetime resolved_fid for events whose funcref came in on the stack
+# (e.g. table.set, call_ref). The compiler fills the value at probe-emit time
+# via single-instruction lookback for a preceding `ref.func`; -1 if recovery fails.
+resolved_fid_static: &resolved_fid_static
+  name: resolved_fid
+  type: i32
+  docs: "The function index of this opcode's funcref, recovered when an immediately-preceding `ref.func` makes it locally visible. `-1` if recovery failed (e.g. funcref came from a local, parameter, or table.get)."
+  lifetime: static
+  derived_from: null
 
 # ============================
 # ==== *struct* Constants ====
@@ -1077,6 +1097,7 @@ call_ref: &call_ref
     - *category_name_control
     - *imm0_u32
     - *argN
+    - *resolved_fid_static
   bound_fns: []
   supported_modes: *default_modes
 
@@ -1099,6 +1120,7 @@ return_call_ref: &return_call_ref
     - *category_name_control
     - *imm0_u32
     - *argN
+    - *resolved_fid_static
   bound_fns: []
   supported_modes: *default_modes
 
@@ -1316,7 +1338,11 @@ table_get: &table_get
     - *category_name_table
     - *imm0_u32
     - *arg0_i32
-  bound_fns: []
+    - *table_entry_idx
+    - *target_funcref
+    - *resolved_fid
+  bound_fns:
+    - *resolve_funcref
   supported_modes: *default_modes
 
   docs: "https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md"
@@ -1338,6 +1364,7 @@ table_set: &table_set
     - *category_name_table
     - *imm0_u32
     - *argN
+    - *resolved_fid_static
   bound_fns: []
   supported_modes: *default_modes
 
@@ -5154,6 +5181,7 @@ ref_func: &ref_func
     - *category_id_gc
     - *category_name_gc
     - *imm0_u32
+    - *resolved_fid_imm0
   bound_fns: []
   supported_modes: *default_modes
 

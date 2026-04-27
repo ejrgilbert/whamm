@@ -1,11 +1,11 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::rewriting::rules::data_segments::get_first_local_mem_id;
-use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
+use crate::emitter::rewriting::visiting_emitter::{VisitingEmitter, UNKNOWN_FID};
 use crate::generator::ast::{Probe, StackReq, WhammParam, WhammParams};
 use crate::generator::rewriting::simple_ast::{SimpleAST, SimpleEvt, SimplePkg, SimpleProv};
 use crate::parser::provider_handler::ModeKind;
 use crate::parser::types::{
-    Block, DataType, DeclModifiers, Definition, Expr, NumLit, RulePart, Statement, Value,
+    Block, DataType, DeclModifiers, Definition, Expr, NumFmt, NumLit, RulePart, Statement, Value,
 };
 use crate::verifier::types::VarAddr;
 use log::warn;
@@ -229,7 +229,7 @@ fn handle_wasm_packages(
     pkg: &mut SimplePkg,
 ) -> Option<LocInfo> {
     match package {
-        "opcode" => handle_opcode(app_wasm, fid, instr, pkg),
+        "opcode" => handle_opcode(app_wasm, fid, opidx, instr, pkg),
         "func" => handle_func(app_wasm, fid, opidx, instr, pkg),
         "block" => handle_block(app_wasm, state, at_func_end, fid, opidx, instr, pkg),
         "begin" | "end" => unimplemented!("Have not implemented the package yet: {package}"),
@@ -241,13 +241,14 @@ fn handle_wasm_packages(
 fn handle_opcode(
     app_wasm: &Module,
     fid: &FunctionID,
+    opidx: usize,
     instr: &Operator,
     pkg: &mut SimplePkg,
 ) -> Option<LocInfo> {
     let mut res: Option<LocInfo> = None;
     for (package, evt) in pkg.evts.iter_mut() {
         // See OpcodeEvent.get_loc_info
-        if let Some(mut tmp) = handle_opcode_events(app_wasm, fid, instr, package, evt) {
+        if let Some(mut tmp) = handle_opcode_events(app_wasm, fid, opidx, instr, package, evt) {
             if let Some(r) = &mut res {
                 r.append(&mut tmp);
             } else {
@@ -262,6 +263,7 @@ fn handle_opcode(
 fn handle_opcode_events(
     app_wasm: &Module,
     fid: &FunctionID,
+    opidx: usize,
     instr: &Operator,
     event: &String,
     evt: &mut SimpleEvt,
@@ -1180,10 +1182,12 @@ fn handle_opcode_events(
         },
         "table.get" => if let Operator::TableGet {table} = instr {
             define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
+            loc_info.funcref_table_idx = Some(*table);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.set" => if let Operator::TableSet {table} = instr {
             define_imm0::<u32>(*table, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
+            define_resolved_fid_via_b1_lookback(app_wasm, fid, opidx, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "table.grow" => if let Operator::TableGrow {table} = instr {
@@ -1793,10 +1797,12 @@ fn handle_opcode_events(
         },
         "call_ref" => if let Operator::CallRef {type_index} = instr {
             define_imm0::<u32>(*type_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
+            define_resolved_fid_via_b1_lookback(app_wasm, fid, opidx, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "return_call_ref" => if let Operator::ReturnCallRef {type_index} = instr {
             define_imm0::<u32>(*type_index, DataType::U32, &Value::gen_u32, &mut loc_info, all_params);
+            define_resolved_fid_via_b1_lookback(app_wasm, fid, opidx, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "ref.as_non_null" => if let Operator::RefAsNonNull = instr {
@@ -1913,6 +1919,50 @@ fn define_imm0<T>(
 
 fn define_imm_n(n: u32, val: Option<Value>, loc_info: &mut LocInfo) {
     loc_info.static_data.insert(format!("imm{n}"), val);
+}
+
+/// If the instruction at `opidx - 1` in the body of `fid` is `ref.func $N`,
+/// return `Some(N)`. Otherwise `None`.
+fn prev_ref_func_fid(app_wasm: &Module, fid: &FunctionID, opidx: usize) -> Option<u32> {
+    if opidx == 0 {
+        return None;
+    }
+    let local_func = app_wasm.functions.get(*fid).unwrap_local().ok()?;
+    if let Operator::RefFunc { function_index } =
+        local_func.body.instructions.get_ops().get(opidx - 1)?
+    {
+        Some(*function_index)
+    } else {
+        None
+    }
+}
+
+/// Bind `resolved_fid` for events whose funcref came in on the stack
+/// (`table.set`, `call_ref`, `return_call_ref`). Recovers the fid via
+/// single-instruction lookback for a preceding `ref.func`; otherwise binds the
+/// `UNKNOWN_FID` sentinel. No-ops if no probe references `resolved_fid`.
+fn define_resolved_fid_via_b1_lookback(
+    app_wasm: &Module,
+    fid: &FunctionID,
+    opidx: usize,
+    loc_info: &mut LocInfo,
+    all_params: &[WhammParam],
+) {
+    if !all_params.iter().any(|p| p.name == "resolved_fid") {
+        return;
+    }
+    let val = prev_ref_func_fid(app_wasm, fid, opidx)
+        .map(|n| n as i32)
+        .unwrap_or(UNKNOWN_FID);
+    loc_info.static_data.insert(
+        "resolved_fid".to_string(),
+        Some(Value::Number {
+            val: NumLit::I32 { val },
+            ty: DataType::I32,
+            token: String::new(),
+            fmt: NumFmt::NA,
+        }),
+    );
 }
 
 fn bind_vars_memarg(
