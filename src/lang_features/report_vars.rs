@@ -1724,12 +1724,16 @@ fn get_wasm_ty_str(wasm_ty: &WirmType) -> String {
         WirmType::I31 => "i31",
         WirmType::I31Null => "i31_null",
         WirmType::Exn => "exn",
+        WirmType::ExnNull => "exn_null",
         WirmType::NoExn => "noexn",
+        WirmType::NoExnNull => "noexn_null",
         WirmType::Module { .. } => "module",
         WirmType::RecGroup(_) => "recgroup",
         WirmType::CoreTypeId(_) => "core_type_id",
         WirmType::Cont => "cont",
+        WirmType::ContNull => "cont_null",
         WirmType::NoCont => "nocont",
+        WirmType::NoContNull => "nocont_null",
     };
 
     s.to_string()

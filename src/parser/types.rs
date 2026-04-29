@@ -308,7 +308,9 @@ impl DataType {
             WirmType::FuncRef => DataType::FuncRef,
             WirmType::FuncRefNull
             | WirmType::Cont
+            | WirmType::ContNull
             | WirmType::NoCont
+            | WirmType::NoContNull
             | WirmType::ExternRef
             | WirmType::ExternRefNull
             | WirmType::Any
@@ -328,7 +330,9 @@ impl DataType {
             | WirmType::I31
             | WirmType::I31Null
             | WirmType::Exn
+            | WirmType::ExnNull
             | WirmType::NoExn
+            | WirmType::NoExnNull
             | WirmType::Module { .. }
             | WirmType::RecGroup(_)
             | WirmType::CoreTypeId(_)

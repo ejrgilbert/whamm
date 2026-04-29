@@ -152,3 +152,6 @@ jobs:
 
       - name: Run tests
         run: cargo test --locked --all-features --verbose
+
+      - name: Run tests (release)
+        run: cargo test --release --locked --all-features --verbose
