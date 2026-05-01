@@ -438,8 +438,10 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
     ///   local.set(funcref_local) -- save funcref to a new local
     /// Then wire up the symbol table so `target_funcref` points to the new local.
     pub(crate) fn derive_target_funcref(&mut self, table_idx: u32) -> bool {
-        // Find the local address for arg0 (table_entry_idx) from saved args
-        let arg0_addr = if let Some((_, rec_id)) = self.instr_created_args.first() {
+        // arg0 is the top-of-stack value (popped first), which for call_indirect /
+        // return_call_indirect is the table entry index. `instr_created_args` is
+        // built bottom-to-top (see `save_stack_vals`), so arg0 is the LAST entry.
+        let arg0_addr = if let Some((_, rec_id)) = self.instr_created_args.last() {
             let rec = self.table.get_record(*rec_id);
             if let Some(Record::Var {
                 addr: Some(addrs), ..

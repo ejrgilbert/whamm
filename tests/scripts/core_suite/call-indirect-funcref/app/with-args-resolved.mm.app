@@ -1,0 +1,1 @@
+tests/apps/core_suite/handwritten/call_indirect_with_args.wasm
