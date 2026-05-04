@@ -1662,12 +1662,12 @@ pub struct FnId {
 #[derive(Clone, Debug)]
 pub struct Fn {
     // Whether this function can be used in a DeclInit of a probe-local report
-    pub(crate) runnable_in_report_decl_init: bool,
-    pub(crate) def: Definition,
-    pub(crate) name: FnId,
-    pub(crate) params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
-    pub(crate) results: DataType,
-    pub(crate) body: Block,
+    pub runnable_in_report_decl_init: bool,
+    pub def: Definition,
+    pub name: FnId,
+    pub params: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
+    pub results: DataType,
+    pub body: Block,
 }
 impl Fn {
     pub fn print(&self, buffer: &mut Buffer) {

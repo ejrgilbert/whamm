@@ -1,4 +1,4 @@
 mod core;
-mod helper;
+pub(crate) mod helper;
 mod paper_eval;
 mod wast;

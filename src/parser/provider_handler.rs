@@ -320,8 +320,8 @@ impl PrintInfo for ProviderDef {
 
 #[derive(Debug)]
 pub struct PackageDef {
-    def: Def,
-    events: Vec<EventDef>,
+    pub def: Def,
+    pub events: Vec<EventDef>,
 }
 impl CheckedFrom<PackageYml> for PackageDef {
     fn from(value: PackageYml) -> Result<Self, Box<ErrorGen>> {
@@ -453,8 +453,8 @@ impl PrintInfo for PackageDef {
 
 #[derive(Debug)]
 pub struct EventDef {
-    def: Def,
-    modes: Vec<ModeDef>,
+    pub def: Def,
+    pub modes: Vec<ModeDef>,
 }
 impl CheckedFrom<EventYml> for EventDef {
     fn from(value: EventYml) -> Result<Self, Box<ErrorGen>> {
@@ -636,9 +636,9 @@ impl ModeKind {
 
 #[derive(Clone, Debug)]
 pub struct ModeDef {
-    def: Def,
-    alias: Option<String>,
-    kind: ModeKind,
+    pub def: Def,
+    pub alias: Option<String>,
+    pub kind: ModeKind,
 }
 impl CheckedFrom<ModeYml> for ModeDef {
     fn from(value: ModeYml) -> Result<Self, Box<ErrorGen>> {

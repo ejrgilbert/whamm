@@ -298,9 +298,11 @@ pub(crate) fn run_core_suite(
     }
 }
 const MAX_EXP_OUT_SIZE: u64 = 50_000; // 50 KB
-enum ExpectedOutput {
+pub(crate) enum ExpectedOutput {
     Hash(String),
     Str(String),
+    /// Skip the output comparison entirely — only assert that compile + run succeed.
+    None,
 }
 impl ExpectedOutput {
     pub fn hash(file: &PathBuf) -> Self {
@@ -373,7 +375,7 @@ pub(crate) fn run_script(
     Ok(())
 }
 
-fn run_testcase_rewriting(
+pub(crate) fn run_testcase_rewriting(
     script: &Path,
     app_path_str: &str,
     user_libs: Vec<String>,
@@ -451,11 +453,12 @@ fn run_testcase_rewriting(
                 let hash = file_hash(&PathBuf::from(out_file));
                 assert_eq!(hash, exp_hash);
             }
+            ExpectedOutput::None => {}
         };
     }
 }
 
-fn run_testcase_wei(
+pub(crate) fn run_testcase_wei(
     script: &Path,
     app_path_str: &str,
     user_libs: Vec<String>,
@@ -549,6 +552,7 @@ fn run_testcase_wei(
                 let hash = file_hash(&PathBuf::from(out_file));
                 assert_eq!(hash, exp_hash);
             }
+            ExpectedOutput::None => {}
         };
     }
 }
