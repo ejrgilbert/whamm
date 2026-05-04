@@ -58,7 +58,17 @@ pub fn run_with_path(
     config: Config,
 ) -> Result<Vec<u8>, Box<ErrorGen>> {
     let buff = if !config.as_monitor_module {
-        let raw = std::fs::read(&app_wasm_path).unwrap();
+        let raw = match std::fs::read(&app_wasm_path) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                let mut err = ErrorGen::new(script_path.clone(), "".to_string(), max_errors);
+                err.add_instr_error(&format!(
+                    "Wasm application path not found {}: {}",
+                    app_wasm_path, e
+                ));
+                return Err(Box::new(err));
+            }
+        };
         match wat::parse_bytes(&raw) {
             Ok(bytes) => bytes.into_owned(),
             Err(error) => {
