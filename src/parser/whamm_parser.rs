@@ -103,15 +103,28 @@ pub fn print_info(
 pub fn parse_script(def_yamls: &Vec<String>, script: &String, err: &mut ErrorGen) -> Option<Whamm> {
     err.set_script_text(script.to_owned());
 
+    let prov_def = match yml_to_providers(def_yamls) {
+        Ok(d) => d,
+        Err(mut e) => {
+            e.report();
+            exit(1);
+        }
+    };
+    assert!(!prov_def.is_empty());
+
+    let _t_pest = std::time::Instant::now();
     let res = WhammParser::parse(Rule::script, script);
+    eprintln!("[breadth-prof]   pest WhammParser::parse: {:?}", _t_pest.elapsed());
     match res {
         Ok(mut pairs) => {
+            let _t_to_ast = std::time::Instant::now();
             let res = to_ast(
-                def_yamls,
+                &prov_def,
                 // inner of script
                 pairs.next().unwrap(),
                 err,
             );
+            eprintln!("[breadth-prof]   to_ast (incl. yml_to_providers x N): {:?}", _t_to_ast.elapsed());
 
             match res {
                 Ok(ast) => Some(ast),
@@ -133,7 +146,7 @@ pub fn parse_script(def_yamls: &Vec<String>, script: &String, err: &mut ErrorGen
 // ====================
 
 fn to_ast(
-    def_yamls: &Vec<String>,
+    prov_def: &[ProviderDef],
     pair: Pair<Rule>,
     err: &mut ErrorGen,
 ) -> Result<Whamm, Box<Error<Rule>>> {
@@ -143,7 +156,7 @@ fn to_ast(
 
     match pair.as_rule() {
         Rule::script => {
-            if let Err(mut e) = parser_entry_point(def_yamls, &mut whamm, script_count, pair, err) {
+            if let Err(mut e) = parser_entry_point(prov_def, &mut whamm, script_count, pair, err) {
                 e.report();
                 exit(1);
             }
@@ -166,17 +179,15 @@ fn to_ast(
 // =======================
 
 fn parser_entry_point(
-    def_yamls: &Vec<String>,
+    prov_def: &[ProviderDef],
     whamm: &mut Whamm,
     script_count: usize,
     pair: Pair<Rule>,
     err: &mut ErrorGen,
 ) -> Result<(), Box<ErrorGen>> {
-    let def = yml_to_providers(def_yamls)?;
-    assert!(!def.is_empty());
     match pair.as_rule() {
         Rule::script => {
-            handle_script(def_yamls, whamm, pair, err)?;
+            handle_script(prov_def, whamm, pair, err)?;
         }
         Rule::lib_import => handle_lib_import(whamm, script_count, pair),
         Rule::if_stmt => {
@@ -186,7 +197,7 @@ fn parser_entry_point(
             handle_global_statements(whamm, script_count, pair, err);
         }
         Rule::probe_def => {
-            handle_probe_def(whamm, &def, script_count, pair, err);
+            handle_probe_def(whamm, prov_def, script_count, pair, err);
         }
         Rule::EOI => {}
         Rule::fn_def => {
@@ -211,7 +222,7 @@ fn parser_entry_point(
 }
 
 pub fn handle_script(
-    def_yamls: &Vec<String>,
+    prov_def: &[ProviderDef],
     whamm: &mut Whamm,
     pair: Pair<Rule>,
     err: &mut ErrorGen,
@@ -220,7 +231,7 @@ pub fn handle_script(
     let new_script_count = whamm.add_script(base_script);
 
     for p in pair.into_inner() {
-        parser_entry_point(def_yamls, whamm, new_script_count, p, err)?;
+        parser_entry_point(prov_def, whamm, new_script_count, p, err)?;
     }
     Ok(())
 }
@@ -270,13 +281,17 @@ pub fn handle_probe_def(
     pair: Pair<Rule>,
     err: &mut ErrorGen,
 ) {
+    let __prof_t_total = std::time::Instant::now();
     let mut pair = pair.into_inner();
     let rule_rule = pair.next().unwrap();
     // Get out the rule info
+    let __prof_t_rule = std::time::Instant::now();
     let probe_rule = handle_probe_rule(rule_rule, err);
+    let __prof_d_rule = __prof_t_rule.elapsed();
 
     // Get out the probe predicate/body contents
     let next = pair.next();
+    let __prof_t_pred_body = std::time::Instant::now();
     let (this_predicate, this_body) = match next {
         Some(mut n) => {
             let this_predicate = if matches!(n.as_rule(), Rule::predicate) {
@@ -310,10 +325,32 @@ pub fn handle_probe_def(
         }
         None => (None, None),
     };
+    let __prof_d_pred_body = __prof_t_pred_body.elapsed();
 
     // Add probe definition to the script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
+    let __prof_t_add = std::time::Instant::now();
     script.add_probe(&probe_rule, prov_def, this_predicate, this_body, err);
+    let __prof_d_add = __prof_t_add.elapsed();
+    unsafe {
+        static mut N: u64 = 0;
+        static mut T_TOTAL: std::time::Duration = std::time::Duration::ZERO;
+        static mut T_RULE: std::time::Duration = std::time::Duration::ZERO;
+        static mut T_PB: std::time::Duration = std::time::Duration::ZERO;
+        static mut T_ADD: std::time::Duration = std::time::Duration::ZERO;
+        N += 1;
+        let __this_total = __prof_t_total.elapsed();
+        T_TOTAL += __this_total;
+        T_RULE += __prof_d_rule;
+        T_PB += __prof_d_pred_body;
+        T_ADD += __prof_d_add;
+        if N % 100 == 0 || N == 1 {
+            eprintln!(
+                "[breadth-prof]   handle_probe_def #{} this_total={:?} cum_total={:?} cum_rule={:?} cum_pred+body={:?} cum_add={:?}",
+                N, __this_total, T_TOTAL, T_RULE, T_PB, T_ADD,
+            );
+        }
+    }
 }
 
 pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, err: &mut ErrorGen) {

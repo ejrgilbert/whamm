@@ -186,13 +186,24 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
         let mut is_success = true;
         let mut first_instr = true;
         let mut match_state = MatchState::default();
+        let mut __prof_total_get_loc_info = std::time::Duration::default();
+        let mut __prof_total_inject = std::time::Duration::default();
+        let mut __prof_total_fold = std::time::Duration::default();
+        let mut __prof_instr_count: u64 = 0;
+        let mut __prof_match_count: u64 = 0;
+        let mut __prof_probe_clones: u64 = 0;
+        let __prof_overall = std::time::Instant::now();
         while first_instr || self.emitter.next_instr() {
             first_instr = false;
+            __prof_instr_count += 1;
+            let __prof_t0 = std::time::Instant::now();
+            let __loc_info_opt = self.emitter
+                .get_loc_info(&mut match_state, &mut self.ast, self.err);
+            __prof_total_get_loc_info += __prof_t0.elapsed();
             // Check if any of the configured rules match this instruction in the application.
-            if let Some(loc_info) =
-                self.emitter
-                    .get_loc_info(&mut match_state, &mut self.ast, self.err)
-            {
+            if let Some(loc_info) = __loc_info_opt {
+                __prof_match_count += 1;
+                __prof_probe_clones += loc_info.probes.len() as u64;
                 // Inject a call to the on-exit flush function
                 self.is_prog_exit = loc_info.is_prog_exit;
                 if loc_info.is_prog_exit {
@@ -282,6 +293,7 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                     // Fold init_logic and body so that compiler-static bound functions
                     // (e.g. active_data_start, active_data_len) are resolved to primitives
                     // before emission.
+                    let __prof_t_fold = std::time::Instant::now();
                     {
                         if let Some((state_init, ..)) = &mut self.curr_probe {
                             crate::generator::folding::pass::fold_stmts(
@@ -306,7 +318,9 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                             self.err,
                         );
                     }
+                    __prof_total_fold += __prof_t_fold.elapsed();
 
+                    let __prof_t_inj = std::time::Instant::now();
                     if !self.config.no_bundle {
                         // since we're only supporting 'no_bundle' when 'no_body' and 'no_pred' are also true
                         // we can simplify the check to just not emitting the probe altogether
@@ -318,6 +332,7 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                             loc_info.funcref_table_idx,
                         );
                     }
+                    __prof_total_inject += __prof_t_inj.elapsed();
 
                     // Now that we've emitted this probe, reset the symbol table's static/dynamic
                     // data defined for this instr
@@ -325,6 +340,16 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                 }
             };
         }
+        eprintln!(
+            "[breadth-prof]   instr.run: instrs={} matches={} probe_clones={} get_loc_info={:?} fold={:?} inject={:?} loop_total={:?}",
+            __prof_instr_count,
+            __prof_match_count,
+            __prof_probe_clones,
+            __prof_total_get_loc_info,
+            __prof_total_fold,
+            __prof_total_inject,
+            __prof_overall.elapsed(),
+        );
         // After the main probe-matching pass, walk the module once more to
         // keep funcref shadow tables consistent with runtime mutations
         // (table.set/init/copy/fill). Only does work for tables that the main

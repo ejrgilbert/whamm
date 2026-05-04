@@ -1171,6 +1171,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     }
 
     fn visit_probe(&mut self, probe: &mut Probe) -> Option<DataType> {
+        let __prof_t = std::time::Instant::now();
         assert!(self.table.enter_named_scope(&probe.kind.name())); // enter mode scope
         assert!(self.table.enter_named_scope(&probe.scope_id.to_string())); // enter probe scope
         self.rule_tracker.push(&format!(":{}", probe.kind.name()));
@@ -1202,6 +1203,17 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         self.table.exit_scope(); // exit the mode scope
         self.table.exit_scope(); // exit the probe scope
         self.rule_tracker.pop();
+        unsafe {
+            static mut PROBE_IDX: u64 = 0;
+            PROBE_IDX += 1;
+            if PROBE_IDX % 50 == 0 {
+                eprintln!(
+                    "[breadth-prof]     typecheck visit_probe #{} elapsed_for_this_probe={:?}",
+                    PROBE_IDX,
+                    __prof_t.elapsed()
+                );
+            }
+        }
         None
     }
 

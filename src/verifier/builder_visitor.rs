@@ -822,6 +822,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
     }
 
     fn visit_probe(&mut self, probe: &mut Probe) {
+        let __prof_t = std::time::Instant::now();
         self.add_probe(probe);
         probe
             .def
@@ -878,6 +879,17 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
         self.table.exit_scope(); // exit the probe scope
         self.table.exit_scope(); // exit the mode scope
         self.curr_probe = None;
+        unsafe {
+            static mut PROBE_IDX: u64 = 0;
+            PROBE_IDX += 1;
+            if PROBE_IDX % 50 == 0 {
+                eprintln!(
+                    "[breadth-prof]     stbuilder visit_probe #{} elapsed_for_this_probe={:?}",
+                    PROBE_IDX,
+                    __prof_t.elapsed()
+                );
+            }
+        }
     }
 
     fn visit_fn(&mut self, f: &mut Fn) {
