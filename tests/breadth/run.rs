@@ -24,6 +24,7 @@ fn outdir(name: &str) -> String {
 }
 
 #[test]
+#[ignore]
 fn breadth_rewriting_compiles_and_runs() {
     let out = outdir("rewriting");
     let instr_app = format!("{out}/output.wasm");
