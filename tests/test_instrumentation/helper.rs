@@ -427,6 +427,10 @@ pub(crate) fn run_testcase_rewriting(
         .arg("function-references=y")
         .arg("--wasm")
         .arg("gc=y")
+        .arg("--wasm")
+        .arg("shared-memory=y")
+        .arg("--wasm")
+        .arg("exceptions=y")
         .arg(instr_app_path)
         .output()
         .expect("failed to run on wasmtime");

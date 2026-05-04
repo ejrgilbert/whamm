@@ -1,9 +1,9 @@
 // End-to-end smoke tests for the breadth scripts.
 //
-// These currently point at an existing handwritten test app (`branches.wat` →
-// `branches.wasm`) just to exercise the compile + run pipeline against both backends.
-// TODO: replace with a hand-written `breadth_target.wat` that exercises every YAML
-// event so the breadth check is actually exhaustive.
+// `breadth_target.wat` is intentionally narrow today and grows over time — see the
+// TODO list at the bottom of the wat. As each opcode family is added there, this
+// test still just asserts the script compiles and the instrumented program runs;
+// the breadth check becomes more exhaustive automatically.
 
 use std::path::Path;
 
@@ -14,8 +14,7 @@ use crate::test_instrumentation::helper::{
 const BREADTH_MM: &str = "tests/breadth/breadth.mm";
 const BREADTH_WEI_MM: &str = "tests/breadth/breadth_wei.mm";
 
-// TODO: swap for tests/breadth/breadth_target.wasm once the hand-written breadth wat lands.
-const TARGET_APP: &str = "tests/apps/core_suite/handwritten/branches.wasm";
+const TARGET_APP: &str = "tests/breadth/breadth_target.wasm";
 
 fn outdir(name: &str) -> String {
     let dir = format!("output/tests/breadth/{name}");
