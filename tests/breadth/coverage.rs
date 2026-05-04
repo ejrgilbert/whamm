@@ -46,15 +46,16 @@ fn breadth_target_covers_every_opcode_probe() {
 fn collect_probed_opcodes(paths: &[&str]) -> BTreeSet<String> {
     let mut out = BTreeSet::new();
     for path in paths {
-        let src = fs::read_to_string(path)
-            .unwrap_or_else(|e| panic!("read {}: {}", path, e));
+        let src = fs::read_to_string(path).unwrap_or_else(|e| panic!("read {}: {}", path, e));
         for line in src.lines() {
             let line = line.trim_start();
             let Some(rest) = line.strip_prefix("wasm:opcode:") else {
                 continue;
             };
             // rest looks like `<op>:<mode> { ... }` — opcode is up to the next colon.
-            let Some(colon) = rest.find(':') else { continue };
+            let Some(colon) = rest.find(':') else {
+                continue;
+            };
             out.insert(rest[..colon].to_string());
         }
     }
