@@ -719,6 +719,7 @@ pub struct BoundVar {
     pub ty: DataType,
     pub lifetime: Definition,
     pub derived_from: Option<Expr>,
+    pub engine_only: bool,
 }
 impl CheckedFrom<BoundVarYml> for BoundVar {
     fn from(value: BoundVarYml) -> Result<Self, Box<ErrorGen>> {
@@ -734,6 +735,7 @@ impl CheckedFrom<BoundVarYml> for BoundVar {
             ty,
             derived_from,
             lifetime: Definition::from(value.lifetime.as_str()),
+            engine_only: value.engine_only.unwrap_or(false),
         })
     }
 }
@@ -751,10 +753,23 @@ impl BoundVar {
         *tabs += 1;
         white(
             false,
-            format!("\n{}{}\n", " ".repeat(*tabs * 4), self.docs),
+            format!(
+                "\n{}{}{}\n",
+                " ".repeat(*tabs * 4),
+                engine_only_prefix(self.engine_only),
+                self.docs
+            ),
             buff,
         );
         *tabs -= 1;
+    }
+}
+
+fn engine_only_prefix(engine_only: bool) -> &'static str {
+    if engine_only {
+        "(ONLY SUPPORTED IN ENGINE INTERFACE) "
+    } else {
+        ""
     }
 }
 
@@ -769,6 +784,7 @@ where
 pub struct BoundFunc {
     pub func: WhammFn,
     pub req_args: StackReq, // TODO: Remove this...it's wasm opcode specific...
+    pub engine_only: bool,
     docs: String,
 }
 impl CheckedFrom<BoundFuncYml> for BoundFunc {
@@ -819,6 +835,7 @@ impl CheckedFrom<BoundFuncYml> for BoundFunc {
                 body: Block::default(),
             },
             req_args: StackReq::new(value.req_args),
+            engine_only: value.engine_only.unwrap_or(false),
             docs: value.docs.to_owned(),
         })
     }
@@ -850,7 +867,12 @@ impl BoundFunc {
         *tabs += 1;
         white(
             false,
-            format!("{}{}\n", " ".repeat(*tabs * 4), self.docs),
+            format!(
+                "{}{}{}\n",
+                " ".repeat(*tabs * 4),
+                engine_only_prefix(self.engine_only),
+                self.docs
+            ),
             buffer,
         );
         *tabs -= 1;
@@ -1078,6 +1100,8 @@ struct BoundVarYml {
     ty: String,
     derived_from: Option<String>,
     lifetime: String,
+    #[serde(default)]
+    engine_only: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1088,6 +1112,8 @@ struct BoundFuncYml {
     req_args: i32, // TODO: Remove this...it's wasm opcode specific...
     docs: String,
     lifetime: String,
+    #[serde(default)]
+    engine_only: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

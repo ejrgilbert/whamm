@@ -6,7 +6,8 @@ providers:
         type: i32
         derived_from: null
         lifetime: static
-        docs: (ONLY SUPPORTED IN ENGINE INTERFACE) The ID of the dynamically injected probe.
+        engine_only: true
+        docs: The ID of the dynamically injected probe.
       - name: fid
         type: u32
         derived_from: null

@@ -2128,6 +2128,7 @@ impl Whamm {
             ty: DataType::U32,
             lifetime: Definition::CompilerStatic,
             derived_from: None,
+            engine_only: false,
         }
     }
 
