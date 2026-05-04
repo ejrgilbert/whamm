@@ -1,9 +1,4 @@
 // End-to-end smoke tests for the breadth scripts.
-//
-// `breadth_target.wat` is intentionally narrow today and grows over time — see the
-// TODO list at the bottom of the wat. As each opcode family is added there, this
-// test still just asserts the script compiles and the instrumented program runs;
-// the breadth check becomes more exhaustive automatically.
 
 use std::path::Path;
 
