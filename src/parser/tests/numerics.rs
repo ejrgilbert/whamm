@@ -1,5 +1,6 @@
 #![allow(clippy::type_complexity)]
 use crate::common::error::WhammError;
+use crate::parser::line_index::LineIndex;
 use crate::parser::tests::setup_logger;
 use crate::parser::types::{Expr, NumFmt, NumLit, Rule, Value, WhammParser};
 use crate::parser::whamm_parser::{handle_float, handle_int};
@@ -296,11 +297,14 @@ fn handle_unexp_pass(expr: NumLit, token: &str) {
 fn call_parser(
     parse_rule: Rule,
     token: &str,
-    handler: &dyn Fn(Pair<Rule>) -> Result<Expr, Vec<WhammError>>,
+    handler: &dyn Fn(Pair<Rule>, &LineIndex) -> Result<Expr, Vec<WhammError>>,
 ) -> Result<Expr, Vec<WhammError>> {
     let parse_res = WhammParser::parse(parse_rule, token);
     match parse_res {
-        Ok(mut pairs) => handler(pairs.next().unwrap()),
+        Ok(mut pairs) => {
+            let line_idx = LineIndex::new(token);
+            handler(pairs.next().unwrap(), &line_idx)
+        }
         Err(e) => {
             error!("Parsing the number caused errors: {token}\n{:?}", e);
             panic!();
@@ -311,11 +315,14 @@ fn call_parser(
 fn fail_parser(
     parse_rule: Rule,
     token: &str,
-    handler: &dyn Fn(Pair<Rule>) -> Result<Expr, Vec<WhammError>>,
+    handler: &dyn Fn(Pair<Rule>, &LineIndex) -> Result<Expr, Vec<WhammError>>,
 ) -> Result<Expr, Vec<WhammError>> {
     let parse_res = WhammParser::parse(parse_rule, token);
     match parse_res {
-        Ok(mut pairs) => handler(pairs.next().unwrap()),
+        Ok(mut pairs) => {
+            let line_idx = LineIndex::new(token);
+            handler(pairs.next().unwrap(), &line_idx)
+        }
         Err(_) => Err(vec![]),
     }
 }

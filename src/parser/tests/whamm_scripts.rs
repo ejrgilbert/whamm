@@ -630,11 +630,11 @@ pub fn get_test_scripts(sub_dir: &str) -> Vec<String> {
     scripts
 }
 
-fn is_valid_script(script: &str, def_yamls: &Vec<String>, err: &mut ErrorGen) -> bool {
+fn is_valid_script(script: &str, def_yamls: &[String], err: &mut ErrorGen) -> bool {
     parse_script(def_yamls, &script.to_string(), err).is_some() && !err.has_errors
 }
 
-pub fn run_test_on_valid_list(scripts: Vec<String>, def_yamls: &Vec<String>, err: &mut ErrorGen) {
+pub fn run_test_on_valid_list(scripts: Vec<String>, def_yamls: &[String], err: &mut ErrorGen) {
     for script in scripts {
         println!("Parsing: {}", script);
 

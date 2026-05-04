@@ -1,5 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{long_line, magenta, white};
+use crate::parser::line_index::LineIndex;
 use crate::parser::provider_handler::{get_matches, yml_to_providers, PrintInfo, ProviderDef};
 use crate::parser::types;
 use crate::parser::types::Statement::LibImport;
@@ -28,6 +29,7 @@ pub fn print_info(
     let def = yml_to_providers(def_yamls)?;
     assert!(!def.is_empty());
     err.set_script_text(rule.to_owned());
+    let line_idx = LineIndex::new(&rule);
 
     let writer = BufferWriter::stdout(ColorChoice::Always);
     let mut whamm_buffer = writer.buffer();
@@ -63,7 +65,7 @@ pub fn print_info(
     match res {
         Ok(mut pairs) => {
             // Create the probe rule from the input string
-            let probe_rule = handle_probe_rule(pairs.next().unwrap(), err);
+            let probe_rule = handle_probe_rule(pairs.next().unwrap(), &line_idx, err);
 
             // Print the information for the passed probe rule
             let matches = get_matches(&probe_rule, &def, err);
@@ -100,7 +102,7 @@ pub fn print_info(
     Ok(())
 }
 
-pub fn parse_script(def_yamls: &Vec<String>, script: &String, err: &mut ErrorGen) -> Option<Whamm> {
+pub fn parse_script(def_yamls: &[String], script: &String, err: &mut ErrorGen) -> Option<Whamm> {
     err.set_script_text(script.to_owned());
 
     let prov_def = match yml_to_providers(def_yamls) {
@@ -112,19 +114,17 @@ pub fn parse_script(def_yamls: &Vec<String>, script: &String, err: &mut ErrorGen
     };
     assert!(!prov_def.is_empty());
 
-    let _t_pest = std::time::Instant::now();
+    let line_idx = LineIndex::new(script);
     let res = WhammParser::parse(Rule::script, script);
-    eprintln!("[breadth-prof]   pest WhammParser::parse: {:?}", _t_pest.elapsed());
     match res {
         Ok(mut pairs) => {
-            let _t_to_ast = std::time::Instant::now();
             let res = to_ast(
                 &prov_def,
+                &line_idx,
                 // inner of script
                 pairs.next().unwrap(),
                 err,
             );
-            eprintln!("[breadth-prof]   to_ast (incl. yml_to_providers x N): {:?}", _t_to_ast.elapsed());
 
             match res {
                 Ok(ast) => Some(ast),
@@ -147,6 +147,7 @@ pub fn parse_script(def_yamls: &Vec<String>, script: &String, err: &mut ErrorGen
 
 fn to_ast(
     prov_def: &[ProviderDef],
+    line_idx: &LineIndex,
     pair: Pair<Rule>,
     err: &mut ErrorGen,
 ) -> Result<Whamm, Box<Error<Rule>>> {
@@ -156,7 +157,9 @@ fn to_ast(
 
     match pair.as_rule() {
         Rule::script => {
-            if let Err(mut e) = parser_entry_point(prov_def, &mut whamm, script_count, pair, err) {
+            if let Err(mut e) =
+                parser_entry_point(prov_def, line_idx, &mut whamm, script_count, pair, err)
+            {
                 e.report();
                 exit(1);
             }
@@ -164,7 +167,7 @@ fn to_ast(
         rule => {
             err.parse_error(
                 Some(UNEXPECTED_ERR_MSG.to_string()),
-                Some(LineColLocation::from(pair.as_span())),
+                Some(line_idx.linecol(pair.as_span())),
                 vec![Rule::script],
                 vec![rule],
             );
@@ -180,6 +183,7 @@ fn to_ast(
 
 fn parser_entry_point(
     prov_def: &[ProviderDef],
+    line_idx: &LineIndex,
     whamm: &mut Whamm,
     script_count: usize,
     pair: Pair<Rule>,
@@ -187,26 +191,26 @@ fn parser_entry_point(
 ) -> Result<(), Box<ErrorGen>> {
     match pair.as_rule() {
         Rule::script => {
-            handle_script(prov_def, whamm, pair, err)?;
+            handle_script(prov_def, line_idx, whamm, pair, err)?;
         }
-        Rule::lib_import => handle_lib_import(whamm, script_count, pair),
+        Rule::lib_import => handle_lib_import(line_idx, whamm, script_count, pair),
         Rule::if_stmt => {
-            handle_global_if_stmt(whamm, script_count, pair, err);
+            handle_global_if_stmt(line_idx, whamm, script_count, pair, err);
         }
         Rule::statement => {
-            handle_global_statements(whamm, script_count, pair, err);
+            handle_global_statements(line_idx, whamm, script_count, pair, err);
         }
         Rule::probe_def => {
-            handle_probe_def(whamm, prov_def, script_count, pair, err);
+            handle_probe_def(line_idx, whamm, prov_def, script_count, pair, err);
         }
         Rule::EOI => {}
         Rule::fn_def => {
-            handle_fn_def(whamm, script_count, pair, err);
+            handle_fn_def(line_idx, whamm, script_count, pair, err);
         }
         rule => {
             err.parse_error(
                 None,
-                Some(LineColLocation::from(pair.as_span())),
+                Some(line_idx.linecol(pair.as_span())),
                 vec![
                     Rule::script,
                     Rule::statement,
@@ -223,6 +227,7 @@ fn parser_entry_point(
 
 pub fn handle_script(
     prov_def: &[ProviderDef],
+    line_idx: &LineIndex,
     whamm: &mut Whamm,
     pair: Pair<Rule>,
     err: &mut ErrorGen,
@@ -231,12 +236,17 @@ pub fn handle_script(
     let new_script_count = whamm.add_script(base_script);
 
     for p in pair.into_inner() {
-        parser_entry_point(prov_def, whamm, new_script_count, p, err)?;
+        parser_entry_point(prov_def, line_idx, whamm, new_script_count, p, err)?;
     }
     Ok(())
 }
 
-pub fn handle_lib_import(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>) {
+pub fn handle_lib_import(
+    line_idx: &LineIndex,
+    whamm: &mut Whamm,
+    script_count: usize,
+    pair: Pair<Rule>,
+) {
     // Add lib import to the script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
 
@@ -244,7 +254,7 @@ pub fn handle_lib_import(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule
     let lib_import = LibImport {
         lib_name: lib_name.as_str().parse().unwrap(),
         loc: Some(Location {
-            line_col: LineColLocation::from(lib_name.as_span()),
+            line_col: line_idx.linecol(lib_name.as_span()),
             path: None,
         }),
     };
@@ -253,6 +263,7 @@ pub fn handle_lib_import(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule
 }
 
 pub fn handle_global_if_stmt(
+    line_idx: &LineIndex,
     whamm: &mut Whamm,
     script_count: usize,
     pair: Pair<Rule>,
@@ -260,10 +271,11 @@ pub fn handle_global_if_stmt(
 ) {
     // Add global if stmt to the script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
-    script.add_global_stmts(handle_if(pair, err));
+    script.add_global_stmts(handle_if(pair, line_idx, err));
 }
 
 pub fn handle_global_statements(
+    line_idx: &LineIndex,
     whamm: &mut Whamm,
     script_count: usize,
     pair: Pair<Rule>,
@@ -271,31 +283,28 @@ pub fn handle_global_statements(
 ) {
     // Add global statements to the script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
-    script.add_global_stmts(handle_stmts(&mut pair.into_inner(), err));
+    script.add_global_stmts(handle_stmts(&mut pair.into_inner(), line_idx, err));
 }
 
 pub fn handle_probe_def(
+    line_idx: &LineIndex,
     whamm: &mut Whamm,
     prov_def: &[ProviderDef],
     script_count: usize,
     pair: Pair<Rule>,
     err: &mut ErrorGen,
 ) {
-    let __prof_t_total = std::time::Instant::now();
     let mut pair = pair.into_inner();
     let rule_rule = pair.next().unwrap();
     // Get out the rule info
-    let __prof_t_rule = std::time::Instant::now();
-    let probe_rule = handle_probe_rule(rule_rule, err);
-    let __prof_d_rule = __prof_t_rule.elapsed();
+    let probe_rule = handle_probe_rule(rule_rule, line_idx, err);
 
     // Get out the probe predicate/body contents
     let next = pair.next();
-    let __prof_t_pred_body = std::time::Instant::now();
     let (this_predicate, this_body) = match next {
         Some(mut n) => {
             let this_predicate = if matches!(n.as_rule(), Rule::predicate) {
-                let res = match handle_expr(n.into_inner().next().unwrap()) {
+                let res = match handle_expr(n.into_inner().next().unwrap(), line_idx) {
                     Ok(res) => Some(res),
                     Err(errors) => {
                         let _ = err.add_errors(errors);
@@ -310,8 +319,8 @@ pub fn handle_probe_def(
             };
 
             let this_body = if matches!(n.as_rule(), Rule::block) {
-                let loc = LineColLocation::from(n.as_span());
-                let block = handle_body(&mut n.into_inner(), loc, err);
+                let loc = line_idx.linecol(n.as_span());
+                let block = handle_body(&mut n.into_inner(), loc, line_idx, err);
                 if block.is_empty() {
                     None
                 } else {
@@ -325,35 +334,19 @@ pub fn handle_probe_def(
         }
         None => (None, None),
     };
-    let __prof_d_pred_body = __prof_t_pred_body.elapsed();
 
     // Add probe definition to the script
     let script: &mut Script = whamm.scripts.get_mut(script_count).unwrap();
-    let __prof_t_add = std::time::Instant::now();
     script.add_probe(&probe_rule, prov_def, this_predicate, this_body, err);
-    let __prof_d_add = __prof_t_add.elapsed();
-    unsafe {
-        static mut N: u64 = 0;
-        static mut T_TOTAL: std::time::Duration = std::time::Duration::ZERO;
-        static mut T_RULE: std::time::Duration = std::time::Duration::ZERO;
-        static mut T_PB: std::time::Duration = std::time::Duration::ZERO;
-        static mut T_ADD: std::time::Duration = std::time::Duration::ZERO;
-        N += 1;
-        let __this_total = __prof_t_total.elapsed();
-        T_TOTAL += __this_total;
-        T_RULE += __prof_d_rule;
-        T_PB += __prof_d_pred_body;
-        T_ADD += __prof_d_add;
-        if N % 100 == 0 || N == 1 {
-            eprintln!(
-                "[breadth-prof]   handle_probe_def #{} this_total={:?} cum_total={:?} cum_rule={:?} cum_pred+body={:?} cum_add={:?}",
-                N, __this_total, T_TOTAL, T_RULE, T_PB, T_ADD,
-            );
-        }
-    }
 }
 
-pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, err: &mut ErrorGen) {
+pub fn handle_fn_def(
+    line_idx: &LineIndex,
+    whamm: &mut Whamm,
+    script_count: usize,
+    pair: Pair<Rule>,
+    err: &mut ErrorGen,
+) {
     let mut pairs = pair.into_inner();
 
     // Get the function name
@@ -361,7 +354,7 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
     let fn_id = FnId {
         name: fn_name.as_str().parse().unwrap(),
         loc: Some(Location {
-            line_col: LineColLocation::from(fn_name.as_span()),
+            line_col: line_idx.linecol(fn_name.as_span()),
             path: None,
         }),
     };
@@ -371,7 +364,9 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
     let mut next = pairs.next();
     while let Some(n) = &next {
         if matches!(n.as_rule(), Rule::param) {
-            if let Some(param) = handle_param(n.clone().into_inner(), Definition::User, err) {
+            if let Some(param) =
+                handle_param(n.clone().into_inner(), line_idx, Definition::User, err)
+            {
                 params.push(param)
             }
             next = pairs.next();
@@ -385,7 +380,7 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
         Some(pair) => {
             if !matches!(pair.as_rule(), Rule::block) {
                 next = pairs.next();
-                type_from_rule_handler(pair, err)
+                type_from_rule_handler(pair, line_idx, err)
             } else {
                 DataType::empty_tuple()
             }
@@ -396,9 +391,9 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
     // Get the function body
     let body = if let Some(n) = next {
         if matches!(n.as_rule(), Rule::block) {
-            let loc = LineColLocation::from(n.as_span());
+            let loc = line_idx.linecol(n.as_span());
             let mut pairs = n.into_inner();
-            handle_body(&mut pairs, loc, err)
+            handle_body(&mut pairs, loc, line_idx, err)
         } else {
             // If didn't match, create empty body
             Block::default()
@@ -420,13 +415,13 @@ pub fn handle_fn_def(whamm: &mut Whamm, script_count: usize, pair: Pair<Rule>, e
     });
 }
 
-fn handle_probe_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
+fn handle_probe_rule(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut ErrorGen) -> ProbeRule {
     match pair.as_rule() {
-        Rule::PROBE_RULE => probe_rule_from_rule(pair, err),
+        Rule::PROBE_RULE => probe_rule_from_rule(pair, line_idx, err),
         rule => {
             err.parse_error(
                 Some(UNEXPECTED_ERR_MSG.to_string()),
-                Some(LineColLocation::from(pair.as_span())),
+                Some(line_idx.linecol(pair.as_span())),
                 vec![Rule::PROBE_RULE],
                 vec![rule],
             );
@@ -435,15 +430,15 @@ fn handle_probe_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
     }
 }
 
-pub fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+pub fn expr_from_pair(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
     match pair.as_rule() {
-        Rule::assignment_rhs => expr_from_pair(pair.into_inner().next().unwrap()),
-        Rule::ternary => handle_ternary(pair),
-        Rule::arg => handle_arg(pair),
-        Rule::expr => handle_expr(pair),
+        Rule::assignment_rhs => expr_from_pair(pair.into_inner().next().unwrap(), line_idx),
+        Rule::ternary => handle_ternary(pair, line_idx),
+        Rule::arg => handle_arg(pair, line_idx),
+        Rule::expr => handle_expr(pair, line_idx),
         rule => Err(vec![ErrorGen::get_parse_error(
             None,
-            Some(LineColLocation::from(pair.as_span())),
+            Some(line_idx.linecol(pair.as_span())),
             vec![Rule::expr, Rule::arg, Rule::ternary],
             vec![rule],
         )]),
@@ -456,13 +451,18 @@ pub fn expr_from_pair(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
 // STATEMENTS
 
-fn handle_body(pairs: &mut Pairs<Rule>, line_col: LineColLocation, err: &mut ErrorGen) -> Block {
+fn handle_body(
+    pairs: &mut Pairs<Rule>,
+    line_col: LineColLocation,
+    line_idx: &LineIndex,
+    err: &mut ErrorGen,
+) -> Block {
     let mut stmts = vec![];
     for pair in pairs {
         let new_stmts = if matches!(pair.as_rule(), Rule::if_stmt) {
-            handle_if(pair, err)
+            handle_if(pair, line_idx, err)
         } else if matches!(pair.as_rule(), Rule::statement) {
-            handle_stmts(&mut pair.into_inner(), err)
+            handle_stmts(&mut pair.into_inner(), line_idx, err)
         } else {
             break;
         };
@@ -478,36 +478,40 @@ fn handle_body(pairs: &mut Pairs<Rule>, line_col: LineColLocation, err: &mut Err
     }
 }
 
-fn handle_stmts(pairs: &mut Pairs<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
+fn handle_stmts(
+    pairs: &mut Pairs<Rule>,
+    line_idx: &LineIndex,
+    err: &mut ErrorGen,
+) -> Vec<Statement> {
     let mut stmts = vec![];
     pairs.for_each(|p| {
-        for stmt in stmt_from_rule(p, err) {
+        for stmt in stmt_from_rule(p, line_idx, err) {
             stmts.push(stmt);
         }
     });
     stmts
 }
 
-fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
+fn stmt_from_rule(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut ErrorGen) -> Vec<Statement> {
     match pair.as_rule() {
         Rule::statement => {
             let stmt = pair.into_inner().next().unwrap();
-            stmt_from_rule(stmt, err)
+            stmt_from_rule(stmt, line_idx, err)
         }
-        Rule::decl => handle_decl(&mut pair.into_inner(), err),
-        Rule::assignment => handle_assignment(pair, err),
-        Rule::lib_call => handle_lib_call_outer(pair, err),
-        Rule::fn_call => handle_function_call_outer(pair, err),
-        Rule::incrementor => handle_incrementor(pair, err),
-        Rule::decrementor => handle_decrementor(pair, err),
-        Rule::ret => handle_ret(pair, err),
-        Rule::decl_init => handle_decl_init(pair, err),
-        Rule::if_stmt => handle_if(pair, err),
-        Rule::special_decl => handle_special_decl(pair, err),
+        Rule::decl => handle_decl(&mut pair.into_inner(), line_idx, err),
+        Rule::assignment => handle_assignment(pair, line_idx, err),
+        Rule::lib_call => handle_lib_call_outer(pair, line_idx, err),
+        Rule::fn_call => handle_function_call_outer(pair, line_idx, err),
+        Rule::incrementor => handle_incrementor(pair, line_idx, err),
+        Rule::decrementor => handle_decrementor(pair, line_idx, err),
+        Rule::ret => handle_ret(pair, line_idx, err),
+        Rule::decl_init => handle_decl_init(pair, line_idx, err),
+        Rule::if_stmt => handle_if(pair, line_idx, err),
+        Rule::special_decl => handle_special_decl(pair, line_idx, err),
         rule => {
             err.parse_error(
                 None,
-                Some(LineColLocation::from(pair.as_span())),
+                Some(line_idx.linecol(pair.as_span())),
                 vec![
                     Rule::statement,
                     Rule::decl,
@@ -527,13 +531,13 @@ fn stmt_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     }
 }
 
-fn handle_decl(pair: &mut Pairs<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
+fn handle_decl(pair: &mut Pairs<Rule>, line_idx: &LineIndex, err: &mut ErrorGen) -> Vec<Statement> {
     let var_id_rule = pair.next().unwrap();
-    let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
+    let var_id_line_col = line_idx.linecol(var_id_rule.as_span());
 
     let type_rule = pair.next().unwrap();
-    let type_line_col = LineColLocation::from(type_rule.as_span());
-    let ty = type_from_rule_handler(type_rule, err);
+    let type_line_col = line_idx.linecol(type_rule.as_span());
+    let ty = type_from_rule_handler(type_rule, line_idx, err);
 
     let name = var_id_rule.as_str().to_string();
     vec![Statement::VarDecl {
@@ -546,18 +550,18 @@ fn handle_decl(pair: &mut Pairs<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     }]
 }
 
-fn handle_assignment(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
+fn handle_assignment(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut ErrorGen) -> Vec<Statement> {
     let mut pairs = pair.into_inner();
 
     // get the target assignee
     let var_id_rule = pairs.next().unwrap();
-    let var_id_line_col = LineColLocation::from(var_id_rule.as_span());
-    let (var_id, key, is_map) = handle_lhs(var_id_rule, err);
+    let var_id_line_col = line_idx.linecol(var_id_rule.as_span());
+    let (var_id, key, is_map) = handle_lhs(var_id_rule, line_idx, err);
 
     // get the value to assign
     let val_rule = pairs.next().unwrap();
-    let val_line_col = LineColLocation::from(val_rule.as_span());
-    let val = match expr_primary(val_rule) {
+    let val_line_col = line_idx.linecol(val_rule.as_span());
+    let val = match expr_primary(val_rule, line_idx) {
         Ok(expr) => expr,
         Err(errors) => {
             let _ = err.add_errors(errors);
@@ -585,8 +589,12 @@ fn handle_assignment(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     }
 }
 
-fn handle_lib_call_outer(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
-    match handle_lib_call(pair) {
+fn handle_lib_call_outer(
+    pair: Pair<Rule>,
+    line_idx: &LineIndex,
+    err: &mut ErrorGen,
+) -> Vec<Statement> {
+    match handle_lib_call(pair, line_idx) {
         Ok(call) => {
             let call_loc = call.loc().clone();
             vec![Statement::Expr {
@@ -600,8 +608,12 @@ fn handle_lib_call_outer(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement>
         }
     }
 }
-fn handle_function_call_outer(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
-    match handle_fn_call(pair) {
+fn handle_function_call_outer(
+    pair: Pair<Rule>,
+    line_idx: &LineIndex,
+    err: &mut ErrorGen,
+) -> Vec<Statement> {
+    match handle_fn_call(pair, line_idx) {
         Ok(call) => {
             let call_loc = call.loc().clone();
             vec![Statement::Expr {
@@ -615,26 +627,40 @@ fn handle_function_call_outer(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<State
         }
     }
 }
-fn handle_incrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
+fn handle_incrementor(
+    pair: Pair<Rule>,
+    line_idx: &LineIndex,
+    err: &mut ErrorGen,
+) -> Vec<Statement> {
     vec![handle_custom_binop(
         BinOp::Add,
-        Expr::one(LineColLocation::from(pair.as_span())),
+        Expr::one(line_idx.linecol(pair.as_span())),
         pair,
+        line_idx,
         err,
     )]
 }
 
-fn handle_decrementor(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
+fn handle_decrementor(
+    pair: Pair<Rule>,
+    line_idx: &LineIndex,
+    err: &mut ErrorGen,
+) -> Vec<Statement> {
     vec![handle_custom_binop(
         BinOp::Subtract,
-        Expr::one(LineColLocation::from(pair.as_span())),
+        Expr::one(line_idx.linecol(pair.as_span())),
         pair,
+        line_idx,
         err,
     )]
 }
 
-fn handle_lhs(pair: Pair<Rule>, err: &mut ErrorGen) -> (Expr, Option<Expr>, bool) {
-    match expr_primary(pair) {
+fn handle_lhs(
+    pair: Pair<Rule>,
+    line_idx: &LineIndex,
+    err: &mut ErrorGen,
+) -> (Expr, Option<Expr>, bool) {
+    match expr_primary(pair, line_idx) {
         Ok(expr) => match expr {
             Expr::MapGet { map, key, loc } => (
                 Expr::VarId {
@@ -662,12 +688,18 @@ fn handle_lhs(pair: Pair<Rule>, err: &mut ErrorGen) -> (Expr, Option<Expr>, bool
     }
 }
 
-fn handle_custom_binop(op: BinOp, rhs: Expr, pair: Pair<Rule>, err: &mut ErrorGen) -> Statement {
-    let full_loc = LineColLocation::from(pair.as_span());
+fn handle_custom_binop(
+    op: BinOp,
+    rhs: Expr,
+    pair: Pair<Rule>,
+    line_idx: &LineIndex,
+    err: &mut ErrorGen,
+) -> Statement {
+    let full_loc = line_idx.linecol(pair.as_span());
     let mut pair = pair.into_inner();
     let var_id_rule = pair.next().unwrap();
     // get the increment target
-    let (var_id, target_key, is_map) = handle_lhs(var_id_rule, err);
+    let (var_id, target_key, is_map) = handle_lhs(var_id_rule, line_idx, err);
 
     let binop_lhs = if is_map {
         let Expr::VarId {
@@ -722,8 +754,8 @@ fn handle_custom_binop(op: BinOp, rhs: Expr, pair: Pair<Rule>, err: &mut ErrorGe
     }
 }
 
-fn handle_ret(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
-    let ret_statement_line_col: LineColLocation = LineColLocation::from(pair.as_span());
+fn handle_ret(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut ErrorGen) -> Vec<Statement> {
+    let ret_statement_line_col: LineColLocation = line_idx.linecol(pair.as_span());
 
     match pair.into_inner().next() {
         None => {
@@ -744,7 +776,7 @@ fn handle_ret(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                 }),
             }]
         }
-        Some(val) => match expr_from_pair(val) {
+        Some(val) => match expr_from_pair(val, line_idx) {
             Err(errors) => {
                 let _ = err.add_errors(errors);
                 vec![]
@@ -762,19 +794,19 @@ fn handle_ret(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     }
 }
 
-fn handle_decl_init(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
+fn handle_decl_init(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut ErrorGen) -> Vec<Statement> {
     let pair_loc = pair.as_span();
     let mut pairs = pair.into_inner();
 
     // create the decl
     let decl_pair = pairs.next().unwrap();
     let decls = match decl_pair.as_rule() {
-        Rule::special_decl => handle_special_decl(decl_pair, err),
-        Rule::decl => handle_decl(&mut decl_pair.into_inner(), err),
+        Rule::special_decl => handle_special_decl(decl_pair, line_idx, err),
+        Rule::decl => handle_decl(&mut decl_pair.into_inner(), line_idx, err),
         rule => {
             err.parse_error(
                 Some(UNEXPECTED_ERR_MSG.to_string()),
-                Some(LineColLocation::from(pair_loc)),
+                Some(line_idx.linecol(pair_loc)),
                 vec![Rule::special_decl, Rule::decl],
                 vec![rule],
             );
@@ -785,8 +817,8 @@ fn handle_decl_init(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 
     // get the assignment
     let expr_rule = pairs.next().unwrap();
-    let expr_line_col = LineColLocation::from(expr_rule.as_span());
-    match expr_from_pair(expr_rule) {
+    let expr_line_col = line_idx.linecol(expr_rule.as_span());
+    match expr_from_pair(expr_rule, line_idx) {
         Ok(expr) => {
             let loc = decl
                 .line_col()
@@ -831,12 +863,12 @@ fn handle_decl_init(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
         }
     }
 }
-fn handle_if(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
-    let if_stmt_line_col: LineColLocation = LineColLocation::from(pair.as_span());
+fn handle_if(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut ErrorGen) -> Vec<Statement> {
+    let if_stmt_line_col: LineColLocation = line_idx.linecol(pair.as_span());
     let mut pairs = pair.into_inner();
 
     // get the conditional
-    let cond = match expr_from_pair(pairs.next().unwrap()) {
+    let cond = match expr_from_pair(pairs.next().unwrap(), line_idx) {
         Ok(expr) => expr,
         Err(errors) => {
             let _ = err.add_errors(errors);
@@ -846,13 +878,13 @@ fn handle_if(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 
     // get the consequent block
     let conseq_pair = pairs.next().unwrap();
-    let line_col = LineColLocation::from(conseq_pair.as_span());
-    let conseq = handle_body(&mut conseq_pair.into_inner(), line_col, err);
+    let line_col = line_idx.linecol(conseq_pair.as_span());
+    let conseq = handle_body(&mut conseq_pair.into_inner(), line_col, line_idx, err);
 
     // get the alternate block
     match pairs.next() {
         Some(inner) => {
-            let alt = handle_alt(inner, err);
+            let alt = handle_alt(inner, line_idx, err);
             vec![Statement::If {
                 cond,
                 conseq,
@@ -884,11 +916,11 @@ fn handle_if(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     }
 }
 
-fn handle_alt(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
-    let alt_loc = LineColLocation::from(pair.as_span());
+fn handle_alt(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut ErrorGen) -> Block {
+    let alt_loc = line_idx.linecol(pair.as_span());
     match pair.as_rule() {
-        Rule::else_stmt => handle_else(pair, err),
-        Rule::elif => handle_elif(pair, err),
+        Rule::else_stmt => handle_else(pair, line_idx, err),
+        Rule::elif => handle_elif(pair, line_idx, err),
         _ => {
             err.parse_error(
                 Some("Error parsing if/else".to_string()),
@@ -901,20 +933,20 @@ fn handle_alt(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     }
 }
 
-fn handle_else(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
-    let line_col = LineColLocation::from(pair.as_span());
+fn handle_else(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut ErrorGen) -> Block {
+    let line_col = line_idx.linecol(pair.as_span());
     let mut pairs = pair.into_inner();
 
     let block = pairs.next().unwrap();
-    handle_body(&mut block.into_inner(), line_col, err)
+    handle_body(&mut block.into_inner(), line_col, line_idx, err)
 }
 
-fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
-    let alt_loc = LineColLocation::from(pair.as_span());
+fn handle_elif(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut ErrorGen) -> Block {
+    let alt_loc = line_idx.linecol(pair.as_span());
 
     // get the condition
     let mut pairs = pair.into_inner();
-    let cond = match expr_from_pair(pairs.next().unwrap()) {
+    let cond = match expr_from_pair(pairs.next().unwrap(), line_idx) {
         Ok(expr) => expr,
         Err(errors) => {
             let _ = err.add_errors(errors);
@@ -924,8 +956,13 @@ fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
 
     // get the consequent
     let inner_block_pair = pairs.next().unwrap();
-    let inner_block_loc = LineColLocation::from(inner_block_pair.as_span());
-    let inner_block = handle_body(&mut inner_block_pair.into_inner(), inner_block_loc, err);
+    let inner_block_loc = line_idx.linecol(inner_block_pair.as_span());
+    let inner_block = handle_body(
+        &mut inner_block_pair.into_inner(),
+        inner_block_loc,
+        line_idx,
+        err,
+    );
 
     let next_pair = pairs.next();
     if next_pair.is_none() {
@@ -956,7 +993,7 @@ fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     }
 
     // keep going
-    let alt = handle_alt(next_pair.unwrap(), err);
+    let alt = handle_alt(next_pair.unwrap(), line_idx, err);
     Block {
         stmts: vec![Statement::If {
             cond,
@@ -975,8 +1012,12 @@ fn handle_elif(pair: Pair<Rule>, err: &mut ErrorGen) -> Block {
     }
 }
 
-fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
-    let line_col = LineColLocation::from(pair.as_span());
+fn handle_special_decl(
+    pair: Pair<Rule>,
+    line_idx: &LineIndex,
+    err: &mut ErrorGen,
+) -> Vec<Statement> {
+    let line_col = line_idx.linecol(pair.as_span());
     let mut pairs = pair.into_inner();
 
     // handle var_decorator(s)
@@ -993,7 +1034,7 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                             "Marked variable with 'report' multiple times, should only mark once."
                                 .to_string(),
                         ),
-                        Some(LineColLocation::from(pair.as_span())),
+                        Some(line_idx.linecol(pair.as_span())),
                         vec![],
                         vec![],
                     )
@@ -1008,7 +1049,7 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
                             "Marked variable with 'unshared' multiple times, should only mark once."
                                 .to_string(),
                         ),
-                        Some(LineColLocation::from(pair.as_span())),
+                        Some(line_idx.linecol(pair.as_span())),
                         vec![],
                         vec![],
                     )
@@ -1018,7 +1059,7 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
             rule => {
                 err.parse_error(
                     Some(UNEXPECTED_ERR_MSG.to_string()),
-                    Some(LineColLocation::from(pair.as_span())),
+                    Some(line_idx.linecol(pair.as_span())),
                     vec![Rule::REPORT, Rule::UNSHARED],
                     vec![rule],
                 );
@@ -1027,7 +1068,7 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
     }
 
     // next should be the declaration
-    let decl = stmt_from_rule(pairs.next().unwrap(), err);
+    let decl = stmt_from_rule(pairs.next().unwrap(), line_idx, err);
     // The inner decl is always a VarDecl; promote it to an unshared VarDecl.
     let mut d = decl.first().unwrap().to_owned();
     if let Statement::VarDecl { modifiers, loc, .. } = &mut d {
@@ -1043,28 +1084,29 @@ fn handle_special_decl(pair: Pair<Rule>, err: &mut ErrorGen) -> Vec<Statement> {
 
 pub fn handle_param(
     mut pairs: Pairs<Rule>,
+    line_idx: &LineIndex,
     definition: Definition,
     err: &mut ErrorGen,
 ) -> Option<(Expr, DataType)> {
     if let Some(id_rule) = pairs.next() {
         // process the name
-        let id = handle_id(id_rule, definition);
+        let id = handle_id(id_rule, line_idx, definition);
         // process the type
-        let ty = type_from_rule_handler(pairs.next().unwrap(), err);
+        let ty = type_from_rule_handler(pairs.next().unwrap(), line_idx, err);
         Some((id, ty))
     } else {
         None
     }
 }
 
-fn handle_lib_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
-    let loc = LineColLocation::from(pair.as_span());
+fn handle_lib_call(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
+    let loc = line_idx.linecol(pair.as_span());
     let mut pairs = pair.into_inner();
 
     // check if we have an annotation on this library call
     let s = pairs.next().unwrap();
     let (annotation, lib_name) = if s.as_str().starts_with("@") {
-        let annotation = handle_annotation(s)?;
+        let annotation = handle_annotation(s, line_idx)?;
         let lib_name_rule = pairs.next().unwrap();
         (Some(annotation), lib_name_rule.as_str().to_string())
     } else {
@@ -1074,7 +1116,7 @@ fn handle_lib_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     // Build the inner Call with the obj-receiver/annotation lifted onto its
     // CallKind::Pending, so the verifier resolves it directly without needing
     // an ambient stack. The wrapping ObjCall is no longer part of the AST.
-    let lib_func_call = handle_fn_call(pairs.next().unwrap())?;
+    let lib_func_call = handle_fn_call(pairs.next().unwrap(), line_idx)?;
     let Expr::Call {
         fn_target,
         args,
@@ -1101,7 +1143,10 @@ fn handle_lib_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     })
 }
 
-fn handle_annotation(pair: Pair<Rule>) -> Result<Annotation, Vec<WhammError>> {
+fn handle_annotation(
+    pair: Pair<Rule>,
+    line_idx: &LineIndex,
+) -> Result<Annotation, Vec<WhammError>> {
     let mut pairs = pair.into_inner();
     let annotation_pair = pairs.next().unwrap();
     let annotation_string = annotation_pair.as_str();
@@ -1109,26 +1154,26 @@ fn handle_annotation(pair: Pair<Rule>) -> Result<Annotation, Vec<WhammError>> {
     Annotation::try_from(annotation_string).map_err(|err| {
         vec![ErrorGen::get_parse_error(
             Some(err),
-            Some(LineColLocation::from(annotation_pair.as_span())),
+            Some(line_idx.linecol(annotation_pair.as_span())),
             vec![],
             vec![],
         )]
     })
 }
 
-fn handle_fn_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+fn handle_fn_call(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
     // This has to be duplicated due to the Expression/Statement masking as the function return type
     let mut pairs = pair.into_inner();
 
     let fn_rule = pairs.next().unwrap();
-    let fn_target_line_col = LineColLocation::from(fn_rule.as_span());
-    let fn_target = handle_id(fn_rule, Definition::User);
+    let fn_target_line_col = line_idx.linecol(fn_rule.as_span());
+    let fn_target = handle_id(fn_rule, line_idx, Definition::User);
 
     // handle args
     let mut args = vec![];
     let mut errors = vec![];
     for next in pairs {
-        match handle_arg(next) {
+        match handle_arg(next, line_idx) {
             Ok(expr) => {
                 args.push(expr);
             }
@@ -1171,12 +1216,12 @@ fn handle_fn_call(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     }
 }
 
-fn handle_ternary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
-    let pair_loc = LineColLocation::from(pair.as_span());
+fn handle_ternary(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
+    let pair_loc = line_idx.linecol(pair.as_span());
     let mut pairs = pair.into_inner();
 
     let cond_rule = pairs.next().unwrap();
-    let cond = match expr_from_pair(cond_rule) {
+    let cond = match expr_from_pair(cond_rule, line_idx) {
         Ok(expr) => expr,
         other => {
             return other;
@@ -1184,7 +1229,7 @@ fn handle_ternary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     };
 
     let conseq_rule = pairs.next().unwrap();
-    let conseq = match expr_from_pair(conseq_rule) {
+    let conseq = match expr_from_pair(conseq_rule, line_idx) {
         Ok(expr) => expr,
         other => {
             return other;
@@ -1192,7 +1237,7 @@ fn handle_ternary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     };
 
     let alt_rule = pairs.next().unwrap();
-    let alt = match expr_from_pair(alt_rule) {
+    let alt = match expr_from_pair(alt_rule, line_idx) {
         Ok(expr) => expr,
         other => {
             return other;
@@ -1211,12 +1256,12 @@ fn handle_ternary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     })
 }
 
-fn handle_arg(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+fn handle_arg(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
     let mut pairs = pair.into_inner();
     let arg = pairs.next().unwrap();
     match arg.as_rule() {
-        Rule::expr => handle_expr(arg),
-        _ => expr_primary(arg),
+        Rule::expr => handle_expr(arg, line_idx),
+        _ => expr_primary(arg, line_idx),
     }
 }
 
@@ -1244,10 +1289,10 @@ fn handle_arg(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 /// I think this would be a problem even if we were to refactor the Parser into an object that
 /// would hold the mutable reference to the error gen as a member field. This is because you'd call
 /// self.<something> which would require 2 mutable references to self between the closures.
-pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+pub fn handle_expr(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
     let pairs = pair.into_inner();
     PRATT_PARSER
-        .map_primary(|primary| -> Result<Expr, Vec<WhammError>> { expr_primary(primary) })
+        .map_primary(|primary| -> Result<Expr, Vec<WhammError>> { expr_primary(primary, line_idx) })
         .map_prefix(|op, rhs| -> Result<Expr, Vec<WhammError>> {
             match rhs {
                 Ok(rhs) => {
@@ -1257,7 +1302,7 @@ pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                         rule => {
                             return Err(vec![ErrorGen::get_parse_error(
                                 Some(UNEXPECTED_ERR_MSG.to_string()),
-                                Some(LineColLocation::from(op.as_span())),
+                                Some(line_idx.linecol(op.as_span())),
                                 vec![Rule::neg],
                                 vec![rule],
                             )]);
@@ -1310,7 +1355,7 @@ pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                         rule => {
                             return Err(vec![ErrorGen::get_parse_error(
                                 None,
-                                Some(LineColLocation::from(op.as_span())),
+                                Some(line_idx.linecol(op.as_span())),
                                 vec![
                                     Rule::and,
                                     Rule::or,
@@ -1370,14 +1415,14 @@ pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
                 Ok(lhs) => {
                     let op_rule = op.as_rule();
                     let op_span = op.as_span();
-                    let target = type_from_rule(op.into_inner().next().unwrap())?;
+                    let target = type_from_rule(op.into_inner().next().unwrap(), line_idx)?;
 
                     let op = match op_rule {
                         Rule::cast => UnOp::Cast { target },
                         rule => {
                             return Err(vec![ErrorGen::get_parse_error(
                                 Some(UNEXPECTED_ERR_MSG.to_string()),
-                                Some(LineColLocation::from(op_span)),
+                                Some(line_idx.linecol(op_span)),
                                 vec![Rule::cast],
                                 vec![rule],
                             )]);
@@ -1398,19 +1443,19 @@ pub fn handle_expr(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         .parse(pairs)
 }
 
-fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+fn expr_primary(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
     match pair.as_rule() {
-        Rule::lib_call => handle_lib_call(pair),
-        Rule::fn_call => handle_fn_call(pair),
-        Rule::ID => Ok(handle_id(pair, Definition::User)),
-        Rule::tuple => handle_tuple(pair),
-        Rule::INT => handle_int(pair),
-        Rule::FLOAT => handle_float(pair),
-        Rule::BOOL => handle_bool(pair),
-        Rule::STRING => handle_string(pair),
-        Rule::get_map => handle_map_get(pair),
-        Rule::get_tuple => handle_tuple_get(pair),
-        _ => expr_from_pair(pair),
+        Rule::lib_call => handle_lib_call(pair, line_idx),
+        Rule::fn_call => handle_fn_call(pair, line_idx),
+        Rule::ID => Ok(handle_id(pair, line_idx, Definition::User)),
+        Rule::tuple => handle_tuple(pair, line_idx),
+        Rule::INT => handle_int(pair, line_idx),
+        Rule::FLOAT => handle_float(pair, line_idx),
+        Rule::BOOL => handle_bool(pair, line_idx),
+        Rule::STRING => handle_string(pair, line_idx),
+        Rule::get_map => handle_map_get(pair, line_idx),
+        Rule::get_tuple => handle_tuple_get(pair, line_idx),
+        _ => expr_from_pair(pair, line_idx),
     }
 }
 
@@ -1420,7 +1465,7 @@ fn expr_primary(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
 
 // PROBE MATCH RULES
 
-fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
+fn probe_rule_from_rule(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut ErrorGen) -> ProbeRule {
     let rule_as_str = pair.as_str();
     let mut parts = pair.into_inner();
 
@@ -1447,7 +1492,7 @@ fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
             Some(part) => match part.as_rule() {
                 Rule::PROBE_ID => {
                     next = parts.next();
-                    probe_rule_part_from_rule(part.clone(), err)
+                    probe_rule_part_from_rule(part.clone(), line_idx, err)
                 }
                 _ => {
                     next = parts.next();
@@ -1468,9 +1513,12 @@ fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
                 let mut next_param = param_pairs.next();
                 while let Some(n) = &next_param {
                     if matches!(n.as_rule(), Rule::param) {
-                        if let Some(param) =
-                            handle_param(n.clone().into_inner(), Definition::CompilerDynamic, err)
-                        {
+                        if let Some(param) = handle_param(
+                            n.clone().into_inner(),
+                            line_idx,
+                            Definition::CompilerDynamic,
+                            err,
+                        ) {
                             params.push(param)
                         }
                         next_param = param_pairs.next();
@@ -1489,11 +1537,15 @@ fn probe_rule_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> ProbeRule {
     probe_rule
 }
 
-fn probe_rule_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> RulePart {
+fn probe_rule_part_from_rule(
+    pair: Pair<Rule>,
+    line_idx: &LineIndex,
+    err: &mut ErrorGen,
+) -> RulePart {
     match pair.as_rule() {
         Rule::PROBE_ID => {
             let name: String = pair.as_str().parse().unwrap();
-            let id_line_col = LineColLocation::from(pair.as_span());
+            let id_line_col = line_idx.linecol(pair.as_span());
 
             RulePart::new(
                 name,
@@ -1506,7 +1558,7 @@ fn probe_rule_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> RulePart {
         rule => {
             err.parse_error(
                 Some(UNEXPECTED_ERR_MSG.to_string()),
-                Some(LineColLocation::from(pair.as_span())),
+                Some(line_idx.linecol(pair.as_span())),
                 vec![Rule::PROBE_ID],
                 vec![rule],
             );
@@ -1516,8 +1568,8 @@ fn probe_rule_part_from_rule(pair: Pair<Rule>, err: &mut ErrorGen) -> RulePart {
 }
 
 // TYPES
-fn type_from_rule_handler(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
-    match type_from_rule(pair) {
+fn type_from_rule_handler(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut ErrorGen) -> DataType {
+    match type_from_rule(pair, line_idx) {
         Ok(ty) => ty,
         Err(errors) => {
             let _ = err.add_errors(errors);
@@ -1526,7 +1578,7 @@ fn type_from_rule_handler(pair: Pair<Rule>, err: &mut ErrorGen) -> DataType {
     }
 }
 
-pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
+pub fn type_from_rule(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<DataType, Vec<WhammError>> {
     match pair.as_rule() {
         Rule::TY_U8 => Ok(DataType::U8),
         Rule::TY_I8 => Ok(DataType::I8),
@@ -1545,7 +1597,7 @@ pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
         Rule::TY_TUPLE => {
             let mut tuple_content_types = vec![];
             for p in pair.into_inner() {
-                match type_from_rule(p) {
+                match type_from_rule(p, line_idx) {
                     Ok(res) => tuple_content_types.push(res),
                     Err(e) => return Err(e),
                 }
@@ -1563,8 +1615,8 @@ pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
             let key_ty_rule = pair.next().unwrap();
             let val_ty_rule = pair.next().unwrap();
 
-            let key_ty = type_from_rule(key_ty_rule)?;
-            let val_ty = type_from_rule(val_ty_rule)?;
+            let key_ty = type_from_rule(key_ty_rule, line_idx)?;
+            let val_ty = type_from_rule(val_ty_rule, line_idx)?;
 
             Ok(DataType::Map {
                 key_ty: Box::new(key_ty),
@@ -1573,7 +1625,7 @@ pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
         }
         rule => Err(vec![ErrorGen::get_parse_error(
             Some(UNEXPECTED_ERR_MSG.to_string()),
-            Some(LineColLocation::from(pair.as_span())),
+            Some(line_idx.linecol(pair.as_span())),
             vec![
                 Rule::TY_U8,
                 Rule::TY_I8,
@@ -1597,23 +1649,23 @@ pub fn type_from_rule(pair: Pair<Rule>) -> Result<DataType, Vec<WhammError>> {
 
 // EXPRESSIONS
 
-fn handle_id(pair: Pair<Rule>, definition: Definition) -> Expr {
+fn handle_id(pair: Pair<Rule>, line_idx: &LineIndex, definition: Definition) -> Expr {
     Expr::VarId {
         definition,
         name: pair.as_str().parse().unwrap(),
         loc: Some(Location {
-            line_col: LineColLocation::from(pair.as_span()),
+            line_col: line_idx.linecol(pair.as_span()),
             path: None,
         }),
     }
 }
 
-fn handle_tuple(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
-    let pair_line_col = LineColLocation::from(pair.as_span());
+fn handle_tuple(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
+    let pair_line_col = line_idx.linecol(pair.as_span());
     let mut vals = vec![];
 
     for inner in pair.into_inner() {
-        match expr_from_pair(inner) {
+        match expr_from_pair(inner, line_idx) {
             Ok(expr) => vals.push(expr),
             other => {
                 return other;
@@ -1633,7 +1685,7 @@ fn handle_tuple(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     })
 }
 
-pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+pub fn handle_int(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
     let pair = pair.into_inner().next().unwrap();
     // Uppercase and strip underscores for uniform parsing.
     let token = pair.as_str().to_uppercase().replace("_", "");
@@ -1653,7 +1705,7 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         rule => {
             return Err(vec![ErrorGen::get_parse_error(
                 Some(UNEXPECTED_ERR_MSG.to_string()),
-                Some(LineColLocation::from(pair.as_span())),
+                Some(line_idx.linecol(pair.as_span())),
                 vec![Rule::int_hex, Rule::int_bin, Rule::int],
                 vec![rule],
             )])
@@ -1667,7 +1719,7 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
         .map_err(|_| {
             vec![ErrorGen::get_parse_error(
                 Some(format!("Failed to parse integer literal: {token}")),
-                Some(LineColLocation::from(pair.as_span())),
+                Some(line_idx.linecol(pair.as_span())),
                 vec![],
                 vec![],
             )]
@@ -1676,13 +1728,13 @@ pub fn handle_int(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     Ok(Expr::Primitive {
         val: Value::NumericLiteral { raw, fmt, token },
         loc: Some(Location {
-            line_col: LineColLocation::from(pair.as_span()),
+            line_col: line_idx.linecol(pair.as_span()),
             path: None,
         }),
     })
 }
 
-pub fn handle_float(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+pub fn handle_float(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
     let pair = pair.into_inner().next().unwrap();
     // make lowercase and remove all '_'
     let token = pair.as_str().to_lowercase().replace("_", "");
@@ -1704,7 +1756,7 @@ pub fn handle_float(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     } else {
         return Err(vec![ErrorGen::get_parse_error(
             Some(format!("Failed to parse value into f32 OR f64: {token}")),
-            Some(LineColLocation::from(pair.as_span())),
+            Some(line_idx.linecol(pair.as_span())),
             vec![],
             vec![],
         )]);
@@ -1718,25 +1770,25 @@ pub fn handle_float(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             fmt: NumFmt::Dec,
         },
         loc: Some(Location {
-            line_col: LineColLocation::from(pair.as_span()),
+            line_col: line_idx.linecol(pair.as_span()),
             path: None,
         }),
     })
 }
 
-fn handle_bool(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+fn handle_bool(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
     let val = pair.as_str().parse::<bool>().unwrap();
 
     Ok(Expr::Primitive {
         val: Value::Boolean { val },
         loc: Some(Location {
-            line_col: LineColLocation::from(pair.as_span()),
+            line_col: line_idx.linecol(pair.as_span()),
             path: None,
         }),
     })
 }
 
-fn handle_string(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
+fn handle_string(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
     let span = pair.as_span();
 
     let mut val = String::new();
@@ -1791,19 +1843,19 @@ fn handle_string(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     Ok(Expr::Primitive {
         val: Value::Str { val },
         loc: Some(Location {
-            line_col: LineColLocation::from(span),
+            line_col: line_idx.linecol(span),
             path: None,
         }),
     })
 }
 
-fn handle_tuple_get(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
-    let loc = LineColLocation::from(pair.clone().as_span());
+fn handle_tuple_get(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
+    let loc = line_idx.linecol(pair.clone().as_span());
     let mut inner = pair.into_inner();
 
     // First element is the ID (root variable)
     let id_pair = inner.next().unwrap();
-    let mut expr = handle_id(id_pair, Definition::User);
+    let mut expr = handle_id(id_pair, line_idx, Definition::User);
 
     // Remaining elements are TUPLE_IDX digit strings, one per access level
     for idx_pair in inner {
@@ -1824,14 +1876,14 @@ fn handle_tuple_get(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
     Ok(expr)
 }
 
-fn handle_map_get(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
-    let loc = LineColLocation::from(pair.clone().as_span());
+fn handle_map_get(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
+    let loc = line_idx.linecol(pair.clone().as_span());
     let mut pairs = pair.into_inner();
     let map = pairs.next().unwrap();
     let key = pairs.next().unwrap();
 
     //this SHOULD be a VarId
-    let map_name = match expr_primary(map) {
+    let map_name = match expr_primary(map, line_idx) {
         Ok(Expr::VarId { name, .. }) => name,
         Ok(_) => {
             return Err(vec![ErrorGen::get_parse_error(
@@ -1845,7 +1897,7 @@ fn handle_map_get(pair: Pair<Rule>) -> Result<Expr, Vec<WhammError>> {
             return Err(errors);
         }
     };
-    let key_expr = match expr_primary(key) {
+    let key_expr = match expr_primary(key, line_idx) {
         Ok(expr) => expr,
         Err(errors) => {
             return Err(errors);

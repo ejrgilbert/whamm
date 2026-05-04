@@ -3,6 +3,7 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{cyan, green, long_line, magenta_italics, white};
 use crate::generator::ast::StackReq;
+use crate::parser::line_index::LineIndex;
 use crate::parser::types::{
     Block, DataType, Definition, Expr, Fn as WhammFn, FnId, Location, ProbeRule, Rule, RulePart,
     WhammParser,
@@ -19,22 +20,8 @@ use std::process::exit;
 use termcolor::Buffer;
 
 pub fn yml_to_providers(def_yamls: &[String]) -> Result<Vec<ProviderDef>, Box<ErrorGen>> {
-    unsafe {
-        static mut N: u64 = 0;
-        static mut TOTAL: std::time::Duration = std::time::Duration::ZERO;
-        let __t = std::time::Instant::now();
-        N += 1;
-        let def = read_yml(def_yamls);
-        let res = from_helper::<ProviderDef, ProviderYml>(def.providers);
-        TOTAL += __t.elapsed();
-        if N % 50 == 0 || N == 1 {
-            eprintln!(
-                "[breadth-prof]   yml_to_providers call #{} cumulative={:?}",
-                N, TOTAL
-            );
-        }
-        res
-    }
+    let def = read_yml(def_yamls);
+    from_helper::<ProviderDef, ProviderYml>(def.providers)
 }
 
 pub fn get_matches(
@@ -42,24 +29,11 @@ pub fn get_matches(
     all_providers: &[ProviderDef],
     err: &mut ErrorGen,
 ) -> Vec<ProviderDef> {
-    let __prof_t = std::time::Instant::now();
     let mut err_ctxt = ErrCtxt::default();
     let mut matches: Vec<ProviderDef> = vec![];
     for provider in all_providers.iter() {
         if let Ok(prov) = provider.match_on(rule, &mut err_ctxt) {
             matches.push(*prov);
-        }
-    }
-    unsafe {
-        static mut N: u64 = 0;
-        static mut TOTAL: std::time::Duration = std::time::Duration::ZERO;
-        N += 1;
-        TOTAL += __prof_t.elapsed();
-        if N % 50 == 0 || N == 1 {
-            eprintln!(
-                "[breadth-prof]   get_matches call #{} cumulative={:?}",
-                N, TOTAL
-            );
         }
     }
 
@@ -820,11 +794,14 @@ impl CheckedFrom<BoundFuncYml> for BoundFunc {
         let params = match WhammParser::parse(Rule::fn_params, &value.params) {
             Ok(mut pairs) => {
                 let mut err = ErrorGen::new("".to_string(), "".to_string(), 15);
+                let line_idx = LineIndex::new(&value.params);
                 let mut params = vec![];
                 let mut next = pairs.next();
                 while let Some(n) = &next {
                     if matches!(n.as_rule(), Rule::param) {
-                        if let Some(param) = handle_param(n.clone().into_inner(), def, &mut err) {
+                        if let Some(param) =
+                            handle_param(n.clone().into_inner(), &line_idx, def, &mut err)
+                        {
                             params.push(param)
                         }
                         next = pairs.next();
@@ -1016,12 +993,13 @@ fn get_globs(patt: &str) -> Vec<Pattern> {
     globs
 }
 
-type RuleHandler<T> = dyn Fn(Pair<Rule>) -> Result<T, Vec<WhammError>>;
+type RuleHandler<T> = dyn Fn(Pair<Rule>, &LineIndex) -> Result<T, Vec<WhammError>>;
 fn parse_helper<T>(target: &str, parse_rule: Rule, token: &str, handler: &RuleHandler<T>) -> T {
     match WhammParser::parse(parse_rule, token) {
         Ok(mut pairs) => {
             if let Some(pair) = pairs.next() {
-                handler(pair).unwrap_or_else(|errs| {
+                let line_idx = LineIndex::new(token);
+                handler(pair, &line_idx).unwrap_or_else(|errs| {
                     error!("Could not parse the token correctly");
                     for e in errs.iter() {
                         error!("{:?}", e)

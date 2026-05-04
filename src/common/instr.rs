@@ -50,7 +50,7 @@ pub(crate) fn try_path(path: &String) {
 
 pub fn run_with_path(
     core_lib: &[u8],
-    def_yamls: &Vec<String>,
+    def_yamls: &[String],
     app_wasm_path: String,
     script_path: String,
     user_lib_paths: Vec<String>,
@@ -102,7 +102,7 @@ pub fn run_with_path(
 
 pub fn dry_run_on_bytes<'ir>(
     core_lib: &'ir [u8],
-    def_yamls: &Vec<String>,
+    def_yamls: &[String],
     target_wasm: &mut Module<'ir>,
     script_path: String,
     user_lib_paths: Vec<String>,
@@ -164,7 +164,7 @@ pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, Option<String>, 
 
 pub fn run_on_module_and_encode<'lib, 'ir>(
     core_lib: &'lib [u8],
-    def_yamls: &Vec<String>,
+    def_yamls: &[String],
     target_wasm: &mut Module<'ir>,
     script_path: String,
     user_lib_paths: Vec<String>,
@@ -190,7 +190,7 @@ pub fn run_on_module_and_encode<'lib, 'ir>(
 
 pub fn run_on_module<'lib, 'ir>(
     core_lib: &'lib [u8],
-    def_yamls: &Vec<String>,
+    def_yamls: &[String],
     target_wasm: &mut Module<'ir>,
     script_path: String,
     user_lib_paths: Vec<String>,
@@ -238,7 +238,7 @@ pub fn write_to_file(module: Vec<u8>, output_wasm_path: String) {
 
 pub fn run<'lib, 'ir>(
     core_lib: &'lib [u8],
-    def_yamls: &Vec<String>,
+    def_yamls: &[String],
     target_wasm: &mut Module<'ir>,
     whamm_script: &String,
     script_path: &str,
@@ -270,23 +270,19 @@ pub fn run<'lib, 'ir>(
     );
 
     // Process the script
-    let _t0 = std::time::Instant::now();
     let mut whamm = match get_script_ast(def_yamls, whamm_script, &mut err) {
         Ok(whamm) => whamm,
         Err(_) => return Err(Box::new(err)),
     };
-    eprintln!("[breadth-prof] parse: {:?}", _t0.elapsed());
     // If there were any errors encountered during parsing, report and exit!
     if err.has_errors {
         return Err(Box::new(err));
     }
-    let _t1 = std::time::Instant::now();
     let (mut symbol_table, has_reports) =
         match get_symbol_table(&mut whamm, &user_lib_modules, &mut err) {
             Ok(r) => r,
             Err(_) => return Err(Box::new(err)),
         };
-    eprintln!("[breadth-prof] symbol_table+typecheck: {:?}", _t1.elapsed());
 
     // If there were any errors encountered, report and exit!
     if err.has_errors {
@@ -296,10 +292,8 @@ pub fn run<'lib, 'ir>(
 
     // Collect the metadata for the AST and transform to different representation
     // specifically used for targeting wei during compilation.
-    let _t2 = std::time::Instant::now();
     let mut metadata_collector = MetadataCollector::new(&mut symbol_table, &mut err, &config);
     metadata_collector.visit_whamm(&whamm);
-    eprintln!("[breadth-prof] metadata_collector.visit_whamm: {:?}", _t2.elapsed());
 
     // Merge in the core library IF NEEDED
     let mut map_package = MapLibPackage::new(if config.as_monitor_module {
@@ -310,7 +304,6 @@ pub fn run<'lib, 'ir>(
     let mut io_package = IOPackage::new(*mem_allocator.mem_tracker_global);
     let mut core_packages: Vec<&mut dyn LibPackage> = vec![&mut map_package, &mut io_package];
     let mut utils_pkg = UtilsPackage::new(*mem_allocator.mem_tracker_global);
-    let _t3 = std::time::Instant::now();
     let mut injected_core_lib_funcs = crate::lang_features::libraries::actions::link_core_lib(
         config.library_strategy,
         &metadata_collector.ast,
@@ -322,7 +315,6 @@ pub fn run<'lib, 'ir>(
         metadata_collector.table,
         metadata_collector.err,
     );
-    eprintln!("[breadth-prof] link_core_lib: {:?}", _t3.elapsed());
     // If there were any errors encountered, report and exit!
     if metadata_collector.err.has_errors {
         return Err(Box::new(err));
@@ -382,7 +374,6 @@ pub fn run<'lib, 'ir>(
                 get_tag_for(&None),
             ));
 
-        let _t_rwr = std::time::Instant::now();
         let rwr_res = run_instr_rewrite(
             metrics,
             &mut whamm,
@@ -401,7 +392,6 @@ pub fn run<'lib, 'ir>(
             &mut unshared_var_handler,
             &mut injected_core_lib_funcs,
         );
-        eprintln!("[breadth-prof] run_instr_rewrite total: {:?}", _t_rwr.elapsed());
         if rwr_res.is_err() {
             return Err(Box::new(err));
         }
@@ -537,9 +527,7 @@ fn run_instr_rewrite<'lib, 'ir>(
             user_lib_modules,
             injected_funcs,
         };
-        let _t_init = std::time::Instant::now();
         init.run(whamm, used_funcs, used_strings, has_probe_state_init);
-        eprintln!("[breadth-prof]   InitGenerator.run: {:?}", _t_init.elapsed());
     } // init dropped: err, table, mem_allocator borrows released
 
     if err.has_errors {
@@ -549,9 +537,7 @@ fn run_instr_rewrite<'lib, 'ir>(
     // Phase 1 of instrumentation (actually emits the instrumentation code)
     // This structure is necessary since we need to have the fns/globals injected (a single time)
     // and ready to use in every body/predicate.
-    let _t_simple = std::time::Instant::now();
     let simple_ast = SimpleAST::new(ast);
-    eprintln!("[breadth-prof]   SimpleAST::new: {:?}", _t_simple.elapsed());
     let mut init_func = FunctionBuilder::new(&[], &[]);
     let mut instr = InstrGenerator::new(
         VisitingEmitter::new(
@@ -578,12 +564,8 @@ fn run_instr_rewrite<'lib, 'ir>(
     if config.metrics {
         metrics.start(&match_time);
     }
-    let _t_run = std::time::Instant::now();
     instr.run();
-    eprintln!("[breadth-prof]   InstrGenerator.run (match&inject): {:?}", _t_run.elapsed());
-    let _t_init_func = std::time::Instant::now();
     configure_init_func(init_func, target_wasm, err);
-    eprintln!("[breadth-prof]   configure_init_func: {:?}", _t_init_func.elapsed());
     if config.metrics {
         metrics.end(&match_time);
     }
@@ -759,17 +741,12 @@ fn get_symbol_table(
     user_libs: &HashMap<String, (Option<String>, Module)>,
     err: &mut ErrorGen,
 ) -> Result<(SymbolTable, bool), ()> {
-    let _t_st = std::time::Instant::now();
     let mut st = build_symbol_table(ast, user_libs, err);
-    eprintln!("[breadth-prof]   build_symbol_table: {:?}", _t_st.elapsed());
     if err.too_many {
         return Err(());
     }
 
-    let _t_tc = std::time::Instant::now();
-    let has_reports = verify_ast(ast, &mut st, err);
-    eprintln!("[breadth-prof]   verify_ast (type_check): {:?}", _t_tc.elapsed());
-    let has_reports = has_reports?;
+    let has_reports = verify_ast(ast, &mut st, err)?;
     Ok((st, has_reports))
 }
 
@@ -785,11 +762,7 @@ fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> Resu
     Ok(has_reports)
 }
 
-fn get_script_ast(
-    def_yamls: &Vec<String>,
-    script: &String,
-    err: &mut ErrorGen,
-) -> Result<Whamm, ()> {
+fn get_script_ast(def_yamls: &[String], script: &String, err: &mut ErrorGen) -> Result<Whamm, ()> {
     // Parse the script and build the AST
     match parse_script(def_yamls, script, err) {
         Some(ast) => {
