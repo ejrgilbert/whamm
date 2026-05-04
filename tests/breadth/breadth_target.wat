@@ -1543,46 +1543,5 @@
     call $exception_ops
     drop
   )
-
-  ;; =====================================================================
-  ;; TODO — opcode families still to cover. Each item, once added, should be
-  ;; verified uninstrumented on both wasmtime and wizeng before being struck.
-  ;;
-  ;; - [x] Numeric i32 long tail: i32.{div_s,div_u,rem_s,rem_u,and,or,xor,
-  ;;       shl,shr_s,shr_u,rotl,rotr,clz,ctz,popcnt,ne,lt_s,lt_u,gt_s,gt_u,
-  ;;       le_s,le_u,ge_u,extend8_s,extend16_s}
-  ;; - [x] Numeric i64 full set (eqz/eq/ne/cmp/arith/bitwise/shifts/extend*)
-  ;; - [x] f32 ops: const/load/store/arith/cmp/abs/neg/ceil/floor/trunc/
-  ;;       nearest/sqrt/min/max/copysign
-  ;; - [x] f64 ops: same set as f32
-  ;; - [x] Conversions: i32.wrap_i64, i64.extend_i32_{s,u},
-  ;;       i32/i64.trunc_f32/f64_{s,u}, f32/f64.convert_i32/i64_{s,u},
-  ;;       f32.demote_f64, f64.promote_f32, *.reinterpret_*
-  ;; - [x] Saturating truncation: i32/i64.trunc_sat_f32/f64_{s,u}
-  ;; - [x] Memory loads/stores beyond i32.{load,store}: i64.load/store,
-  ;;       f32/f64.load/store, *.load8_{s,u}/load16_{s,u}/load32_{s,u},
-  ;;       *.store8/store16/store32, memory.grow
-  ;; - [x] Bulk memory: memory.init, memory.copy, memory.fill, data.drop
-  ;;       (passive data segment required)
-  ;; - [x] Table ops: table.get, table.set, table.copy, table.init,
-  ;;       table.fill, table.grow, table.size, elem.drop
-  ;; - [x] Reference types: ref.null, ref.is_null, ref.func, ref.eq
-  ;; - [x] Function references: call_ref, return_call_ref, ref.as_non_null,
-  ;;       br_on_null, br_on_non_null
-  ;; - [x] Tail calls: return_call, return_call_indirect, return_call_ref
-  ;; - [x] GC structs: struct.new, struct.new_default, struct.{get,get_s,
-  ;;       get_u,set} (packed fields needed for get_s/get_u)
-  ;; - [x] GC arrays: array.new, array.new_default, array.new_fixed,
-  ;;       array.new_data, array.new_elem, array.{get,get_s,get_u,set,len,
-  ;;       fill,copy,init_data,init_elem}
-  ;; - [x] GC casts: ref.test, ref.test_null, ref.cast, ref.cast_null,
-  ;;       br_on_cast, br_on_cast_fail
-  ;; - [x] i31 / extern: ref.i31, i31.get_s, i31.get_u,
-  ;;       any.convert_extern, extern.convert_any
-  ;; - [x] Threads / atomics: atomic.fence, memory.atomic.{notify,wait32,
-  ;;       wait64}, i32/i64.atomic.{load*,store*,rmw*}
-  ;; - [x] Exceptions: try_table, throw, throw_ref
-  ;; - [x] `unreachable` (placed behind a never-taken branch in $never_taken)
-  ;; =====================================================================
 )
 
