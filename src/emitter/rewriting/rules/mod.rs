@@ -333,9 +333,8 @@ fn handle_opcode_events(
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "call" => if let Operator::Call {function_index} = instr {
-            if bind_vars_call(&mut loc_info, all_params, *function_index, app_wasm).is_ok() {
-                loc_info.add_probes(probe_rule.clone(), evt, None);
-            }
+            bind_vars_call(&mut loc_info, all_params, *function_index, app_wasm);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "call_indirect" => if let Operator::CallIndirect {type_index,
             table_index,} = instr {
@@ -344,9 +343,8 @@ fn handle_opcode_events(
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "return_call" => if let Operator::ReturnCall {function_index} = instr {
-            if bind_vars_call(&mut loc_info, all_params, *function_index, app_wasm).is_ok() {
-                loc_info.add_probes(probe_rule.clone(), evt, None);
-            }
+            bind_vars_call(&mut loc_info, all_params, *function_index, app_wasm);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "return_call_indirect" => if let Operator::ReturnCallIndirect {type_index, table_index } = instr {
             define_imm0_u32_imm1_u32(*type_index, *table_index, &mut loc_info, all_params);
@@ -2043,22 +2041,22 @@ fn bind_vars_br_table(
     Some(())
 }
 
-fn bind_vars_call(
-    loc_info: &mut LocInfo,
-    all_params: &[WhammParam],
-    fid: u32,
-    app_wasm: &Module,
-) -> Result<(), ()> {
+/// Binds the call-site's static data (`target_fn_name`, `target_fn_type`,
+/// `target_imp_module`, and `imm0`=fid) for the given event.
+///
+/// `argN` arity/type checks are intentionally NOT done here — the generic
+/// per-probe filter in `handle_wasm_packages` (see the `filter_probes` call
+/// driven by `get_ty_info_for_instr`) handles them. Checking them here
+/// would reject the whole event on any probe's mismatch, dropping sibling
+/// probes that DO fit the call's signature.
+fn bind_vars_call(loc_info: &mut LocInfo, all_params: &[WhammParam], fid: u32, app_wasm: &Module) {
     let func_info = match app_wasm.functions.get_kind(FunctionID(fid)) {
-        FuncKind::Import(ImportedFunction {
-            import_id, ty_id, ..
-        }) => {
+        FuncKind::Import(ImportedFunction { import_id, .. }) => {
             let import = app_wasm.imports.get(*import_id);
             FuncInfo {
                 func_kind: "import".to_string(),
                 module: import.module.to_string(),
                 name: import.name.to_string(),
-                ty_id: *ty_id,
             }
         }
         FuncKind::Local(func) => FuncInfo {
@@ -2071,37 +2069,12 @@ fn bind_vars_call(
                 Some(name) => name.clone(),
                 None => "".to_string(),
             },
-            ty_id: func.ty_id,
         },
     };
 
-    let func_params =
-        if let Some(Types::FuncType { params, .. }) = app_wasm.types.get(func_info.ty_id) {
-            params.clone()
-        } else {
-            panic!(
-                "Unable to lookup the function type with ID: {}",
-                *func_info.ty_id
-            );
-        };
-
     for param in all_params.iter() {
-        if let Some(n) = param.n_for("arg") {
-            // check that the types match!
-            if n as usize >= func_params.len() {
-                // Doesn't have this argument, no match!
-                return Err(());
-            }
-            if let Some(ty) = func_params.get(func_params.len() - (n as usize + 1)) {
-                if *param.ty.to_wasm_type().first().unwrap() != *ty {
-                    // types don't match, no match for this location!
-                    return Err(());
-                }
-            } else {
-                // Doesn't have this argument, no match!
-                return Err(());
-            }
-            // else we have a match for this location!
+        if param.n_for("arg").is_some() {
+            // arg arity/type is validated per-probe in the generic filter.
         } else if let Some(n) = param.n_for("imm") {
             assert_eq!(n, 0);
             assert!(
@@ -2135,8 +2108,6 @@ fn bind_vars_call(
             };
         }
     }
-
-    Ok(())
 }
 
 #[derive(Debug)]
@@ -2144,7 +2115,6 @@ struct FuncInfo {
     func_kind: String,
     module: String,
     name: String,
-    ty_id: TypeID,
 }
 
 pub fn get_ty_info_for_instr(
