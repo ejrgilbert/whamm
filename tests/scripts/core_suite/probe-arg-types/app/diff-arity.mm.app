@@ -1,0 +1,1 @@
+tests/apps/core_suite/handwritten/calls_diff_arity.wasm

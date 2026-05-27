@@ -1,0 +1,16 @@
+report var count_f0: i32;
+report var count_f1: i32;
+
+wasm:opcode:call(arg0: i64):before /
+    target_fn_name == "f0"
+/ {
+    var a: i64 = arg0;
+    count_f0 = count_f0 + 1;
+}
+
+wasm:opcode:call(arg0: i32):before /
+    target_fn_name == "f1"
+/ {
+    var b: i32 = arg0;
+    count_f1 = count_f1 + 1;
+}

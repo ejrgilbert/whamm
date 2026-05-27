@@ -177,6 +177,15 @@ fn instrument_with_opidx_scripts() {
     run_core_suite("opidx", processed_scripts, true, false)
 }
 #[test]
+fn instrument_with_probe_arg_types_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/probe-arg-types");
+    assert!(!processed_scripts.is_empty());
+
+    // TODO -- support pulling fname on Wizard target!
+    run_core_suite("probe-arg-types", processed_scripts, true, false)
+}
+#[test]
 fn instrument_with_overlap_scripts() {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/overlap");
