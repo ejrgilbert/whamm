@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 
-use crate::api::get_defs_and_lib;
+use crate::api::{DEF_YAMLS, WHAMM_CORE_LIB_BYTES};
 use crate::common::error::{CodeLocation, ErrorGen, WhammError as ErrorInternal};
 use crate::common::instr;
 use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
@@ -15,79 +15,82 @@ use wirm::Module;
 
 pub const MAX_ERRORS: i32 = 15;
 
-/// Using the passed Whamm script and configuration, instrument the target Wasm module via bytecode rewriting.
+/// User-provided libraries to link into instrumentation, keyed by the
+/// script-level library name.
+pub type UserLibs = HashMap<String, (Option<String>, Vec<u8>)>;
+
+fn resolve_defs(defs: Option<Vec<String>>) -> Vec<String> {
+    defs.unwrap_or_else(|| DEF_YAMLS.iter().map(|s| s.to_string()).collect())
+}
+
+fn resolve_core_lib(core_lib: Option<Vec<u8>>) -> Vec<u8> {
+    core_lib.unwrap_or_else(|| WHAMM_CORE_LIB_BYTES.to_vec())
+}
+
+/// Using the passed Whamm script and configuration, instrument the
+/// target Wasm module via bytecode rewriting.
 ///
-/// * `app_wasm_path`: The path to the target application to instrument.
-/// * `script_path`: The path to the whamm script .mm file.
-/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
-/// * `config`: The configuration to use when performing the instrumentation.
-/// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
-/// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
+/// * `wasm_app`: The bytes of the target application to
+///   instrument. Pass an empty `Vec` when generating a monitor module.
+/// * `script`: The bytes of the whamm script source.
+/// * `user_libs`: User-provided libraries. See [`UserLibs`].
+/// * `config`: The configuration to use when performing the
+///   instrumentation.
+/// * `core_lib`: Optional override for the core library wasm
+///   module. `None` uses the embedded default.
+/// * `defs`: Optional override for the provider YAML definitions
+///   (pre-loaded contents). `None` uses the embedded defaults.
 pub fn instrument_with_config(
-    app_wasm_path: String,
-    script_path: String,
-    user_lib_paths: Vec<String>,
+    wasm_app: Vec<u8>,
+    script: Vec<u8>,
+    user_libs: UserLibs,
     config: Config,
-    core_lib_path: Option<String>,
-    defs_path: Option<String>,
+    core_lib: Option<Vec<u8>>,
+    defs: Option<Vec<String>>,
 ) -> Result<Vec<u8>, Box<ErrorGen>> {
-    let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
-    instr::run_with_path(
-        &core_lib,
-        &def_yamls,
-        app_wasm_path,
-        script_path,
-        user_lib_paths,
-        MAX_ERRORS,
-        config,
+    let core_lib = resolve_core_lib(core_lib);
+    let defs = resolve_defs(defs);
+    instr::run_on_bytes(
+        &core_lib, &defs, wasm_app, script, user_libs, MAX_ERRORS, config,
     )
 }
 
-/// Using the passed Whamm script, instrument the target Wasm module via bytecode rewriting.
-///
-/// * `app_wasm_path`: The path to the target application to instrument.
-/// * `script_path`: The path to the whamm script .mm file.
-/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
-/// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
-/// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
+/// Using the passed Whamm script, instrument the target Wasm module
+/// via bytecode rewriting.
 pub fn instrument_with_rewriting(
-    app_wasm_path: String,
-    script_path: String,
-    user_lib_paths: Vec<String>,
-    core_lib_path: Option<String>,
-    defs_path: Option<String>,
+    wasm_app: Vec<u8>,
+    script: Vec<u8>,
+    user_libs: UserLibs,
+    core_lib: Option<Vec<u8>>,
+    defs: Option<Vec<String>>,
 ) -> Result<Vec<u8>, Box<ErrorGen>> {
     instrument_with_config(
-        app_wasm_path,
-        script_path,
-        user_lib_paths,
+        wasm_app,
+        script,
+        user_libs,
         Config::default_rewriting(),
-        core_lib_path,
-        defs_path,
+        core_lib,
+        defs,
     )
 }
 
-/// Using the passed Whamm script, instrument the target Wasm module via bytecode rewriting.
-///
-/// * `app_wasm_path`: The path to the target application to instrument.
-/// * `script_path`: The path to the whamm script .mm file.
-/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
-/// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
-/// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
+/// Using the passed Whamm script, instrument an already-parsed target
+/// Wasm module via bytecode rewriting.
 pub fn instrument_module_with_rewriting(
     target_wasm: &mut Module,
-    script_path: String,
-    user_lib_paths: Vec<String>,
-    core_lib_path: Option<String>,
-    defs_path: Option<String>,
+    script: Vec<u8>,
+    user_libs: UserLibs,
+    core_lib: Option<Vec<u8>>,
+    defs: Option<Vec<String>>,
 ) -> Result<Vec<u8>, Vec<WhammError>> {
-    let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
+    let core_lib = resolve_core_lib(core_lib);
+    let defs = resolve_defs(defs);
     match instr::run_on_module_and_encode(
         &core_lib,
-        &def_yamls,
+        &defs,
         target_wasm,
-        script_path,
-        user_lib_paths,
+        script,
+        user_libs,
         MAX_ERRORS,
         Config::default_rewriting(),
     ) {
@@ -96,85 +99,70 @@ pub fn instrument_module_with_rewriting(
     }
 }
 
-/// Using the passed Whamm script, generate a monitor module that encodes instructions for
-/// dynamically applying instrumentation to an arbitrary Wasm module at runtime.
-///
-/// * `app_wasm_path`: The path to the target application to instrument.
-/// * `script_path`: The path to the whamm script .mm file.
-/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
-/// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
-/// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
+/// Using the passed Whamm script, generate a monitor module that
+/// encodes instructions for dynamically applying instrumentation to
+/// an arbitrary Wasm module at runtime.
 pub fn generate_monitor_module(
-    script_path: String,
-    user_lib_paths: Vec<String>,
-    core_lib_path: Option<String>,
-    defs_path: Option<String>,
+    script: Vec<u8>,
+    user_libs: UserLibs,
+    core_lib: Option<Vec<u8>>,
+    defs: Option<Vec<String>>,
 ) -> Result<Vec<u8>, Vec<WhammError>> {
     match instrument_with_config(
-        "".to_string(),
-        script_path,
-        user_lib_paths,
+        vec![],
+        script,
+        user_libs,
         Config::default_monitor_module(),
-        core_lib_path,
-        defs_path,
+        core_lib,
+        defs,
     ) {
         Ok(res) => Ok(res),
         Err(e) => Err(WhammError::from_errs(e.pull_errs())),
     }
 }
 
-/// Using the passed Whamm script, perform a dry run of instrumentation and return metadata
-/// encoding the side effects that would occur for some program (`app_wasm_path`).
-///
-/// * `app_wasm_path`: The path to the target application to instrument.
-/// * `script_path`: The path to the whamm script .mm file.
-/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
-/// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
-/// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
+/// Using the passed Whamm script, perform a dry run of
+/// instrumentation and return metadata encoding the side effects that
+/// would occur for the Wasm program.
 pub fn instrument_as_dry_run_rewriting(
-    app_wasm_path: String,
-    script_path: String,
-    user_lib_paths: Vec<String>,
-    core_lib_path: Option<String>,
-    defs_path: Option<String>,
+    wasm_app: Vec<u8>,
+    script: Vec<u8>,
+    user_libs: UserLibs,
+    core_lib: Option<Vec<u8>>,
+    defs: Option<Vec<String>>,
 ) -> Result<HashMap<WirmInjectType, Vec<Injection>>, Vec<WhammError>> {
-    let buff = std::fs::read(app_wasm_path).unwrap();
-    let mut target_wasm = Module::parse(&buff, false, true).unwrap();
-
-    let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
+    let mut target_wasm = Module::parse(&wasm_app, false, true).unwrap();
+    let core_lib = resolve_core_lib(core_lib);
+    let defs = resolve_defs(defs);
     let response = instr::dry_run_on_bytes(
         &core_lib,
-        &def_yamls,
+        &defs,
         &mut target_wasm,
-        script_path,
-        user_lib_paths,
+        script,
+        user_libs,
         MAX_ERRORS,
         Config::default_rewriting(),
     );
     handle_dry_run_response(response)
 }
 
-/// Using the passed Whamm script, perform a dry run of non-intrusive instrumentation via the wei engine API
-///
-/// * `script_path`: The path to the whamm script .mm file.
-/// * `user_lib_paths`: Optional list of paths to user-provided library wasm modules. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
-/// * `core_lib_path`: The path to the core library wasm module. Use `None` for library to use the default path.
-/// * `defs_path`: The path to the provider definitions. Use `None` for library to use the default path.
+/// Using the passed Whamm script, perform a dry run of non-intrusive
+/// instrumentation via the wei engine API.
 pub fn instrument_as_dry_run_wei(
-    script_path: String,
-    user_lib_paths: Vec<String>,
-    core_lib_path: Option<String>,
-    defs_path: Option<String>,
+    script: Vec<u8>,
+    user_libs: UserLibs,
+    core_lib: Option<Vec<u8>>,
+    defs: Option<Vec<String>>,
 ) -> Result<HashMap<WirmInjectType, Vec<Injection>>, Vec<WhammError>> {
     let mut module = Module::default();
-    let (def_yamls, core_lib) = get_defs_and_lib(defs_path, core_lib_path);
-
+    let core_lib = resolve_core_lib(core_lib);
+    let defs = resolve_defs(defs);
     let response = instr::dry_run_on_bytes(
         &core_lib,
-        &def_yamls,
+        &defs,
         &mut module,
-        script_path,
-        user_lib_paths,
+        script,
+        user_libs,
         MAX_ERRORS,
         Config::default_monitor_module(),
     );

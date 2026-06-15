@@ -1,7 +1,10 @@
 pub mod instrument;
 pub mod utils;
 
+use crate::api::instrument::UserLibs;
 use crate::parser::yml_processor::pull_all_yml_files;
+use anyhow::{anyhow, Result};
+use std::path::Path;
 
 #[cfg(debug_assertions)]
 pub static WHAMM_CORE_LIB_BYTES: &[u8] = include_bytes!("../../embedded/debug/whamm_core.wasm");
@@ -12,29 +15,53 @@ pub static WHAMM_CORE_LIB_BYTES: &[u8] = include_bytes!("../../embedded/release/
 // Include the embedded resources (see build.rs for how this is built)
 include!(concat!(env!("OUT_DIR"), "/bundled.rs"));
 
-fn get_defs_and_lib(
-    defs_path: Option<String>,
-    core_lib_path: Option<String>,
-) -> (Vec<String>, Vec<u8>) {
-    (get_defs(defs_path), get_core_lib(core_lib_path))
+/// Load provider YAML definitions from a directory path.
+pub fn load_defs_from_path(defs_path: &Path) -> Vec<String> {
+    pull_all_yml_files(defs_path.to_str().expect("defs path is not valid UTF-8"))
 }
-pub(crate) fn get_defs(defs_path: Option<String>) -> Vec<String> {
-    if let Some(defs_path) = defs_path {
-        pull_all_yml_files(&defs_path)
-    } else {
-        DEF_YAMLS.iter().map(|s| s.to_string()).collect()
+
+/// Read the core library wasm bytes from a path on disk.
+pub fn load_core_lib_from_path(core_lib_path: &Path) -> Result<Vec<u8>> {
+    Ok(std::fs::read(core_lib_path)?)
+}
+
+/// Returns provider YAML contents from `defs_path` if given,
+/// otherwise the embedded defaults.
+/// Used by tooling (e.g. `print_info`) that still wants path-shaped
+/// input.
+pub(crate) fn get_defs(defs_path: Option<&Path>) -> Vec<String> {
+    match defs_path {
+        Some(path) => load_defs_from_path(path),
+        None => DEF_YAMLS.iter().map(|s| s.to_string()).collect(),
     }
 }
-fn get_core_lib(core_lib_path: Option<String>) -> Vec<u8> {
-    if let Some(core_lib_path) = core_lib_path {
-        // Read core library Wasm into Wirm module
-        std::fs::read(&core_lib_path).unwrap_or_else(|_| {
-            panic!(
-                "Could not read the core wasm module expected to be at location: {}",
-                core_lib_path
-            )
-        })
-    } else {
-        WHAMM_CORE_LIB_BYTES.to_vec()
+
+/// Parse user-lib specs (formatted
+/// `lib_name(import_override)?=/path/to/lib.wasm`) into the
+/// bytes-based [`UserLibs`] map. Reads each library's wasm bytes from
+/// disk.
+///
+/// Used by both the `whamm` CLI and by integration tests that
+/// exercise the same string format.
+pub fn parse_user_libs(specs: Vec<String>) -> Result<UserLibs> {
+    let mut libs = UserLibs::new();
+    for spec in specs.iter() {
+        let (name_chunk, lib_path) = spec.split_once('=').ok_or_else(|| {
+            anyhow!("A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm (got: {spec})")
+        })?;
+        let (lib_name, import_override) = match name_chunk.split_once('(') {
+            Some((name, rest)) => (
+                name.to_string(),
+                Some(
+                    rest.strip_suffix(')')
+                        .ok_or_else(|| anyhow!("user lib spec missing ')' in name part: {spec}"))?
+                        .to_string(),
+                ),
+            ),
+            None => (name_chunk.to_string(), None),
+        };
+        let bytes = std::fs::read(Path::new(lib_path))?;
+        libs.insert(lib_name, (import_override, bytes));
     }
+    Ok(libs)
 }

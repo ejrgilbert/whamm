@@ -4,6 +4,7 @@ use crate::test_instrumentation::helper::{
     DEFAULT_CORE_LIB_PATH, DEFAULT_DEFS_PATH,
 };
 use crate::util::setup_logger;
+use anyhow::Result;
 use std::fs;
 use whamm::api::utils::wasm2wat_on_file;
 use wirm::Module;
@@ -13,7 +14,7 @@ const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic.wasm";
 /// This test just confirms that a wasm module can be instrumented with the preconfigured
 /// scripts without errors occurring.
 #[test]
-fn instrument_dfinity_with_fault_injection() {
+fn instrument_dfinity_with_fault_injection() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_fault_injection("dfinity");
     assert!(!processed_scripts.is_empty());
@@ -23,21 +24,16 @@ fn instrument_dfinity_with_fault_injection() {
 
     for (script_path, ..) in processed_scripts {
         let mut module_to_instrument = Module::parse(&wasm, false, true).unwrap();
-        if let Err(errs) = run_script(
+        run_script(
             &script_path,
             wasm_path,
             &mut module_to_instrument,
             vec![],
             None,
             false,
-        ) {
-            println!("failed to run script due to errors: ");
-            for e in errs.iter() {
-                println!("- {}", e.msg)
-            }
-            panic!();
-        }
+        )?;
     }
+    Ok(())
 }
 
 #[test]
@@ -99,7 +95,7 @@ fn instrument_spin_with_fault_injection() {
 }
 
 #[test]
-fn instrument_with_wizard_monitors() {
+fn instrument_with_wizard_monitors() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_wizard_monitors();
     assert!(!processed_scripts.is_empty());
@@ -107,21 +103,16 @@ fn instrument_with_wizard_monitors() {
     let wasm = fs::read(APP_WASM_PATH).unwrap();
     for (script_path, ..) in processed_scripts {
         let mut module_to_instrument = Module::parse(&wasm, false, true).unwrap();
-        if let Err(errs) = run_script(
+        run_script(
             &script_path,
             APP_WASM_PATH,
             &mut module_to_instrument,
             vec![],
             None,
             false,
-        ) {
-            println!("failed to run script due to errors: ");
-            for e in errs.iter() {
-                println!("- {}", e.msg)
-            }
-            panic!();
-        }
+        )?;
     }
+    Ok(())
 }
 
 #[test]
@@ -133,7 +124,7 @@ fn instrument_with_replay() {
 }
 
 #[test]
-fn instrument_with_numerics_scripts() {
+fn instrument_with_numerics_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_numerics_monitors();
     assert!(!processed_scripts.is_empty());
@@ -142,7 +133,7 @@ fn instrument_with_numerics_scripts() {
 }
 
 #[test]
-fn instrument_with_branch_monitor_scripts() {
+fn instrument_with_branch_monitor_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/branch-monitor");
     assert!(!processed_scripts.is_empty());
@@ -152,7 +143,7 @@ fn instrument_with_branch_monitor_scripts() {
     run_core_suite("branch-monitor", processed_scripts, true, true)
 }
 #[test]
-fn instrument_with_branch_monitor_rewriting_scripts() {
+fn instrument_with_branch_monitor_rewriting_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/branch-monitor_rewriting");
     assert!(!processed_scripts.is_empty());
@@ -160,7 +151,7 @@ fn instrument_with_branch_monitor_rewriting_scripts() {
     run_core_suite("branch-monitor_rewriting", processed_scripts, true, false)
 }
 #[test]
-fn instrument_with_bytecode_scripts() {
+fn instrument_with_bytecode_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/bytecode");
     assert!(!processed_scripts.is_empty());
@@ -168,7 +159,7 @@ fn instrument_with_bytecode_scripts() {
     run_core_suite("bytecode", processed_scripts, true, true)
 }
 #[test]
-fn instrument_with_opidx_scripts() {
+fn instrument_with_opidx_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/opidx");
     assert!(!processed_scripts.is_empty());
@@ -177,7 +168,7 @@ fn instrument_with_opidx_scripts() {
     run_core_suite("opidx", processed_scripts, true, false)
 }
 #[test]
-fn instrument_with_probe_arg_types_scripts() {
+fn instrument_with_probe_arg_types_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/probe-arg-types");
     assert!(!processed_scripts.is_empty());
@@ -186,7 +177,7 @@ fn instrument_with_probe_arg_types_scripts() {
     run_core_suite("probe-arg-types", processed_scripts, true, false)
 }
 #[test]
-fn instrument_with_overlap_scripts() {
+fn instrument_with_overlap_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/overlap");
     assert!(!processed_scripts.is_empty());
@@ -194,7 +185,7 @@ fn instrument_with_overlap_scripts() {
     run_core_suite("overlap", processed_scripts, true, true)
 }
 #[test]
-fn instrument_with_load_and_call_scripts() {
+fn instrument_with_load_and_call_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/load-and-call");
     assert!(!processed_scripts.is_empty());
@@ -203,7 +194,7 @@ fn instrument_with_load_and_call_scripts() {
     run_core_suite("load-and-call", processed_scripts, true, false)
 }
 #[test]
-fn instrument_with_local_n_scripts() {
+fn instrument_with_local_n_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/localN");
     assert!(!processed_scripts.is_empty());
@@ -211,7 +202,7 @@ fn instrument_with_local_n_scripts() {
     run_core_suite("localN", processed_scripts, true, true)
 }
 #[test]
-fn instrument_with_res0_scripts() {
+fn instrument_with_res0_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/res0");
     assert!(!processed_scripts.is_empty());
@@ -220,7 +211,7 @@ fn instrument_with_res0_scripts() {
     run_core_suite("res0", processed_scripts, true, false)
 }
 #[test]
-fn instrument_with_res_n_scripts() {
+fn instrument_with_res_n_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/resN");
     assert!(!processed_scripts.is_empty());
@@ -229,7 +220,7 @@ fn instrument_with_res_n_scripts() {
     run_core_suite("resN", processed_scripts, true, false)
 }
 #[test]
-fn instrument_with_at_init_scripts() {
+fn instrument_with_at_init_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/@init");
     assert!(!processed_scripts.is_empty());
@@ -237,7 +228,7 @@ fn instrument_with_at_init_scripts() {
     run_core_suite("at_init", processed_scripts, true, true)
 }
 #[test]
-fn instrument_with_at_static_scripts() {
+fn instrument_with_at_static_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/@static");
     assert!(!processed_scripts.is_empty());
@@ -246,7 +237,7 @@ fn instrument_with_at_static_scripts() {
 }
 
 #[test]
-fn instrument_with_calls_monitor_scripts() {
+fn instrument_with_calls_monitor_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/calls-monitor");
     assert!(!processed_scripts.is_empty());
@@ -256,7 +247,7 @@ fn instrument_with_calls_monitor_scripts() {
     run_core_suite("calls-monitor", processed_scripts, true, true)
 }
 #[test]
-fn instrument_with_calls_monitor_rewriting_scripts() {
+fn instrument_with_calls_monitor_rewriting_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/calls-monitor_rewriting");
     assert!(!processed_scripts.is_empty());
@@ -264,7 +255,7 @@ fn instrument_with_calls_monitor_rewriting_scripts() {
     run_core_suite("calls-monitor_rewriting", processed_scripts, true, false)
 }
 #[test]
-fn instrument_with_call_indirect_funcref_scripts() {
+fn instrument_with_call_indirect_funcref_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/call-indirect-funcref");
     assert!(!processed_scripts.is_empty());
@@ -272,7 +263,7 @@ fn instrument_with_call_indirect_funcref_scripts() {
     run_core_suite("call-indirect-funcref", processed_scripts, true, false)
 }
 #[test]
-fn instrument_with_strings_scripts() {
+fn instrument_with_strings_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/strings");
     assert!(!processed_scripts.is_empty());
@@ -280,7 +271,7 @@ fn instrument_with_strings_scripts() {
     run_core_suite("strings", processed_scripts, true, true)
 }
 #[test]
-fn instrument_with_bulk_mem_ops_scripts() {
+fn instrument_with_bulk_mem_ops_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/bulk-mem-ops");
     assert!(!processed_scripts.is_empty());
@@ -289,7 +280,7 @@ fn instrument_with_bulk_mem_ops_scripts() {
     run_core_suite("bulk-mem-ops", processed_scripts, true, false)
 }
 #[test]
-fn instrument_with_data_init_scripts() {
+fn instrument_with_data_init_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/data-init");
     assert!(!processed_scripts.is_empty());
@@ -298,7 +289,7 @@ fn instrument_with_data_init_scripts() {
     run_core_suite("data-init", processed_scripts, true, false)
 }
 #[test]
-fn instrument_with_memcpy_scripts() {
+fn instrument_with_memcpy_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/memcpy");
     assert!(!processed_scripts.is_empty());
@@ -307,7 +298,7 @@ fn instrument_with_memcpy_scripts() {
 }
 
 #[test]
-fn instrument_with_memsize_scripts() {
+fn instrument_with_memsize_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/memsize");
     assert!(!processed_scripts.is_empty());
@@ -317,7 +308,7 @@ fn instrument_with_memsize_scripts() {
 }
 
 #[test]
-fn instrument_with_mem_grow_scripts() {
+fn instrument_with_mem_grow_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/grow-failed");
     assert!(!processed_scripts.is_empty());
@@ -326,7 +317,7 @@ fn instrument_with_mem_grow_scripts() {
     run_core_suite("grow-failed", processed_scripts, true, false)
 }
 #[test]
-fn instrument_with_libs_scripts() {
+fn instrument_with_libs_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/libs");
     assert!(!processed_scripts.is_empty());
@@ -334,7 +325,7 @@ fn instrument_with_libs_scripts() {
     run_core_suite("libs", processed_scripts, true, true)
 }
 #[test]
-fn instrument_with_order_scripts() {
+fn instrument_with_order_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/ordering");
     assert!(!processed_scripts.is_empty());
@@ -342,7 +333,7 @@ fn instrument_with_order_scripts() {
     run_core_suite("ordering", processed_scripts, true, true)
 }
 #[test]
-fn instrument_with_tuples_scripts() {
+fn instrument_with_tuples_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/tuples");
     assert!(!processed_scripts.is_empty());
@@ -350,7 +341,7 @@ fn instrument_with_tuples_scripts() {
     run_core_suite("tuples", processed_scripts, true, true)
 }
 #[test]
-fn instrument_with_type_bounds_scripts() {
+fn instrument_with_type_bounds_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/type-bounds");
     assert!(!processed_scripts.is_empty());

@@ -1,8 +1,9 @@
 use crate::test_instrumentation::helper::{run_core_suite, setup_tests};
 use crate::util::setup_logger;
+use anyhow::Result;
 
 #[test]
-fn branches() {
+fn branches() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("paper_eval/branches");
     assert!(!processed_scripts.is_empty());
@@ -10,7 +11,7 @@ fn branches() {
     run_core_suite("paper_eval-branches", processed_scripts, true, true)
 }
 #[test]
-fn categories() {
+fn categories() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("paper_eval/categories");
     assert!(!processed_scripts.is_empty());
@@ -18,7 +19,7 @@ fn categories() {
     run_core_suite("paper_eval-categories", processed_scripts, true, true)
 }
 #[test]
-fn hotness() {
+fn hotness() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("paper_eval/hotness");
     assert!(!processed_scripts.is_empty());
@@ -26,7 +27,7 @@ fn hotness() {
     run_core_suite("paper_eval-hotness", processed_scripts, true, true)
 }
 #[test]
-fn ins_count() {
+fn ins_count() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("paper_eval/ins_count");
     assert!(!processed_scripts.is_empty());
@@ -35,7 +36,7 @@ fn ins_count() {
 }
 
 #[test]
-fn cache_sim() {
+fn cache_sim() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("paper_eval/cache_sim");
     assert!(!processed_scripts.is_empty());
@@ -44,7 +45,7 @@ fn cache_sim() {
 }
 
 #[test]
-fn ins_coverage() {
+fn ins_coverage() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("paper_eval/ins_coverage");
     assert!(!processed_scripts.is_empty());
@@ -53,7 +54,7 @@ fn ins_coverage() {
 }
 
 #[test]
-fn ins_coverage_dyninstr() {
+fn ins_coverage_dyninstr() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("paper_eval/ins_coverage_dyninstr");
     assert!(!processed_scripts.is_empty());
@@ -68,7 +69,7 @@ fn ins_coverage_dyninstr() {
 }
 
 #[test]
-fn mem_access_tracing() {
+fn mem_access_tracing() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("paper_eval/mem_access_tracing");
     assert!(!processed_scripts.is_empty());
@@ -77,7 +78,7 @@ fn mem_access_tracing() {
 }
 
 #[test]
-fn call_graph() {
+fn call_graph() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("paper_eval/call_graph");
     assert!(!processed_scripts.is_empty());
@@ -89,7 +90,7 @@ fn call_graph() {
 // at call_indirect sites (no callee-tagging workaround). Rewriting-only:
 // the wei backend doesn't yet support `resolve_funcref`.
 #[test]
-fn call_graph_resolved() {
+fn call_graph_resolved() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("paper_eval/call_graph_resolved");
     assert!(!processed_scripts.is_empty());
@@ -103,7 +104,7 @@ fn call_graph_resolved() {
 }
 
 #[test]
-fn basic_block_profiling() {
+fn basic_block_profiling() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("paper_eval/basic_block_profiling");
     assert!(!processed_scripts.is_empty());
@@ -117,7 +118,7 @@ fn basic_block_profiling() {
 }
 
 #[test]
-fn loop_tracing() {
+fn loop_tracing() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("paper_eval/loop_tracer");
     assert!(!processed_scripts.is_empty());

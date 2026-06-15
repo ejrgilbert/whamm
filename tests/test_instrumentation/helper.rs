@@ -1,4 +1,5 @@
 use crate::util::{setup_logger, CORE_WASM_PATH};
+use anyhow::{anyhow, Context, Result};
 use glob::{glob, glob_with};
 use log::{error, warn};
 use std::fs;
@@ -171,7 +172,7 @@ pub(crate) fn run_core_suite(
     processed_scripts: Vec<(PathBuf, String)>,
     with_br: bool,
     with_wei: bool,
-) {
+) -> Result<()> {
     let mut rewriting_tests = vec![];
     let mut wei_tests = vec![];
     for (script_path, ..) in processed_scripts.iter() {
@@ -247,7 +248,7 @@ pub(crate) fn run_core_suite(
                 exp_out,
                 &outdir,
                 &instr_app_path,
-            );
+            )?;
         }
     }
 
@@ -293,9 +294,10 @@ pub(crate) fn run_core_suite(
                 exp_out,
                 &outdir,
                 &instr_app_path,
-            );
+            )?;
         }
     }
+    Ok(())
 }
 const MAX_EXP_OUT_SIZE: u64 = 50_000; // 50 KB
 pub(crate) enum ExpectedOutput {
@@ -338,41 +340,64 @@ pub(crate) fn run_script(
     user_libs: Vec<String>,
     output_path: Option<String>,
     target_wei: bool,
-) -> Result<(), Vec<WhammError>> {
-    let script_path_str = script_path.to_str().unwrap().replace("\"", "");
+) -> Result<()> {
+    let script_path_str = script_path
+        .to_str()
+        .ok_or_else(|| anyhow!("script path is not valid UTF-8: {script_path:?}"))?
+        .replace("\"", "");
+    let script_bytes = std::fs::read(&script_path_str)
+        .with_context(|| format!("could not read script {script_path_str}"))?;
+    let user_lib_bytes = whamm::api::parse_user_libs(user_libs.clone())?;
+    let core_lib_bytes = Some(whamm::api::load_core_lib_from_path(Path::new(
+        CORE_WASM_PATH,
+    ))?);
+    let defs_bytes = Some(whamm::api::load_defs_from_path(Path::new("./")));
     let wasm_result = if target_wei {
         whamm::api::instrument::generate_monitor_module(
-            script_path_str,
-            user_libs.clone(),
-            Some(CORE_WASM_PATH.to_string()),
-            Some("./".to_string()),
+            script_bytes.clone(),
+            user_lib_bytes.clone(),
+            core_lib_bytes.clone(),
+            defs_bytes.clone(),
         )
     } else {
         whamm::api::instrument::instrument_module_with_rewriting(
             target_wasm,
-            script_path_str,
-            user_libs.clone(),
-            Some(CORE_WASM_PATH.to_string()),
-            Some("./".to_string()),
+            script_bytes.clone(),
+            user_lib_bytes.clone(),
+            core_lib_bytes.clone(),
+            defs_bytes.clone(),
         )
-    }?;
+    }
+    .map_err(format_whamm_errs)?;
     if TEST_DRY_RUN && !target_wei {
+        let wasm_bytes = std::fs::read(wasm_path)
+            .with_context(|| format!("could not read app wasm {wasm_path}"))?;
         let _side_effects = instrument_as_dry_run_rewriting(
-            wasm_path.to_string(),
-            script_path.to_str().unwrap().to_string(),
-            user_libs,
-            Some(CORE_WASM_PATH.to_string()),
-            Some("./".to_string()),
+            wasm_bytes,
+            script_bytes,
+            user_lib_bytes,
+            core_lib_bytes,
+            defs_bytes,
         )
-        .expect("Failed to run dry-run");
+        .map_err(format_whamm_errs)
+        .context("failed to run dry-run")?;
 
         // NOTE: uncomment to debug side effects...just don't commit this uncommented! it'll slow EVERYTHING down
         // print_side_effects(&_side_effects);
     }
     if let Some(path) = output_path {
-        write_to_file(wasm_result, path);
+        write_to_file(wasm_result, Path::new(&path));
     }
     Ok(())
+}
+
+fn format_whamm_errs(errs: Vec<WhammError>) -> anyhow::Error {
+    let body = errs
+        .iter()
+        .map(|e| format!("  - {}", e.msg))
+        .collect::<Vec<_>>()
+        .join("\n");
+    anyhow!("{} error(s) from whamm:\n{body}", errs.len())
 }
 
 pub(crate) fn run_testcase_rewriting(
@@ -382,24 +407,18 @@ pub(crate) fn run_testcase_rewriting(
     exp_output: ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
-) {
+) -> Result<()> {
     // run the script on configured application
     let wasm = fs::read(app_path_str).unwrap();
     let mut module_to_instrument = Module::parse(&wasm, false, true).unwrap();
-    if let Err(errs) = run_script(
+    run_script(
         script,
         app_path_str,
         &mut module_to_instrument,
         user_libs.clone(),
         Some(instr_app_path.clone()),
         false,
-    ) {
-        println!("failed to run script due to errors: ");
-        for e in errs.iter() {
-            println!("- {}", e.msg)
-        }
-        panic!();
-    }
+    )?;
 
     // run the instrumented application on wasmtime
     // let res = Command::new(format!("{home}/.cargo/bin/cargo"))
@@ -458,6 +477,7 @@ pub(crate) fn run_testcase_rewriting(
             ExpectedOutput::None => {}
         };
     }
+    Ok(())
 }
 
 pub(crate) fn run_testcase_wei(
@@ -467,7 +487,7 @@ pub(crate) fn run_testcase_wei(
     exp_output: ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
-) {
+) -> Result<()> {
     let engine_libs = ["whamm:dyninstr"];
     let mut libs_to_link = "".to_string();
     for path in user_libs.iter() {
@@ -496,20 +516,14 @@ pub(crate) fn run_testcase_wei(
 
     // run the script on configured application
     let mut module_to_instrument = Module::default();
-    if let Err(errs) = run_script(
+    run_script(
         script,
         app_path_str,
         &mut module_to_instrument,
         user_libs,
         Some(instr_app_path.clone()),
         true,
-    ) {
-        println!("failed to run script due to errors: ");
-        for e in errs.iter() {
-            println!("- {}", e.msg)
-        }
-        panic!()
-    }
+    )?;
 
     // run the instrumented application on wizard
     let whamm_core_lib_path = "tests/libs/whamm_core.wasm";
@@ -557,6 +571,7 @@ pub(crate) fn run_testcase_wei(
             ExpectedOutput::None => {}
         };
     }
+    Ok(())
 }
 
 struct TestCase {

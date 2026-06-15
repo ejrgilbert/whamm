@@ -1,5 +1,5 @@
 #![allow(clippy::too_many_arguments)]
-use crate::api::instrument::Config;
+use crate::api::instrument::{Config, UserLibs};
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::metrics::Metrics;
 use crate::emitter::memory_allocator::MemoryAllocator;
@@ -27,7 +27,7 @@ use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
 use log::{error, info};
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::path::Path;
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::FunctionID;
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
@@ -42,48 +42,32 @@ const ENGINE_BUFFER_MAX_NAME: &str = "whamm_buffer:max";
 pub const ENGINE_BUFFER_MAX_SIZE: i32 = 2i32.pow(10); // max set to 1KB = 2^10 = 1024 bytes
 
 /// create output path if it doesn't exist
-pub(crate) fn try_path(path: &String) {
-    if !PathBuf::from(path).exists() {
-        std::fs::create_dir_all(PathBuf::from(path).parent().unwrap()).unwrap();
+pub(crate) fn try_path(path: &Path) {
+    if !path.exists() {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
     }
 }
 
-pub fn run_with_path(
+pub fn run_on_bytes(
     core_lib: &[u8],
     def_yamls: &[String],
-    app_wasm_path: String,
-    script_path: String,
-    user_lib_paths: Vec<String>,
+    wasm_app: Vec<u8>,
+    script: Vec<u8>,
+    user_libs: UserLibs,
     max_errors: i32,
     config: Config,
 ) -> Result<Vec<u8>, Box<ErrorGen>> {
-    let buff = if !config.as_monitor_module {
-        let raw = match std::fs::read(&app_wasm_path) {
-            Ok(bytes) => bytes,
+    let mut target_wasm = if !config.as_monitor_module {
+        // Caller is expected to hand us binary wasm bytes. Any WAT-text
+        // normalization happens at the CLI/test layer.
+        match Module::parse(&wasm_app, false, true) {
+            Ok(m) => m,
             Err(e) => {
-                let mut err = ErrorGen::new(script_path.clone(), "".to_string(), max_errors);
-                err.add_instr_error(&format!(
-                    "Wasm application path not found {}: {}",
-                    app_wasm_path, e
-                ));
-                return Err(Box::new(err));
-            }
-        };
-        match wat::parse_bytes(&raw) {
-            Ok(bytes) => bytes.into_owned(),
-            Err(error) => {
-                let mut err = ErrorGen::new(script_path.clone(), "".to_string(), max_errors);
-                err.add_instr_error(&format!("Failed to parse app {}: {}", app_wasm_path, error));
+                let mut err = ErrorGen::new("".to_string(), "".to_string(), max_errors);
+                err.add_instr_error(&format!("Failed to parse app: {e}"));
                 return Err(Box::new(err));
             }
         }
-    } else {
-        vec![]
-    };
-
-    let mut target_wasm = if !config.as_monitor_module {
-        // Read app Wasm into Wirm module
-        Module::parse(&buff, false, true).unwrap()
     } else {
         // Create a new wasm file to use as `mon.wasm`
         Module::default()
@@ -93,8 +77,8 @@ pub fn run_with_path(
         core_lib,
         def_yamls,
         &mut target_wasm,
-        script_path,
-        user_lib_paths,
+        script,
+        user_libs,
         max_errors,
         config,
     )
@@ -104,8 +88,8 @@ pub fn dry_run_on_bytes<'ir>(
     core_lib: &'ir [u8],
     def_yamls: &[String],
     target_wasm: &mut Module<'ir>,
-    script_path: String,
-    user_lib_paths: Vec<String>,
+    script: Vec<u8>,
+    user_libs: UserLibs,
     max_errors: i32,
     config: Config,
 ) -> Result<HashMap<WirmInjectType, Vec<WirmInjection<'ir>>>, Vec<WhammError>> {
@@ -114,8 +98,8 @@ pub fn dry_run_on_bytes<'ir>(
         core_lib,
         def_yamls,
         target_wasm,
-        script_path,
-        user_lib_paths,
+        script,
+        user_libs,
         max_errors,
         &mut metrics,
         config,
@@ -126,48 +110,12 @@ pub fn dry_run_on_bytes<'ir>(
     }
 }
 
-pub fn parse_user_lib_paths(paths: Vec<String>) -> Vec<(String, Option<String>, String, Vec<u8>)> {
-    let mut res = vec![];
-    for path in paths.iter() {
-        let parts = path.split('=').collect::<Vec<&str>>();
-        assert_eq!(2, parts.len(), "A user lib should be specified using the following format: <lib_name>=/path/to/lib.wasm");
-
-        let lib_name_chunk = parts.first().unwrap().to_string();
-        let name_parts = lib_name_chunk.split('(').collect::<Vec<&str>>();
-        let lib_name = name_parts.first().unwrap().to_string();
-        let lib_name_import_override = if name_parts.len() > 1 {
-            Some(
-                name_parts
-                    .get(1)
-                    .unwrap()
-                    .strip_suffix(')')
-                    .unwrap()
-                    .to_string(),
-            )
-        } else {
-            None
-        };
-
-        let lib_path = parts.get(1).unwrap();
-        let buff = std::fs::read(lib_path).unwrap();
-
-        res.push((
-            lib_name,
-            lib_name_import_override,
-            lib_path.to_string(),
-            buff,
-        ));
-    }
-
-    res
-}
-
 pub fn run_on_module_and_encode<'lib, 'ir>(
     core_lib: &'lib [u8],
     def_yamls: &[String],
     target_wasm: &mut Module<'ir>,
-    script_path: String,
-    user_lib_paths: Vec<String>,
+    script: Vec<u8>,
+    user_libs: UserLibs,
     max_errors: i32,
     config: Config,
 ) -> Result<Vec<u8>, Box<ErrorGen>> {
@@ -176,8 +124,8 @@ pub fn run_on_module_and_encode<'lib, 'ir>(
         core_lib,
         def_yamls,
         target_wasm,
-        script_path,
-        user_lib_paths,
+        script,
+        user_libs,
         max_errors,
         &mut metrics,
         config,
@@ -192,23 +140,17 @@ pub fn run_on_module<'lib, 'ir>(
     core_lib: &'lib [u8],
     def_yamls: &[String],
     target_wasm: &mut Module<'ir>,
-    script_path: String,
-    user_lib_paths: Vec<String>,
+    script: Vec<u8>,
+    user_libs: UserLibs,
     max_errors: i32,
     metrics: &mut Metrics,
     config: Config,
 ) -> Result<(), Box<ErrorGen>> {
-    let user_libs = parse_user_lib_paths(user_lib_paths);
-
-    // read in the whamm script
-    let whamm_script = match std::fs::read_to_string(script_path.clone()) {
-        Ok(unparsed_str) => unparsed_str,
+    let whamm_script = match String::from_utf8(script) {
+        Ok(s) => s,
         Err(error) => {
-            let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
-            err.add_instr_error(&format!(
-                "Cannot read specified file {}: {}",
-                script_path, error
-            ));
+            let mut err = ErrorGen::new("".to_string(), "".to_string(), max_errors);
+            err.add_instr_error(&format!("Script is not valid UTF-8: {}", error));
             return Err(Box::new(err));
         }
     };
@@ -218,7 +160,6 @@ pub fn run_on_module<'lib, 'ir>(
         def_yamls,
         target_wasm,
         &whamm_script,
-        &script_path,
         user_libs,
         max_errors,
         metrics,
@@ -226,12 +167,13 @@ pub fn run_on_module<'lib, 'ir>(
     )
 }
 
-pub fn write_to_file(module: Vec<u8>, output_wasm_path: String) {
-    try_path(&output_wasm_path);
-    if let Err(e) = std::fs::write(&output_wasm_path, module) {
+pub fn write_to_file(module: Vec<u8>, output_wasm_path: &Path) {
+    try_path(output_wasm_path);
+    if let Err(e) = std::fs::write(output_wasm_path, module) {
         unreachable!(
             "Failed to dump instrumented wasm to {} from error: {}",
-            &output_wasm_path, e
+            output_wasm_path.display(),
+            e
         )
     }
 }
@@ -241,27 +183,26 @@ pub fn run<'lib, 'ir>(
     def_yamls: &[String],
     target_wasm: &mut Module<'ir>,
     whamm_script: &String,
-    script_path: &str,
-    user_libs: Vec<(String, Option<String>, String, Vec<u8>)>,
+    user_libs: UserLibs,
     max_errors: i32,
     metrics: &mut Metrics,
     config: Config,
 ) -> Result<(), Box<ErrorGen>> {
     // Set up error reporting mechanism
-    let mut err = ErrorGen::new(script_path.to_string(), "".to_string(), max_errors);
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), max_errors);
 
     // Parse user libraries to Wasm modules
-    let mut user_lib_paths: HashMap<String, String> = HashMap::new();
+    let mut user_lib_bytes: HashMap<String, Vec<u8>> = HashMap::new();
     let mut user_lib_modules: HashMap<String, (Option<String>, Module)> = HashMap::default();
-    for (lib_name, lib_name_import_override, path, lib_buff) in user_libs.iter() {
+    for (lib_name, (import_override, lib_buff)) in user_libs.iter() {
         user_lib_modules.insert(
             lib_name.clone(),
             (
-                lib_name_import_override.clone(),
+                import_override.clone(),
                 Module::parse(lib_buff, false, false).unwrap(),
             ),
         );
-        user_lib_paths.insert(lib_name.clone(), path.clone());
+        user_lib_bytes.insert(lib_name.clone(), lib_buff.clone());
     }
     // add the core library just in case the script needs it
     user_lib_modules.insert(
@@ -380,7 +321,7 @@ pub fn run<'lib, 'ir>(
             metadata_collector,
             used_exports_per_lib,
             static_libs,
-            user_lib_paths,
+            user_lib_bytes,
             user_lib_modules,
             target_wasm,
             has_reports,
@@ -484,7 +425,7 @@ fn run_instr_rewrite<'lib, 'ir>(
     metadata_collector: MetadataCollector,
     used_exports_per_lib: HashMap<String, (bool, HashSet<String>)>,
     static_libs: HashSet<String>,
-    user_lib_paths: HashMap<String, String>,
+    user_lib_bytes: HashMap<String, Vec<u8>>,
     user_lib_modules: HashMap<String, (Option<String>, Module<'lib>)>,
     target_wasm: &mut Module<'ir>,
     has_reports: bool,
@@ -504,7 +445,7 @@ fn run_instr_rewrite<'lib, 'ir>(
     let has_probe_state_init = metadata_collector.has_probe_state_init;
     let config = metadata_collector.config;
 
-    let mut registry = WasmRegistry::new(&static_libs, &user_lib_paths, err);
+    let mut registry = WasmRegistry::new(&static_libs, &user_lib_bytes, err);
 
     // Phase 0 of instrumentation (emit bound variables and fns).
     // Scoped so that init's borrows on err, table, and mem_allocator are released

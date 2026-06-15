@@ -1,7 +1,9 @@
 use crate::util::{print_side_effects, setup_logger, CORE_WASM_PATH};
+use std::path::Path;
 use whamm::api::instrument::{
     instrument_as_dry_run_rewriting, instrument_as_dry_run_wei, WhammError,
 };
+use whamm::api::{load_core_lib_from_path, load_defs_from_path};
 
 // TODO add tests for:
 //  - user global data
@@ -17,11 +19,11 @@ fn dry_run() {
     let script_path =
         "tests/scripts/core_suite/branch-monitor_rewriting/branch-br__br_if__br_table.mm";
     let side_effects = instrument_as_dry_run_rewriting(
-        wasm_path.to_string(),
-        script_path.to_string(),
-        vec![],
-        Some(CORE_WASM_PATH.to_string()),
-        Some("./".to_string()),
+        std::fs::read(wasm_path).unwrap(),
+        std::fs::read(script_path).unwrap(),
+        Default::default(),
+        Some(load_core_lib_from_path(Path::new(CORE_WASM_PATH)).unwrap()),
+        Some(load_defs_from_path(Path::new("./"))),
     )
     .expect("Failed to run dry-run for bytecode rewriting");
 
@@ -34,10 +36,10 @@ fn dry_run_wei() {
     let script_path =
         "tests/scripts/core_suite/branch-monitor_rewriting/branch-br__br_if__br_table.mm";
     let side_effects = instrument_as_dry_run_wei(
-        script_path.to_string(),
-        vec![],
-        Some(CORE_WASM_PATH.to_string()),
-        Some("./".to_string()),
+        std::fs::read(script_path).unwrap(),
+        Default::default(),
+        Some(load_core_lib_from_path(Path::new(CORE_WASM_PATH)).unwrap()),
+        Some(load_defs_from_path(Path::new("./"))),
     )
     .expect("Failed to run dry-run for wei");
 
@@ -50,11 +52,11 @@ fn dry_run_errs() {
     let wasm_path = "tests/apps/core_suite/rust/cf.wasm";
     let script_path = "tests/scripts/error/bad.mm";
     let errs = instrument_as_dry_run_rewriting(
-        wasm_path.to_string(),
-        script_path.to_string(),
-        vec![],
-        Some(CORE_WASM_PATH.to_string()),
-        Some("./".to_string()),
+        std::fs::read(wasm_path).unwrap(),
+        std::fs::read(script_path).unwrap(),
+        Default::default(),
+        Some(load_core_lib_from_path(Path::new(CORE_WASM_PATH)).unwrap()),
+        Some(load_defs_from_path(Path::new("./"))),
     )
     .expect_err("Should have failed to execute dry-run");
 

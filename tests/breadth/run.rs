@@ -1,5 +1,6 @@
 // End-to-end smoke tests for the breadth scripts.
 
+use anyhow::Result;
 use std::path::Path;
 
 use crate::test_instrumentation::helper::{
@@ -19,7 +20,7 @@ fn outdir(name: &str) -> String {
 
 #[test]
 #[ignore]
-fn breadth_rewriting_compiles_and_runs() {
+fn breadth_rewriting_compiles_and_runs() -> Result<()> {
     let out = outdir("rewriting");
     let instr_app = format!("{out}/output.wasm");
     run_testcase_rewriting(
@@ -29,7 +30,7 @@ fn breadth_rewriting_compiles_and_runs() {
         ExpectedOutput::None,
         &out,
         &instr_app,
-    );
+    )
 }
 
 // Currently expected to fail wherever the wei target rejects a bound item the rewriting
@@ -38,7 +39,7 @@ fn breadth_rewriting_compiles_and_runs() {
 // to track parity progress.
 #[test]
 #[ignore]
-fn breadth_wei_compiles_and_runs() {
+fn breadth_wei_compiles_and_runs() -> Result<()> {
     let out = outdir("wei");
     let instr_app = format!("{out}/mon.wasm");
     run_testcase_wei(
@@ -48,13 +49,13 @@ fn breadth_wei_compiles_and_runs() {
         ExpectedOutput::None,
         &out,
         &instr_app,
-    );
+    )
 }
 
 // Engine-only items (probe_id, …) — exercises the wei-only side of the schema.
 #[test]
 #[ignore]
-fn breadth_wei_engine_only_compiles_and_runs() {
+fn breadth_wei_engine_only_compiles_and_runs() -> Result<()> {
     let out = outdir("wei_engine_only");
     let instr_app = format!("{out}/mon.wasm");
     run_testcase_wei(
@@ -64,5 +65,5 @@ fn breadth_wei_engine_only_compiles_and_runs() {
         ExpectedOutput::None,
         &out,
         &instr_app,
-    );
+    )
 }

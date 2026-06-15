@@ -5,7 +5,7 @@ use crate::common::instr;
 use crate::parser;
 use crate::wast::test_harness::setup_and_run_tests;
 use log::debug;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Utility to print the info about a match rule to console.
@@ -16,13 +16,13 @@ use std::process::Command;
 /// * `print_functions`: Whether to print the bound functions for the match rule
 pub fn print_info(
     rule: String,
-    defs_path: Option<String>,
+    defs_path: Option<PathBuf>,
     print_vars: bool,
     print_functions: bool,
 ) -> Result<(), Box<ErrorGen>> {
     // Parse the script and generate the information
     let mut err = ErrorGen::new("".to_string(), rule.clone(), MAX_ERRORS);
-    let def_yamls = get_defs(defs_path);
+    let def_yamls = get_defs(defs_path.as_deref());
     parser::whamm_parser::print_info(rule, &def_yamls, print_vars, print_functions, &mut err)?;
 
     if err.has_errors {
@@ -36,7 +36,7 @@ pub fn print_info(
 ///
 /// * `module`: The module to write to the file.
 /// * `output_wasm_path`: Where to write the module to.
-pub fn write_to_file(module: Vec<u8>, output_wasm_path: String) {
+pub fn write_to_file(module: Vec<u8>, output_wasm_path: &Path) {
     instr::write_to_file(module, output_wasm_path);
 }
 

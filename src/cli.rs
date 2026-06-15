@@ -19,7 +19,7 @@ pub enum Cmd {
 
         /// The path to provider definition yaml configs.
         #[arg(short, long, value_parser)]
-        defs_path: Option<String>,
+        defs_path: Option<std::path::PathBuf>,
 
         /// Show the vars in-scope when using the probe match rule.
         #[arg(long, short, action, default_value = "false")]
@@ -33,7 +33,7 @@ pub enum Cmd {
     /// To run a `wast` test.
     Wast {
         /// The path to the `wast` file to run.
-        wast_path: String,
+        wast_path: std::path::PathBuf,
     },
 
     /// To instrument a Wasm application.
@@ -44,22 +44,22 @@ pub enum Cmd {
 pub struct InstrArgs {
     /// The path to the application's Wasm module we want to instrument.
     #[arg(short, long, value_parser)]
-    pub app: Option<String>,
+    pub app: Option<std::path::PathBuf>,
     /// The path to the Script containing the instrumentation Probe definitions.
     #[arg(short, long, value_parser)]
-    pub script: String,
+    pub script: std::path::PathBuf,
     /// The path to provider definition yaml configs.
     #[arg(short, long, value_parser)]
-    pub defs_path: Option<String>,
+    pub defs_path: Option<std::path::PathBuf>,
     /// The path to the core Whamm library Wasm module.
     #[arg(short, long, value_parser)]
-    pub core_lib: Option<String>,
+    pub core_lib: Option<std::path::PathBuf>,
     /// To configure user-provided libraries. These are comma-delimited, formatted <lib_name>=<lib_path, e.g.: --user_libs lib_name0=/path/to/lib0.wasm,lib_name1=/path/to/lib1.wasm
     #[arg(short, long, value_delimiter = ',', num_args = 1..)]
     pub user_libs: Vec<String>,
     /// The path that the instrumented version of the Wasm app should be output to.
     #[arg(short, long, value_parser, default_value = "./output.wasm")]
-    pub output_path: String,
+    pub output_path: std::path::PathBuf,
 
     /// Whether to emit `mon.wasm` for instrumenting with the Whamm Engine Interface (wei).
     #[arg(short, long, action, default_value = "false")]

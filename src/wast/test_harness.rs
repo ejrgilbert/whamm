@@ -228,8 +228,6 @@ fn generate_instrumented_bin_wast(
             "{TEST_DEBUG_DIR}/{}.wasm",
             wast_path.file_name().unwrap().to_str().unwrap()
         );
-        let wast_path_str = wast_path.to_str().unwrap().replace("\"", "");
-
         let core_lib = std::fs::read(CORE_WASM_PATH).unwrap_or_else(|_| {
             panic!(
                 "Could not read the core wasm module expected to be at location: {}",
@@ -244,8 +242,7 @@ fn generate_instrumented_bin_wast(
             &def_yamls,
             &mut module_to_instrument,
             &test_case.whamm_script,
-            &wast_path_str,
-            vec![],
+            Default::default(),
             0,
             &mut metrics,
             Config {
@@ -266,7 +263,7 @@ fn generate_instrumented_bin_wast(
 
         let instrumented_module_wasm = module_to_instrument.encode().unwrap();
 
-        try_path(&debug_file_path);
+        try_path(std::path::Path::new(&debug_file_path));
         if let Err(e) = std::fs::write(&debug_file_path, instrumented_module_wasm.clone()) {
             unreachable!(
                 "Failed to dump instrumented wasm to {} from error: {}",
@@ -563,7 +560,7 @@ fn new_wast_path(
     };
 
     let new_path = format!("{target_parent_dir}/{}/{new_name}", new_sub_path);
-    try_path(&new_path);
+    try_path(std::path::Path::new(&new_path));
 
     new_path
 }

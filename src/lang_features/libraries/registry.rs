@@ -65,15 +65,15 @@ pub(crate) struct WasmRegistry {
 impl WasmRegistry {
     pub(crate) fn new(
         static_libs: &HashSet<String>,
-        user_libs: &HashMap<String, String>, // name -> path
+        user_libs: &HashMap<String, Vec<u8>>, // name -> wasm bytes
         err: &mut ErrorGen,
     ) -> Self {
         let engine = Engine::default();
 
         let mut services = HashMap::new();
         for static_lib in static_libs.iter() {
-            if let Some(path) = user_libs.get(static_lib) {
-                let module = Module::from_file(&engine, path).unwrap();
+            if let Some(bytes) = user_libs.get(static_lib) {
+                let module = Module::new(&engine, bytes).unwrap();
                 let service = WasmService::new(&engine, &module).unwrap();
                 services.insert(static_lib.clone(), Box::new(service));
             } else {
