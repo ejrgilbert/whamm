@@ -147,48 +147,35 @@ fn handle_wasm(
     }
 
     if let Some(ref mut matches) = res {
-        let mut new_dyn_info = vec![];
         let all_locals = all_locals(app_wasm, &fid);
-        // figure out which args are requested based on matched probes
-        // (we don't have a match if the requested local is beyond the
-        // length of what's possible or the type doesn't match up)
+        // Represent `all_locals` as `StackVal`s for code reuse
+        let local_stack: Vec<StackVal> = all_locals
+            .iter()
+            .map(|ty| StackVal::new(String::new(), Some(*ty)))
+            .collect();
+        // Check that every `local`is in range and is type-compatible.
         matches.filter_probes(|probe| {
-            let body_params = &probe.metadata.body_args;
-            let pred_params = &probe.metadata.pred_args;
-            fn check(
-                all_locals: &[WirmType],
-                to_check: &WhammParams,
-                info: &mut Vec<(String, (WirmType, VarAddr))>,
-            ) -> bool {
-                for param in to_check.params.iter() {
-                    if let Some(n) = param.n_for("local") {
-                        if let Some(target_local_ty) = all_locals.get(n as usize) {
-                            if param
-                                .ty
-                                .is_compatible_with(&DataType::from_wasm_type(target_local_ty))
-                            {
-                                info.push((
-                                    format!("local{n}"),
-                                    (*target_local_ty, VarAddr::Local { addr: n }),
-                                ));
-                            } else {
-                                // no match! not correct local var context in this function
-                                return false;
-                            }
-                        } else {
-                            // local ID greater than max ID in this function
-                            return false;
-                        }
-                    }
-                }
-                true
-            }
-            check(&all_locals, body_params, &mut new_dyn_info)
-                && check(&all_locals, pred_params, &mut new_dyn_info)
+            let body = &probe.metadata.body_args;
+            let pred = &probe.metadata.pred_args;
+            check_var_types(&local_stack, param_items(body), "local")
+                && check_var_types(&local_stack, param_items(pred), "local")
+                && check_var_types(&local_stack, type_bound_items(&probe.type_bounds), "local")
         });
 
-        for (name, (ty, addr)) in new_dyn_info {
-            matches.dynamic_alias.insert(name, (ty, addr));
+        let probes = &matches.probes;
+        let dynamic_alias = &mut matches.dynamic_alias;
+        for (_, probe, _) in probes.iter() {
+            for params in [&probe.metadata.body_args, &probe.metadata.pred_args] {
+                for (name, _) in param_items(params) {
+                    let Some(n) = nth_prefixed(name, "local") else {
+                        continue;
+                    };
+                    let Some(ty) = all_locals.get(n as usize) else {
+                        continue;
+                    };
+                    dynamic_alias.insert(format!("local{n}"), (*ty, VarAddr::Local { addr: n }));
+                }
+            }
         }
     }
 
@@ -216,6 +203,45 @@ fn all_locals(app_wasm: &Module, fid: &FunctionID) -> Vec<WirmType> {
     }
 
     locals
+}
+
+fn nth_prefixed(name: &str, prefix: &str) -> Option<u32> {
+    name.strip_prefix(prefix)
+        .and_then(|rest| rest.parse::<u32>().ok())
+}
+
+fn check_var_types<'a>(
+    stack_vals: &[StackVal],
+    items: impl IntoIterator<Item = (&'a str, &'a DataType)>,
+    prefix: &str,
+) -> bool {
+    for (name, declared_ty) in items {
+        let Some(n) = nth_prefixed(name, prefix) else {
+            continue;
+        };
+        let Some(target_val) = stack_vals.get(n as usize) else {
+            // index beyond what this instruction provides -> not a match
+            return false;
+        };
+        if let Some(target_ty) = target_val.ty {
+            if !declared_ty.is_compatible_with(&DataType::from_wasm_type(&target_ty)) {
+                // wrong type for this position -> not a match
+                return false;
+            }
+        }
+        // else: no type info for this stack value, assume compatible
+    }
+    true
+}
+
+fn param_items(params: &WhammParams) -> impl Iterator<Item = (&str, &DataType)> {
+    params.params.iter().map(|p| (p.name.as_str(), &p.ty))
+}
+fn type_bound_items(type_bounds: &[(Expr, DataType)]) -> impl Iterator<Item = (&str, &DataType)> {
+    type_bounds.iter().filter_map(|(var, ty)| match var {
+        Expr::VarId { name, .. } => Some((name.as_str(), ty)),
+        _ => None,
+    })
 }
 
 fn handle_wasm_packages(
@@ -1823,40 +1849,15 @@ fn handle_opcode_events(
     // (we don't have a match if the requested argument or result is beyond the
     // length of what's possible)
     loc_info.filter_probes(|probe| {
-        let body_params = &probe.metadata.body_args;
-        let pred_params = &probe.metadata.pred_args;
-        fn check(
-            stack_vals: &[StackVal],
-            to_check: &WhammParams,
-            prefix: &str
-        ) -> bool {
-            for param in to_check.params.iter() {
-                if let Some(n) = param.n_for(prefix) {
-                    if let Some(target_val) = stack_vals.get(n as usize) {
-                        if let Some(target_ty) = target_val.ty {
-                            if !param
-                            .ty
-                            .is_compatible_with(&DataType::from_wasm_type(&target_ty))
-                            {
-                                // no match! not correct type for matchup
-                                return false;
-                            }
-                        } else {
-                            // no type information for this stack value, assume it's okay
-                            return true;
-                        }
-                    } else {
-                        // local ID greater than max ID in this function
-                        return false;
-                    }
-                }
-            }
-            true
-        }
-        check(&all_args, body_params, "arg")
-            && check(&all_args, pred_params, "arg")
-            && check(&all_results, body_params, "res")
-            && check(&all_results, pred_params, "res")
+        let body = &probe.metadata.body_args;
+        let pred = &probe.metadata.pred_args;
+        let bounds = &probe.type_bounds;
+        check_var_types(&all_args, param_items(body), "arg")
+            && check_var_types(&all_args, param_items(pred), "arg")
+            && check_var_types(&all_results, param_items(body), "res")
+            && check_var_types(&all_results, param_items(pred), "res")
+            && check_var_types(&all_args, type_bound_items(bounds), "arg")
+            && check_var_types(&all_results, type_bound_items(bounds), "res")
     });
 
     for (_, probe, _) in loc_info.probes.iter() {

@@ -349,3 +349,11 @@ fn instrument_with_tuples_scripts() {
 
     run_core_suite("tuples", processed_scripts, true, true)
 }
+#[test]
+fn instrument_with_type_bounds_scripts() {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/type-bounds");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("type-bounds", processed_scripts, true, false)
+}
