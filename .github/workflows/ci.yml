@@ -44,6 +44,13 @@ jobs:
     name: Build + Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
 
+    # CI-only: trim debuginfo to speed codegen + linking of the test binaries.
+    # line-tables-only keeps file:line in panic backtraces.
+    env:
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
+      CARGO_PROFILE_TEST_DEBUG: line-tables-only
+      CARGO_PROFILE_RELEASE_DEBUG: line-tables-only
+
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -70,88 +77,123 @@ jobs:
       - name: Check `wasmtime`
         run: "wasmtime --version"
 
-      - name: Setup wasm-tools and WASI P1 Target
+      - name: Setup WASI P1 Target
         run: |
           echo "[INFO] Installing the 'wasm32-wasip1' compilation target..."
           rustup target add wasm32-wasip1
-          
-          echo "[INFO] Installing the 'wasm-tools' package..."
-          cargo install --locked wasm-tools
-          
-          echo "[INFO] Testing the 'wasm-tools' configuration..."
-          wasm-tools --version
+
+      - name: Setup wasm-tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-tools
+
+      - name: Check `wasm-tools`
+        run: wasm-tools --version
+
+      # Resolve upstream HEAD commits without cloning so the engine cache key
+      # tracks "latest" but only invalidates when an upstream actually changes.
+      - name: Resolve engine versions
+        id: engine_versions
+        run: |
+          {
+            echo "progress=$(git ls-remote https://github.com/titzer/progress.git HEAD | cut -f1)"
+            echo "virgil=$(git ls-remote https://github.com/titzer/virgil.git HEAD | cut -f1)"
+            echo "wizard=$(git ls-remote https://github.com/titzer/wizard-engine.git HEAD | cut -f1)"
+            echo "refinterp=$(git ls-remote https://github.com/WebAssembly/multi-memory.git HEAD | cut -f1)"
+          } >> "$GITHUB_OUTPUT"
+
+      # Virgil and Wizard track active upstreams, so they get their own cache key
+      # — kept separate from the wasm ref interpreter, which rarely changes and is
+      # expensive to rebuild (OCaml). A commit to Virgil no longer forces an OCaml
+      # rebuild, and vice versa.
+      - name: Cache Virgil + Wizard toolchain
+        id: tools_cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            progress
+            virgil
+            wizard-engine
+          key: vtools-${{ runner.os }}-p${{ steps.engine_versions.outputs.progress }}-v${{ steps.engine_versions.outputs.virgil }}-w${{ steps.engine_versions.outputs.wizard }}
+
+      - name: Cache wasm reference interpreter
+        id: ref_cache
+        uses: actions/cache@v4
+        with:
+          path: multi-memory/interpreter/wasm
+          key: refinterp-${{ runner.os }}-ocaml5-r${{ steps.engine_versions.outputs.refinterp }}
 
       - name: Setup OCaml
+        if: steps.ref_cache.outputs.cache-hit != 'true'
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 5
-      #          echo "[INFO] Installing OCaml..."
-      #          apt-get update -y
-      #          apt-get install -y opam
 
       - name: Setup progress
+        if: steps.tools_cache.outputs.cache-hit != 'true'
         run: |
           echo "[INFO] Installing 'progress'..."
           git clone https://github.com/titzer/progress.git
-          echo "$GITHUB_WORKSPACE/progress/bin" >> $GITHUB_PATH
       - name: Setup Virgil
+        if: steps.tools_cache.outputs.cache-hit != 'true'
         run: |
+          # virgil/bin holds v3c-host, which the Makefile's utils targets invoke.
+          export PATH="$GITHUB_WORKSPACE/progress/bin:$GITHUB_WORKSPACE/virgil/bin:$PATH"
           echo "[INFO] Testing 'progress' is on PATH..."
           which progress.x86-64-linux
-  
+
           echo "[INFO] Building 'virgil'..."
           git clone https://github.com/titzer/virgil.git
           pushd virgil && make && popd
-          echo "$GITHUB_WORKSPACE/virgil/bin" >> $GITHUB_PATH
       - name: Setup Wizard-Engine
+        if: steps.tools_cache.outputs.cache-hit != 'true'
         run: |
+          export PATH="$GITHUB_WORKSPACE/progress/bin:$GITHUB_WORKSPACE/virgil/bin:$PATH"
           echo "[INFO] Testing 'virgil' is on PATH..."
           which v3c
-  
+
           echo "[INFO] Building 'wizeng'..."
           git clone https://github.com/titzer/wizard-engine.git
           pushd wizard-engine
           make -j
           popd
-  
-          echo "[INFO] Configuring the 'wizeng' spectest interpreter..."
-          mkdir -p output/tests/engines
-          mv wizard-engine/bin/unittest.x86-linux output/tests/engines/wizard-spectest
-  
-          echo "[INFO] Testing the 'wizeng' spectest interpreter configuration..."
-          ls -al output/tests/engines
-          ./output/tests/engines/wizard-spectest --help || [ $? == 1 ]
-  
-          echo "[INFO] Configuring the 'wizeng' binary..."
-          ln -s ${PWD}/wizard-engine/scripts/wizeng output/tests/engines/wizeng
-  
-          echo "[INFO] Testing the 'wizeng' binary configuration..."
-          ./output/tests/engines/wizeng --help
       - name: Setup Wasm Spec Reference Interpreter
+        if: steps.ref_cache.outputs.cache-hit != 'true'
         run: |
           echo "[INFO] Configuring OCaml..."
-          opam init -y
           eval $(opam env)
-          opam install -y dune
-          opam install -y menhir
-  
+          opam install -y dune menhir
+
           echo "[INFO] Building the wasm ref interpreter..."
           git clone https://github.com/WebAssembly/multi-memory.git
-          pushd multi-memory/interpreter
-          make
-          popd
-  
-          echo "[INFO] Configuring the wasm ref interpreter..."
-          mv multi-memory/interpreter/wasm output/tests/engines
-  
-          echo "[INFO] Testing the wasm ref interpreter configuration..."
+          make -C multi-memory/interpreter -j
+
+      # Assemble the engines dir from the (possibly cached) build outputs every
+      # run, and re-add engine bins to PATH (GITHUB_PATH does not persist).
+      - name: Assemble engines
+        run: |
+          export PATH="$GITHUB_WORKSPACE/progress/bin:$GITHUB_WORKSPACE/virgil/bin:$PATH"
+          mkdir -p output/tests/engines
+          cp wizard-engine/bin/unittest.x86-linux output/tests/engines/wizard-spectest
+          ln -sf "${PWD}/wizard-engine/scripts/wizeng" output/tests/engines/wizeng
+          cp multi-memory/interpreter/wasm output/tests/engines/wasm
+
+          echo "[INFO] Verifying engine configuration..."
+          ls -al output/tests/engines
+          ./output/tests/engines/wizard-spectest --help || [ $? == 1 ]
+          ./output/tests/engines/wizeng --help
           ./output/tests/engines/wasm --help
 
-      - name: Build main crate
-        run: cargo build --locked --verbose
+          echo "$GITHUB_WORKSPACE/progress/bin" >> "$GITHUB_PATH"
+          echo "$GITHUB_WORKSPACE/virgil/bin" >> "$GITHUB_PATH"
+
+      - name: Check main crate compiles
+        run: cargo check --locked --all-features --verbose
 
       - name: Run tests
         run: cargo test --locked --all-features --verbose
 
+      # Release tests run only on master pushes; PRs run the debug suite above.
       - name: Run tests (release)
+        if: github.event_name == 'push'
         run: cargo test --release --locked --all-features --verbose

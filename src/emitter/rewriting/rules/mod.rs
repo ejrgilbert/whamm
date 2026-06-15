@@ -147,48 +147,35 @@ fn handle_wasm(
     }
 
     if let Some(ref mut matches) = res {
-        let mut new_dyn_info = vec![];
         let all_locals = all_locals(app_wasm, &fid);
-        // figure out which args are requested based on matched probes
-        // (we don't have a match if the requested local is beyond the
-        // length of what's possible or the type doesn't match up)
+        // Represent `all_locals` as `StackVal`s for code reuse
+        let local_stack: Vec<StackVal> = all_locals
+            .iter()
+            .map(|ty| StackVal::new(String::new(), Some(*ty)))
+            .collect();
+        // Check that every `local`is in range and is type-compatible.
         matches.filter_probes(|probe| {
-            let body_params = &probe.metadata.body_args;
-            let pred_params = &probe.metadata.pred_args;
-            fn check(
-                all_locals: &[WirmType],
-                to_check: &WhammParams,
-                info: &mut Vec<(String, (WirmType, VarAddr))>,
-            ) -> bool {
-                for param in to_check.params.iter() {
-                    if let Some(n) = param.n_for("local") {
-                        if let Some(target_local_ty) = all_locals.get(n as usize) {
-                            if param
-                                .ty
-                                .is_compatible_with(&DataType::from_wasm_type(target_local_ty))
-                            {
-                                info.push((
-                                    format!("local{n}"),
-                                    (*target_local_ty, VarAddr::Local { addr: n }),
-                                ));
-                            } else {
-                                // no match! not correct local var context in this function
-                                return false;
-                            }
-                        } else {
-                            // local ID greater than max ID in this function
-                            return false;
-                        }
-                    }
-                }
-                true
-            }
-            check(&all_locals, body_params, &mut new_dyn_info)
-                && check(&all_locals, pred_params, &mut new_dyn_info)
+            let body = &probe.metadata.body_args;
+            let pred = &probe.metadata.pred_args;
+            check_var_types(&local_stack, param_items(body), "local")
+                && check_var_types(&local_stack, param_items(pred), "local")
+                && check_var_types(&local_stack, type_bound_items(&probe.type_bounds), "local")
         });
 
-        for (name, (ty, addr)) in new_dyn_info {
-            matches.dynamic_alias.insert(name, (ty, addr));
+        let probes = &matches.probes;
+        let dynamic_alias = &mut matches.dynamic_alias;
+        for (_, probe, _) in probes.iter() {
+            for params in [&probe.metadata.body_args, &probe.metadata.pred_args] {
+                for (name, _) in param_items(params) {
+                    let Some(n) = nth_prefixed(name, "local") else {
+                        continue;
+                    };
+                    let Some(ty) = all_locals.get(n as usize) else {
+                        continue;
+                    };
+                    dynamic_alias.insert(format!("local{n}"), (*ty, VarAddr::Local { addr: n }));
+                }
+            }
         }
     }
 
@@ -216,6 +203,45 @@ fn all_locals(app_wasm: &Module, fid: &FunctionID) -> Vec<WirmType> {
     }
 
     locals
+}
+
+fn nth_prefixed(name: &str, prefix: &str) -> Option<u32> {
+    name.strip_prefix(prefix)
+        .and_then(|rest| rest.parse::<u32>().ok())
+}
+
+fn check_var_types<'a>(
+    stack_vals: &[StackVal],
+    items: impl IntoIterator<Item = (&'a str, &'a DataType)>,
+    prefix: &str,
+) -> bool {
+    for (name, declared_ty) in items {
+        let Some(n) = nth_prefixed(name, prefix) else {
+            continue;
+        };
+        let Some(target_val) = stack_vals.get(n as usize) else {
+            // index beyond what this instruction provides -> not a match
+            return false;
+        };
+        if let Some(target_ty) = target_val.ty {
+            if !declared_ty.is_compatible_with(&DataType::from_wasm_type(&target_ty)) {
+                // wrong type for this position -> not a match
+                return false;
+            }
+        }
+        // else: no type info for this stack value, assume compatible
+    }
+    true
+}
+
+fn param_items(params: &WhammParams) -> impl Iterator<Item = (&str, &DataType)> {
+    params.params.iter().map(|p| (p.name.as_str(), &p.ty))
+}
+fn type_bound_items(type_bounds: &[(Expr, DataType)]) -> impl Iterator<Item = (&str, &DataType)> {
+    type_bounds.iter().filter_map(|(var, ty)| match var {
+        Expr::VarId { name, .. } => Some((name.as_str(), ty)),
+        _ => None,
+    })
 }
 
 fn handle_wasm_packages(
@@ -333,9 +359,8 @@ fn handle_opcode_events(
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "call" => if let Operator::Call {function_index} = instr {
-            if bind_vars_call(&mut loc_info, all_params, *function_index, app_wasm).is_ok() {
-                loc_info.add_probes(probe_rule.clone(), evt, None);
-            }
+            bind_vars_call(&mut loc_info, all_params, *function_index, app_wasm);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "call_indirect" => if let Operator::CallIndirect {type_index,
             table_index,} = instr {
@@ -344,9 +369,8 @@ fn handle_opcode_events(
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "return_call" => if let Operator::ReturnCall {function_index} = instr {
-            if bind_vars_call(&mut loc_info, all_params, *function_index, app_wasm).is_ok() {
-                loc_info.add_probes(probe_rule.clone(), evt, None);
-            }
+            bind_vars_call(&mut loc_info, all_params, *function_index, app_wasm);
+            loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         "return_call_indirect" => if let Operator::ReturnCallIndirect {type_index, table_index } = instr {
             define_imm0_u32_imm1_u32(*type_index, *table_index, &mut loc_info, all_params);
@@ -1825,40 +1849,15 @@ fn handle_opcode_events(
     // (we don't have a match if the requested argument or result is beyond the
     // length of what's possible)
     loc_info.filter_probes(|probe| {
-        let body_params = &probe.metadata.body_args;
-        let pred_params = &probe.metadata.pred_args;
-        fn check(
-            stack_vals: &[StackVal],
-            to_check: &WhammParams,
-            prefix: &str
-        ) -> bool {
-            for param in to_check.params.iter() {
-                if let Some(n) = param.n_for(prefix) {
-                    if let Some(target_val) = stack_vals.get(n as usize) {
-                        if let Some(target_ty) = target_val.ty {
-                            if !param
-                            .ty
-                            .is_compatible_with(&DataType::from_wasm_type(&target_ty))
-                            {
-                                // no match! not correct type for matchup
-                                return false;
-                            }
-                        } else {
-                            // no type information for this stack value, assume it's okay
-                            return true;
-                        }
-                    } else {
-                        // local ID greater than max ID in this function
-                        return false;
-                    }
-                }
-            }
-            true
-        }
-        check(&all_args, body_params, "arg")
-            && check(&all_args, pred_params, "arg")
-            && check(&all_results, body_params, "res")
-            && check(&all_results, pred_params, "res")
+        let body = &probe.metadata.body_args;
+        let pred = &probe.metadata.pred_args;
+        let bounds = &probe.type_bounds;
+        check_var_types(&all_args, param_items(body), "arg")
+            && check_var_types(&all_args, param_items(pred), "arg")
+            && check_var_types(&all_results, param_items(body), "res")
+            && check_var_types(&all_results, param_items(pred), "res")
+            && check_var_types(&all_args, type_bound_items(bounds), "arg")
+            && check_var_types(&all_results, type_bound_items(bounds), "res")
     });
 
     for (_, probe, _) in loc_info.probes.iter() {
@@ -2043,22 +2042,22 @@ fn bind_vars_br_table(
     Some(())
 }
 
-fn bind_vars_call(
-    loc_info: &mut LocInfo,
-    all_params: &[WhammParam],
-    fid: u32,
-    app_wasm: &Module,
-) -> Result<(), ()> {
+/// Binds the call-site's static data (`target_fn_name`, `target_fn_type`,
+/// `target_imp_module`, and `imm0`=fid) for the given event.
+///
+/// `argN` arity/type checks are intentionally NOT done here — the generic
+/// per-probe filter in `handle_wasm_packages` (see the `filter_probes` call
+/// driven by `get_ty_info_for_instr`) handles them. Checking them here
+/// would reject the whole event on any probe's mismatch, dropping sibling
+/// probes that DO fit the call's signature.
+fn bind_vars_call(loc_info: &mut LocInfo, all_params: &[WhammParam], fid: u32, app_wasm: &Module) {
     let func_info = match app_wasm.functions.get_kind(FunctionID(fid)) {
-        FuncKind::Import(ImportedFunction {
-            import_id, ty_id, ..
-        }) => {
+        FuncKind::Import(ImportedFunction { import_id, .. }) => {
             let import = app_wasm.imports.get(*import_id);
             FuncInfo {
                 func_kind: "import".to_string(),
                 module: import.module.to_string(),
                 name: import.name.to_string(),
-                ty_id: *ty_id,
             }
         }
         FuncKind::Local(func) => FuncInfo {
@@ -2071,37 +2070,12 @@ fn bind_vars_call(
                 Some(name) => name.clone(),
                 None => "".to_string(),
             },
-            ty_id: func.ty_id,
         },
     };
 
-    let func_params =
-        if let Some(Types::FuncType { params, .. }) = app_wasm.types.get(func_info.ty_id) {
-            params.clone()
-        } else {
-            panic!(
-                "Unable to lookup the function type with ID: {}",
-                *func_info.ty_id
-            );
-        };
-
     for param in all_params.iter() {
-        if let Some(n) = param.n_for("arg") {
-            // check that the types match!
-            if n as usize >= func_params.len() {
-                // Doesn't have this argument, no match!
-                return Err(());
-            }
-            if let Some(ty) = func_params.get(func_params.len() - (n as usize + 1)) {
-                if *param.ty.to_wasm_type().first().unwrap() != *ty {
-                    // types don't match, no match for this location!
-                    return Err(());
-                }
-            } else {
-                // Doesn't have this argument, no match!
-                return Err(());
-            }
-            // else we have a match for this location!
+        if param.n_for("arg").is_some() {
+            // arg arity/type is validated per-probe in the generic filter.
         } else if let Some(n) = param.n_for("imm") {
             assert_eq!(n, 0);
             assert!(
@@ -2135,8 +2109,6 @@ fn bind_vars_call(
             };
         }
     }
-
-    Ok(())
 }
 
 #[derive(Debug)]
@@ -2144,7 +2116,6 @@ struct FuncInfo {
     func_kind: String,
     module: String,
     name: String,
-    ty_id: TypeID,
 }
 
 pub fn get_ty_info_for_instr(
