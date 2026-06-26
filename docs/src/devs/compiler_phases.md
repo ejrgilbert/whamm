@@ -15,5 +15,5 @@ Whereas "emitting" for **direct engine support** means emitting a Wasm module en
 These are the four phases of compilation:
 1. [Parse](parsing.md)
 2. [Verify](verifying.md)
-3. [Transform](devs/transform_ast.md) AST into the injection strategy's representation
+3. [Transform](transform_ast.md) AST into the injection strategy's representation
 4. [Emit](emit/emitting.md)
