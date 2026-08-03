@@ -255,13 +255,7 @@ impl SymbolTable {
         let res = self
             .lookup(key)
             .and_then(|id| self.get_record(id))
-            .and_then(|rec| {
-                if matches!(rec, Record::Library { .. }) {
-                    Some(rec)
-                } else {
-                    None
-                }
-            });
+            .filter(|&rec| matches!(rec, Record::Library { .. }));
 
         if res.is_none() && fail_on_miss {
             Self::no_match(res, "Library");
@@ -272,13 +266,7 @@ impl SymbolTable {
         let res = self
             .lookup(key)
             .and_then(|id| self.get_record_mut(id))
-            .and_then(|rec| {
-                if matches!(rec, Record::Library { .. }) {
-                    Some(rec)
-                } else {
-                    None
-                }
-            });
+            .filter(|rec| matches!(rec, Record::Library { .. }));
 
         if res.is_none() {
             Self::no_match(&res, "Library");

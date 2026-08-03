@@ -36,6 +36,6 @@ fn pull_glob(files: &mut Vec<String>, glob: &str) {
 
 fn process_file(files: &mut Vec<String>, file_name: &PathBuf) {
     let unparsed_file = fs::read_to_string(file_name)
-        .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &file_name));
+        .unwrap_or_else(|_| panic!("Unable to read file at {file_name:?}"));
     files.push(unparsed_file);
 }
