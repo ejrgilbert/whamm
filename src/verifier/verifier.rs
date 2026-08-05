@@ -171,44 +171,6 @@ impl<'a> TypeChecker<'a> {
         Some(DataType::AssumeGood)
     }
 
-    fn handle_type_bounds(&mut self, type_bounds: &[(Expr, DataType)]) {
-        for (var, ty_bound) in type_bounds.iter() {
-            if let Expr::VarId { name, loc, .. } = var {
-                if let Some(id) = self.table.lookup(name) {
-                    if let Some(rec) = self.table.get_record_mut(id) {
-                        if let Record::Var { ty, def, loc, .. } = rec {
-                            if !matches!(def, CompilerDynamic) {
-                                self.err.type_check_error(
-                                    "Type bounds should only be done for dynamically defined compiler variables (e.g. argN, localN)".to_owned(),
-                                    &loc.clone().map(|l| l.line_col),
-                                );
-                            }
-                            *ty = ty_bound.clone();
-                        } else {
-                            // unexpected record type
-                            unreachable!("{UNEXPECTED_ERR_MSG} Expected Var type")
-                        }
-                    }
-                } else {
-                    let _ = self.table.put(
-                        name.clone(),
-                        Record::Var {
-                            ty: ty_bound.clone(),
-                            value: None,
-                            def: CompilerDynamic,
-                            addr: None,
-                            times_set: 0,
-                            loc: loc.clone(),
-                        },
-                    );
-                }
-            } else {
-                self.err
-                    .type_check_error(format!("{UNEXPECTED_ERR_MSG} Expected VarId type"), &None);
-            }
-        }
-    }
-
     /// Shared type-checking logic for arithmetic binary ops: Add, Subtract, Multiply, Divide, Modulo.
     ///
     /// `expected` is the assignment target type when this expression is the RHS of an assignment,
@@ -1176,10 +1138,6 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         self.rule_tracker.push(&format!(":{}", probe.kind.name()));
         self.err
             .update_match_rule(self.rule_tracker.get_opt_owned());
-
-        // Apply type bounds (e.g. `wasm(local0: i32)`) into this probe's own scope,
-        // so they are visible only to this probe and not shared across sibling probes.
-        self.handle_type_bounds(&probe.type_bounds);
 
         // type check predicate
         if let Some(predicate) = &mut probe.predicate {
