@@ -618,6 +618,45 @@ impl SymbolTableBuilder<'_, '_> {
         }
     }
 
+    fn add_type_bounds(&mut self, type_bounds: &[(Expr, DataType)]) {
+        for (var, ty_bound) in type_bounds.iter() {
+            let Expr::VarId { name, loc, .. } = var else {
+                self.err
+                    .type_check_error(format!("{UNEXPECTED_ERR_MSG} Expected VarId type"), &None);
+                continue;
+            };
+
+            if let Some(id) = self.table.lookup(name) {
+                let refines_dynamic = matches!(
+                    self.table.get_record(id),
+                    Some(Record::Var {
+                        def: Definition::CompilerDynamic,
+                        ..
+                    })
+                );
+                if !refines_dynamic {
+                    self.err.type_check_error(
+                        "Type bounds should only be done for dynamically defined compiler variables (e.g. argN, localN)".to_owned(),
+                        &loc.clone().map(|l| l.line_col),
+                    );
+                    continue;
+                }
+            }
+
+            self.table.put(
+                name.clone(),
+                Record::Var {
+                    ty: ty_bound.clone(),
+                    value: None,
+                    def: Definition::CompilerDynamic,
+                    addr: None,
+                    times_set: 0,
+                    loc: loc.clone(),
+                },
+            );
+        }
+    }
+
     fn visit_type_utils(&mut self, for_type: &DataType, funcs: &[BoundFunction]) {
         let whamm_rec_id = self.curr_whamm.unwrap();
 
@@ -832,6 +871,9 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
                 self.visit_fn(func);
             });
         let (to_remove_alias, to_remove_vars) = self.visit_bound_vars(&probe.def.bound_vars);
+
+        // Refine dynamic bound-var types (argN/localN) for THIS probe (no clobbering siblings)
+        self.add_type_bounds(&probe.type_bounds);
 
         // Will not visit predicate/body at this stage
         // visit the predicate/body to handle aliases and derived variables!
