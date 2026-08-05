@@ -342,6 +342,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
             // (ONLY DO THIS IF THERE ARE REPORT VARIABLES)
 
             let mut on_exit = FunctionBuilder::new(&[], &[]);
+            self.locals_tracker.reset_function();
 
             if let Some(probes) = report_probes {
                 for (script_id, probe) in probes {

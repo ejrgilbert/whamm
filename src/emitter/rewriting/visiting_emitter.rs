@@ -1282,6 +1282,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                 None
             };
 
+            self.locals_tracker.reset_function();
             let on_exit_id = if let Some(fid) = self
                 .app_iter
                 .module
