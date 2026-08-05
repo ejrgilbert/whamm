@@ -168,6 +168,14 @@ fn instrument_with_opidx_scripts() -> Result<()> {
     run_core_suite("opidx", processed_scripts, true, false)
 }
 #[test]
+fn instrument_with_report_scripts() -> Result<()> {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/report");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("report", processed_scripts, true, true)
+}
+#[test]
 fn instrument_with_probe_arg_types_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/probe-arg-types");
