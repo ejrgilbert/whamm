@@ -30,7 +30,7 @@ fn get_test_scripts(sub_dir: &str) -> Vec<(PathBuf, String)> {
     {
         let file_name = path.as_ref().unwrap();
         let unparsed_file = fs::read_to_string(file_name)
-            .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
+            .unwrap_or_else(|_| panic!("Unable to read file at {path:?}"));
         scripts.push((file_name.clone(), unparsed_file));
     }
 

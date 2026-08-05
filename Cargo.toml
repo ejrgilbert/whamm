@@ -17,10 +17,9 @@ wirm = "4.0.6"
 #wirm = { path = "../wirm" }
 
 # For the wasmtime embedding for @static
-wasmtime = "38.0.3"
-wasi-common = "38.0.3"
+wasmtime = "47.0.3"
 wasm-bindgen = "0.2"
-wasmtime-wasi = "24.0.0"
+wasmtime-wasi = { version = "47.0.3", features = ["p1"] }
 
 # Logging
 env_logger = "0.10.2"
@@ -71,7 +70,7 @@ wirm = { workspace = true }
 
 # For the wasmtime embedding for @static
 wasmtime = { workspace = true }
-wasi-common = { workspace = true }
+wasmtime-wasi = { workspace = true }
 
 # Logging
 env_logger = { workspace = true }
