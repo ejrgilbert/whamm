@@ -2304,7 +2304,7 @@ impl ProbeRule {
             buffer,
         );
         if let Some(package_patt) = &self.package {
-            white(true, format!(":{}", &package_patt.name), buffer);
+            white(true, format!(":{}", package_patt.name), buffer);
             self.print_event(buffer);
         }
         white(true, "\n".to_string(), buffer);
@@ -2335,9 +2335,9 @@ impl ProbeRule {
     }
     fn print_event(&self, buffer: &mut Buffer) {
         if let Some(event_patt) = &self.event {
-            white(true, format!(":{}", &event_patt.name), buffer);
+            white(true, format!(":{}", event_patt.name), buffer);
             if let Some(mode_patt) = &self.mode {
-                white(true, format!(":{}", &mode_patt.name), buffer);
+                white(true, format!(":{}", mode_patt.name), buffer);
             }
         }
     }
@@ -2357,7 +2357,7 @@ impl ProbeRule {
         );
         magenta(true, self.event.as_ref().unwrap().name.to_string(), buffer);
         if let Some(mode_patt) = &self.mode {
-            white(true, format!(":{}", &mode_patt.name), buffer);
+            white(true, format!(":{}", mode_patt.name), buffer);
         }
         white(true, "\n".to_string(), buffer);
         grey_italics(

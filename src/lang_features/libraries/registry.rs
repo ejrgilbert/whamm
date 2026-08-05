@@ -1,11 +1,11 @@
 use crate::common::error::ErrorGen;
 use std::collections::{HashMap, HashSet};
-use wasi_common::sync::{add_to_linker, WasiCtxBuilder};
-use wasi_common::WasiCtx;
 use wasmtime::*;
+use wasmtime_wasi::p1::{add_to_linker_sync, WasiP1Ctx};
+use wasmtime_wasi::WasiCtxBuilder;
 
 pub(crate) struct WasmService {
-    store: Store<WasiCtx>,
+    store: Store<WasiP1Ctx>,
     instance: Instance,
 }
 
@@ -16,15 +16,15 @@ impl WasmService {
         // configure what the target program will have access to.
         let wasi = WasiCtxBuilder::new()
             .inherit_stdio()
-            .inherit_args()?
-            .inherit_env()?
-            .build();
+            .inherit_args()
+            .inherit_env()
+            .build_p1();
 
         let mut store = Store::new(engine, wasi);
 
         // Set up a linker that knows about WASI
         let mut linker = Linker::new(engine);
-        add_to_linker(&mut linker, |ctx: &mut WasiCtx| ctx)?;
+        add_to_linker_sync(&mut linker, |ctx: &mut WasiP1Ctx| ctx)?;
 
         // Instantiate the module with the linker (this links in WASI)
         let instance = linker.instantiate(&mut store, module)?;

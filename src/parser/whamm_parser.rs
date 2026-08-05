@@ -1597,10 +1597,7 @@ pub fn type_from_rule(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<DataType
         Rule::TY_TUPLE => {
             let mut tuple_content_types = vec![];
             for p in pair.into_inner() {
-                match type_from_rule(p, line_idx) {
-                    Ok(res) => tuple_content_types.push(res),
-                    Err(e) => return Err(e),
-                }
+                tuple_content_types.push(type_from_rule(p, line_idx)?);
             }
             if tuple_content_types.is_empty() {
                 Ok(DataType::empty_tuple())

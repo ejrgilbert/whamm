@@ -245,7 +245,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         err: &mut ErrorGen,
     ) -> bool {
         let mut is_success = true;
-        for (_, Block { stmts, .. }) in data.iter() {
+        for Block { stmts, .. } in data.values() {
             for stmt in stmts.iter() {
                 is_success &= emit_stmt(
                     stmt,

@@ -611,7 +611,7 @@ pub fn get_test_scripts(sub_dir: &str) -> Vec<String> {
         .expect("Failed to read glob pattern")
     {
         let unparsed_file = std::fs::read_to_string(path.as_ref().unwrap())
-            .unwrap_or_else(|_| panic!("Unable to read file at {:?}", &path));
+            .unwrap_or_else(|_| panic!("Unable to read file at {path:?}"));
         scripts.push(unparsed_file);
     }
 
