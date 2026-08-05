@@ -1,0 +1,1 @@
+tests/apps/core_suite/handwritten/global_set_typed.wasm
