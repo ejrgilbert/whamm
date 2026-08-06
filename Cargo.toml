@@ -32,7 +32,7 @@ pest_derive = "2.7.7"
 
 # Provider YAML configs
 serde = { version = "1.0", features = ["derive"] }
-serde_yml = "0.0.12"
+serde_norway = "0.9.42"
 
 # CLI
 clap = { version = "4.5.4", features = ["derive", "cargo", "env"] }
@@ -83,7 +83,7 @@ pest_derive = { workspace = true }
 
 # Provider YAML configs
 serde = { workspace = true, features = ["derive"] }
-serde_yml = { workspace = true }
+serde_norway = { workspace = true }
 
 # CLI
 clap = { workspace = true, features = ["derive", "cargo", "env"] }
