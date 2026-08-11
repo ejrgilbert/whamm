@@ -1061,7 +1061,7 @@ fn read_yml(def_yamls: &[String]) -> YmlDefinition {
     for yml in def_yamls.iter() {
         all_yml += yml;
     }
-    let def: YmlDefinition = serde_norway::from_str(&all_yml).expect("Could not read values.");
+    let def: YmlDefinition = serde_norway::from_str(&all_yml).expect("Could not read YAML.");
 
     def
 }
