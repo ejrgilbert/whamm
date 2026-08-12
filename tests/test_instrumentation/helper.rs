@@ -410,7 +410,7 @@ pub(crate) fn run_testcase_rewriting(
 ) -> Result<()> {
     // run the script on configured application
     let wasm = fs::read(app_path_str).unwrap();
-    let mut module_to_instrument = Module::parse(&wasm, false, true).unwrap();
+    let mut module_to_instrument = Module::parse(&wasm, true, true).unwrap();
     run_script(
         script,
         app_path_str,
