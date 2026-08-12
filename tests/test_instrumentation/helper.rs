@@ -232,6 +232,18 @@ pub(crate) fn run_core_suite(
             } else {
                 vec![]
             };
+            // A `.err` file (in place of `.exp`) marks a script that is expected
+            // to fail instrumentation with a matching diagnostic.
+            if let Some(expected_err) = read_expected_err(exp) {
+                run_testcase_expect_error(
+                    script,
+                    &app_path_str,
+                    libs_path_str,
+                    &expected_err,
+                    false,
+                );
+                continue;
+            }
             let metadata = fs::metadata(exp).expect("Failed to load expected output file metadata");
             let exp_out = if metadata.len() > MAX_EXP_OUT_SIZE {
                 ExpectedOutput::hash(exp)
@@ -276,6 +288,18 @@ pub(crate) fn run_core_suite(
             } else {
                 vec![]
             };
+            // A `.err` file (in place of `.exp`) marks a script that is expected
+            // to fail instrumentation with a matching diagnostic.
+            if let Some(expected_err) = read_expected_err(exp) {
+                run_testcase_expect_error(
+                    script,
+                    &app_path_str,
+                    libs_path_str,
+                    &expected_err,
+                    true,
+                );
+                continue;
+            }
             let metadata = fs::metadata(exp).unwrap_or_else(|_| {
                 panic!("Failed to load expected output file metadata at: {:?}", exp)
             });
@@ -400,6 +424,51 @@ fn format_whamm_errs(errs: Vec<WhammError>) -> anyhow::Error {
     anyhow!("{} error(s) from whamm:\n{body}", errs.len())
 }
 
+/// If a `.err` file sits beside the given `.exp` path, return its contents (the
+/// expected diagnostic). Its presence marks the script as expected-to-fail.
+fn read_expected_err(exp: &Path) -> Option<String> {
+    fs::read_to_string(exp.with_extension("err")).ok()
+}
+
+/// Assert that instrumenting `script` fails with a diagnostic containing `expected_err`
+fn run_testcase_expect_error(
+    script: &Path,
+    app_path_str: &str,
+    user_libs: Vec<String>,
+    expected_err: &str,
+    target_wei: bool,
+) {
+    let label = if target_wei { "WEI" } else { "REWRITE" };
+    let wasm = fs::read(app_path_str)
+        .unwrap_or_else(|_| panic!("Unable to read app wasm at {app_path_str}"));
+    let mut module = if target_wei {
+        Module::default()
+    } else {
+        Module::parse(&wasm, false, true).unwrap()
+    };
+    match run_script(
+        script,
+        app_path_str,
+        &mut module,
+        user_libs,
+        None,
+        target_wei,
+    ) {
+        Ok(()) => {
+            panic!("[{label}] expected instrumentation of {script:?} to fail, but it succeeded")
+        }
+        Err(e) => {
+            let actual = format!("{e:#}");
+            let expected = expected_err.trim();
+            assert!(
+                actual.contains(expected),
+                "[{label}] error mismatch for {script:?}\n\
+                 --- expected (substring) ---\n{expected}\n--- actual ---\n{actual}"
+            );
+        }
+    }
+}
+
 pub(crate) fn run_testcase_rewriting(
     script: &Path,
     app_path_str: &str,
@@ -409,8 +478,8 @@ pub(crate) fn run_testcase_rewriting(
     instr_app_path: &String,
 ) -> Result<()> {
     // run the script on configured application
-    let wasm = fs::read(app_path_str).unwrap();
-    let mut module_to_instrument = Module::parse(&wasm, true, true).unwrap();
+    let wasm = fs::read(app_path_str)?;
+    let mut module_to_instrument = Module::parse(&wasm, true, true)?;
     run_script(
         script,
         app_path_str,

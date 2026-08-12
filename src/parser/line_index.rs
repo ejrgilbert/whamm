@@ -32,6 +32,12 @@ impl<'i> LineIndex<'i> {
         (line_idx + 1, col)
     }
 
+    /// Build a single-position `LineColLocation` for a raw byte offset. Used to
+    /// point diagnostics at a spot in the source that has no pest `Span`.
+    pub fn pos_of(&self, byte_offset: usize) -> LineColLocation {
+        LineColLocation::Pos(self.line_col(byte_offset))
+    }
+
     /// Build a `LineColLocation` for a span. Mirrors pest's `From<Span> for LineColLocation`
     /// (returns `Pos` when start==end, `Span` otherwise).
     pub fn linecol(&self, span: Span<'_>) -> LineColLocation {
