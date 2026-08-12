@@ -52,7 +52,7 @@ pub fn link_core_lib(
     }
 
     if used_a_pkg {
-        let core_lib = Module::parse(core_lib, false, false).unwrap();
+        let core_lib = Module::parse(core_lib, true, false).unwrap();
         import_lib_package(
             app_wasm,
             &None,
@@ -65,7 +65,7 @@ pub fn link_core_lib(
 
     for (package, is_used) in packages.iter_mut().zip(should_use.iter()) {
         if *is_used {
-            let core_lib = Module::parse(core_lib, false, false).unwrap();
+            let core_lib = Module::parse(core_lib, true, false).unwrap();
             if package.import_memory() {
                 let lib_mem_id = import_lib_memory(
                     app_wasm,

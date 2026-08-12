@@ -60,7 +60,7 @@ pub fn run_on_bytes(
     let mut target_wasm = if !config.as_monitor_module {
         // Caller is expected to hand us binary wasm bytes. Any WAT-text
         // normalization happens at the CLI/test layer.
-        match Module::parse(&wasm_app, false, true) {
+        match Module::parse(&wasm_app, true, true) {
             Ok(m) => m,
             Err(e) => {
                 let mut err = ErrorGen::new("".to_string(), "".to_string(), max_errors);
@@ -199,7 +199,7 @@ pub fn run<'lib, 'ir>(
             lib_name.clone(),
             (
                 import_override.clone(),
-                Module::parse(lib_buff, false, false).unwrap(),
+                Module::parse(lib_buff, true, false).unwrap(),
             ),
         );
         user_lib_bytes.insert(lib_name.clone(), lib_buff.clone());

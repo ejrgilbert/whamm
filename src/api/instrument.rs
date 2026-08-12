@@ -131,7 +131,7 @@ pub fn instrument_as_dry_run_rewriting(
     core_lib: Option<Vec<u8>>,
     defs: Option<Vec<String>>,
 ) -> Result<HashMap<WirmInjectType, Vec<Injection>>, Vec<WhammError>> {
-    let mut target_wasm = Module::parse(&wasm_app, false, true).unwrap();
+    let mut target_wasm = Module::parse(&wasm_app, true, true).unwrap();
     let core_lib = resolve_core_lib(core_lib);
     let defs = resolve_defs(defs);
     let response = instr::dry_run_on_bytes(
