@@ -19,6 +19,9 @@ use termcolor::{BufferWriter, ColorChoice, WriteColor};
 const UNEXPECTED_ERR_MSG: &str =
     "WhammParser: Looks like you've found a bug...please report this behavior! Exiting now...";
 
+/// Maximum nesting depth allowed for a single expression
+const MAX_NESTING_DEPTH: usize = 48;
+
 pub fn print_info(
     rule: String,
     def_yamls: &[String],
@@ -115,6 +118,13 @@ pub fn parse_script(def_yamls: &[String], script: &String, err: &mut ErrorGen) -
     assert!(!prov_def.is_empty());
 
     let line_idx = LineIndex::new(script);
+
+    // Reject pathologically deep bracket nesting up front
+    if let Err(offset) = check_source_nesting(script) {
+        err.add_error(too_deeply_nested_error(Some(line_idx.pos_of(offset))));
+        return None;
+    }
+
     let res = WhammParser::parse(Rule::script, script);
     match res {
         Ok(mut pairs) => {
@@ -1291,7 +1301,7 @@ fn handle_arg(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammE
 /// self.<something> which would require 2 mutable references to self between the closures.
 pub fn handle_expr(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {
     let pairs = pair.into_inner();
-    PRATT_PARSER
+    let expr = PRATT_PARSER
         .map_primary(|primary| -> Result<Expr, Vec<WhammError>> { expr_primary(primary, line_idx) })
         .map_prefix(|op, rhs| -> Result<Expr, Vec<WhammError>> {
             match rhs {
@@ -1440,7 +1450,183 @@ pub fn handle_expr(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<W
                 Err(errors) => Err(errors),
             }
         })
-        .parse(pairs)
+        .parse(pairs)?;
+
+    let expr = rebalance_logical_chain(expr);
+
+    check_expr_depth(&expr)?;
+
+    Ok(expr)
+}
+
+fn too_deeply_nested_error(line_col: Option<LineColLocation>) -> WhammError {
+    ErrorGen::get_parse_error(
+        Some(format!(
+            "expression is nested too deeply (exceeds the maximum nesting depth \
+             of {MAX_NESTING_DEPTH}); split it into smaller expressions"
+        )),
+        line_col,
+        vec![],
+        vec![],
+    )
+}
+
+/// Reject an expression nested deeply enough to risk a native stack overflow
+fn check_expr_depth(expr: &Expr) -> Result<(), Vec<WhammError>> {
+    if expr_depth(expr) > MAX_NESTING_DEPTH {
+        Err(vec![too_deeply_nested_error(
+            expr.loc().as_ref().map(|l| l.line_col.clone()),
+        )])
+    } else {
+        Ok(())
+    }
+}
+
+/// Rebalance a left-nested `&&`/`||` chain into a balanced tree
+fn rebalance_logical_chain(expr: Expr) -> Expr {
+    let chain_op = match &expr {
+        Expr::BinOp { op, .. } if matches!(op, BinOp::And | BinOp::Or) => op.clone(),
+        _ => return expr,
+    };
+    let loc = expr.loc().clone();
+
+    let mut operands = Vec::new();
+    let mut node = expr;
+    loop {
+        match node {
+            Expr::BinOp { lhs, op, rhs, .. } if op == chain_op => {
+                operands.push(*rhs);
+                node = *lhs;
+            }
+            other => {
+                operands.push(other);
+                break;
+            }
+        }
+    }
+    // restore left-to-right operand order
+    operands.reverse();
+
+    // Rebuild as a balanced tree (iterative, depth O(log n)).
+    let mut level = operands;
+    while level.len() > 1 {
+        let mut next = Vec::with_capacity(level.len().div_ceil(2));
+        let mut iter = level.into_iter();
+        while let Some(a) = iter.next() {
+            match iter.next() {
+                Some(b) => next.push(Expr::BinOp {
+                    lhs: Box::new(a),
+                    op: chain_op.clone(),
+                    rhs: Box::new(b),
+                    done_on: DataType::Unknown,
+                    loc: loc.clone(),
+                }),
+                None => next.push(a),
+            }
+        }
+        level = next;
+    }
+    level
+        .into_iter()
+        .next()
+        .expect("logical chain always has at least one operand")
+}
+
+fn expr_depth(expr: &Expr) -> usize {
+    let mut max_depth = 0;
+    let mut stack = vec![(expr, 1usize)];
+    while let Some((e, depth)) = stack.pop() {
+        max_depth = max_depth.max(depth);
+        match e {
+            Expr::UnOp { expr, .. } => stack.push((expr, depth + 1)),
+            Expr::Ternary {
+                cond, conseq, alt, ..
+            } => {
+                stack.push((cond, depth + 1));
+                stack.push((conseq, depth + 1));
+                stack.push((alt, depth + 1));
+            }
+            Expr::BinOp { lhs, rhs, .. } => {
+                stack.push((lhs, depth + 1));
+                stack.push((rhs, depth + 1));
+            }
+            Expr::Call {
+                fn_target, args, ..
+            } => {
+                stack.push((fn_target, depth + 1));
+                for arg in args {
+                    stack.push((arg, depth + 1));
+                }
+            }
+            Expr::MapGet { key, .. } => stack.push((key, depth + 1)),
+            Expr::TupleGet { tuple, .. } => stack.push((tuple, depth + 1)),
+            Expr::VarId { .. } | Expr::Primitive { .. } => {}
+        }
+    }
+    max_depth
+}
+
+/// Scan the raw source for the maximum bracket nesting depth
+fn check_source_nesting(script: &str) -> Result<(), usize> {
+    let bytes = script.as_bytes();
+    let mut depth: usize = 0;
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'"' => {
+                // Skip a string literal, honoring `\` escapes.
+                i += 1;
+                while i < bytes.len() {
+                    match bytes[i] {
+                        b'\\' => i += 2,
+                        b'"' => {
+                            i += 1;
+                            break;
+                        }
+                        _ => i += 1,
+                    }
+                }
+                continue;
+            }
+            b'/' if bytes.get(i + 1) == Some(&b'/') => {
+                // Line comment: skip to end of line.
+                i += 2;
+                while i < bytes.len() && bytes[i] != b'\n' {
+                    i += 1;
+                }
+                continue;
+            }
+            b'/' if bytes.get(i + 1) == Some(&b'*') => {
+                // Block comment (nestable, matching the grammar).
+                let mut nest = 1usize;
+                i += 2;
+                while i < bytes.len() && nest > 0 {
+                    if bytes[i] == b'/' && bytes.get(i + 1) == Some(&b'*') {
+                        nest += 1;
+                        i += 2;
+                    } else if bytes[i] == b'*' && bytes.get(i + 1) == Some(&b'/') {
+                        nest -= 1;
+                        i += 2;
+                    } else {
+                        i += 1;
+                    }
+                }
+                continue;
+            }
+            b'(' | b'[' | b'{' => {
+                depth += 1;
+                if depth > MAX_NESTING_DEPTH {
+                    return Err(i);
+                }
+            }
+            b')' | b']' | b'}' => {
+                depth = depth.saturating_sub(1);
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    Ok(())
 }
 
 fn expr_primary(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<WhammError>> {

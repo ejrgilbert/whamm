@@ -87,6 +87,15 @@ fn instrument_control_flow() {
 }
 
 #[test]
+fn instrument_deep_predicate() -> Result<()> {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/deep-predicate");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("deep-predicate", processed_scripts, true, true)
+}
+
+#[test]
 fn instrument_spin_with_fault_injection() {
     setup_logger();
     let processed_scripts = setup_fault_injection("spin");
