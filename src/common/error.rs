@@ -287,6 +287,35 @@ impl ErrorGen {
         let err = Self::get_compiler_fn_overload_error(duplicated_id, loc);
         self.add_error(err);
     }
+    pub fn get_bound_var_collision_error(
+        name: String,
+        owner: String,
+        use_loc: Option<LineColLocation>,
+    ) -> WhammError {
+        let err_loc = use_loc.map(|line_col| CodeLocation {
+            ty: LocType::Err,
+            message: Some(format!("shadows the `{owner}` bound variable `{name}`")),
+            line_col,
+            line_str: None,
+            line2_str: None,
+        });
+
+        WhammError {
+            match_rule: None,
+            ty: ErrorType::BoundVarCollisionError { name, owner },
+            err_loc,
+            info_loc: None,
+        }
+    }
+    pub fn bound_var_collision_error(
+        &mut self,
+        name: String,
+        owner: String,
+        use_loc: Option<LineColLocation>,
+    ) {
+        let err = Self::get_bound_var_collision_error(name, owner, use_loc);
+        self.add_error(err);
+    }
     pub fn duplicate_identifier_error(
         &mut self,
         duplicated_id: String,
@@ -876,6 +905,11 @@ pub enum ErrorType {
     DuplicateIdentifierError {
         duplicated_id: String,
     },
+    /// A user-declared name shadows a compiler-provided probe bound variable.
+    BoundVarCollisionError {
+        name: String,
+        owner: String,
+    },
     /// Generated parsing error with expected and unexpected `Rule`s
     ParsingError {
         /// Positive attempts
@@ -905,7 +939,8 @@ impl ErrorType {
             ErrorType::UnimplementedError { .. } => "Unimplemented",
             ErrorType::InternalError { .. } => "InternalError",
             ErrorType::InstrumentationError { .. } => "InstrumentationError",
-            ErrorType::DuplicateIdentifierError { .. } => "DuplicateIdentifierError",
+            ErrorType::DuplicateIdentifierError { .. }
+            | ErrorType::BoundVarCollisionError { .. } => "DuplicateIdentifierError",
             ErrorType::ParsingError { .. } => "ParsingError",
             ErrorType::TypeCheckError { .. } => "TypeCheckError",
             ErrorType::WeiError { .. } => "WeiError",
@@ -935,6 +970,12 @@ impl ErrorType {
             ErrorType::DuplicateIdentifierError { ref duplicated_id } => {
                 Cow::Owned(format!("duplicate definitions with name `{duplicated_id}`"))
             }
+            ErrorType::BoundVarCollisionError {
+                ref name,
+                ref owner,
+            } => Cow::Owned(format!(
+                "name `{name}` collides with the `{owner}` probe bound variable `{name}`"
+            )),
             ErrorType::Error { ref message } => {
                 if let Some(msg) = message {
                     Cow::Borrowed(msg)

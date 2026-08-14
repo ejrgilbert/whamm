@@ -437,6 +437,43 @@ impl SymbolTable {
         (rec_id, scope_id)
     }
 
+    /// Returns the name of the scope that owns a bound var (if it is actually one)
+    pub fn bound_var_owner(&self, key: &str) -> Option<String> {
+        let (rec_id, scope_id) = self.lookup_with_scope_id(key);
+        let rec = self.get_record(rec_id?)?;
+        if matches!(rec, Record::Var { .. }) && rec.is_comp_defined() {
+            return self.scopes.get(scope_id?).map(|scope| scope.name.clone());
+        }
+        None
+    }
+
+    /// Returns whether the var is a bound var.
+    pub fn existing_var_is_comp(&self, key: &str) -> Option<bool> {
+        let rec = self.get_record(self.lookup(key)?)?;
+        matches!(rec, Record::Var { .. }).then(|| rec.is_comp_defined())
+    }
+
+    /// Checks if the var is visible as BOTH a compiler bound variable and a user-declared variable.
+    /// If so, returns the scope that owns the bound var.
+    pub fn detect_bound_var_shadow(&self, key: &str) -> Option<String> {
+        let mut has_user = false;
+        let mut bound_owner: Option<String> = None;
+        let mut scope = self.scopes.get(self.curr_scope);
+        while let Some(s) = scope {
+            if let Some(rec) = s.lookup(key).and_then(|rec_id| self.records.get(*rec_id)) {
+                if matches!(rec, Record::Var { .. }) {
+                    if rec.is_comp_defined() {
+                        bound_owner.get_or_insert_with(|| s.name.clone());
+                    } else {
+                        has_user = true;
+                    }
+                }
+            }
+            scope = s.parent.and_then(|p| self.scopes.get(p));
+        }
+        has_user.then_some(bound_owner).flatten()
+    }
+
     pub fn scope_is_probe_local(&self, scope_id: usize) -> bool {
         let mut is_probe_local = false;
         if let Some(scope) = self.scopes.get(scope_id) {

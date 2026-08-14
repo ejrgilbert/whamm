@@ -526,10 +526,13 @@ impl SymbolTableBuilder<'_, '_> {
         definition: Definition,
         loc: Option<Location>,
     ) {
-        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
-        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
-        just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&name, &loc, &definition, &self.table, self.err) {
+        // If bound var/user var shadow each other
+        let is_bound_var_shadow =
+            self.table.existing_var_is_comp(&name) == Some(!definition.is_comp_defined());
+        // Only check_duplicate_id if !is_bound_var_shadow since we error at more-specific site now (see verifier.rs)
+        if !is_bound_var_shadow
+            && check_duplicate_id(&name, &loc, &definition, &self.table, self.err)
+        {
             return;
         }
         // Add global to scope

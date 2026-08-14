@@ -1,0 +1,2 @@
+name `targets` collides with the `br_table` probe bound variable `targets`
+    --> `targets[0] = 1;`

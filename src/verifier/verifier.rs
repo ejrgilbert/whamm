@@ -112,6 +112,9 @@ struct TypeChecker<'a> {
     has_reports: bool,
     rule_tracker: RuleTracker,
 
+    // shadowing vars already reported for current probe
+    reported_bound_var_shadows: HashSet<String>,
+
     // bookkeeping for casting
     curr_loc: Option<Location>,
 }
@@ -127,6 +130,7 @@ impl<'a> TypeChecker<'a> {
             restrict_probe_local_state: false,
             has_reports: false,
             rule_tracker: RuleTracker::default(),
+            reported_bound_var_shadows: HashSet::default(),
             curr_loc: None,
         }
     }
@@ -137,11 +141,19 @@ impl<'a> TypeChecker<'a> {
         definition: Definition,
         loc: &Option<Location>,
     ) {
-        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
-        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
-        just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(&name, loc, &definition, self.table, self.err) {
-            return;
+        if let Some(owner) = self.table.bound_var_owner(&name) {
+            if self.reported_bound_var_shadows.insert(name.clone()) {
+                self.err.bound_var_collision_error(
+                    name.clone(),
+                    owner,
+                    loc.clone().map(|l| l.line_col),
+                );
+            }
+            // fall through to add the local below (coexists with the bound variable)
+        } else {
+            if check_duplicate_id(&name, loc, &definition, self.table, self.err) {
+                return;
+            }
         }
 
         // Add local to scope
@@ -158,7 +170,23 @@ impl<'a> TypeChecker<'a> {
         );
     }
 
+    /// Report bound/user var shadow at use site (once per probe)
+    fn check_bound_var_shadow(&mut self, name: &str, loc: &Option<Location>) {
+        if self.reported_bound_var_shadows.contains(name) {
+            return;
+        }
+        if let Some(owner) = self.table.detect_bound_var_shadow(name) {
+            self.reported_bound_var_shadows.insert(name.to_string());
+            self.err.bound_var_collision_error(
+                name.to_string(),
+                owner,
+                loc.clone().map(|l| l.line_col),
+            );
+        }
+    }
+
     fn lookup_var_type(&mut self, name: &str, loc: &Option<Location>) -> Option<DataType> {
+        self.check_bound_var_shadow(name, loc);
         if let Some(id) = self.table.lookup(name) {
             if let Some(Record::Var { ty, .. }) = self.table.get_record(id) {
                 return Some(ty.clone());
@@ -564,6 +592,7 @@ impl<'a> TypeChecker<'a> {
                 loc,
                 definition,
             } => {
+                self.check_bound_var_shadow(name, loc);
                 // get type from symbol table
                 if let (Some(id), Some(scope_id)) = self.table.lookup_with_scope_id(name) {
                     if self.restrict_probe_local_state && self.table.scope_is_probe_local(scope_id)
@@ -1135,6 +1164,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
     fn visit_probe(&mut self, probe: &mut Probe) -> Option<DataType> {
         assert!(self.table.enter_named_scope(&probe.kind.name())); // enter mode scope
         assert!(self.table.enter_named_scope(&probe.scope_id.to_string())); // enter probe scope
+        self.reported_bound_var_shadows.clear();
         self.rule_tracker.push(&format!(":{}", probe.kind.name()));
         self.err
             .update_match_rule(self.rule_tracker.get_opt_owned());

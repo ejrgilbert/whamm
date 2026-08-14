@@ -371,6 +371,7 @@ pub(crate) fn run_script(
         .replace("\"", "");
     let script_bytes = std::fs::read(&script_path_str)
         .with_context(|| format!("could not read script {script_path_str}"))?;
+    let script_text = String::from_utf8_lossy(&script_bytes).into_owned();
     let user_lib_bytes = whamm::api::parse_user_libs(user_libs.clone())?;
     let core_lib_bytes = Some(whamm::api::load_core_lib_from_path(Path::new(
         CORE_WASM_PATH,
@@ -392,7 +393,7 @@ pub(crate) fn run_script(
             defs_bytes.clone(),
         )
     }
-    .map_err(format_whamm_errs)?;
+    .map_err(|errs| format_whamm_errs(&script_text, errs))?;
     if TEST_DRY_RUN && !target_wei {
         let wasm_bytes = std::fs::read(wasm_path)
             .with_context(|| format!("could not read app wasm {wasm_path}"))?;
@@ -403,7 +404,7 @@ pub(crate) fn run_script(
             core_lib_bytes,
             defs_bytes,
         )
-        .map_err(format_whamm_errs)
+        .map_err(|errs| format_whamm_errs(&script_text, errs))
         .context("failed to run dry-run")?;
 
         // NOTE: uncomment to debug side effects...just don't commit this uncommented! it'll slow EVERYTHING down
@@ -415,10 +416,18 @@ pub(crate) fn run_script(
     Ok(())
 }
 
-fn format_whamm_errs(errs: Vec<WhammError>) -> anyhow::Error {
+fn format_whamm_errs(script: &str, errs: Vec<WhammError>) -> anyhow::Error {
     let body = errs
         .iter()
-        .map(|e| format!("  - {}", e.msg))
+        .map(|e| {
+            let mut entry = format!("  - {}", e.msg);
+            if let Some((line, _col)) = e.err_line_col() {
+                if let Some(src) = script.lines().nth(line - 1) {
+                    entry.push_str(&format!("\n    --> `{}` (line {line})", src.trim()));
+                }
+            }
+            entry
+        })
         .collect::<Vec<_>>()
         .join("\n");
     anyhow!("{} error(s) from whamm:\n{body}", errs.len())

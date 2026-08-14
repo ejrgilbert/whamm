@@ -5,6 +5,7 @@ use crate::common::error::{CodeLocation, ErrorGen, WhammError as ErrorInternal};
 use crate::common::instr;
 use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
 use log::error;
+use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::process::exit;
 use wirm::ir::module::module_types::Types;
@@ -691,6 +692,13 @@ impl From<&ErrorInternal> for WhammError {
     }
 }
 impl WhammError {
+    /// surface *where* a diagnostic is anchored
+    pub fn err_line_col(&self) -> Option<(usize, usize)> {
+        self.err_loc.as_ref().map(|loc| match &loc.line_col {
+            LineColLocation::Pos((line, col)) => (*line, *col),
+            LineColLocation::Span((line, col), _) => (*line, *col),
+        })
+    }
     fn from_errs(values: Vec<ErrorInternal>) -> Vec<Self> {
         let mut errs = vec![];
         for e in values.iter() {
