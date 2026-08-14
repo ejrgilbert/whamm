@@ -111,6 +111,8 @@ pub enum DataType {
     Lib,
     Unknown,
     AssumeGood,
+    /// An unresolved polymorphic type variable, as in <T>
+    TypeVar(String),
 }
 impl Hash for DataType {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -145,6 +147,10 @@ impl Hash for DataType {
                 state.write_u8(self.id() as u8);
                 key_ty.hash(state);
                 val_ty.hash(state);
+            }
+            DataType::TypeVar(name) => {
+                state.write_u8(self.id() as u8);
+                name.hash(state);
             }
         }
     }
@@ -188,6 +194,7 @@ impl PartialEq for DataType {
                     val_ty: val_ty1,
                 },
             ) => key_ty0 == key_ty1 && val_ty0 == val_ty1,
+            (DataType::TypeVar(name0), DataType::TypeVar(name1)) => name0 == name1,
             _ => false,
         }
     }
@@ -226,6 +233,7 @@ impl Display for DataType {
             }
             DataType::AssumeGood => write!(f, "assume_good"),
             DataType::Unknown => write!(f, "unknown"),
+            DataType::TypeVar(name) => write!(f, "{name}"),
         }
     }
 }
@@ -263,6 +271,7 @@ impl DataType {
             | DataType::Lib
             | DataType::AssumeGood
             | DataType::Unknown
+            | DataType::TypeVar(..)
             | DataType::Tuple { .. }
             | DataType::Map { .. } => *other == *self,
         }
@@ -295,6 +304,9 @@ impl DataType {
             DataType::Lib => unreachable!(),
             DataType::Unknown => unreachable!(),
             DataType::AssumeGood => unreachable!(),
+            DataType::TypeVar(name) => {
+                unreachable!("unresolved type variable `{name}` reached codegen")
+            }
         }
     }
     pub fn from_wasm_type(ty: &WirmType) -> Self {
@@ -368,7 +380,8 @@ impl DataType {
             // | DataType::Tuple { .. }
             | DataType::Map { .. }
             | DataType::Lib
-            | DataType::AssumeGood => false,
+            | DataType::AssumeGood
+            | DataType::TypeVar(..) => false,
         }
     }
     pub fn id(&self) -> i32 {
@@ -392,6 +405,7 @@ impl DataType {
             DataType::Lib => 16,
             DataType::AssumeGood => 17,
             DataType::Unknown => 18,
+            DataType::TypeVar(..) => 19,
         }
     }
     pub fn num_bytes(&self) -> Option<usize> {
@@ -419,6 +433,7 @@ impl DataType {
             DataType::Null |
             DataType::Lib |
             DataType::AssumeGood |
+            DataType::TypeVar(..) |
             DataType::Unknown => {
                 // TODO -- is this okay for AssumeGood?
                 // size should be determined respective to the context!
@@ -501,6 +516,9 @@ impl DataType {
             DataType::Unknown => {
                 yellow(true, "unknown, not type checked".to_string(), buffer);
             }
+            DataType::TypeVar(name) => {
+                yellow(true, name.clone(), buffer);
+            }
         }
     }
     pub fn to_default_values(&self) -> Vec<Val> {
@@ -529,6 +547,7 @@ impl DataType {
             DataType::Null |
             DataType::Lib |
             DataType::Unknown |
+            DataType::TypeVar(..) |
             DataType::AssumeGood => unreachable!()
         }
     }

@@ -234,7 +234,8 @@ impl MemoryAllocator {
             | DataType::Null
             | DataType::Lib
             | DataType::AssumeGood
-            | DataType::Unknown => {
+            | DataType::Unknown
+            | DataType::TypeVar(..) => {
                 unreachable!()
             }
         };
@@ -331,7 +332,8 @@ impl MemoryAllocator {
             | DataType::Null
             | DataType::Lib
             | DataType::AssumeGood
-            | DataType::Unknown => {
+            | DataType::Unknown
+            | DataType::TypeVar(..) => {
                 unreachable!()
             }
         };
