@@ -14,6 +14,7 @@
     - [Maps](intro/syntax/maps.md)
     - [WIP - Functions](intro/syntax/functions.md)
     - [Type Bounds](intro/syntax/type_bounds.md)
+    - [Polymorphism](intro/syntax/polymorphism.md)
     - [Report Variables](intro/syntax/report_vars.md)
     - [Unshared Variables](intro/syntax/unshared_vars.md)
     - [Shared Variables](intro/syntax/shared_vars.md)
