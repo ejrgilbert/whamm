@@ -1,3 +1,4 @@
+pub mod generic_constraint;
 pub mod line_index;
 pub mod provider_handler;
 #[cfg(test)]

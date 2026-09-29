@@ -1556,10 +1556,15 @@ impl From<&LocationData> for Metadata {
 }
 impl Metadata {
     pub fn new(name: String, whamm_ty: DataType, loc: &LocationData) -> Self {
+        let wasm_tys = whamm_ty.to_wasm_type();
+        let mut meta = Self::new_deferred(name, whamm_ty, loc);
+        meta.set_wasm_tys(wasm_tys);
+        meta
+    }
+    /// Defers computing `wasm_tys` for report vars with type params
+    pub fn new_deferred(name: String, whamm_ty: DataType, loc: &LocationData) -> Self {
         let mut meta = Self::from(loc);
         meta.set_name(name);
-        let wasm_tys = whamm_ty.to_wasm_type();
-        meta.set_wasm_tys(wasm_tys);
         meta.set_whamm_ty(whamm_ty);
         meta
     }

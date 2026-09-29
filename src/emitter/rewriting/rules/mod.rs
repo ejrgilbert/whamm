@@ -1,4 +1,5 @@
 use crate::common::error::ErrorGen;
+use crate::emitter::rewriting::mono;
 use crate::emitter::rewriting::rules::data_segments::get_first_local_mem_id;
 use crate::emitter::rewriting::visiting_emitter::{VisitingEmitter, UNKNOWN_FID};
 use crate::generator::ast::{Probe, StackReq, WhammParam, WhammParams};
@@ -162,6 +163,33 @@ fn handle_wasm(
                 && check_var_types(&local_stack, type_bound_items(&probe.type_bounds), "local")
         });
 
+        // Monomorphize any generic probes for this site: bind each type parameter to the
+        // concrete operand type here and substitute it into the per-site probe clone.
+        // Probes whose type vars can't be bound at this site (missing/unadmitted/
+        // inconsistent operand types) are dropped.
+        if matches
+            .probes
+            .iter()
+            .any(|(_, p, _)| !p.type_params.is_empty())
+        {
+            let (all_args, all_results, ..) = get_ty_info_for_instr(app_wasm, &fid, instr);
+            let mut kept = Vec::with_capacity(matches.probes.len());
+            for (rule, mut probe, mode) in matches.probes.drain(..) {
+                if probe.type_params.is_empty() {
+                    kept.push((rule, probe, mode));
+                    continue;
+                }
+                if let Some(binding) =
+                    mono::bind_type_params_at_site(&probe, &all_args, &all_results, &local_stack)
+                {
+                    mono::monomorphize_probe(&mut probe, &binding);
+                    kept.push((rule, probe, mode));
+                }
+                // else: no binding at this site -> drop the probe
+            }
+            matches.probes = kept;
+        }
+
         let probes = &matches.probes;
         let dynamic_alias = &mut matches.dynamic_alias;
         for (_, probe, _) in probes.iter() {
@@ -205,7 +233,7 @@ fn all_locals(app_wasm: &Module, fid: &FunctionID) -> Vec<WirmType> {
     locals
 }
 
-fn nth_prefixed(name: &str, prefix: &str) -> Option<u32> {
+pub(crate) fn nth_prefixed(name: &str, prefix: &str) -> Option<u32> {
     name.strip_prefix(prefix)
         .and_then(|rest| rest.parse::<u32>().ok())
 }
@@ -216,6 +244,11 @@ fn check_var_types<'a>(
     prefix: &str,
 ) -> bool {
     for (name, declared_ty) in items {
+        // Type-variable operands are admitted/bound per site by mono::bind_type_params_at_site,
+        // not by exact compatibility here — skip them so generic probes aren't filtered out.
+        if matches!(declared_ty, DataType::TypeParam(_)) {
+            continue;
+        }
         let Some(n) = nth_prefixed(name, prefix) else {
             continue;
         };
@@ -239,7 +272,11 @@ fn param_items(params: &WhammParams) -> impl Iterator<Item = (&str, &DataType)> 
 }
 fn type_bound_items(type_bounds: &[(Expr, DataType)]) -> impl Iterator<Item = (&str, &DataType)> {
     type_bounds.iter().filter_map(|(var, ty)| match var {
-        Expr::VarId { name, .. } => Some((name.as_str(), ty)),
+        // Type-variable operands are matched/bound separately (see mono::bind_type_params_at_site);
+        // only concrete bounds participate in the exact-compatibility filter here.
+        Expr::VarId { name, .. } if !matches!(ty, DataType::TypeParam(_)) => {
+            Some((name.as_str(), ty))
+        }
         _ => None,
     })
 }

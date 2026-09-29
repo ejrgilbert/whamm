@@ -1,11 +1,12 @@
 use crate::common::error::ErrorGen;
 use crate::common::rule_tracker::RuleTracker;
 use crate::generator::ast::StackReq;
+use crate::parser::generic_constraint::GenericConstraint;
 use crate::parser::provider_handler::{Event, Package, Probe, Provider};
 use crate::parser::types::Definition::{CompilerDynamic, CompilerStatic};
 use crate::parser::types::{
-    BinOp, Block, CallKind, DataType, Definition, Expr, Fn, Location, Script, Statement, UnOp,
-    Value, Whamm, WhammVisitorMut,
+    BinOp, Block, CallKind, DataType, Definition, Expr, Fn, Location, NumLit, Script, Statement,
+    UnOp, Value, Whamm, WhammVisitorMut,
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
 use crate::verifier::types::{Record, SymbolTable};
@@ -102,6 +103,44 @@ pub fn check_duplicate_id(
     }
     false
 }
+
+/// The type parameter name if `ty` is a `TypeParam`, else `None`.
+fn as_typeparam(ty: &DataType) -> Option<&str> {
+    match ty {
+        DataType::TypeParam(name) => Some(name.as_str()),
+        _ => None,
+    }
+}
+
+/// Classification of an operand that shares an operation with a type parameter.
+enum LiteralClass {
+    /// An integer literal (deferred `NumericLiteral`, or a resolved integer `Number`).
+    /// It can ride a type parameter: the per-site monomorphizer resolves/casts it to the
+    /// var's concrete type.
+    Integer,
+    /// A float literal — cannot be monomorphized to an arbitrary numeric type per site.
+    Float,
+    /// Not a numeric literal at all (e.g. a concrete-typed operand).
+    NotLiteral,
+}
+impl LiteralClass {
+    /// Classify an operand expression for the purpose of combining it with a type parameter.
+    fn classify(expr: &Expr) -> Self {
+        let Expr::Primitive { val, .. } = expr else {
+            return LiteralClass::NotLiteral;
+        };
+        match val {
+            // `NumericLiteral` is the deferred integer form (raw: i128).
+            Value::NumericLiteral { .. } => LiteralClass::Integer,
+            Value::Number { val: num, .. } => match num {
+                NumLit::F32 { .. } | NumLit::F64 { .. } => LiteralClass::Float,
+                _ => LiteralClass::Integer,
+            },
+            _ => LiteralClass::NotLiteral,
+        }
+    }
+}
+
 struct TypeChecker<'a> {
     table: &'a mut SymbolTable,
     err: &'a mut ErrorGen,
@@ -117,6 +156,11 @@ struct TypeChecker<'a> {
 
     // bookkeeping for casting
     curr_loc: Option<Location>,
+
+    // holds the declared constraint (the contract)
+    type_param_constraints: HashMap<String, GenericConstraint>,
+    // accumulates the tightest constraint each var actually needs from its usage in the body
+    type_param_effective: HashMap<String, GenericConstraint>,
 }
 
 impl<'a> TypeChecker<'a> {
@@ -132,6 +176,8 @@ impl<'a> TypeChecker<'a> {
             rule_tracker: RuleTracker::default(),
             reported_bound_var_shadows: HashSet::default(),
             curr_loc: None,
+            type_param_constraints: HashMap::default(),
+            type_param_effective: HashMap::default(),
         }
     }
     fn add_local(
@@ -309,12 +355,178 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
+    /// Type-check a binary operation where at least one operand is a type parameter.
+    fn check_typeparam_binop(
+        &mut self,
+        op: &BinOp,
+        lhs_ty: &DataType,
+        rhs_ty: &DataType,
+        lhs: &Expr,
+        rhs: &Expr,
+        loc: &Option<LineColLocation>,
+    ) -> Option<DataType> {
+        // Logical operators need boolean operands; a numeric type parameter can't be one.
+        if matches!(op, BinOp::And | BinOp::Or) {
+            self.err.type_check_error(
+                "Logical operators require boolean operands, but a type parameter is not boolean"
+                    .to_owned(),
+                loc,
+            );
+            return Some(DataType::AssumeGood);
+        }
+
+        let req = GenericConstraint::from_op_requirement(op);
+
+        // Identify the governing type parameter and reconcile the two operands.
+        let tp_name = match (as_typeparam(lhs_ty), as_typeparam(rhs_ty)) {
+            (Some(a), Some(b)) => {
+                if a != b {
+                    self.err.type_check_error(
+                        format!(
+                            "Cannot combine distinct type parameters `{a}` and `{b}` in one operation. Hint: reuse the same type parameter if these operands must share a type."
+                        ),
+                        loc,
+                    );
+                    return Some(DataType::AssumeGood);
+                }
+                a.to_string()
+            }
+            (Some(a), None) => {
+                if !self.reconcile_typeparam_literal(a, rhs, rhs_ty, loc) {
+                    return Some(DataType::AssumeGood);
+                }
+                a.to_string()
+            }
+            (None, Some(b)) => {
+                if !self.reconcile_typeparam_literal(b, lhs, lhs_ty, loc) {
+                    return Some(DataType::AssumeGood);
+                }
+                b.to_string()
+            }
+            (None, None) => {
+                unreachable!("check_typeparam_binop called without a type parameter operand")
+            }
+        };
+
+        self.record_type_param_requirement(&tp_name, &req, loc);
+
+        match op {
+            BinOp::EQ | BinOp::NE | BinOp::GT | BinOp::LT | BinOp::GE | BinOp::LE => {
+                Some(DataType::Boolean)
+            }
+            _ => Some(DataType::TypeParam(tp_name)),
+        }
+    }
+
+    /// Reconcile a non-type-var operand (`operand`, of type `operand_ty`) that shares an
+    /// operation with type parameter `tp`. An integer literal is always accepted (it casts to
+    /// any numeric type per site); a float literal is accepted only if every type `tp` admits
+    /// is a float (else the integer instantiations couldn't take it); a concrete-typed operand
+    /// is a type error. Returns whether the operand is acceptable.
+    fn reconcile_typeparam_literal(
+        &mut self,
+        tp: &str,
+        operand: &Expr,
+        operand_ty: &DataType,
+        loc: &Option<LineColLocation>,
+    ) -> bool {
+        match LiteralClass::classify(operand) {
+            LiteralClass::Integer => true,
+            LiteralClass::Float => {
+                // A float literal is fine iff `tp` can only be a float type (e.g. `T: float`);
+                // then every instantiation casts the literal to its concrete float type. If
+                // `tp` could be an integer, the literal can't be monomorphized for those.
+                let constraint = self
+                    .type_param_constraints
+                    .get(tp)
+                    .cloned()
+                    .unwrap_or(GenericConstraint::Top);
+                if constraint
+                    .leaves()
+                    .iter()
+                    .all(|t| matches!(t, DataType::F32 | DataType::F64))
+                {
+                    return true;
+                }
+                self.err.type_check_error(
+                    format!(
+                        "Cannot combine type parameter `{tp}` (which may be an integer type) with a float literal. Hint: declare `{tp}: float`, or use an integer literal."
+                    ),
+                    loc,
+                );
+                false
+            }
+            LiteralClass::NotLiteral => {
+                self.err.type_check_error(
+                    format!(
+                        "Cannot combine type parameter `{tp}` with concrete type `{operand_ty}`. Hint: add an explicit cast to bridge them, e.g. `(<operand> as {tp})`."
+                    ),
+                    loc,
+                );
+                false
+            }
+        }
+    }
+
+    /// Record that type parameter `name` was used with an operator requiring `req`.
+    /// Enforces the declared constraint as a contract (hard error if a class-declared var
+    /// cannot satisfy the operator across its whole declared set) and tightens the var's
+    /// effective constraint (`Top`-declared vars are inferred from usage).
+    fn record_type_param_requirement(
+        &mut self,
+        name: &str,
+        req: &GenericConstraint,
+        loc: &Option<LineColLocation>,
+    ) {
+        let declared = self
+            .type_param_constraints
+            .get(name)
+            .cloned()
+            .unwrap_or(GenericConstraint::Top);
+
+        // A class-declared var is a contract: it must satisfy the operator for every
+        // type in its declared set. `Top` means "infer", so it is exempt.
+        if declared != GenericConstraint::Top && declared.meet(req) != Some(declared.clone()) {
+            self.err.type_check_error(
+                format!(
+                    "Type parameter `{name}` is declared `{declared}`, but this operation requires `{req}`. Hint: declare `{name}: {req}`."
+                ),
+                loc,
+            );
+        }
+
+        // Tighten the effective constraint (inference for `Top`; no-op for a satisfied class).
+        let current = self
+            .type_param_effective
+            .get(name)
+            .cloned()
+            .unwrap_or(GenericConstraint::Top);
+        match current.meet(req) {
+            Some(m) => {
+                self.type_param_effective.insert(name.to_string(), m);
+            }
+            None => {
+                self.err.type_check_error(
+                    format!("Conflicting type requirements for type parameter `{name}`."),
+                    loc,
+                );
+            }
+        }
+    }
+
     /// Type-check a value literal with an optional expected type.
     /// When `expected` is `Some(ty)`, tries to implicitly cast the literal to `ty`.
     /// When `None`, returns the literal's native type unchanged.
     fn check_value(&mut self, val: &mut Value, expected: Option<&DataType>) -> Option<DataType> {
         match val {
             Value::NumericLiteral { raw, fmt, token } => {
+                // When the expected type is a type parameter, resolve the literal to a default
+                // concrete type as if no type were expected. The per-site monomorphizer
+                // re-casts this literal to each concrete type.
+                let expected = match expected {
+                    Some(DataType::TypeParam(_)) => None,
+                    other => other,
+                };
                 // Resolve the raw integer to a concrete NumLit.
                 // Use `expected` if present; otherwise default to i32 (fits) or i64 or u64.
                 let resolved_ty = if let Some(exp_ty) = expected {
@@ -500,6 +712,26 @@ impl<'a> TypeChecker<'a> {
                 let lhs_ty_op = self.visit_expr_impl(lhs, operand_expected);
                 let rhs_ty_op = self.visit_expr_impl(rhs, operand_expected);
                 if let (Some(lhs_ty), Some(rhs_ty)) = (lhs_ty_op, rhs_ty_op) {
+                    // If a type parameter is involved, check the operator against the
+                    // var's constraint rather than a concrete type (keeps the body generic).
+                    if matches!(lhs_ty, DataType::TypeParam(_))
+                        || matches!(rhs_ty, DataType::TypeParam(_))
+                    {
+                        // `done_on` is the operand type being operated on — the type parameter.
+                        *done_on = if matches!(lhs_ty, DataType::TypeParam(_)) {
+                            lhs_ty.clone()
+                        } else {
+                            rhs_ty.clone()
+                        };
+                        return self.check_typeparam_binop(
+                            op,
+                            &lhs_ty,
+                            &rhs_ty,
+                            lhs,
+                            rhs,
+                            &full_line_col,
+                        );
+                    }
                     *done_on = lhs_ty.clone();
                     match op {
                         BinOp::Add
@@ -648,6 +880,25 @@ impl<'a> TypeChecker<'a> {
                     *done_on = expr_ty.clone();
                     match op {
                         UnOp::Cast { target } => {
+                            // Casting to a type parameter (`x as T`) bridges a concrete operand
+                            // and a type parameter: its result is that (symbolic) parameter,
+                            // resolved per site by the monomorphizer.
+                            if let DataType::TypeParam(name) = target {
+                                if !self.type_param_constraints.contains_key(name) {
+                                    self.err.type_check_error(
+                                        format!("Unknown type parameter `{name}` in cast. Hint: declare it in the probe's generic header, e.g. `<{name}: numeric>`."),
+                                        &loc.clone().map(|l| l.line_col),
+                                    );
+                                    return Some(DataType::AssumeGood);
+                                }
+                                if expr_ty.is_numeric() {
+                                    self.record_type_param_requirement(
+                                        name,
+                                        &GenericConstraint::Numeric,
+                                        &loc.clone().map(|l| l.line_col),
+                                    );
+                                }
+                            }
                             // If the inner expression's type is the same as the cast,
                             // we can remove the cast from the AST!
                             let t = target.clone();
@@ -1169,6 +1420,12 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         self.err
             .update_match_rule(self.rule_tracker.get_opt_owned());
 
+        // Load the probe's declared type parameters so operator checks can reason about
+        // them. `type_param_effective` starts equal to the declared constraint and is tightened
+        // as the body uses each var.
+        self.type_param_constraints = probe.type_params.iter().cloned().collect();
+        self.type_param_effective = self.type_param_constraints.clone();
+
         // type check predicate
         if let Some(predicate) = &mut probe.predicate {
             let predicate_loc = predicate.loc().clone().unwrap();
@@ -1186,6 +1443,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
         if let Some(body) = &mut probe.body {
             self.visit_block(body);
         }
+
+        // Write the inferred/validated effective constraints back onto the probe so the
+        // rewriting backend can decide which concrete sites each type parameter admits.
+        for (name, constraint) in probe.type_params.iter_mut() {
+            if let Some(effective) = self.type_param_effective.get(name) {
+                *constraint = effective.clone();
+            }
+        }
+        self.type_param_constraints.clear();
+        self.type_param_effective.clear();
 
         self.table.exit_scope(); // exit the mode scope
         self.table.exit_scope(); // exit the probe scope

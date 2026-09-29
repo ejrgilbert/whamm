@@ -135,6 +135,15 @@ impl WeiGenerator<'_, '_, '_> {
     }
 
     fn visit_probe(&mut self, probe: &mut Probe) {
+        if !probe.type_params.is_empty() {
+            self.err.wei_error(
+                "polymorphic probes (generic headers like `<T: numeric>`) are not yet \
+                 supported for the wei target"
+                    .to_string(),
+                &probe.loc,
+            );
+            return;
+        }
         self.set_curr_loc(create_curr_loc(self.curr_script_id, probe, true));
 
         let (pred_fid, pred_param_str, dynamic_pred) = if let Some(pred) = &mut probe.predicate {

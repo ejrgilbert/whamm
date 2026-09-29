@@ -156,12 +156,24 @@ impl UnsharedVarHandler {
             loc,
         } in vars.iter()
         {
+            // By allocation time every var must be concretely typed
+            assert!(
+                !matches!(ty, DataType::TypeParam(_)),
+                "unshared/report var `{name}` still has an unresolved type parameter `{ty}` at \
+                 allocation; generic probes must be monomorphized before emit"
+            );
+
             let ty_tracker = self.report_trackers.entry(ty.clone()).or_default();
 
             // look up in symbol table
-            let Some(Record::Var { addr, .. }) = table.lookup_var_mut(name, true) else {
+            let Some(Record::Var {
+                addr, ty: rec_ty, ..
+            }) = table.lookup_var_mut(name, true)
+            else {
                 panic!("unexpected type");
             };
+            // Sync the record's type to this var's concrete type
+            *rec_ty = ty.clone();
 
             let (probe_header, var_header) = if *is_report {
                 // 2. If is_report, prep the report var header (linked list)

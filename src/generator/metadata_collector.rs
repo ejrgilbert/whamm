@@ -537,17 +537,19 @@ impl<'a> MetadataCollector<'a> {
             } => {
                 if modifiers.is_unshared {
                     let report_metadata = if modifiers.is_report {
-                        // keep track of the used report var datatypes across the whole AST
-                        self.used_report_var_dts.insert(ty.clone());
-                        Some(ReportMetadata::new(
-                            name.clone(),
-                            ty.clone(),
-                            &LocationData::Local {
-                                script_id: self.script_num,
-                                bytecode_loc: BytecodeLoc::new(0, 0), // (unused)
-                                probe_id: self.curr_probe.to_string(self.config.as_monitor_module),
-                            },
-                        ))
+                        let loc = LocationData::Local {
+                            script_id: self.script_num,
+                            bytecode_loc: BytecodeLoc::new(0, 0), // (unused)
+                            probe_id: self.curr_probe.to_string(self.config.as_monitor_module),
+                        };
+                        if matches!(ty, DataType::TypeParam(_)) {
+                            // Generic report var: defer the concrete type.
+                            Some(ReportMetadata::new_deferred(name.clone(), ty.clone(), &loc))
+                        } else {
+                            // keep track of the used report var datatypes across the whole AST
+                            self.used_report_var_dts.insert(ty.clone());
+                            Some(ReportMetadata::new(name.clone(), ty.clone(), &loc))
+                        }
                     } else {
                         None
                     };
@@ -760,6 +762,7 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
                     probe.loc.clone(),
                 );
                 self.curr_probe.type_bounds = probe.type_bounds.clone();
+                self.curr_probe.type_params = probe.type_params.clone();
                 self.curr_mode = probe.kind.clone();
                 self.visit_probe(probe);
 

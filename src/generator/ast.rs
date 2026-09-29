@@ -1,5 +1,6 @@
 use crate::emitter::rewriting::rules::StackVal;
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
+use crate::parser::generic_constraint::GenericConstraint;
 use crate::parser::provider_handler::ModeKind;
 use crate::parser::types::{
     Block, DataType, Definition, Expr, Global, Location, RulePart, Statement,
@@ -44,6 +45,8 @@ pub struct Probe {
     pub loc: Option<Location>,
     /// Type bounds for this probe, collected from all hierarchy levels at parse time.
     pub type_bounds: Vec<(Expr, DataType)>,
+    /// Type parameters declared in the probe's generic header(s), e.g. `<T: numeric, U>`.
+    pub type_params: Vec<(String, GenericConstraint)>,
 }
 impl Probe {
     pub(crate) fn new(

@@ -365,3 +365,12 @@ fn instrument_with_type_bounds_scripts() -> Result<()> {
 
     run_core_suite("type-bounds", processed_scripts, true, false)
 }
+
+#[test]
+fn instrument_with_polymorphism_scripts() -> Result<()> {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/polymorphism");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("polymorphism", processed_scripts, true, true)
+}

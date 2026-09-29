@@ -1292,6 +1292,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
     injector: &mut T,
     ctx: &mut EmitCtx,
 ) -> bool {
+    assert!(
+        !matches!(done_on, DataType::TypeParam(_)),
+        "binary op reached codegen with an unresolved type parameter `{done_on}`; generic probes must be monomorphized before emit"
+    );
     match op {
         BinOp::And => {
             match done_on {
@@ -1320,7 +1324,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support logical AND for {done_on}")
                 }
-                DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted logical AND for {done_on}")
                 }
             };
@@ -1352,7 +1356,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support logical OR for {done_on}")
                 }
-                DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted logical OR for {done_on}")
                 }
             };
@@ -1377,7 +1381,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     // todo: str
                     unimplemented!("We do not support equal for {done_on}")
                 }
-                DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted equal for {done_on}")
                 }
             };
@@ -1402,7 +1406,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     // todo: str
                     unimplemented!("We do not support not equal for {done_on}")
                 }
-                DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted not equal for {done_on}")
                 }
             };
@@ -1427,7 +1431,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support greater than or equal to for {done_on}")
                 }
-                DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted greater than or equal to for {done_on}")
                 }
             };
@@ -1452,7 +1456,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support greater than for {done_on}")
                 }
-                DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted greater than for {done_on}")
                 }
             };
@@ -1477,7 +1481,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support less than or equal to for {done_on}")
                 }
-                DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted less then or equal to for {done_on}")
                 }
             };
@@ -1502,7 +1506,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support less than for {done_on}")
                 }
-                DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted less than for {done_on}")
                 }
             };
@@ -1550,7 +1554,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support addition for {done_on}")
                 }
-                DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted addition for {done_on}")
                 }
             };
@@ -1598,7 +1602,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support subtract for {done_on}")
                 }
-                DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted subtract for {done_on}")
                 }
             };
@@ -1646,7 +1650,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support multiply for {done_on}")
                 }
-                DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted multiply for {done_on}")
                 }
             };
@@ -1695,7 +1699,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support divide for {done_on}")
                 }
-                DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted divide for {done_on}")
                 }
             };
@@ -1804,7 +1808,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support modulo for {done_on}")
                 }
-                DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted modulo for {done_on}")
                 }
             };
@@ -1843,16 +1847,14 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     }
                 }
                 DataType::U64 | DataType::I64 => injector.i64_shl(),
-                DataType::F32 | DataType::F64 => unreachable!(),
                 DataType::FuncRef
                 | DataType::Null
                 | DataType::Str     // todo
                 | DataType::Tuple { .. }
-                | DataType::Map { .. }
-                | DataType::Unknown => {
+                | DataType::Map { .. } => {
                     unimplemented!()
                 }
-                DataType::Lib | DataType::AssumeGood => unreachable!(),
+                _ => unreachable!(),
             };
         }
         BinOp::RShift => {
@@ -1870,11 +1872,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support right shift for {done_on}")
                 }
-                DataType::Lib
-                | DataType::F32
-                | DataType::F64
-                | DataType::AssumeGood
-                | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted right shift for {done_on}")
                 }
             };
@@ -1896,11 +1894,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support bitwise AND for {done_on}")
                 }
-                DataType::Lib
-                | DataType::F32
-                | DataType::F64
-                | DataType::AssumeGood
-                | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted bitwise AND for {done_on}")
                 }
             };
@@ -1922,11 +1916,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support bitwise OR for {done_on}")
                 }
-                DataType::Lib
-                | DataType::F32
-                | DataType::F64
-                | DataType::AssumeGood
-                | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted bitwise OR for {done_on}")
                 }
             };
@@ -1949,7 +1939,7 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support bitwise XOR for {done_on}")
                 }
-                DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted bitwise XOR for {done_on}")
                 }
             };
@@ -1959,6 +1949,10 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
 }
 
 fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T) -> bool {
+    assert!(
+        !matches!(done_on, DataType::TypeParam(_)),
+        "unary op reached codegen with an unresolved type parameter `{done_on}`; generic probes must be monomorphized before emit"
+    );
     match op {
         UnOp::Cast { target } => {
             match (done_on, target) {
@@ -2369,7 +2363,7 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
             | DataType::Map { .. } => {
                 unimplemented!("We do not support NOT for {done_on}")
             }
-            DataType::Lib | DataType::AssumeGood | DataType::Unknown => {
+            _ => {
                 unreachable!("Attempted NOT for {done_on}")
             }
         },
@@ -2412,11 +2406,7 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                 | DataType::Map { .. } => {
                     unimplemented!("We do not support bitwise NOT for {done_on}")
                 }
-                DataType::Lib
-                | DataType::F32
-                | DataType::F64
-                | DataType::AssumeGood
-                | DataType::Unknown => {
+                _ => {
                     unreachable!("Attempted bitwise NOT for {done_on}")
                 }
             };
