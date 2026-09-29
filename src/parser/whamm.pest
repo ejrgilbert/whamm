@@ -56,10 +56,14 @@ ID = @{ (!DISALLOWED_ID ~ (ASCII_ALPHA | "_")+ ~ ( ASCII_DIGIT | (ASCII_ALPHA | 
         (DISALLOWED_ID ~ (ASCII_ALPHA | "_" | ASCII_DIGIT)+)
 }
 PROBE_RULE = {
-    PROBE_ID? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ TY_BOUNDS?
-    | PROBE_ID? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ TY_BOUNDS? // to handle package:provider:event, e.g. wasm:func:entry
+    PROBE_ID? ~ GENERIC_HEADER? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ GENERIC_HEADER? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ GENERIC_HEADER? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ GENERIC_HEADER? ~ TY_BOUNDS?
+    | PROBE_ID? ~ GENERIC_HEADER? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ GENERIC_HEADER? ~ TY_BOUNDS? ~ ":" ~ PROBE_ID? ~ GENERIC_HEADER? ~ TY_BOUNDS? // to handle package:provider:event, e.g. wasm:func:entry
     | PROBE_ID ~ ":" ~ PROBE_ID // to handle wasm:before, wasm:after
 }
+
+GENERIC_HEADER = { "<" ~ typeparam_decl ~ ( "," ~ typeparam_decl )* ~ ">" }
+typeparam_decl = { TY_TYPEPARAM ~ ( ":" ~ TY_GENERIC_CONSTRAINT )? }
+TY_GENERIC_CONSTRAINT = @{ ASCII_ALPHA ~ ( ASCII_ALPHANUMERIC | "_" )* }
 
 // ===============
 // ---- Types ----
@@ -78,6 +82,9 @@ TY_F64 = @{ "f64" }
 TY_BOOL = @{ "bool" }
 TY_STRING = @{ "str" }
 TY_FUNCREF = @{ "funcref" }
+
+// A type-parameter reference: a capitalized identifier used in a type position.
+TY_TYPEPARAM = @{ ASCII_ALPHA_UPPER ~ ( ASCII_ALPHANUMERIC | "_" )* }
 
 // a tuple that's used as a type declaration
 TY_TUPLE = { "(" ~ ")"| "(" ~ TYPE ~ ( "," ~ TYPE )* ~ ")" }
@@ -102,7 +109,8 @@ TYPE_PRIMITIVE = _{
     TY_F64 |
     TY_BOOL |
     TY_STRING |
-    TY_FUNCREF
+    TY_FUNCREF |
+    TY_TYPEPARAM
 }
 TY_UNKNOWN = @{ "unknown" }
 TYPE_YML = _{

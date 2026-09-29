@@ -1,0 +1,1 @@
+tests/apps/core_suite/handwritten/local_set_typed.wasm

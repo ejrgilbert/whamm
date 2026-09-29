@@ -1,5 +1,6 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{long_line, magenta, white};
+use crate::parser::generic_constraint::GenericConstraint;
 use crate::parser::line_index::LineIndex;
 use crate::parser::provider_handler::{get_matches, yml_to_providers, PrintInfo, ProviderDef};
 use crate::parser::types;
@@ -1092,6 +1093,39 @@ fn handle_special_decl(
 }
 // EXPRESSIONS
 
+/// Parse a `GENERIC_HEADER`'s inner `typeparam_decl`s into `(name, constraint)` pairs.
+fn handle_generic_header(
+    decls: Pairs<Rule>,
+    line_idx: &LineIndex,
+    err: &mut ErrorGen,
+) -> Vec<(String, GenericConstraint)> {
+    let mut type_params = vec![];
+    for decl in decls {
+        if !matches!(decl.as_rule(), Rule::typeparam_decl) {
+            continue;
+        }
+        let mut inner = decl.into_inner();
+        let name = inner.next().unwrap().as_str().to_string();
+        let constraint = match inner.next() {
+            Some(class) => match class.as_str().parse::<GenericConstraint>() {
+                Ok(constraint) => constraint,
+                Err(msg) => {
+                    err.parse_error(
+                        Some(msg),
+                        Some(line_idx.linecol(class.as_span())),
+                        vec![],
+                        vec![],
+                    );
+                    GenericConstraint::Top
+                }
+            },
+            None => GenericConstraint::Top,
+        };
+        type_params.push((name, constraint));
+    }
+    type_params
+}
+
 pub fn handle_param(
     mut pairs: Pairs<Rule>,
     line_idx: &LineIndex,
@@ -1690,6 +1724,14 @@ fn probe_rule_from_rule(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut ErrorG
             }
         };
 
+        // check if this probe part declares type parameters (`<T: numeric, U>`)
+        if let Some(n) = next.clone() {
+            if matches!(n.as_rule(), Rule::GENERIC_HEADER) {
+                rule_part.type_params = handle_generic_header(n.into_inner(), line_idx, err);
+                next = parts.next();
+            }
+        }
+
         // check if there is type info associated with this probe part
         if let Some(n) = next.clone() {
             if matches!(n.as_rule(), Rule::TY_BOUNDS) {
@@ -1780,6 +1822,7 @@ pub fn type_from_rule(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<DataType
         Rule::TY_STRING => Ok(DataType::Str),
         Rule::TY_FUNCREF => Ok(DataType::FuncRef),
         Rule::TY_UNKNOWN => Ok(DataType::Unknown),
+        Rule::TY_TYPEPARAM => Ok(DataType::TypeParam(pair.as_str().to_string())),
         Rule::TY_TUPLE => {
             let mut tuple_content_types = vec![];
             for p in pair.into_inner() {

@@ -9,6 +9,7 @@ use termcolor::Buffer;
 use crate::common::error::ErrorGen;
 use crate::common::terminal::{green, grey_italics, magenta, white, yellow};
 use crate::generator::ast::StackReq;
+use crate::parser::generic_constraint::GenericConstraint;
 use crate::parser::provider_handler::{
     get_matches, BoundVar, Event, Package, Probe, Provider, ProviderDef,
 };
@@ -111,8 +112,8 @@ pub enum DataType {
     Lib,
     Unknown,
     AssumeGood,
-    /// An unresolved polymorphic type variable, as in <T>
-    TypeVar(String),
+    /// An unresolved polymorphic type parameter, as in <T>
+    TypeParam(String),
 }
 impl Hash for DataType {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -148,7 +149,7 @@ impl Hash for DataType {
                 key_ty.hash(state);
                 val_ty.hash(state);
             }
-            DataType::TypeVar(name) => {
+            DataType::TypeParam(name) => {
                 state.write_u8(self.id() as u8);
                 name.hash(state);
             }
@@ -194,7 +195,7 @@ impl PartialEq for DataType {
                     val_ty: val_ty1,
                 },
             ) => key_ty0 == key_ty1 && val_ty0 == val_ty1,
-            (DataType::TypeVar(name0), DataType::TypeVar(name1)) => name0 == name1,
+            (DataType::TypeParam(name0), DataType::TypeParam(name1)) => name0 == name1,
             _ => false,
         }
     }
@@ -231,9 +232,9 @@ impl Display for DataType {
             DataType::Map { key_ty, val_ty, .. } => {
                 write!(f, "map<{},{}>", key_ty, val_ty)
             }
+            DataType::TypeParam(name) => write!(f, "{name}"),
             DataType::AssumeGood => write!(f, "assume_good"),
             DataType::Unknown => write!(f, "unknown"),
-            DataType::TypeVar(name) => write!(f, "{name}"),
         }
     }
 }
@@ -269,9 +270,9 @@ impl DataType {
             | DataType::Str
             | DataType::FuncRef
             | DataType::Lib
+            | DataType::TypeParam(..)
             | DataType::AssumeGood
             | DataType::Unknown
-            | DataType::TypeVar(..)
             | DataType::Tuple { .. }
             | DataType::Map { .. } => *other == *self,
         }
@@ -301,12 +302,12 @@ impl DataType {
             DataType::Str => vec![WirmType::I32, WirmType::I32],
             // Flatten each element's wasm types: e.g. (i32, str) → [I32, I32, I32]
             DataType::Tuple { ty_info } => ty_info.iter().flat_map(|t| t.to_wasm_type()).collect(),
+            DataType::TypeParam(name) => {
+                unreachable!("unresolved type parameter `{name}` reached codegen")
+            }
             DataType::Lib => unreachable!(),
             DataType::Unknown => unreachable!(),
             DataType::AssumeGood => unreachable!(),
-            DataType::TypeVar(name) => {
-                unreachable!("unresolved type variable `{name}` reached codegen")
-            }
         }
     }
     pub fn from_wasm_type(ty: &WirmType) -> Self {
@@ -381,7 +382,7 @@ impl DataType {
             | DataType::Map { .. }
             | DataType::Lib
             | DataType::AssumeGood
-            | DataType::TypeVar(..) => false,
+            | DataType::TypeParam(..) => false,
         }
     }
     pub fn id(&self) -> i32 {
@@ -403,9 +404,9 @@ impl DataType {
             DataType::Tuple { .. } => 14,
             DataType::Map { .. } => 15,
             DataType::Lib => 16,
-            DataType::AssumeGood => 17,
-            DataType::Unknown => 18,
-            DataType::TypeVar(..) => 19,
+            DataType::TypeParam(..) => 17,
+            DataType::AssumeGood => 18,
+            DataType::Unknown => 19,
         }
     }
     pub fn num_bytes(&self) -> Option<usize> {
@@ -430,10 +431,10 @@ impl DataType {
             }
             DataType::Str => Some(8), // (two i32s)
             DataType::FuncRef |
+            DataType::TypeParam(..) |
             DataType::Null |
             DataType::Lib |
             DataType::AssumeGood |
-            DataType::TypeVar(..) |
             DataType::Unknown => {
                 // TODO -- is this okay for AssumeGood?
                 // size should be determined respective to the context!
@@ -510,14 +511,14 @@ impl DataType {
                 val_ty.print(buffer);
                 white(true, ">".to_string(), buffer);
             }
+            DataType::TypeParam(name) => {
+                yellow(true, name.clone(), buffer);
+            }
             DataType::AssumeGood => {
                 yellow(true, "assume_good, not type checked".to_string(), buffer);
             }
             DataType::Unknown => {
                 yellow(true, "unknown, not type checked".to_string(), buffer);
-            }
-            DataType::TypeVar(name) => {
-                yellow(true, name.clone(), buffer);
             }
         }
     }
@@ -547,7 +548,7 @@ impl DataType {
             DataType::Null |
             DataType::Lib |
             DataType::Unknown |
-            DataType::TypeVar(..) |
+            DataType::TypeParam(..) |
             DataType::AssumeGood => unreachable!()
         }
     }
@@ -2257,6 +2258,8 @@ impl Whamm {
 pub struct RulePart {
     pub name: String,
     pub ty_info: Vec<(Expr, DataType)>, // Expr::VarId -> DataType
+    /// Type parameters declared in this rule part's generic header, e.g. `<T: numeric, U>`.
+    pub type_params: Vec<(String, GenericConstraint)>,
     pub loc: Option<Location>,
 }
 impl RulePart {
@@ -2265,6 +2268,7 @@ impl RulePart {
             name,
             loc,
             ty_info: vec![],
+            type_params: vec![],
         }
     }
 }

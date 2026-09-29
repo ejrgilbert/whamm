@@ -51,6 +51,17 @@ wasm:opcode:local.set(arg3: i64):before {}
 wasm:opcode:call(local5: f32):before {}
 wasm:opcode:call(local5: f32, arg0: u8):before {}
     "#,
+    // generic headers (type parameters)
+    r#"
+wasm:opcode:call<T>(arg0: T):before {}
+wasm:opcode:call<T: numeric>(arg0: T):before {}
+wasm:opcode:call<T: int>(arg0: T):before {}
+wasm:opcode:call<T: float>(arg0: T):before {}
+wasm:opcode:call<T: numeric, U>(arg0: T, arg1: T, arg2: U, arg3: i32):before {}
+wasm:opcode:call<T: numeric>(arg0: T):before {
+    report var acc: T;
+}
+    "#,
     // casts
     r#"
 var i: u8;
@@ -566,6 +577,8 @@ var arg0: map<i32, i32>;
 core::br:before / i == 1 / { i = 0; }  // SHOULD FAIL HERE
 
     "#,
+    // unknown generic constraint keyword
+    "wasm:opcode:call<T: frobnicate>(arg0: T):before { report var acc: T; acc = arg0; }",
     // trigger unavailable modes per event
     "wasm:opcode:unreachable:after {}",
     "wasm:opcode:unreachable:at_target {}",
@@ -757,6 +770,81 @@ wasm::call:alt /
     // probe body
     assert!(&probe.body.is_some());
     assert_eq!(5, probe.body.as_ref().unwrap().stmts.len());
+}
+
+#[test]
+pub fn test_generic_header_parses_to_type_params() {
+    use crate::parser::generic_constraint::GenericConstraint;
+    use crate::parser::types::DataType;
+    setup_logger();
+
+    let script = r#"
+wasm:opcode:call<T: numeric, U>(arg0: T, arg1: T, arg2: U, arg3: i32):before {
+    report var acc: T;
+}
+    "#;
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let ast = get_ast(script, &mut err);
+    assert!(!err.has_errors);
+
+    let script = ast.scripts.first().unwrap();
+    let provider = script.providers.get("wasm").unwrap();
+    let (_, package) = provider.packages.iter().next().unwrap();
+    let (_, event) = package.events.iter().next().unwrap();
+    let probe = event
+        .probes
+        .get(&ModeKind::Before)
+        .unwrap()
+        .first()
+        .unwrap();
+
+    // The generic header declares two type vars: `T: numeric` and `U` (unbounded => Top).
+    assert_eq!(
+        vec![
+            ("T".to_string(), GenericConstraint::Numeric),
+            ("U".to_string(), GenericConstraint::Top),
+        ],
+        probe.type_params
+    );
+
+    // Operand bounds: type-var operands carry DataType::TypeParam; concrete stays concrete.
+    let bound_tys: Vec<DataType> = probe
+        .type_bounds
+        .iter()
+        .map(|(_var, ty)| ty.clone())
+        .collect();
+    assert_eq!(
+        vec![
+            DataType::TypeParam("T".to_string()),
+            DataType::TypeParam("T".to_string()),
+            DataType::TypeParam("U".to_string()),
+            DataType::I32,
+        ],
+        bound_tys
+    );
+}
+
+#[test]
+pub fn test_no_generic_header_has_empty_type_params() {
+    setup_logger();
+
+    let script = "wasm:opcode:call(arg0: i32):before {}";
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let ast = get_ast(script, &mut err);
+    assert!(!err.has_errors);
+
+    let script = ast.scripts.first().unwrap();
+    let provider = script.providers.get("wasm").unwrap();
+    let (_, package) = provider.packages.iter().next().unwrap();
+    let (_, event) = package.events.iter().next().unwrap();
+    let probe = event
+        .probes
+        .get(&ModeKind::Before)
+        .unwrap()
+        .first()
+        .unwrap();
+
+    assert!(probe.type_params.is_empty());
 }
 
 #[test]

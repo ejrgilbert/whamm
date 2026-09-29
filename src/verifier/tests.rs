@@ -574,6 +574,260 @@ pub fn test_type_errors() {
         assert!(!&res);
     }
 }
+
+// ===============================
+// = Polymorphism (generic probes) =
+// ===============================
+
+fn typecheck_generic(script: &str) -> (bool, crate::parser::types::Whamm) {
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    let mut ast = tests::get_ast(script, &mut err);
+    let mut table = verifier::build_symbol_table(&mut ast, &HashMap::default(), &mut err);
+    let passed = verifier::type_check(&mut ast, &mut table, &mut err).0 && !err.has_errors;
+    err.report();
+    (passed, ast)
+}
+
+fn first_probe_type_params(
+    ast: &crate::parser::types::Whamm,
+) -> Vec<(String, crate::parser::generic_constraint::GenericConstraint)> {
+    let script = ast.scripts.first().unwrap();
+    let provider = script.providers.get("wasm").unwrap();
+    let (_, package) = provider.packages.iter().next().unwrap();
+    let (_, event) = package.events.iter().next().unwrap();
+    let probe = event.probes.values().next().unwrap().first().unwrap();
+    probe.type_params.clone()
+}
+
+#[test]
+pub fn test_generic_numeric_valid() {
+    setup_logger();
+    let (ok, _) = typecheck_generic(
+        "wasm:opcode:call<T: numeric>(arg0: T, arg1: T):before {
+            report var acc: T;
+            acc = arg0 + arg1;
+        }",
+    );
+    assert!(ok, "generic numeric probe with `+` should type-check");
+}
+
+#[test]
+pub fn test_generic_int_shift_valid() {
+    setup_logger();
+    let (ok, _) = typecheck_generic(
+        "wasm:opcode:call<T: int>(arg0: T, arg1: T):before {
+            report var acc: T;
+            acc = arg0 << arg1;
+        }",
+    );
+    assert!(ok, "generic int probe with `<<` should type-check");
+}
+
+#[test]
+pub fn test_generic_shift_needs_int_is_error() {
+    setup_logger();
+    // Declared `numeric`, but `<<` requires `int` -> contract error.
+    let (ok, _) = typecheck_generic(
+        "wasm:opcode:call<T: numeric>(arg0: T, arg1: T):before {
+            acc = arg0 << arg1;
+        }",
+    );
+    assert!(!ok, "`<<` on a `numeric`-bounded var should be rejected");
+}
+
+#[test]
+pub fn test_generic_bound_inferred_from_usage() {
+    setup_logger();
+    // Bare `<U>` (Top) used with `+` should have its bound inferred to `numeric`.
+    let (ok, ast) = typecheck_generic(
+        "wasm:opcode:call<U>(arg0: U, arg1: U):before {
+            report var acc: U;
+            acc = arg0 + arg1;
+        }",
+    );
+    assert!(ok, "unbounded var used numerically should type-check");
+    let tvs = first_probe_type_params(&ast);
+    assert_eq!(
+        vec![(
+            "U".to_string(),
+            crate::parser::generic_constraint::GenericConstraint::Numeric
+        )],
+        tvs,
+        "U's effective bound should be inferred to numeric"
+    );
+}
+
+#[test]
+pub fn test_generic_distinct_vars_error() {
+    setup_logger();
+    let (ok, _) = typecheck_generic(
+        "wasm:opcode:call<T: numeric, U: numeric>(arg0: T, arg1: U):before {
+            report var acc: T;
+            acc = arg0 + arg1;
+        }",
+    );
+    assert!(!ok, "combining distinct type parameters should be rejected");
+}
+
+#[test]
+pub fn test_generic_var_with_concrete_error() {
+    setup_logger();
+    let (ok, _) = typecheck_generic(
+        "wasm:opcode:call<T: numeric>(arg0: T, arg1: i32):before {
+            report var acc: T;
+            acc = arg0 + arg1;
+        }",
+    );
+    assert!(
+        !ok,
+        "combining a type parameter with a concrete type should be rejected"
+    );
+}
+
+#[test]
+pub fn test_generic_float_valid() {
+    setup_logger();
+    let (ok, _) = typecheck_generic(
+        "wasm:opcode:call<T: float>(arg0: T, arg1: T):before {
+            report var acc: T;
+            acc = arg0 + arg1;
+        }",
+    );
+    assert!(ok, "generic float probe with `+` should type-check");
+}
+
+#[test]
+pub fn test_generic_float_shift_is_error() {
+    setup_logger();
+    // `<<` requires int; a `float`-bounded var can never satisfy it (empty meet).
+    let (ok, _) = typecheck_generic(
+        "wasm:opcode:call<T: float>(arg0: T, arg1: T):before {
+            acc = arg0 << arg1;
+        }",
+    );
+    assert!(!ok, "`<<` on a `float`-bounded var should be rejected");
+}
+
+#[test]
+pub fn test_generic_multiple_type_params() {
+    setup_logger();
+    // Two independent type parameters, each used only with same-var operands.
+    let (ok, ast) = typecheck_generic(
+        "wasm:opcode:call<T: numeric, U: int>(arg0: T, arg1: T, arg2: U, arg3: U):before {
+            report var a: T;
+            report var b: U;
+            a = arg0 + arg1;
+            b = arg2 << arg3;
+        }",
+    );
+    assert!(
+        ok,
+        "probe with two independent type parameters should type-check"
+    );
+    let tvs = first_probe_type_params(&ast);
+    assert_eq!(
+        vec![
+            (
+                "T".to_string(),
+                crate::parser::generic_constraint::GenericConstraint::Numeric
+            ),
+            (
+                "U".to_string(),
+                crate::parser::generic_constraint::GenericConstraint::Int
+            ),
+        ],
+        tvs
+    );
+}
+
+#[test]
+pub fn test_generic_type_param_in_predicate() {
+    setup_logger();
+    // A type parameter used in a comparison in the predicate yields boolean; probe is valid.
+    let (ok, _) = typecheck_generic(
+        "wasm:opcode:call<T: numeric>(arg0: T, arg1: T):before / arg0 > arg1 / {
+            report var acc: T;
+            acc = arg0 + arg1;
+        }",
+    );
+    assert!(
+        ok,
+        "type parameter used in a predicate comparison should type-check"
+    );
+}
+
+#[test]
+pub fn test_generic_int_literal_in_comparison_ok() {
+    setup_logger();
+    // An integer literal compared against a type parameter is fine: it's resolved to the site's
+    // concrete type during per-site monomorphization.
+    let (ok, _) = typecheck_generic(
+        "wasm:opcode:call<T: numeric>(arg0: T):before / arg0 > 0 / {
+            report var acc: T;
+            acc = arg0;
+        }",
+    );
+    assert!(
+        ok,
+        "integer literal in a comparison against a type parameter should type-check"
+    );
+}
+
+#[test]
+pub fn test_generic_float_literal_in_comparison_error() {
+    setup_logger();
+    // A float literal can't be monomorphized to an arbitrary numeric type per site.
+    let (ok, _) = typecheck_generic(
+        "wasm:opcode:call<T: numeric>(arg0: T):before / arg0 > 1.5 / {
+            report var acc: T;
+            acc = arg0;
+        }",
+    );
+    assert!(
+        !ok,
+        "float literal combined with a `numeric` type parameter should be rejected"
+    );
+}
+
+#[test]
+pub fn test_generic_float_literal_with_float_param_ok() {
+    setup_logger();
+    // A float literal is fine when the parameter can only be a float type: every
+    // instantiation casts the literal to its concrete float type.
+    let (ok, _) = typecheck_generic(
+        "wasm:opcode:call<T: float>(arg0: T):before / arg0 > 1.5 / {
+            report var acc: T;
+            acc = arg0;
+        }",
+    );
+    assert!(
+        ok,
+        "float literal against a `float`-bounded type parameter should type-check"
+    );
+}
+
+#[test]
+pub fn test_generic_bound_inferred_to_int() {
+    setup_logger();
+    // Bare `<U>` used with `<<` should infer the bound down to `int`.
+    let (ok, ast) = typecheck_generic(
+        "wasm:opcode:call<U>(arg0: U, arg1: U):before {
+            report var acc: U;
+            acc = arg0 << arg1;
+        }",
+    );
+    assert!(ok, "unbounded var used with `<<` should type-check");
+    let tvs = first_probe_type_params(&ast);
+    assert_eq!(
+        vec![(
+            "U".to_string(),
+            crate::parser::generic_constraint::GenericConstraint::Int
+        )],
+        tvs,
+        "U's effective bound should be inferred to int"
+    );
+}
+
 #[test]
 pub fn test_template() {
     setup_logger();

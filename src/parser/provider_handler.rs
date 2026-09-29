@@ -3,6 +3,7 @@
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::terminal::{cyan, green, long_line, magenta_italics, white};
 use crate::generator::ast::StackReq;
+use crate::parser::generic_constraint::GenericConstraint;
 use crate::parser::line_index::LineIndex;
 use crate::parser::types::{
     Block, DataType, Definition, Expr, Fn as WhammFn, FnId, Location, ProbeRule, Rule, RulePart,
@@ -161,16 +162,21 @@ impl Event {
         body: Option<Block>,
         next_id: &mut u32,
     ) {
-        // Collect type bounds from all hierarchy levels so each Probe carries its own copy.
+        // Collect type bounds / params from all hierarchy levels so each
+        // Probe carries its own copy.
         let mut type_bounds = vec![];
+        let mut type_params = vec![];
         if let Some(prov) = &rule.provider {
             type_bounds.extend(prov.ty_info.iter().cloned());
+            type_params.extend(prov.type_params.iter().cloned());
         }
         if let Some(pkg) = &rule.package {
             type_bounds.extend(pkg.ty_info.iter().cloned());
+            type_params.extend(pkg.type_params.iter().cloned());
         }
         if let Some(evt) = &rule.event {
             type_bounds.extend(evt.ty_info.iter().cloned());
+            type_params.extend(evt.type_params.iter().cloned());
         }
 
         for matched_mode in matched_modes.iter() {
@@ -184,6 +190,7 @@ impl Event {
                 predicate: predicate.clone(),
                 body: body.clone(),
                 type_bounds: type_bounds.clone(),
+                type_params: type_params.clone(),
                 loc: loc.clone(),
             });
             *next_id += 1;
@@ -912,6 +919,8 @@ pub struct Probe {
     /// Type bounds collected from all hierarchy levels (provider, package, event) of this probe's rule.
     /// E.g., `wasm(local0: i32)` contributes `(local0, i32)` here.
     pub type_bounds: Vec<(Expr, DataType)>,
+    /// Type parameters declared in the probe's generic header(s), e.g. `<T: numeric, U>`.
+    pub type_params: Vec<(String, GenericConstraint)>,
     pub loc: Location,
 }
 

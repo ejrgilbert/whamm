@@ -13,3 +13,5 @@ wasm:opcode:call(arg0: i32):before {
     all_arg0s[arg0]++;
 }
 ```
+
+[//]: # (TODO: Polymorphism docs too! Should this be its own markdown file? or keep it all here?)

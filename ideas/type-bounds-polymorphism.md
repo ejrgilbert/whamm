@@ -45,7 +45,27 @@ conflicting-bound tests are rewriting-only.
 
 - [ ] Disambiguate wei exports (probe id + type), or merge behind a runtime branch.
 
+## Explicit cast: type parameter ↔ concrete type (follow-up)
+
+Combining a type parameter with a concrete-typed operand (`arg0: T + arg1: i32`) is currently
+a hard error (`reconcile_typeparam_literal`, `NotLiteral` arm in `src/verifier/verifier.rs`),
+with the hint "an explicit cast (planned) will be needed". Implement that cast so users can
+bridge the gap by writing `arg0 + (arg1 as T)` (which becomes `T + T`).
+
+- Grammar already parses it: `cast = { "as" ~ TYPE_PRIMITIVE }` and `TYPE_PRIMITIVE` includes
+  `TY_TYPEPARAM`, so `x as T` is already grammatical — no grammar change needed.
+- Type checker: handle `UnOp::Cast { target: DataType::TypeParam(name) }` — result type is that
+  type parameter (symbolic); record the op requirement on it like any other use.
+- Emitter/mono (`src/emitter/rewriting/mono.rs`): when substituting the site binding, resolve
+  the cast target `T -> concrete` and let the existing concrete-cast emit path produce the
+  conversion (`i32 -> f64`, etc. — already implemented for concrete casts).
+- Tests: a `core_suite/polymorphism` case `arg0: T + (arg1 as T)` that compiles + runs, plus a
+  verifier unit test that `arg1 as T` type-checks.
+- Cleanup: once it lands, update the `reconcile_typeparam_literal` `NotLiteral` message to point
+  users at the cast instead of saying "(planned)".
+
 ## To file
 
 - [ ] relocate operand ownership to probe scope
 - [ ] wei duplicate-export on conflicting bounds
+- [ ] explicit cast between a type parameter and a concrete type (`arg1 as T`) — see section above
