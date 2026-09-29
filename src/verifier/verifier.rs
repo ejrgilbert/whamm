@@ -521,12 +521,13 @@ impl<'a> TypeChecker<'a> {
     fn check_value(&mut self, val: &mut Value, expected: Option<&DataType>) -> Option<DataType> {
         match val {
             Value::NumericLiteral { raw, fmt, token } => {
-                // A literal used where a type parameter is expected stays unresolved: the
-                // per-site monomorphizer in the rewriting backend resolves it to the
-                // var's concrete type. Report the literal's type as the type parameter.
-                if let Some(DataType::TypeParam(name)) = expected {
-                    return Some(DataType::TypeParam(name.clone()));
-                }
+                // When the expected type is a type parameter, resolve the literal to a default
+                // concrete type as if no type were expected. The per-site monomorphizer
+                // re-casts this literal to each concrete type.
+                let expected = match expected {
+                    Some(DataType::TypeParam(_)) => None,
+                    other => other,
+                };
                 // Resolve the raw integer to a concrete NumLit.
                 // Use `expected` if present; otherwise default to i32 (fits) or i64 or u64.
                 let resolved_ty = if let Some(exp_ty) = expected {
