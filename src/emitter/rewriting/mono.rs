@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use crate::emitter::rewriting::rules::{nth_prefixed, StackVal};
 use crate::generator::ast::Probe;
 use crate::parser::generic_constraint::GenericConstraint;
-use crate::parser::types::{Block, DataType, Expr, Statement, Value};
+use crate::parser::types::{Block, DataType, Expr, Statement, UnOp, Value};
 
 /// Resolve a type through a type parameter binding (recursively through Map/Tuple).
 fn resolve_dt(ty: &DataType, binding: &HashMap<String, DataType>) -> DataType {
@@ -159,9 +159,15 @@ fn subst_expr(expr: &mut Expr, binding: &HashMap<String, DataType>) {
             resolve_literal(lhs, done_on);
             resolve_literal(rhs, done_on);
         }
-        Expr::UnOp { expr, done_on, .. } => {
+        Expr::UnOp {
+            op, expr, done_on, ..
+        } => {
             subst_expr(expr, binding);
             *done_on = resolve_dt(done_on, binding);
+            // Resolve a cast target `x as T` to its concrete type so `emit_unop` can lower it.
+            if let UnOp::Cast { target } = op {
+                *target = resolve_dt(target, binding);
+            }
             resolve_literal(expr, done_on);
         }
         Expr::Ternary {

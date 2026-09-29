@@ -81,7 +81,19 @@ both operands have the _same_ concrete type, while a site whose operands differ 
 _distinct_ parameters cannot be combined in a single operation (`arg0: T + arg1: U` is an error,
 since that would require them to be equal); reuse one parameter if the operands must match.
 
-## Future work ##
+## Bridging a concrete operand with a cast ##
 
-Combining a type parameter with a concretely-typed operand (`arg0: T + arg1: i32`) is not yet
-supported; an explicit cast to bridge the two is planned.
+A type parameter and a concretely-typed operand cannot be combined directly (`arg0: T + arg1: i32`
+is an error, since `T` is not known to equal `i32`). Bridge the two with an explicit cast to the
+type parameter, `arg1 as T`, which converts the concrete operand to whatever `T` monomorphizes to
+at each site:
+
+```
+wasm:opcode:call<T: numeric>(arg0: T, arg1: i32):before {
+    report var acc: T;
+    acc = arg0 + (arg1 as T);   // `arg1` is cast to `T`'s concrete type at each site
+}
+```
+
+The cast may sit on either operand, and its target is resolved per site alongside the rest of the
+probe.

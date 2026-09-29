@@ -457,10 +457,9 @@ impl<'a> TypeChecker<'a> {
                 false
             }
             LiteralClass::NotLiteral => {
-                // TODO: support this
                 self.err.type_check_error(
                     format!(
-                        "Cannot combine type parameter `{tp}` with concrete type `{operand_ty}`. Hint: an explicit cast (planned) will be needed to mix a type parameter with a concrete type."
+                        "Cannot combine type parameter `{tp}` with concrete type `{operand_ty}`. Hint: add an explicit cast to bridge them, e.g. `(<operand> as {tp})`."
                     ),
                     loc,
                 );
@@ -881,6 +880,25 @@ impl<'a> TypeChecker<'a> {
                     *done_on = expr_ty.clone();
                     match op {
                         UnOp::Cast { target } => {
+                            // Casting to a type parameter (`x as T`) bridges a concrete operand
+                            // and a type parameter: its result is that (symbolic) parameter,
+                            // resolved per site by the monomorphizer.
+                            if let DataType::TypeParam(name) = target {
+                                if !self.type_param_constraints.contains_key(name) {
+                                    self.err.type_check_error(
+                                        format!("Unknown type parameter `{name}` in cast. Hint: declare it in the probe's generic header, e.g. `<{name}: numeric>`."),
+                                        &loc.clone().map(|l| l.line_col),
+                                    );
+                                    return Some(DataType::AssumeGood);
+                                }
+                                if expr_ty.is_numeric() {
+                                    self.record_type_param_requirement(
+                                        name,
+                                        &GenericConstraint::Numeric,
+                                        &loc.clone().map(|l| l.line_col),
+                                    );
+                                }
+                            }
                             // If the inner expression's type is the same as the cast,
                             // we can remove the cast from the AST!
                             let t = target.clone();

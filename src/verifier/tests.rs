@@ -685,6 +685,45 @@ pub fn test_generic_var_with_concrete_error() {
 }
 
 #[test]
+pub fn test_generic_cast_var_with_concrete_valid() {
+    setup_logger();
+    // An explicit cast bridges a concrete operand and a type parameter: `arg1 as T`.
+    let (ok, _) = typecheck_generic(
+        "wasm:opcode:call<T: numeric>(arg0: T, arg1: i32):before {
+            report var acc: T;
+            acc = arg0 + (arg1 as T);
+        }",
+    );
+    assert!(ok, "`arg1 as T` should bridge a concrete operand and `T`");
+}
+
+#[test]
+pub fn test_generic_cast_widen_valid() {
+    setup_logger();
+    // Casting a concrete operand into a type parameter bound from another operand.
+    let (ok, _) = typecheck_generic(
+        "wasm:opcode:call<T: numeric>(arg0: i32, arg1: T):before {
+            report var acc: T;
+            acc = (arg0 as T) + arg1;
+        }",
+    );
+    assert!(ok, "`arg0 as T` should bridge a concrete operand and `T`");
+}
+
+#[test]
+pub fn test_generic_cast_unknown_param_error() {
+    setup_logger();
+    // Casting to an undeclared type parameter is a type error.
+    let (ok, _) = typecheck_generic(
+        "wasm:opcode:call<T: numeric>(arg0: T, arg1: i32):before {
+            report var acc: T;
+            acc = arg0 + (arg1 as Z);
+        }",
+    );
+    assert!(!ok, "casting to an undeclared type parameter should error");
+}
+
+#[test]
 pub fn test_generic_float_valid() {
     setup_logger();
     let (ok, _) = typecheck_generic(
