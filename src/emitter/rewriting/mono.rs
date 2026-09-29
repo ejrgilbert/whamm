@@ -216,7 +216,10 @@ fn resolve_literal(expr: &mut Expr, ty: &DataType) {
             }
         }
         Value::Number { .. } if val.ty() != *ty => {
-            let _ = val.implicit_cast(ty);
+            // Type checker should guarantee this to be successful, fail loudly if this fails!!
+            if let Err(msg) = val.implicit_cast(ty) {
+                unreachable!("failed to monomorphize a numeric literal to `{ty}`: {msg}");
+            }
         }
         _ => {}
     }
