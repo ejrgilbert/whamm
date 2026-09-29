@@ -215,10 +215,8 @@ fn resolve_literal(expr: &mut Expr, ty: &DataType) {
                 };
             }
         }
-        Value::Number { .. } => {
-            if val.ty() != *ty {
-                let _ = val.implicit_cast(ty);
-            }
+        Value::Number { .. } if val.ty() != *ty => {
+            let _ = val.implicit_cast(ty);
         }
         _ => {}
     }
