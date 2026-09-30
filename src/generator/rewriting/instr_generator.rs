@@ -298,8 +298,8 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                 }
 
                 // Inject the on-exit flush AFTER the matched probes so that the final
-                // `:before` firing at this program-exit call is counted before the flush.
-                if loc_info.is_prog_exit {
+                // `:before` firing at this program-exit point is counted before the flush.
+                if loc_info.is_prog_exit || loc_info.is_trap_exit {
                     if self.on_exit_fid.is_none() {
                         let on_exit = FunctionBuilder::new(&[], &[]);
                         let on_exit_id = on_exit.finish_module_with_tag(
