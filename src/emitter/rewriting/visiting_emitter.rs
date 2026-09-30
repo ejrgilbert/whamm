@@ -1485,7 +1485,9 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
 
             // Define the memory address in the table for the state initialization logic.
             if !init_logic.is_empty() {
-                let id_init = *self.init_func.add_local(WirmType::I32);
+                let id_init = self
+                    .init_func_locals_tracker
+                    .use_local(WirmType::I32, self.init_func);
                 let addr_init = VarAddr::Local { addr: id_init };
                 redefine_offset(
                     offset_value,
@@ -1579,10 +1581,12 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
 impl Emitter for VisitingEmitter<'_, '_> {
     fn reset_locals_for_probe(&mut self) {
         self.locals_tracker.reset_probe(&mut self.app_iter);
+        self.init_func_locals_tracker.reset_probe(self.init_func);
     }
 
     fn reset_locals_for_function(&mut self) {
         self.locals_tracker.reset_function();
+        self.init_func_locals_tracker.reset_function();
     }
 
     fn emit_body(&mut self, body: &Block, err: &mut ErrorGen) -> bool {

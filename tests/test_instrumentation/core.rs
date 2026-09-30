@@ -252,6 +252,16 @@ fn instrument_with_overlap_scripts() -> Result<()> {
 
     run_core_suite("overlap", processed_scripts, true, true)
 }
+
+#[test]
+fn instrument_with_init_state_locals_scripts() -> Result<()> {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/init-state-locals");
+    assert!(!processed_scripts.is_empty());
+
+    // only run on rewriting since this is a loooong regression test
+    run_core_suite("init-state-locals", processed_scripts, true, false)
+}
 #[test]
 fn instrument_with_load_and_call_scripts() -> Result<()> {
     setup_logger();
