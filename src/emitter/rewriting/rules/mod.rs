@@ -1908,7 +1908,8 @@ fn handle_opcode_events(
     loc_info.configure_stack_reqs(req_args, all_args, req_results, all_results);
 
     loc_info.is_prog_exit = is_prog_exit_call(instr, app_wasm);
-    if loc_info.has_match() || loc_info.is_prog_exit {
+    loc_info.is_trap_exit = is_unconditional_trap(instr);
+    if loc_info.has_match() || loc_info.is_prog_exit || loc_info.is_trap_exit {
         Some(loc_info)
     } else {
         None
@@ -2843,7 +2844,8 @@ fn handle_block_events(
     }
 
     loc_info.is_prog_exit = is_prog_exit;
-    if loc_info.has_match() || is_prog_exit {
+    loc_info.is_trap_exit = is_unconditional_trap(instr);
+    if loc_info.has_match() || is_prog_exit || loc_info.is_trap_exit {
         Some(loc_info)
     } else {
         None
@@ -2921,11 +2923,17 @@ fn handle_func_events(
     }
 
     loc_info.is_prog_exit = is_prog_exit;
-    if loc_info.has_match() || is_prog_exit {
+    loc_info.is_trap_exit = is_unconditional_trap(instr);
+    if loc_info.has_match() || is_prog_exit || loc_info.is_trap_exit {
         Some(loc_info)
     } else {
         None
     }
+}
+
+/// Opcodes that always trap (and thus terminates the program) when reached.
+pub fn is_unconditional_trap(opcode: &Operator) -> bool {
+    matches!(opcode, Operator::Unreachable)
 }
 
 pub fn is_prog_exit_call(opcode: &Operator, wasm: &Module) -> bool {
@@ -3027,6 +3035,8 @@ impl From<&crate::generator::ast::ProbeRule> for ProbeRule {
 pub struct LocInfo {
     /// Whether this location calls something that exits the program
     pub is_prog_exit: bool,
+    /// Whether this location is an unconditional trap
+    pub is_trap_exit: bool,
     /// static information to be saved in symbol table
     pub static_data: HashMap<String, Option<Value>>,
     /// dynamic information to be defined at the probe location
@@ -3356,6 +3366,7 @@ impl LocInfo {
 
         // handle function end
         self.is_prog_exit = self.is_prog_exit || other.is_prog_exit;
+        self.is_trap_exit = self.is_trap_exit || other.is_trap_exit;
 
         // handle funcref_table_idx
         if self.funcref_table_idx.is_none() {

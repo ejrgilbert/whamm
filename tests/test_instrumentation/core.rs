@@ -86,6 +86,57 @@ fn instrument_control_flow() {
     wasm2wat_on_file(instrumented_wasm_path);
 }
 
+/// A trap in a callee (`unreachable`) must still flush the report: the flush is
+/// injected before the unconditional trap, so data collected before the trap is not
+/// lost even though the program terminates abnormally. This case cannot use the
+/// core-suite runner because that asserts the instrumented app exits successfully.
+#[test]
+fn flush_runs_before_trap_in_callee() {
+    setup_logger();
+    let original_wasm_path = "tests/apps/core_suite/handwritten/callee-trap.wasm";
+    let monitor_path = "tests/scripts/trap/callee-trap.mm";
+    let instrumented_wasm_path = "output/tests/integration-callee-trap.wasm";
+
+    run_whamm_bin(
+        original_wasm_path,
+        monitor_path,
+        instrumented_wasm_path,
+        DEFAULT_DEFS_PATH,
+        DEFAULT_CORE_LIB_PATH,
+    );
+
+    let res = std::process::Command::new("wasmtime")
+        .arg("run")
+        .arg("--env")
+        .arg("TO_CONSOLE=true")
+        .arg("--preload")
+        .arg("whamm_core=tests/libs/whamm_core.wasm")
+        .arg("--wasm")
+        .arg("custom-page-sizes=y")
+        .arg("--wasm")
+        .arg("function-references=y")
+        .arg("--wasm")
+        .arg("gc=y")
+        .arg("--wasm")
+        .arg("exceptions=y")
+        .arg(instrumented_wasm_path)
+        .output()
+        .expect("failed to run on wasmtime");
+
+    // The program traps in the callee, so it does not exit successfully...
+    assert!(
+        !res.status.success(),
+        "expected the callee trap to terminate with a non-zero code"
+    );
+    // ...but the report was flushed before the trap: the single `drop` was counted.
+    let stdout = String::from_utf8(res.stdout).unwrap();
+    assert_eq!(
+        stdout.trim(),
+        "1",
+        "expected flushed report `1` before the trap, got: {stdout:?}"
+    );
+}
+
 #[test]
 fn instrument_deep_predicate() -> Result<()> {
     setup_logger();
