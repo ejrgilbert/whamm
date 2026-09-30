@@ -1359,45 +1359,82 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                 on_exit_id
             };
 
-            // now find where the "exit" is in the bytecode
-            // exit of export "main"
-            // OR if that doesn't exist, the end of the "start" function
-            let fid = if let Some(main_fid) = self
-                .app_iter
-                .module
-                .exports
-                .get_func_by_name("main".to_string())
-            {
-                main_fid
-            } else if let Some(main_fid) = self
+            // Find the program entry point function and wrap it to flush report state.
+            enum EntryPoint {
+                Export(String),
+                Start,
+            }
+            let (entry_fid, entry_point) = if let Some(start_fid) = self
                 .app_iter
                 .module
                 .exports
                 .get_func_by_name("_start".to_string())
             {
-                main_fid
+                (start_fid, EntryPoint::Export("_start".to_string()))
             } else if let Some(start_fid) = self.app_iter.module.start {
-                start_fid
+                (start_fid, EntryPoint::Start)
+            } else if let Some(main_fid) = self
+                .app_iter
+                .module
+                .exports
+                .get_func_by_name("main".to_string())
+            {
+                (main_fid, EntryPoint::Export("main".to_string()))
             } else {
                 // neither exists, unsure how to support this...this would be a library instead of an application I guess?
                 // Maybe the answer is to expose query functions that can give a status update of the `report` vars?
                 unimplemented!("Your target Wasm has no main or start function...we do not support report variables in this scenario.")
             };
-            let mut main = self.app_iter.module.functions.get_fn_modifier(fid).unwrap();
 
-            main.func_exit();
-            main.call(on_exit_id);
-            let op_idx = main.curr_instr_len() as u32;
-            main.append_tag_at(
-                get_probe_tag_data(&None, op_idx),
-                // location is unused
-                Location::Module {
-                    func_idx: FunctionID(0),
-                    instr_idx: 0,
-                },
-            );
+            // Anchor the flush so it runs exactly once at true program termination.
+            let type_id = self.app_iter.module.functions.get_type_id(entry_fid);
+            let (params, results) = {
+                let entry_ty = self
+                    .app_iter
+                    .module
+                    .types
+                    .get(type_id)
+                    .expect("entry function has no type");
+                (
+                    entry_ty.params().unwrap_or_default(),
+                    entry_ty.results().unwrap_or_default(),
+                )
+            };
 
-            main.finish_instr();
+            // Forward the entry's params; on_exit is [] -> [], so any results the
+            // entry leaves on the stack pass through untouched.
+            let mut wrapper = FunctionBuilder::new(&params, &results);
+            for i in 0..params.len() as u32 {
+                wrapper.local_get(LocalID(i));
+            }
+            wrapper.call(entry_fid);
+            wrapper.call(on_exit_id);
+            let wrapper_fid =
+                wrapper.finish_module_with_tag(self.app_iter.module, get_tag_for(&None));
+            self.app_iter
+                .module
+                .set_fn_name(wrapper_fid, "whamm_entry".to_string());
+
+            match entry_point {
+                EntryPoint::Export(name) => {
+                    if let Some(export_id) = self
+                        .app_iter
+                        .module
+                        .exports
+                        .get_export_id_by_name(name.clone())
+                    {
+                        self.app_iter.module.exports.delete(export_id);
+                    }
+                    self.app_iter.module.exports.add_export_func_with_tag(
+                        name,
+                        *wrapper_fid,
+                        get_tag_for(&None),
+                    );
+                }
+                EntryPoint::Start => {
+                    self.app_iter.module.start = Some(wrapper_fid);
+                }
+            }
         }
     }
 

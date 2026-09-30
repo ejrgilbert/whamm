@@ -183,7 +183,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 4, memaddr, taken, i32, i32, script0, _start, 5, 18, 1_wasm:opcode:br_if:before, 0
 36, memaddr, not_taken, i32, i32, script0, _start, 5, 18, 1_wasm:opcode:br_if:before, 1
 68, memaddr, taken, i32, i32, script0, _start, 5, 44, 1_wasm:opcode:br_if:before, 0
-100, memaddr, not_taken, i32, i32, script0, _start, 5, 44, 1_wasm:opcode:br_if:before, 0
+100, memaddr, not_taken, i32, i32, script0, _start, 5, 44, 1_wasm:opcode:br_if:before, 1
 132, memaddr, taken, i32, i32, script0, _ZN4core9ub_checks17is_nonoverlapping7runtime17h8e9583fa4d0ede6eE, 8, 196, 1_wasm:opcode:br_if:before, 0
 164, memaddr, not_taken, i32, i32, script0, _ZN4core9ub_checks17is_nonoverlapping7runtime17h8e9583fa4d0ede6eE, 8, 196, 1_wasm:opcode:br_if:before, 30
 196, memaddr, taken, i32, i32, script0, _ZN4core9ub_checks17is_nonoverlapping7runtime17h8e9583fa4d0ede6eE, 8, 258, 1_wasm:opcode:br_if:before, 30
@@ -535,22 +535,22 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 11844, memaddr, taken, i32, i32, script0, _ZN5alloc7raw_vec11finish_grow17h52ca76b0c71e6261E, 103, 124, 1_wasm:opcode:br_if:before, 0
 11876, memaddr, not_taken, i32, i32, script0, _ZN5alloc7raw_vec11finish_grow17h52ca76b0c71e6261E, 103, 124, 1_wasm:opcode:br_if:before, 0
 11940, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 73, 1_wasm:opcode:br_if:before, 0
-11972, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 73, 1_wasm:opcode:br_if:before, 0
-12004, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 94, 1_wasm:opcode:br_if:before, 0
+11972, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 73, 1_wasm:opcode:br_if:before, 1
+12004, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 94, 1_wasm:opcode:br_if:before, 1
 12036, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 94, 1_wasm:opcode:br_if:before, 0
 12068, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 108, 1_wasm:opcode:br_if:before, 0
 12100, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 108, 1_wasm:opcode:br_if:before, 0
 12132, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 128, 1_wasm:opcode:br_if:before, 0
-12164, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 128, 1_wasm:opcode:br_if:before, 0
+12164, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 128, 1_wasm:opcode:br_if:before, 1
 12196, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 154, 1_wasm:opcode:br_if:before, 0
-12228, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 154, 1_wasm:opcode:br_if:before, 0
+12228, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 154, 1_wasm:opcode:br_if:before, 1
 12260, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 184, 1_wasm:opcode:br_if:before, 0
 12292, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 184, 1_wasm:opcode:br_if:before, 0
 12324, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 205, 1_wasm:opcode:br_if:before, 0
-12356, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 205, 1_wasm:opcode:br_if:before, 0
+12356, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 205, 1_wasm:opcode:br_if:before, 1
 12388, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 223, 1_wasm:opcode:br_if:before, 0
-12420, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 223, 1_wasm:opcode:br_if:before, 0
-12452, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 239, 1_wasm:opcode:br_if:before, 0
+12420, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 223, 1_wasm:opcode:br_if:before, 1
+12452, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 239, 1_wasm:opcode:br_if:before, 1
 12484, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 239, 1_wasm:opcode:br_if:before, 0
 12516, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 309, 1_wasm:opcode:br_if:before, 0
 12548, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 309, 1_wasm:opcode:br_if:before, 0
@@ -571,9 +571,9 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 13060, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 647, 1_wasm:opcode:br_if:before, 0
 13092, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 647, 1_wasm:opcode:br_if:before, 0
 13124, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 675, 1_wasm:opcode:br_if:before, 0
-13156, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 675, 1_wasm:opcode:br_if:before, 0
+13156, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 675, 1_wasm:opcode:br_if:before, 1
 13188, memaddr, taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 760, 1_wasm:opcode:br_if:before, 0
-13220, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 760, 1_wasm:opcode:br_if:before, 0
+13220, memaddr, not_taken, i32, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 760, 1_wasm:opcode:br_if:before, 1
 13252, memaddr, taken, i32, i32, script0, _ZN3std2rt19lang_start_internal17h9fb159d86012fedfE, 107, 41, 1_wasm:opcode:br_if:before, 1
 13284, memaddr, not_taken, i32, i32, script0, _ZN3std2rt19lang_start_internal17h9fb159d86012fedfE, 107, 41, 1_wasm:opcode:br_if:before, 0
 13316, memaddr, taken, i32, i32, script0, _ZN3std2rt19lang_start_internal17h9fb159d86012fedfE, 107, 76, 1_wasm:opcode:br_if:before, 0
@@ -585,7 +585,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 13572, memaddr, taken, i32, i32, script0, _ZN3std2rt19lang_start_internal17h9fb159d86012fedfE, 107, 167, 1_wasm:opcode:br_if:before, 0
 13604, memaddr, not_taken, i32, i32, script0, _ZN3std2rt19lang_start_internal17h9fb159d86012fedfE, 107, 167, 1_wasm:opcode:br_if:before, 1
 13636, memaddr, taken, i32, i32, script0, _ZN3std2rt19lang_start_internal17h9fb159d86012fedfE, 107, 202, 1_wasm:opcode:br_if:before, 0
-13668, memaddr, not_taken, i32, i32, script0, _ZN3std2rt19lang_start_internal17h9fb159d86012fedfE, 107, 202, 1_wasm:opcode:br_if:before, 0
+13668, memaddr, not_taken, i32, i32, script0, _ZN3std2rt19lang_start_internal17h9fb159d86012fedfE, 107, 202, 1_wasm:opcode:br_if:before, 1
 13700, memaddr, taken, i32, i32, script0, _ZN3std2io5Write9write_fmt17h1a2be6cb2b7b0720E, 108, 45, 1_wasm:opcode:br_if:before, 0
 13732, memaddr, not_taken, i32, i32, script0, _ZN3std2io5Write9write_fmt17h1a2be6cb2b7b0720E, 108, 45, 1_wasm:opcode:br_if:before, 0
 13764, memaddr, taken, i32, i32, script0, _ZN3std2io5Write9write_fmt17h1a2be6cb2b7b0720E, 108, 73, 1_wasm:opcode:br_if:before, 0
@@ -1217,8 +1217,8 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 35588, memaddr, taken, i32, i32, script0, prepend_alloc, 151, 971, 1_wasm:opcode:br_if:before, 0
 35620, memaddr, not_taken, i32, i32, script0, prepend_alloc, 151, 971, 1_wasm:opcode:br_if:before, 0
 35652, memaddr, taken, i32, i32, script0, dlfree, 153, 8, 1_wasm:opcode:br_if:before, 0
-35684, memaddr, not_taken, i32, i32, script0, dlfree, 153, 8, 1_wasm:opcode:br_if:before, 30
-35716, memaddr, taken, i32, i32, script0, dlfree, 153, 42, 1_wasm:opcode:br_if:before, 30
+35684, memaddr, not_taken, i32, i32, script0, dlfree, 153, 8, 1_wasm:opcode:br_if:before, 31
+35716, memaddr, taken, i32, i32, script0, dlfree, 153, 42, 1_wasm:opcode:br_if:before, 31
 35748, memaddr, not_taken, i32, i32, script0, dlfree, 153, 42, 1_wasm:opcode:br_if:before, 0
 35780, memaddr, taken, i32, i32, script0, dlfree, 153, 50, 1_wasm:opcode:br_if:before, 0
 35812, memaddr, not_taken, i32, i32, script0, dlfree, 153, 50, 1_wasm:opcode:br_if:before, 0
@@ -1255,14 +1255,14 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 36868, memaddr, taken, i32, i32, script0, dlfree, 153, 529, 1_wasm:opcode:br_if:before, 0
 36900, memaddr, not_taken, i32, i32, script0, dlfree, 153, 529, 1_wasm:opcode:br_if:before, 0
 36932, memaddr, taken, i32, i32, script0, dlfree, 153, 554, 1_wasm:opcode:br_if:before, 0
-36964, memaddr, not_taken, i32, i32, script0, dlfree, 153, 554, 1_wasm:opcode:br_if:before, 30
+36964, memaddr, not_taken, i32, i32, script0, dlfree, 153, 554, 1_wasm:opcode:br_if:before, 31
 36996, memaddr, taken, i32, i32, script0, dlfree, 153, 567, 1_wasm:opcode:br_if:before, 0
-37028, memaddr, not_taken, i32, i32, script0, dlfree, 153, 567, 1_wasm:opcode:br_if:before, 30
+37028, memaddr, not_taken, i32, i32, script0, dlfree, 153, 567, 1_wasm:opcode:br_if:before, 31
 37060, memaddr, taken, i32, i32, script0, dlfree, 153, 584, 1_wasm:opcode:br_if:before, 0
-37092, memaddr, not_taken, i32, i32, script0, dlfree, 153, 584, 1_wasm:opcode:br_if:before, 30
+37092, memaddr, not_taken, i32, i32, script0, dlfree, 153, 584, 1_wasm:opcode:br_if:before, 31
 37124, memaddr, taken, i32, i32, script0, dlfree, 153, 598, 1_wasm:opcode:br_if:before, 0
-37156, memaddr, not_taken, i32, i32, script0, dlfree, 153, 598, 1_wasm:opcode:br_if:before, 30
-37188, memaddr, taken, i32, i32, script0, dlfree, 153, 648, 1_wasm:opcode:br_if:before, 30
+37156, memaddr, not_taken, i32, i32, script0, dlfree, 153, 598, 1_wasm:opcode:br_if:before, 31
+37188, memaddr, taken, i32, i32, script0, dlfree, 153, 648, 1_wasm:opcode:br_if:before, 31
 37220, memaddr, not_taken, i32, i32, script0, dlfree, 153, 648, 1_wasm:opcode:br_if:before, 0
 37252, memaddr, taken, i32, i32, script0, dlfree, 153, 682, 1_wasm:opcode:br_if:before, 0
 37284, memaddr, not_taken, i32, i32, script0, dlfree, 153, 682, 1_wasm:opcode:br_if:before, 0
@@ -2374,7 +2374,7 @@ id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, v
 75140, memaddr, not_taken, i32, i32, script0, _ZN4core3fmt3num53_$LT$impl$u20$core..fmt..UpperHex$u20$for$u20$i32$GT$3fmt17h829d52d84975db2cE, 240, 100, 1_wasm:opcode:br_if:before, 0
 1476, memaddr, taken_branches, map<u32,u32>, i32, script0, opt_str, 29, 46, 2_wasm:opcode:br_table:before, 0->10;1->10;2->10
 8548, memaddr, taken_branches, map<u32,u32>, i32, script0, _ZN3std9panicking12default_hook17hbcf624fef09369c9E, 90, 356, 2_wasm:opcode:br_table:before, empty map
-11908, memaddr, taken_branches, map<u32,u32>, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 39, 2_wasm:opcode:br_table:before, empty map
+11908, memaddr, taken_branches, map<u32,u32>, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 39, 2_wasm:opcode:br_table:before, 0->1
 12580, memaddr, taken_branches, map<u32,u32>, i32, script0, _ZN3std3sys4sync4once10no_threads4Once4call17h552eb20f78cfa6f2E, 106, 325, 2_wasm:opcode:br_table:before, empty map
 15748, memaddr, taken_branches, map<u32,u32>, i32, script0, _ZN60_$LT$std..io..error..Error$u20$as$u20$core..fmt..Display$GT$3fmt17h552dda5c4e55cd37E, 113, 28, 2_wasm:opcode:br_table:before, empty map
 20068, memaddr, taken_branches, map<u32,u32>, i32, script0, _ZN3std5panic19get_backtrace_style17h6919dfcced931d91E, 124, 33, 2_wasm:opcode:br_table:before, empty map

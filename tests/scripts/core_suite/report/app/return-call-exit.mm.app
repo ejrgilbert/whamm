@@ -1,0 +1,1 @@
+tests/apps/core_suite/handwritten/return-call-exit.wasm
