@@ -13,7 +13,7 @@ use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Location, Statement, Value};
-use crate::verifier::types::{Record, SymbolTable, VarAddr};
+use crate::verifier::types::{FoldClass, Record, SymbolTable, VarAddr};
 use log::debug;
 use std::collections::HashSet;
 use wirm::ir::function::FunctionBuilder;
@@ -159,7 +159,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![VarAddr::Local { addr: *alloc }]),
-                    times_set: 0,
+                    fold_class: FoldClass::default(),
                     loc: None,
                 },
             );
@@ -176,7 +176,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![VarAddr::Local { addr: local_id }]),
-                    times_set: 0,
+                    fold_class: FoldClass::default(),
                     loc: None,
                 },
             );
@@ -229,7 +229,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(addrs),
-                    times_set: 0,
+                    fold_class: FoldClass::default(),
                     loc: None,
                 },
             );

@@ -720,9 +720,22 @@ pub enum Record {
         def: Definition,
         /// The address of this var post-injection
         addr: Option<Vec<VarAddr>>,
-        times_set: u32,
+        /// The constant-folding classifier's verdict for this var.
+        fold_class: FoldClass,
         loc: Option<Location>,
     },
+}
+
+/// The classifier's verdict on whether a user var's constant definition may be
+/// inlined at its reads.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum FoldClass {
+    /// Not classified as a compile-time constant; the propagate pass leaves reads
+    /// alone. The conservative default for every unclassified var.
+    #[default]
+    NotFoldable,
+    /// Exactly one constant definition, plain (non-report/unshared) user var.
+    Foldable,
 }
 impl Record {
     pub fn loc(&self) -> &Option<Location> {

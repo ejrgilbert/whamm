@@ -9,7 +9,7 @@ use crate::parser::types::{
     UnOp, Value, Whamm, WhammVisitorMut,
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
-use crate::verifier::types::{Record, SymbolTable};
+use crate::verifier::types::{FoldClass, Record, SymbolTable};
 use crate::verifier::visitor::VerifierVisitorTyped;
 use pest::error::LineColLocation;
 use std::collections::{HashMap, HashSet};
@@ -210,7 +210,7 @@ impl<'a> TypeChecker<'a> {
                 value: None,
                 def: definition,
                 addr: None,
-                times_set: 0,
+                fold_class: FoldClass::default(),
                 loc: loc.clone(),
             },
         );

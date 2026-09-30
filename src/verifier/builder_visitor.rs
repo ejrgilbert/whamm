@@ -6,7 +6,7 @@ use crate::parser::types::{
     BoundFunction, DeclModifiers, Definition, FnId, Global, WhammVisitorMut,
 };
 use crate::verifier::builder_visitor::parser_types::Location;
-use crate::verifier::types::{Record, ScopeType, SymbolTable};
+use crate::verifier::types::{FoldClass, Record, ScopeType, SymbolTable};
 use crate::verifier::verifier::check_duplicate_id;
 use itertools::Itertools;
 use parser_types::{
@@ -499,7 +499,7 @@ impl SymbolTableBuilder<'_, '_> {
             value: None,
             def,
             addr: None,
-            times_set: 0,
+            fold_class: FoldClass::default(),
             loc: var_id.loc().clone(),
         };
 
@@ -543,7 +543,7 @@ impl SymbolTableBuilder<'_, '_> {
                 value,
                 def: definition,
                 addr: None,
-                times_set: 0,
+                fold_class: FoldClass::default(),
                 loc,
             },
         );
@@ -653,7 +653,7 @@ impl SymbolTableBuilder<'_, '_> {
                     value: None,
                     def: Definition::CompilerDynamic,
                     addr: None,
-                    times_set: 0,
+                    fold_class: FoldClass::default(),
                     loc: loc.clone(),
                 },
             );
