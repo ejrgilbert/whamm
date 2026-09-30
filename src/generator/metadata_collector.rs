@@ -9,7 +9,7 @@ use crate::parser::types::{
     Annotation, BinOp, Block, CallKind, DataType, Definition, Expr, Location,
     Script as ParserScript, Statement, Value, Whamm, WhammVisitor,
 };
-use crate::verifier::types::{Record, SymbolTable};
+use crate::verifier::types::{FoldClass, Record, SymbolTable};
 use std::collections::{HashMap, HashSet};
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -96,6 +96,9 @@ pub struct MetadataCollector<'a> {
     /// the issue #305 refactor — `CallKind::Lib` carries it now.)
     curr_user_lib: Vec<bool>,
     curr_lib_call_args: WhammParams,
+    /// Per-var count of definitions (initializer + assignments) seen so far, keyed
+    /// by symbol-table record id. Drives the `fold_class` verdict.
+    def_counts: HashMap<usize, u32>,
 }
 impl<'a> MetadataCollector<'a> {
     pub(crate) fn new(
@@ -123,6 +126,7 @@ impl<'a> MetadataCollector<'a> {
             curr_probe: Default::default(),
             curr_mode: Default::default(),
             curr_lib_call_args: Default::default(),
+            def_counts: Default::default(),
         }
     }
 
@@ -535,6 +539,16 @@ impl<'a> MetadataCollector<'a> {
                 init,
                 loc,
             } => {
+                // Classify fold-eligibility: only a plain (non-report/unshared) user
+                // var whose sole definition is a constant may be inlined at its reads.
+                // Report/unshared vars are runtime-global-backed and keep the
+                // NotFoldable default.
+                if matches!(definition, Definition::User)
+                    && !modifiers.is_report
+                    && !modifiers.is_unshared
+                {
+                    self.classify_var_decl(name, init.is_some());
+                }
                 if modifiers.is_unshared {
                     let report_metadata = if modifiers.is_report {
                         let loc = LocationData::Local {
@@ -599,7 +613,7 @@ impl<'a> MetadataCollector<'a> {
                 } = var_id
                 {
                     let (def, _ty, loc) = get_def(name, self.table);
-                    incr_times_set(name, self.table);
+                    self.note_assignment(name);
                     // Skip the WEI check for compiler-inserted derived-var assignments
                     // (builder_visitor marks these with Definition::CompilerDerived in the AST).
                     if *var_def != Definition::CompilerDerived
@@ -835,11 +849,31 @@ fn get_def(name: &str, table: &SymbolTable) -> (Definition, DataType, Option<Loc
     }
 }
 
-fn incr_times_set(name: &str, table: &mut SymbolTable) {
-    let var = table.lookup_var_mut(name, false);
-    if let Some(Record::Var { times_set, .. }) = var {
-        *times_set += 1;
-    } else {
-        unreachable!("unexpected type");
+impl MetadataCollector<'_> {
+    /// Record a plain user var's declaration as (optimistically) foldable. The
+    /// initializer, if present, is its first definition.
+    fn classify_var_decl(&mut self, name: &str, has_init: bool) {
+        let Some(rec_id) = self.table.lookup(name) else {
+            return;
+        };
+        self.def_counts.insert(rec_id, if has_init { 1 } else { 0 });
+        if let Some(Record::Var { fold_class, .. }) = self.table.get_record_mut(rec_id) {
+            *fold_class = FoldClass::Foldable;
+        }
+    }
+
+    /// Record an assignment as an additional definition. A second definition means
+    /// the var is mutated, so it is no longer a compile-time constant.
+    fn note_assignment(&mut self, name: &str) {
+        let Some(rec_id) = self.table.lookup(name) else {
+            return;
+        };
+        let count = self.def_counts.entry(rec_id).or_insert(0);
+        *count += 1;
+        if *count > 1 {
+            if let Some(Record::Var { fold_class, .. }) = self.table.get_record_mut(rec_id) {
+                *fold_class = FoldClass::NotFoldable;
+            }
+        }
     }
 }

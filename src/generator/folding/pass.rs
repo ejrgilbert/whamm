@@ -2,8 +2,8 @@ use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::StringAddr;
 use crate::generator::folding::stmt::StmtFolder;
 use crate::lang_features::libraries::registry::WasmRegistry;
-use crate::parser::types::{Block, Definition, Expr, Statement, Value};
-use crate::verifier::types::{Record, SymbolTable};
+use crate::parser::types::{Block, Expr, Statement, Value};
+use crate::verifier::types::{FoldClass, Record, SymbolTable};
 use std::collections::HashMap;
 use wirm::Module;
 
@@ -87,7 +87,7 @@ pub fn fold_stmts<'ir>(
     }
 }
 
-/// After folding a statement, if it is a stable user-defined primitive assignment
+/// After folding a statement, if it is a primitive assignment
 /// (`var = <constant>` or `var x = <constant>`), record the value in the symbol
 /// table so that subsequent `fold_var_id` calls inline the constant at every use site.
 fn propagate_primitive_assign(stmt: &Statement, table: &mut SymbolTable) {
@@ -106,17 +106,15 @@ fn propagate_primitive_assign(stmt: &Statement, table: &mut SymbolTable) {
     };
     let rec = table.lookup_var_mut(name, false);
     let Some(Record::Var {
-        value,
-        times_set,
-        def,
-        ..
+        value, fold_class, ..
     }) = rec
     else {
         return;
     };
-    // Only propagate when the variable is assigned at most once (stable) and is
-    // user-defined (not a compiler-injected bound variable).
-    if *times_set <= 1 && matches!(def, Definition::User) && !matches!(val, Value::Tuple { .. }) {
+    // Inline the definition only for vars the classifier deemed foldable: a single
+    // constant definition on a plain, non-runtime-backed user var. Tuples are never
+    // substituted.
+    if matches!(fold_class, FoldClass::Foldable) && !matches!(val, Value::Tuple { .. }) {
         *value = Some(val.clone());
     }
 }

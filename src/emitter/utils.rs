@@ -11,7 +11,7 @@ use crate::lang_features::type_utils::strings::StringUtils;
 use crate::parser::types::{
     BinOp, Block, CallKind, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
 };
-use crate::verifier::types::{line_col_from_loc, Record, SymbolTable, VarAddr};
+use crate::verifier::types::{line_col_from_loc, FoldClass, Record, SymbolTable, VarAddr};
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::{FunctionID, GlobalID, LocalID, MemoryID};
 use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmValue};
@@ -485,7 +485,7 @@ fn emit_decl_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                             value: None,
                             def: *definition,
                             addr: None,
-                            times_set: 0,
+                            fold_class: FoldClass::default(),
                             loc: None,
                         },
                     )

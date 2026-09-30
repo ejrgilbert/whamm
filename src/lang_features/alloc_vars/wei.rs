@@ -9,7 +9,7 @@ use crate::generator::ast::{UnsharedVar, WhammParams};
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{DataType, Definition, Statement};
-use crate::verifier::types::{Record, VarAddr};
+use crate::verifier::types::{FoldClass, Record, VarAddr};
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::{GlobalID, LocalID};
 use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmValue};
@@ -228,7 +228,7 @@ impl UnsharedVarHandler {
                     value: None,
                     def: Definition::User,
                     addr: Some(vec![var_addr]),
-                    times_set: 0,
+                    fold_class: FoldClass::default(),
                     loc: None,
                 },
             );
@@ -261,7 +261,7 @@ impl UnsharedVarHandler {
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![addr_fid]),
-                    times_set: 0,
+                    fold_class: FoldClass::default(),
                     loc: None,
                 },
             );
@@ -272,7 +272,7 @@ impl UnsharedVarHandler {
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![addr_pc]),
-                    times_set: 0,
+                    fold_class: FoldClass::default(),
                     loc: None,
                 },
             );
@@ -283,7 +283,7 @@ impl UnsharedVarHandler {
                     value: None,
                     def: Definition::CompilerStatic,
                     addr: Some(vec![addr_offset]),
-                    times_set: 0,
+                    fold_class: FoldClass::default(),
                     loc: None,
                 },
             );
