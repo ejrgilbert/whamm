@@ -193,35 +193,8 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                 self.emitter
                     .get_loc_info(&mut match_state, &mut self.ast, self.err)
             {
-                // Inject a call to the on-exit flush function
+                // Record whether this location is a true program-exit point.
                 self.is_prog_exit = loc_info.is_prog_exit;
-                if loc_info.is_prog_exit {
-                    if self.on_exit_fid.is_none() {
-                        let on_exit = FunctionBuilder::new(&[], &[]);
-                        let on_exit_id = on_exit.finish_module_with_tag(
-                            self.emitter.app_iter.module,
-                            get_tag_for(&None),
-                        );
-                        self.emitter
-                            .app_iter
-                            .module
-                            .set_fn_name(on_exit_id, "on_exit".to_string());
-
-                        self.on_exit_fid = Some(*on_exit_id);
-                    }
-
-                    if let Some(fid) = self.on_exit_fid {
-                        self.emitter.before();
-                        self.emitter.app_iter.call(FunctionID(fid));
-                        let op_idx = self.emitter.app_iter.curr_instr_len() as u32;
-                        // this is for Whamm reporting, not tied to this probe specifically
-                        self.emitter
-                            .app_iter
-                            .append_to_tag(get_probe_tag_data(&None, op_idx));
-                    } else {
-                        panic!("something went horribly wrong")
-                    }
-                }
 
                 if loc_info.num_alt_probes > 1 {
                     self.err
@@ -322,6 +295,36 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                     // Now that we've emitted this probe, reset the symbol table's static/dynamic
                     // data defined for this instr
                     self.emitter.reset_table_data(&loc_info);
+                }
+
+                // Inject the on-exit flush AFTER the matched probes so that the final
+                // `:before` firing at this program-exit call is counted before the flush.
+                if loc_info.is_prog_exit {
+                    if self.on_exit_fid.is_none() {
+                        let on_exit = FunctionBuilder::new(&[], &[]);
+                        let on_exit_id = on_exit.finish_module_with_tag(
+                            self.emitter.app_iter.module,
+                            get_tag_for(&None),
+                        );
+                        self.emitter
+                            .app_iter
+                            .module
+                            .set_fn_name(on_exit_id, "on_exit".to_string());
+
+                        self.on_exit_fid = Some(*on_exit_id);
+                    }
+
+                    if let Some(fid) = self.on_exit_fid {
+                        self.emitter.before();
+                        self.emitter.app_iter.call(FunctionID(fid));
+                        let op_idx = self.emitter.app_iter.curr_instr_len() as u32;
+                        // this is for Whamm reporting, not tied to this probe specifically
+                        self.emitter
+                            .app_iter
+                            .append_to_tag(get_probe_tag_data(&None, op_idx));
+                    } else {
+                        panic!("something went horribly wrong")
+                    }
                 }
             };
         }
