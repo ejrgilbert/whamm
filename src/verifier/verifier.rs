@@ -855,7 +855,7 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
                 self.err.type_check_error(
-                    format! {"`{}` not found in symbol table", name},
+                    format!("`{}` not found in symbol table", name),
                     &loc.clone().map(|l| l.line_col),
                 );
 
@@ -1169,8 +1169,11 @@ impl<'a> TypeChecker<'a> {
                                     }
                                 } else {
                                     self.err.type_check_error(
-                                        format! {"Expected type {:?} param {}, got {:?}", expected, i, actual},
-                                        &Some(arg_loc.line_col)
+                                        format!(
+                                            "Expected type {:?} param {}, got {:?}",
+                                            expected, i, actual
+                                        ),
+                                        &Some(arg_loc.line_col),
                                     );
                                 }
                             }
@@ -1220,7 +1223,7 @@ impl<'a> TypeChecker<'a> {
                                     }
                                 } else {
                                     self.err.type_check_error(
-                                        format! {"Type Mismatch, expected key type: {:?}, actual key type:{:?}", map_key_ty, key_ty},
+                                        format!("Type Mismatch, expected key type: {:?}, actual key type:{:?}", map_key_ty, key_ty),
                                         &Some(key_loc.line_col),
                                     );
                                 }
@@ -1612,7 +1615,7 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     } else {
                         // using a struct in parser to merge two locations
                         self.err.type_check_error(
-                            format! {"Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty},
+                            format!("Type Mismatch, lhs:{:?}, rhs:{:?}", lhs_ty, rhs_ty),
                             &full_loc,
                         );
 
@@ -1831,8 +1834,11 @@ fn attempt_implicit_cast(
         };
     } else {
         err.type_check_error(
-           format! {"Type Mismatch, expected {name_in_err} type: {:?}, actual {name_in_err} type: {:?}", exp_ty, actual_ty},
-            loc
+            format!(
+                "Type Mismatch, expected {name_in_err} type: {:?}, actual {name_in_err} type: {:?}",
+                exp_ty, actual_ty
+            ),
+            loc,
         );
     }
     false

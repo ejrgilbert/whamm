@@ -121,6 +121,13 @@ impl Package {
         body: Option<Block>,
         next_id: &mut u32,
     ) {
+        // if we've got a glob match on an opcode, flag it so we can warn if the whamm-supported
+        // opcode events are gonna skip an opcode present in the program at instrumentation time.
+        let opcode_wildcard = self.def.name == "opcode"
+            && rule
+                .event
+                .as_ref()
+                .is_some_and(|e| e.name.contains(['*', '?', '[']));
         for matched_evt in matched_evts.iter() {
             let evt = self
                 .events
@@ -134,6 +141,7 @@ impl Package {
                 predicate.clone(),
                 body.clone(),
                 next_id,
+                opcode_wildcard,
             );
         }
     }
@@ -161,6 +169,7 @@ impl Event {
         predicate: Option<Expr>,
         body: Option<Block>,
         next_id: &mut u32,
+        opcode_wildcard: bool,
     ) {
         // Collect type bounds / params from all hierarchy levels so each
         // Probe carries its own copy.
@@ -191,6 +200,7 @@ impl Event {
                 body: body.clone(),
                 type_bounds: type_bounds.clone(),
                 type_params: type_params.clone(),
+                opcode_wildcard,
                 loc: loc.clone(),
             });
             *next_id += 1;
@@ -921,6 +931,8 @@ pub struct Probe {
     pub type_bounds: Vec<(Expr, DataType)>,
     /// Type parameters declared in the probe's generic header(s), e.g. `<T: numeric, U>`.
     pub type_params: Vec<(String, GenericConstraint)>,
+    /// Whether this probe matched the `opcode` package via a glob event pattern.
+    pub opcode_wildcard: bool,
     pub loc: Location,
 }
 

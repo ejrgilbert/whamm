@@ -1,5 +1,5 @@
 #![allow(clippy::too_many_arguments)]
-use crate::api::instrument::{Config, UserLibs};
+use crate::api::instrument::{Config, Diagnostics, UserLibs};
 use crate::common::error::{ErrorGen, WhammError};
 use crate::common::metrics::Metrics;
 use crate::emitter::memory_allocator::MemoryAllocator;
@@ -56,7 +56,7 @@ pub fn run_on_bytes(
     user_libs: UserLibs,
     max_errors: i32,
     config: Config,
-) -> Result<Vec<u8>, Box<ErrorGen>> {
+) -> Result<(Vec<u8>, Diagnostics), Box<ErrorGen>> {
     let mut target_wasm = if !config.as_monitor_module {
         // Caller is expected to hand us binary wasm bytes. Any WAT-text
         // normalization happens at the CLI/test layer.
@@ -118,9 +118,9 @@ pub fn run_on_module_and_encode<'lib, 'ir>(
     user_libs: UserLibs,
     max_errors: i32,
     config: Config,
-) -> Result<Vec<u8>, Box<ErrorGen>> {
+) -> Result<(Vec<u8>, Diagnostics), Box<ErrorGen>> {
     let mut metrics = Metrics::default();
-    run_on_module(
+    let warnings = run_on_module(
         core_lib,
         def_yamls,
         target_wasm,
@@ -133,7 +133,7 @@ pub fn run_on_module_and_encode<'lib, 'ir>(
 
     let wasm = target_wasm.encode().unwrap();
     metrics.flush();
-    Ok(wasm)
+    Ok((wasm, warnings))
 }
 
 pub fn run_on_module<'lib, 'ir>(
@@ -145,7 +145,7 @@ pub fn run_on_module<'lib, 'ir>(
     max_errors: i32,
     metrics: &mut Metrics,
     config: Config,
-) -> Result<(), Box<ErrorGen>> {
+) -> Result<Diagnostics, Box<ErrorGen>> {
     let whamm_script = match String::from_utf8(script) {
         Ok(s) => s,
         Err(error) => {
@@ -187,7 +187,7 @@ pub fn run<'lib, 'ir>(
     max_errors: i32,
     metrics: &mut Metrics,
     config: Config,
-) -> Result<(), Box<ErrorGen>> {
+) -> Result<Diagnostics, Box<ErrorGen>> {
     // Set up error reporting mechanism
     let mut err = ErrorGen::new("".to_string(), "".to_string(), max_errors);
 
@@ -349,16 +349,11 @@ pub fn run<'lib, 'ir>(
     // for debugging
     report_vars.print_metadata();
 
-    // report any warnings
-    if err.has_warnings {
-        err.report_warnings()
-    }
-
     if err.has_errors {
-        Err(Box::new(err))
-    } else {
-        Ok(())
+        return Err(Box::new(err));
     }
+    // Surface warnings to the caller
+    Ok(err.warnings_as_diagnostics())
 }
 
 fn run_instr_wei<'lib, 'ir>(

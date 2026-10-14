@@ -47,6 +47,8 @@ pub struct Probe {
     pub type_bounds: Vec<(Expr, DataType)>,
     /// Type parameters declared in the probe's generic header(s), e.g. `<T: numeric, U>`.
     pub type_params: Vec<(String, GenericConstraint)>,
+    /// Whether this probe matched the `opcode` package via a glob event pattern
+    pub opcode_wildcard: bool,
 }
 impl Probe {
     pub(crate) fn new(

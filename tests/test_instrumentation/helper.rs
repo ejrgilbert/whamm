@@ -6,7 +6,7 @@ use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use whamm::api::instrument::{instrument_as_dry_run_rewriting, WhammError};
+use whamm::api::instrument::{instrument_as_dry_run_rewriting, Diagnostics, WhammError};
 use whamm::api::utils::{wasm2wat_on_file, write_to_file};
 use wirm::Module;
 
@@ -364,7 +364,7 @@ pub(crate) fn run_script(
     user_libs: Vec<String>,
     output_path: Option<String>,
     target_wei: bool,
-) -> Result<()> {
+) -> Result<Diagnostics> {
     let script_path_str = script_path
         .to_str()
         .ok_or_else(|| anyhow!("script path is not valid UTF-8: {script_path:?}"))?
@@ -377,7 +377,7 @@ pub(crate) fn run_script(
         CORE_WASM_PATH,
     ))?);
     let defs_bytes = Some(whamm::api::load_defs_from_path(Path::new("./")));
-    let wasm_result = if target_wei {
+    let instrumented = if target_wei {
         whamm::api::instrument::generate_monitor_module(
             script_bytes.clone(),
             user_lib_bytes.clone(),
@@ -393,7 +393,9 @@ pub(crate) fn run_script(
             defs_bytes.clone(),
         )
     }
-    .map_err(|errs| format_whamm_errs(&script_text, errs))?;
+    .map_err(|diags| format_whamm_diags(&script_text, &diags))?;
+    let wasm_result = instrumented.module;
+    let diagnostics = instrumented.diagnostics;
     if TEST_DRY_RUN && !target_wei {
         let wasm_bytes = std::fs::read(wasm_path)
             .with_context(|| format!("could not read app wasm {wasm_path}"))?;
@@ -413,24 +415,35 @@ pub(crate) fn run_script(
     if let Some(path) = output_path {
         write_to_file(wasm_result, Path::new(&path));
     }
-    Ok(())
+    Ok(diagnostics)
+}
+
+fn format_whamm_diags(script: &str, diags: &Diagnostics) -> anyhow::Error {
+    let body = diags
+        .errors()
+        .map(|d| format_entry(script, &d.msg, d.err_line_col()))
+        .collect::<Vec<_>>()
+        .join("\n");
+    anyhow!("{} error(s) from whamm:\n{body}", diags.errors().count())
 }
 
 fn format_whamm_errs(script: &str, errs: Vec<WhammError>) -> anyhow::Error {
     let body = errs
         .iter()
-        .map(|e| {
-            let mut entry = format!("  - {}", e.msg);
-            if let Some((line, _col)) = e.err_line_col() {
-                if let Some(src) = script.lines().nth(line - 1) {
-                    entry.push_str(&format!("\n    --> `{}` (line {line})", src.trim()));
-                }
-            }
-            entry
-        })
+        .map(|e| format_entry(script, &e.msg, e.err_line_col()))
         .collect::<Vec<_>>()
         .join("\n");
     anyhow!("{} error(s) from whamm:\n{body}", errs.len())
+}
+
+fn format_entry(script: &str, msg: &str, line_col: Option<(usize, usize)>) -> String {
+    let mut entry = format!("  - {msg}");
+    if let Some((line, _col)) = line_col {
+        if let Some(src) = script.lines().nth(line - 1) {
+            entry.push_str(&format!("\n    --> `{}` (line {line})", src.trim()));
+        }
+    }
+    entry
 }
 
 /// If a `.err` file sits beside the given `.exp` path, return its contents (the
@@ -439,7 +452,7 @@ fn read_expected_err(exp: &Path) -> Option<String> {
     fs::read_to_string(exp.with_extension("err")).ok()
 }
 
-/// Assert that instrumenting `script` fails with a diagnostic containing `expected_err`
+/// Assert that instrumenting `script` emits a diagnostic containing `expected_err`
 fn run_testcase_expect_error(
     script: &Path,
     app_path_str: &str,
@@ -459,12 +472,18 @@ fn run_testcase_expect_error(
         script,
         app_path_str,
         &mut module,
-        user_libs,
+        user_libs.clone(),
         None,
         target_wei,
     ) {
-        Ok(()) => {
-            panic!("[{label}] expected instrumentation of {script:?} to fail, but it succeeded")
+        Ok(diagnostics) => {
+            let actual = diagnostics.render(false);
+            let expected = expected_err.trim();
+            assert!(
+                actual.contains(expected),
+                "[{label}] {script:?} succeeded without the expected diagnostic\n\
+                 --- expected (substring) ---\n{expected}\n--- actual (warnings) ---\n{actual}"
+            );
         }
         Err(e) => {
             let actual = format!("{e:#}");
@@ -489,7 +508,7 @@ pub(crate) fn run_testcase_rewriting(
     // run the script on configured application
     let wasm = fs::read(app_path_str)?;
     let mut module_to_instrument = Module::parse(&wasm, true, true)?;
-    run_script(
+    let diagnostics = run_script(
         script,
         app_path_str,
         &mut module_to_instrument,
@@ -497,6 +516,13 @@ pub(crate) fn run_testcase_rewriting(
         Some(instr_app_path.clone()),
         false,
     )?;
+    // A testcase with no `.err` file must instrument cleanly
+    assert!(
+        diagnostics.is_empty(),
+        "[REWRITE] {script:?} produced unexpected whamm diagnostics \
+         (ship a `.err` file if the diagnostic is intended):\n{}",
+        diagnostics.render(false)
+    );
 
     // run the instrumented application on wasmtime
     // let res = Command::new(format!("{home}/.cargo/bin/cargo"))

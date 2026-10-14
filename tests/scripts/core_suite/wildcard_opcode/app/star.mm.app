@@ -1,0 +1,1 @@
+tests/apps/core_suite/handwritten/v128_sample.wasm
