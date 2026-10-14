@@ -127,6 +127,8 @@ pub struct SimplePkg {
     // IndexMap instead of HashMap: insertion order = script order, so probes that match
     // the same bytecode location are injected in the order they appear in the script.
     pub evts: IndexMap<String, SimpleEvt>,
+    /// True if any probe in this package matched via a glob event pattern
+    pub opcode_wildcard: bool,
 }
 impl SimplePkg {
     fn new(event_name: &str, mode_name: &str, probe: Probe) -> Self {
@@ -135,6 +137,7 @@ impl SimplePkg {
         s
     }
     fn add_probe(&mut self, event_name: &str, mode_name: &str, probe: Probe) {
+        self.opcode_wildcard |= probe.opcode_wildcard;
         self.evts
             .entry(event_name.to_string())
             .and_modify(|evt| {

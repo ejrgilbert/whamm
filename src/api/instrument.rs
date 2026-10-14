@@ -1,13 +1,14 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::api::{DEF_YAMLS, WHAMM_CORE_LIB_BYTES};
-use crate::common::error::{CodeLocation, ErrorGen, WhammError as ErrorInternal};
+use crate::common::error::{CodeLocation, WhammError as ErrorInternal};
 use crate::common::instr;
 use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
 use log::error;
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::process::exit;
+use termcolor::Buffer;
 use wirm::ir::module::module_types::Types;
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
 use wirm::ir::types::{DataType as WirmType, FuncInstrMode, InstrumentationMode};
@@ -48,12 +49,18 @@ pub fn instrument_with_config(
     config: Config,
     core_lib: Option<Vec<u8>>,
     defs: Option<Vec<String>>,
-) -> Result<Vec<u8>, Box<ErrorGen>> {
+) -> Result<Instrumented, Diagnostics> {
     let core_lib = resolve_core_lib(core_lib);
     let defs = resolve_defs(defs);
-    instr::run_on_bytes(
+    match instr::run_on_bytes(
         &core_lib, &defs, wasm_app, script, user_libs, MAX_ERRORS, config,
-    )
+    ) {
+        Ok((module, diagnostics)) => Ok(Instrumented {
+            module,
+            diagnostics,
+        }),
+        Err(e) => Err(e.to_diagnostics()),
+    }
 }
 
 /// Using the passed Whamm script, instrument the target Wasm module
@@ -64,7 +71,7 @@ pub fn instrument_with_rewriting(
     user_libs: UserLibs,
     core_lib: Option<Vec<u8>>,
     defs: Option<Vec<String>>,
-) -> Result<Vec<u8>, Box<ErrorGen>> {
+) -> Result<Instrumented, Diagnostics> {
     instrument_with_config(
         wasm_app,
         script,
@@ -83,7 +90,7 @@ pub fn instrument_module_with_rewriting(
     user_libs: UserLibs,
     core_lib: Option<Vec<u8>>,
     defs: Option<Vec<String>>,
-) -> Result<Vec<u8>, Vec<WhammError>> {
+) -> Result<Instrumented, Diagnostics> {
     let core_lib = resolve_core_lib(core_lib);
     let defs = resolve_defs(defs);
     match instr::run_on_module_and_encode(
@@ -95,8 +102,11 @@ pub fn instrument_module_with_rewriting(
         MAX_ERRORS,
         Config::default_rewriting(),
     ) {
-        Ok(res) => Ok(res),
-        Err(e) => Err(WhammError::from_errs(e.pull_errs())),
+        Ok((module, diagnostics)) => Ok(Instrumented {
+            module,
+            diagnostics,
+        }),
+        Err(e) => Err(e.to_diagnostics()),
     }
 }
 
@@ -108,18 +118,15 @@ pub fn generate_monitor_module(
     user_libs: UserLibs,
     core_lib: Option<Vec<u8>>,
     defs: Option<Vec<String>>,
-) -> Result<Vec<u8>, Vec<WhammError>> {
-    match instrument_with_config(
+) -> Result<Instrumented, Diagnostics> {
+    instrument_with_config(
         vec![],
         script,
         user_libs,
         Config::default_monitor_module(),
         core_lib,
         defs,
-    ) {
-        Ok(res) => Ok(res),
-        Err(e) => Err(WhammError::from_errs(e.pull_errs())),
-    }
+    )
 }
 
 /// Using the passed Whamm script, perform a dry run of
@@ -705,5 +712,108 @@ impl WhammError {
             errs.push(Self::from(e));
         }
         errs
+    }
+}
+
+pub struct Instrumented {
+    /// The instrumented Wasm module
+    pub module: Vec<u8>,
+    /// Diagnostics (warnings) surfaced during a successful run
+    pub diagnostics: Diagnostics,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Severity {
+    /// instrumentation continued
+    Warning,
+    /// instrumentation could not proceed
+    Error,
+}
+
+#[derive(Clone, Debug)]
+pub struct WhammDiagnostic {
+    pub severity: Severity,
+    /// The kind of diagnostic
+    pub code: String,
+    pub msg: String,
+    /// The match rule the diagnostic was raised under
+    pub match_rule: Option<String>,
+    /// The location in the script this diagnostic is anchored to
+    pub primary: Option<CodeLocation>,
+    /// A secondary location that adds context
+    pub secondary: Option<CodeLocation>,
+}
+impl WhammDiagnostic {
+    /// Surface where this diagnostic is anchored (line, column).
+    pub fn err_line_col(&self) -> Option<(usize, usize)> {
+        self.primary.as_ref().map(|loc| match &loc.line_col {
+            LineColLocation::Pos((line, col)) => (*line, *col),
+            LineColLocation::Span((line, col), _) => (*line, *col),
+        })
+    }
+}
+
+/// A batch of diagnostics surfaced by an instrumentation run
+#[derive(Clone, Debug)]
+pub struct Diagnostics {
+    items: Vec<WhammDiagnostic>,
+    script_path: String,
+    script_text: String,
+}
+impl Diagnostics {
+    pub(crate) fn from_parts(
+        items: Vec<WhammDiagnostic>,
+        script_path: String,
+        script_text: String,
+    ) -> Self {
+        Self {
+            items,
+            script_path,
+            script_text,
+        }
+    }
+
+    /// All diagnostics, in the order they were surfaced.
+    pub fn items(&self) -> &[WhammDiagnostic] {
+        &self.items
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+
+    pub fn has_errors(&self) -> bool {
+        self.items.iter().any(|d| d.severity == Severity::Error)
+    }
+
+    /// Iterate over just the warnings.
+    pub fn warnings(&self) -> impl Iterator<Item = &WhammDiagnostic> {
+        self.items
+            .iter()
+            .filter(|d| d.severity == Severity::Warning)
+    }
+
+    /// Iterate over just the errors.
+    pub fn errors(&self) -> impl Iterator<Item = &WhammDiagnostic> {
+        self.items.iter().filter(|d| d.severity == Severity::Error)
+    }
+
+    /// Render all diagnostics to a single string. Pass `color: true` for
+    /// ANSI-colored output (e.g. a terminal), `false` for plain text.
+    pub fn render(&self, color: bool) -> String {
+        let mut buffer = if color {
+            Buffer::ansi()
+        } else {
+            Buffer::no_color()
+        };
+        for diag in &self.items {
+            crate::common::error::write_diagnostic_into(
+                diag,
+                &self.script_text,
+                &self.script_path,
+                &mut buffer,
+            );
+        }
+        String::from_utf8(buffer.into_inner()).unwrap_or_default()
     }
 }

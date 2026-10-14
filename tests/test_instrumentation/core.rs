@@ -147,6 +147,15 @@ fn instrument_deep_predicate() -> Result<()> {
 }
 
 #[test]
+fn instrument_wildcard_opcode_warns_on_uncovered() -> Result<()> {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/wildcard_opcode");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("wildcard_opcode", processed_scripts, true, false)
+}
+
+#[test]
 fn instrument_spin_with_fault_injection() {
     setup_logger();
     let processed_scripts = setup_fault_injection("spin");

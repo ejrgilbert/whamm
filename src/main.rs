@@ -7,7 +7,7 @@ use anyhow::{bail, Result};
 use clap::Parser;
 use cli::LibraryLinkStrategyArg;
 use std::process::exit;
-use whamm::api::instrument::{instrument_with_config, Config, LibraryLinkStrategy};
+use whamm::api::instrument::{instrument_with_config, Config, Instrumented, LibraryLinkStrategy};
 use whamm::api::utils::{print_info, run_wast_tests_at, write_to_file};
 use whamm::api::{load_core_lib_from_path, load_defs_from_path, parse_user_libs};
 
@@ -85,9 +85,15 @@ fn try_main() -> Result<()> {
                 core_lib,
                 defs,
             ) {
-                Ok(res) => write_to_file(res, &args.output_path),
-                Err(mut e) => {
-                    e.report();
+                Ok(Instrumented {
+                    module,
+                    diagnostics,
+                }) => {
+                    eprint!("{}", diagnostics.render(true));
+                    write_to_file(module, &args.output_path)
+                }
+                Err(diagnostics) => {
+                    eprint!("{}", diagnostics.render(true));
                     exit(1)
                 }
             }

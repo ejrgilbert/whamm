@@ -1,3 +1,4 @@
+use crate::api::instrument::{Diagnostics, Severity, WhammDiagnostic};
 use crate::common::terminal::{blue, red, white, yellow};
 use crate::parser::types::{Location, Rule};
 use pest::error::ErrorVariant::ParsingError;
@@ -68,16 +69,28 @@ impl ErrorGen {
     }
 
     pub fn report_warnings(&mut self) {
-        self.warnings.iter_mut().for_each(|warning| {
+        self.warnings.iter().for_each(|warning| {
             warning.report(&self.script_text, &self.script_path);
         });
         self.warnings.clear();
     }
 
+    pub fn warnings_as_diagnostics(&self) -> Diagnostics {
+        let items = self.warnings.iter().map(WhammDiagnostic::from).collect();
+        Diagnostics::from_parts(items, self.script_path.clone(), self.script_text.clone())
+    }
+
+    pub fn to_diagnostics(&self) -> Diagnostics {
+        let mut items: Vec<WhammDiagnostic> =
+            self.warnings.iter().map(WhammDiagnostic::from).collect();
+        items.extend(self.errors.iter().map(WhammDiagnostic::from));
+        Diagnostics::from_parts(items, self.script_path.clone(), self.script_text.clone())
+    }
+
     pub fn report(&mut self) {
         self.report_warnings();
         // Report the most-recent error first
-        self.errors.iter_mut().for_each(|error| {
+        self.errors.iter().for_each(|error| {
             error.report(&self.script_text, &self.script_path);
         });
         self.errors.clear();
@@ -679,199 +692,142 @@ pub struct WhammWarning {
     pub info_loc: Option<CodeLocation>,
 }
 impl WhammWarning {
-    pub fn report(&mut self, script: &str, script_path: &String) {
-        let spacing = self.spacing();
-        let message = self.ty.message();
-
-        let writer = BufferWriter::stderr(ColorChoice::Always);
-        let mut buffer = writer.buffer();
-
-        let preamble = if let Some(rule) = &self.match_rule {
-            format!("warning[{}]@{rule}", self.ty.name())
-        } else {
-            format!("warning[{}]", self.ty.name())
-        };
-        yellow(true, preamble, &mut buffer);
-        white(true, format!(": {}\n", message), &mut buffer);
-
-        if let Some(warn_loc) = &mut self.warn_loc {
-            if warn_loc.message.is_none() {
-                warn_loc.message = Some(message.clone().to_string());
-            }
-
-            print_preamble(&warn_loc.line_col, script_path, &spacing, &mut buffer);
-            print_empty(&spacing, &mut buffer);
-            let warn_start = match &warn_loc.line_col {
-                LineColLocation::Pos((line, _)) => line,
-                LineColLocation::Span((start_line, _), ..) => start_line,
-            };
-            if let Some(info_loc) = &mut self.info_loc {
-                let info_start = match &info_loc.line_col {
-                    LineColLocation::Pos((line, _)) => line,
-                    LineColLocation::Span((start_line, _), ..) => start_line,
-                };
-
-                if info_start < warn_start {
-                    // print info first
-                    info_loc.print(script, &spacing, &mut buffer);
-                    warn_loc.print(script, &spacing, &mut buffer);
-                } else {
-                    // print err first
-                    warn_loc.print(script, &spacing, &mut buffer);
-                    info_loc.print(script, &spacing, &mut buffer);
-                }
-            } else {
-                // only print err
-                warn_loc.print(script, &spacing, &mut buffer);
-            }
-            print_empty(&spacing, &mut buffer);
-        } else {
-            // This error isn't tied to a specific code location
-            blue(false, " --> ".to_string(), &mut buffer);
-            blue(false, format!("{script_path}\n\n"), &mut buffer);
-        }
-        writer
-            .print(&buffer)
-            .expect("Uh oh, something went wrong while printing to terminal");
-        buffer
-            .reset()
-            .expect("Uh oh, something went wrong while printing to terminal");
-    }
-    fn spacing(&self) -> String {
-        let largest_err_line_no = if let Some(warn_loc) = &self.warn_loc {
-            match &warn_loc.line_col {
-                LineColLocation::Pos((line, _)) => line,
-                LineColLocation::Span((start_line, _), (end_line, _)) => {
-                    cmp::max(start_line, end_line)
-                }
-            }
-        } else {
-            // No err_line, return empty string
-            return "".to_string();
-        };
-        let largest_info_line_no = if let Some(info_loc) = &self.info_loc {
-            match &info_loc.line_col {
-                LineColLocation::Pos((line, _)) => line,
-                LineColLocation::Span((start_line, _), (end_line, _)) => {
-                    cmp::max(start_line, end_line)
-                }
-            }
-        } else {
-            // Assuming if we get here, there IS an err_line_no set; just
-            // return a "short" number
-            &0
-        };
-        let largest_line_no = cmp::max(largest_err_line_no, largest_info_line_no);
-
-        // calculate the length of the longest line number (in chars)
-        let line_str_len = format!("{}", largest_line_no).len();
-
-        let mut spacing = String::new();
-        for _ in 0..line_str_len {
-            spacing.push(' ');
-        }
-
-        spacing
+    pub fn report(&self, script: &str, script_path: &str) {
+        report_diagnostic(&WhammDiagnostic::from(self), script, script_path);
     }
 }
 impl WhammError {
     /// report this error to the console, including color highlighting
-    pub fn report(&mut self, script: &str, script_path: &String) {
-        let spacing = self.spacing();
-        let message = self.ty.message();
-
-        let writer = BufferWriter::stderr(ColorChoice::Always);
-        let mut buffer = writer.buffer();
-
-        let preamble = if let Some(rule) = &self.match_rule {
-            format!("error[{}]@{rule}", self.ty.name())
-        } else {
-            format!("error[{}]", self.ty.name())
-        };
-        red(true, preamble, &mut buffer);
-        white(true, format!(": {}\n", message), &mut buffer);
-
-        if let Some(err_loc) = &mut self.err_loc {
-            if err_loc.message.is_none() {
-                err_loc.message = Some(message.clone().to_string());
-            }
-
-            print_preamble(&err_loc.line_col, script_path, &spacing, &mut buffer);
-            print_empty(&spacing, &mut buffer);
-            let err_start = match &err_loc.line_col {
-                LineColLocation::Pos((line, _)) => line,
-                LineColLocation::Span((start_line, _), ..) => start_line,
-            };
-            if let Some(info_loc) = &mut self.info_loc {
-                let info_start = match &info_loc.line_col {
-                    LineColLocation::Pos((line, _)) => line,
-                    LineColLocation::Span((start_line, _), ..) => start_line,
-                };
-
-                if info_start < err_start {
-                    // print info first
-                    info_loc.print(script, &spacing, &mut buffer);
-                    err_loc.print(script, &spacing, &mut buffer);
-                } else {
-                    // print err first
-                    err_loc.print(script, &spacing, &mut buffer);
-                    info_loc.print(script, &spacing, &mut buffer);
-                }
-            } else {
-                // only print err
-                err_loc.print(script, &spacing, &mut buffer);
-            }
-            print_empty(&spacing, &mut buffer);
-        } else {
-            // This error isn't tied to a specific code location
-            blue(false, " --> ".to_string(), &mut buffer);
-            blue(false, format!("{script_path}\n\n"), &mut buffer);
-        }
-        writer
-            .print(&buffer)
-            .expect("Uh oh, something went wrong while printing to terminal");
-        buffer
-            .reset()
-            .expect("Uh oh, something went wrong while printing to terminal");
-    }
-
-    fn spacing(&self) -> String {
-        let largest_err_line_no = if let Some(err_loc) = &self.err_loc {
-            match &err_loc.line_col {
-                LineColLocation::Pos((line, _)) => line,
-                LineColLocation::Span((start_line, _), (end_line, _)) => {
-                    cmp::max(start_line, end_line)
-                }
-            }
-        } else {
-            // No err_line, return empty string
-            return "".to_string();
-        };
-        let largest_info_line_no = if let Some(info_loc) = &self.info_loc {
-            match &info_loc.line_col {
-                LineColLocation::Pos((line, _)) => line,
-                LineColLocation::Span((start_line, _), (end_line, _)) => {
-                    cmp::max(start_line, end_line)
-                }
-            }
-        } else {
-            // Assuming if we get here, there IS an err_line_no set; just
-            // return a "short" number
-            &0
-        };
-        let largest_line_no = cmp::max(largest_err_line_no, largest_info_line_no);
-
-        // calculate the length of the longest line number (in chars)
-        let line_str_len = format!("{}", largest_line_no).len();
-
-        let mut spacing = String::new();
-        for _ in 0..line_str_len {
-            spacing.push(' ');
-        }
-
-        spacing
+    pub fn report(&self, script: &str, script_path: &str) {
+        report_diagnostic(&WhammDiagnostic::from(self), script, script_path);
     }
 }
+impl From<&WhammWarning> for WhammDiagnostic {
+    fn from(w: &WhammWarning) -> Self {
+        Self {
+            severity: Severity::Warning,
+            code: w.ty.name().to_string(),
+            msg: w.ty.message().to_string(),
+            match_rule: w.match_rule.clone(),
+            primary: w.warn_loc.clone(),
+            secondary: w.info_loc.clone(),
+        }
+    }
+}
+impl From<&WhammError> for WhammDiagnostic {
+    fn from(e: &WhammError) -> Self {
+        Self {
+            severity: Severity::Error,
+            code: e.ty.name().to_string(),
+            msg: e.ty.message().to_string(),
+            match_rule: e.match_rule.clone(),
+            primary: e.err_loc.clone(),
+            secondary: e.info_loc.clone(),
+        }
+    }
+}
+
+/// Print a single [`WhammDiagnostic`] to stderr with color highlighting.
+fn report_diagnostic(diag: &WhammDiagnostic, script: &str, script_path: &str) {
+    let writer = BufferWriter::stderr(ColorChoice::Always);
+    let mut buffer = writer.buffer();
+    write_diagnostic_into(diag, script, script_path, &mut buffer);
+    writer
+        .print(&buffer)
+        .expect("Uh oh, something went wrong while printing to terminal");
+    buffer
+        .reset()
+        .expect("Uh oh, something went wrong while printing to terminal");
+}
+
+/// Render a single [`WhammDiagnostic`] into `buffer`
+pub(crate) fn write_diagnostic_into(
+    diag: &WhammDiagnostic,
+    script: &str,
+    script_path: &str,
+    buffer: &mut Buffer,
+) {
+    let spacing = diag_spacing(diag);
+    let (word, color): (&str, fn(bool, String, &mut Buffer)) = match diag.severity {
+        Severity::Warning => ("warning", yellow),
+        Severity::Error => ("error", red),
+    };
+    let preamble = if let Some(rule) = &diag.match_rule {
+        format!("{word}[{}]@{rule}", diag.code)
+    } else {
+        format!("{word}[{}]", diag.code)
+    };
+    color(true, preamble, buffer);
+    white(true, format!(": {}\n", diag.msg), buffer);
+
+    let script_path = script_path.to_string();
+    if let Some(primary) = &diag.primary {
+        let mut primary = primary.clone();
+        if primary.message.is_none() {
+            primary.message = Some(diag.msg.clone());
+        }
+
+        print_preamble(&primary.line_col, &script_path, &spacing, buffer);
+        print_empty(&spacing, buffer);
+        let primary_start = match &primary.line_col {
+            LineColLocation::Pos((line, _)) => *line,
+            LineColLocation::Span((start_line, _), ..) => *start_line,
+        };
+        if let Some(secondary) = &diag.secondary {
+            let mut secondary = secondary.clone();
+            let secondary_start = match &secondary.line_col {
+                LineColLocation::Pos((line, _)) => *line,
+                LineColLocation::Span((start_line, _), ..) => *start_line,
+            };
+
+            if secondary_start < primary_start {
+                // print the context location first
+                secondary.print(script, &spacing, buffer);
+                primary.print(script, &spacing, buffer);
+            } else {
+                // print the primary location first
+                primary.print(script, &spacing, buffer);
+                secondary.print(script, &spacing, buffer);
+            }
+        } else {
+            primary.print(script, &spacing, buffer);
+        }
+        print_empty(&spacing, buffer);
+    } else {
+        // This diagnostic isn't tied to a specific code location
+        blue(false, " --> ".to_string(), buffer);
+        blue(false, format!("{script_path}\n\n"), buffer);
+    }
+}
+
+fn diag_spacing(diag: &WhammDiagnostic) -> String {
+    let largest_primary = if let Some(primary) = &diag.primary {
+        match &primary.line_col {
+            LineColLocation::Pos((line, _)) => *line,
+            LineColLocation::Span((start_line, _), (end_line, _)) => {
+                cmp::max(*start_line, *end_line)
+            }
+        }
+    } else {
+        // No location, return empty string
+        return "".to_string();
+    };
+    let largest_secondary = if let Some(secondary) = &diag.secondary {
+        match &secondary.line_col {
+            LineColLocation::Pos((line, _)) => *line,
+            LineColLocation::Span((start_line, _), (end_line, _)) => {
+                cmp::max(*start_line, *end_line)
+            }
+        }
+    } else {
+        0
+    };
+    let largest_line_no = cmp::max(largest_primary, largest_secondary);
+
+    // calculate the length of the longest line number (in chars)
+    " ".repeat(format!("{}", largest_line_no).len())
+}
+
 pub enum WarnType {
     ProbeWarning { message: String },
     TypeCheckWarning { message: String },
