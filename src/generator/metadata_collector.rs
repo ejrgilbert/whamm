@@ -805,9 +805,11 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
         if let Some(body) = &probe.body {
             self.visiting = Visiting::Body;
             self.visit_block(body);
-            if probe.kind == ModeKind::Alt {
-                // XXX: this is bad
-                // always save all args for an alt probe
+            if probe.kind == ModeKind::Alt && probe.predicate.is_some() {
+                // A predicated alt lowers to an if/else whose else-branch reconstructs the original opcode,
+                // so it needs all the original operands saved.
+                // An unpredicated alt just deletes the opcode, so the user is responsible for managing the stack;
+                // only operands the body/predicate actually request are saved.
                 self.combine_req_args(StackReq::All);
             }
             // TODO -- assign self.curr_probe.extend_body()

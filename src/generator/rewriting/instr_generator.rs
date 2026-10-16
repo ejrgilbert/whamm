@@ -19,9 +19,6 @@ use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator};
 use wirm::opcode::Instrumenter;
 use wirm::{Location as WirmLocation, Opcode};
 
-const UNEXPECTED_ERR_MSG: &str =
-    "InstrGenerator: Looks like you've found a bug...please report this behavior!";
-
 fn emit_dynamic_compiler_data(
     data: &HashMap<String, Block>,
     emitter: &mut VisitingEmitter,
@@ -437,11 +434,10 @@ impl InstrGenerator<'_, '_> {
                 ModeKind::Alt => {
                     is_success &= self.emit_probe_as_if_else();
                 }
-                _ => {
-                    unreachable!(
-                        "{} Unexpected probe mode '{}'",
-                        UNEXPECTED_ERR_MSG,
-                        curr_probe_mode.name()
+                ModeKind::BlockAlt => {
+                    todo!(
+                        "block-structured `alt` guarded by a runtime predicate is not yet \
+                         implemented"
                     );
                 }
             }
@@ -461,7 +457,8 @@ impl InstrGenerator<'_, '_> {
         if !self.curr_instr_args.is_empty() {
             // The current instruction has args, save them (before)
             self.emitter.before();
-            self.emitter.save_args(&self.curr_instr_args)
+            self.emitter
+                .save_args(&self.curr_instr_args, &self.curr_probe_loc, self.err)
         } else {
             // If no args, just return true
             true
@@ -477,7 +474,8 @@ impl InstrGenerator<'_, '_> {
         if !self.curr_instr_results.is_empty() {
             // The current instruction has results, save them (after)
             self.emitter.after();
-            self.emitter.save_results(&self.curr_instr_results)
+            self.emitter
+                .save_results(&self.curr_instr_results, &self.curr_probe_loc, self.err)
         } else {
             // If no results, just return true
             true

@@ -25,7 +25,7 @@ use crate::parser::types::{Whamm, WhammVisitor};
 use crate::parser::whamm_parser::parse_script;
 use crate::verifier::types::SymbolTable;
 use crate::verifier::verifier::{build_symbol_table, type_check};
-use log::{error, info};
+use log::info;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use wirm::ir::function::FunctionBuilder;
@@ -688,9 +688,6 @@ fn get_symbol_table(
 
 fn verify_ast(ast: &mut Whamm, st: &mut SymbolTable, err: &mut ErrorGen) -> Result<bool, ()> {
     let (passed, has_reports) = type_check(ast, st, err);
-    if !passed {
-        error!("AST failed verification!");
-    }
     if err.too_many | !passed {
         return Err(());
     }

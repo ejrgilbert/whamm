@@ -148,18 +148,21 @@ impl ErrorGen {
         self.add_error(Self::get_internal_error(msg, loc));
     }
 
-    pub fn get_instrumentation_error(message: &str) -> WhammError {
+    pub fn get_instrumentation_error(message: &str, loc: &Option<Location>) -> WhammError {
         WhammError {
             match_rule: None,
             ty: ErrorType::InstrumentationError {
                 message: message.to_string(),
             },
-            err_loc: None,
+            err_loc: Self::get_error_loc(message, loc),
             info_loc: None,
         }
     }
+    pub fn add_instr_error_at(&mut self, msg: &str, loc: &Option<Location>) {
+        self.add_error(Self::get_instrumentation_error(msg, loc));
+    }
     pub fn add_instr_error(&mut self, msg: &str) {
-        self.add_error(Self::get_instrumentation_error(msg));
+        self.add_instr_error_at(msg, &None);
     }
 
     pub fn multiple_alt_matches(&mut self, instr_name: &str) {
@@ -167,7 +170,7 @@ impl ErrorGen {
             "Multiple `alt` probes matched same bytecode location for instr_name: {}",
             instr_name
         );
-        self.add_error(Self::get_instrumentation_error(msg));
+        self.add_error(Self::get_instrumentation_error(msg, &None));
     }
 
     pub fn get_arithmetic_error(message: &str, loc: Option<Location>) -> WhammError {

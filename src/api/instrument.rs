@@ -4,10 +4,8 @@ use crate::api::{DEF_YAMLS, WHAMM_CORE_LIB_BYTES};
 use crate::common::error::{CodeLocation, WhammError as ErrorInternal};
 use crate::common::instr;
 use crate::emitter::tag_handler::{get_reasons_from_tag, LineCol, Reason};
-use log::error;
 use pest::error::LineColLocation;
 use std::collections::HashMap;
-use std::process::exit;
 use termcolor::Buffer;
 use wirm::ir::module::module_types::Types;
 use wirm::ir::module::side_effects::{InjectType as WirmInjectType, Injection as WirmInjection};
@@ -264,8 +262,7 @@ impl Config {
         library_strategy: Option<LibraryLinkStrategy>,
     ) -> Self {
         if testing {
-            error!("Generating helper methods for testing mode is not yet supported!");
-            exit(1);
+            todo!("Generating helper methods for testing mode is not yet supported!");
         }
 
         if no_bundle && (!no_body || !no_pred) {

@@ -73,14 +73,12 @@ pub fn run_whamm_bin(
         .arg(core_lib_path)
         .output()
         .expect("failed to execute process");
-    if !res.status.success() {
-        error!(
-            "'run_whamm_bin' add target failed:\n{}\n{}",
-            String::from_utf8(res.stdout).unwrap(),
-            String::from_utf8(res.stderr).unwrap()
-        );
-    }
-    assert!(res.status.success());
+    assert!(
+        res.status.success(),
+        "'run_whamm_bin' add target failed:\n{}\n{}",
+        String::from_utf8(res.stdout).unwrap(),
+        String::from_utf8(res.stderr).unwrap()
+    );
 }
 
 pub fn run_basic_instrumentation(

@@ -5,7 +5,7 @@ use crate::api::utils::wasm2wat_on_file;
 use crate::common::instr::{run, try_path};
 use crate::common::metrics::Metrics;
 use crate::parser::yml_processor::pull_all_yml_files;
-use log::{debug, error};
+use log::debug;
 use std::fs::{remove_dir_all, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -106,10 +106,10 @@ fn run_wast_tests_that_should_fail(inters: &[(String, Vec<String>)], wast_files:
     for (inter, args) in inters.iter() {
         for wast in wast_files.iter() {
             let res = run_wast_test(inter, args, wast);
-            if res.status.success() {
-                error!("The following command should have FAILED (ran un-instrumented): '{inter} {wast}'");
-            }
-            assert!(!res.status.success());
+            assert!(
+                !res.status.success(),
+                "The following command should have FAILED (ran un-instrumented): '{inter} {wast}'"
+            );
         }
     }
 }
@@ -120,14 +120,12 @@ fn run_wast_tests_that_should_pass(inters: &[(String, Vec<String>)], wast_files:
     for (inter, args) in inters.iter() {
         for wast in wast_files.iter() {
             let res = run_wast_test(inter, args, wast);
-            if !res.status.success() {
-                error!(
-                    "The following command should have PASSED: '{inter} {wast}'\n{}\n{}",
-                    String::from_utf8(res.stdout).unwrap(),
-                    String::from_utf8(res.stderr).unwrap()
-                );
-            }
-            assert!(res.status.success());
+            assert!(
+                res.status.success(),
+                "The following command should have PASSED: '{inter} {wast}'\n{}\n{}",
+                String::from_utf8(res.stdout).unwrap(),
+                String::from_utf8(res.stderr).unwrap()
+            );
         }
     }
 }
