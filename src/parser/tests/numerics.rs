@@ -273,8 +273,7 @@ fn fail_parse_float(token: &str) {
 fn handle_unexp_fail(res: Result<Expr, Vec<WhammError>>, token: &str) {
     match res {
         Ok(expr) => {
-            error!("Number did not parse correctly: {token} -> {:?}", expr);
-            panic!();
+            panic!("Number did not parse correctly: {token} -> {expr:?}");
         }
         Err(errs) => {
             error!("Parsing the number caused errors: {token}");
@@ -287,11 +286,7 @@ fn handle_unexp_fail(res: Result<Expr, Vec<WhammError>>, token: &str) {
 }
 
 fn handle_unexp_pass(expr: NumLit, token: &str) {
-    error!(
-        "Number passed the parse, but it shouldn't have: {token} -> {:?}",
-        expr
-    );
-    panic!();
+    panic!("Number passed the parse, but it shouldn't have: {token} -> {expr:?}");
 }
 
 fn call_parser(
@@ -306,8 +301,7 @@ fn call_parser(
             handler(pairs.next().unwrap(), &line_idx)
         }
         Err(e) => {
-            error!("Parsing the number caused errors: {token}\n{:?}", e);
-            panic!();
+            panic!("Parsing the number caused errors: {token}\n{e:?}");
         }
     }
 }

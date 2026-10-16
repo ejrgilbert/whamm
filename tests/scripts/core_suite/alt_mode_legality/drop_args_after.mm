@@ -1,1 +1,3 @@
-wasm:opcode:call:after { drop_args(); }
+wasm:opcode:call:after {
+    drop_args();
+}

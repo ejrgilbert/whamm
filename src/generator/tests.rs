@@ -23,9 +23,7 @@ fn get_rec<'a>(table: &'a mut SymbolTable, name: &str) -> Option<&'a mut Record>
     let var_rec_id = match table.lookup(name) {
         Some(id) => id,
         None => {
-            error!("Variable symbol does not exist for name {}!", name);
-            println!("{:#?}", table);
-            panic!();
+            panic!("Variable symbol does not exist for name {name}!\n{table:#?}");
         }
     };
 
@@ -99,8 +97,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable) {
             val: "import".to_string(),
         })
     } else {
-        error!("Could not find symbol for `target_fn_type`");
-        panic!();
+        panic!("Could not find symbol for `target_fn_type`");
     }
 
     // define target_imp_module
@@ -110,8 +107,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable) {
             val: "ic0".to_string(),
         })
     } else {
-        error!("Could not find symbol for `target_imp_module`");
-        panic!();
+        panic!("Could not find symbol for `target_imp_module`");
     }
 
     // define target_fn_name
@@ -121,8 +117,7 @@ fn hardcode_compiler_constants(table: &mut SymbolTable) {
             val: "call_new".to_string(),
         })
     } else {
-        error!("Could not find symbol for `target_fn_name`");
-        panic!();
+        panic!("Could not find symbol for `target_fn_name`");
     }
 }
 
@@ -131,10 +126,7 @@ fn assert_simplified_predicate(pred: &Expr) {
     if let VarId { name, .. } = pred {
         assert_eq!("i", name);
     } else {
-        // failed!
-        error!("ExprFolder did not fold correctly...");
-        println!("{:#?}", pred);
-        panic!();
+        panic!("ExprFolder did not fold correctly...{pred:#?}");
     }
 }
 
@@ -262,8 +254,7 @@ fn asserts_on_call(call: &Expr) {
         if let VarId { name, .. } = &**fn_target {
             assert_eq!("strcmp", name);
         } else {
-            error!("ExprFolder did not fold correctly...");
-            panic!();
+            panic!("ExprFolder did not fold correctly...");
         }
 
         assert_eq!(2, args.len());
@@ -276,8 +267,7 @@ fn asserts_on_call(call: &Expr) {
         {
             assert_eq!(2, vals.len());
         } else {
-            error!("ExprFolder did not fold correctly...");
-            panic!();
+            panic!("ExprFolder did not fold correctly...")
         }
     }
 }
@@ -320,9 +310,6 @@ wasm::call:alt /
         asserts_on_call(lhs);
         asserts_on_call(rhs);
     } else {
-        // failed!
-        error!("ExprFolder did not fold correctly...");
-        println!("{:#?}", folded_expr);
-        panic!();
+        panic!("ExprFolder did not fold correctly...{folded_expr:#?}");
     }
 }

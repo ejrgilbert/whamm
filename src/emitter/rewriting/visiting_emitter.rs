@@ -266,9 +266,25 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         is_success
     }
 
-    pub(crate) fn save_args(&mut self, args: &[StackVal]) -> bool {
-        self.instr_created_args = self.save_stack_vals(args);
-        true
+    pub(crate) fn save_args(
+        &mut self,
+        args: &[StackVal],
+        loc: &Option<crate::parser::types::Location>,
+        err: &mut ErrorGen,
+    ) -> bool {
+        let (recs, unresolved) = self.save_stack_vals(args);
+        self.instr_created_args = recs;
+        for name in &unresolved {
+            err.add_instr_error_at(
+                &format!(
+                    "cannot determine the type of operand `{name}`: it is polymorphic \
+                     and no type bound gave it a concrete type. Add a type bound to the \
+                     probe, e.g. `(arg0: i32)` or `<T: numeric>(arg0: T)`."
+                ),
+                loc,
+            );
+        }
+        unresolved.is_empty()
     }
 
     pub(crate) fn emit_args(&mut self, err: &mut ErrorGen) -> bool {
@@ -314,47 +330,53 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         true
     }
 
-    pub(crate) fn save_results(&mut self, results: &[StackVal]) -> bool {
-        self.instr_created_results = self.save_stack_vals(results);
+    pub(crate) fn save_results(
+        &mut self,
+        results: &[StackVal],
+        loc: &Option<crate::parser::types::Location>,
+        err: &mut ErrorGen,
+    ) -> bool {
+        let (recs, unresolved) = self.save_stack_vals(results);
+        self.instr_created_results = recs;
+        if !unresolved.is_empty() {
+            err.add_probe_warn(
+                "support for probes with polymorphic result types is incomplete for the \
+                 bytecode-rewriting target; this may generate an invalid instrumented module.",
+                loc,
+            );
+        }
         true
     }
 
-    fn save_stack_vals(&mut self, vals: &[StackVal]) -> Vec<(String, usize)> {
+    fn save_stack_vals(&mut self, vals: &[StackVal]) -> (Vec<(String, usize)>, Vec<String>) {
         // No opcodes should have been emitted in the module yet!
         // So, we can just save off the first * items in the stack as the args
         // to the call.
         let mut recs: Vec<(String, usize)> = vec![]; // vec to retain order!
         let mut locals: Vec<(String, u32)> = vec![];
-        vals.iter().for_each(
-            |StackVal {
-                 name,
-                 ty: val_ty,
-             }| {
-                let ty = if let Some(ty) = val_ty {
-                    *ty
-                } else {
-                    warn!("The current way that probes with polymorphic result types is supported for the bytecode rewriting target is incomplete.\
-                           In a future version, we need to have a virtual stack on the side to compute the actual result type and compare with the \
-                           result bounds of the probe to see if the location is a map. For now, it may generate invalid instrumented modules!");
-                    let Some(Record::Var {
-                                 ty,
-                                 ..
-                             }) = self.table.lookup_var(name, true)
-                    else {
-                        unreachable!("unexpected type");
-                    };
-                    let wasm_ty = if ty.to_wasm_type().len() > 1 {
-                        unimplemented!()
-                    } else {
-                        *ty.to_wasm_type().first().unwrap()
-                    };
-                    wasm_ty
-                };
-                // create local for the result in the module
-                let local_id = LocalID(self.locals_tracker.use_local(ty, &mut self.app_iter));
-                locals.push((name.to_string(), *local_id));
-            },
-        );
+        let mut unresolved: Vec<String> = vec![];
+        for StackVal { name, ty: val_ty } in vals.iter() {
+            let ty = if let Some(ty) = val_ty {
+                *ty
+            } else {
+                match self.table.lookup_var(name, false) {
+                    Some(Record::Var { ty, .. }) => {
+                        if ty.to_wasm_type().len() > 1 {
+                            unimplemented!()
+                        } else {
+                            *ty.to_wasm_type().first().unwrap()
+                        }
+                    }
+                    _ => {
+                        unresolved.push(name.to_string());
+                        continue;
+                    }
+                }
+            };
+            // create local for the result in the module
+            let local_id = LocalID(self.locals_tracker.use_local(ty, &mut self.app_iter));
+            locals.push((name.to_string(), *local_id));
+        }
 
         // Save vals in reverse order (the leftmost val is at the bottom of the stack)
         locals.iter().for_each(|(name, local_id)| {
@@ -384,7 +406,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             recs.insert(0, (name.to_string(), id));
         });
 
-        recs
+        (recs, unresolved)
     }
 
     pub(crate) fn emit_results(&mut self, err: &mut ErrorGen) -> bool {
@@ -1102,8 +1124,12 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
     }
 
     fn handle_alt_call_by_name(&mut self, args: &[Expr], err: &mut ErrorGen) -> bool {
+        let loc = args.first().and_then(|arg| arg.loc().clone());
         if self.in_init {
-            err.add_instr_error("Cannot call `alt_call_by_name` as a variable initialization.");
+            err.add_instr_error_at(
+                "Cannot call `alt_call_by_name` as a variable initialization.",
+                &loc,
+            );
             return false;
         }
         // args: vec![func_name: String]
@@ -1126,20 +1152,30 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             self.app_iter.call(func_id);
             is_success
         } else {
-            unreachable!(
-                "{} Could not find alt function call by name: {}",
-                UNEXPECTED_ERR_MSG, fn_name
+            err.add_instr_error_at(
+                &format!(
+                    "cannot resolve `alt_call_by_name(\"{fn_name}\")`: no function named \
+                     `{fn_name}` (if the module was stripped of its name section, function \
+                     names are unavailable)"
+                ),
+                &loc,
             );
+            true
         }
     }
 
     fn handle_alt_call_by_id(&mut self, args: &[Expr], err: &mut ErrorGen) -> bool {
+        let loc = args.first().and_then(|arg| arg.loc().clone());
         if self.in_init {
-            err.add_instr_error("Cannot call `alt_call_by_id` as a variable initialization.");
+            err.add_instr_error_at(
+                "Cannot call `alt_call_by_id` as a variable initialization.",
+                &loc,
+            );
             return false;
         }
         // args: vec![func_id: i32]
         // Assume the correct args since we've gone through typechecking at this point!
+        // The id must be a constant after folding.
         let func_id = match args.first().unwrap() {
             Expr::Primitive {
                 val:
@@ -1148,12 +1184,22 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                         ..
                     },
                 ..
-            } => *val,
-            _ => return false,
+            } => *val as u32,
+            other => match other.get_primitive_u32() {
+                Some(val) => val,
+                None => {
+                    err.add_instr_error_at(
+                        "`alt_call_by_id` requires a constant function id (a literal or a \
+                         constant-foldable expression)",
+                        &loc,
+                    );
+                    return true;
+                }
+            },
         };
 
         let is_success = self.emit_args(err);
-        self.app_iter.call(FunctionID(func_id as u32));
+        self.app_iter.call(FunctionID(func_id));
         is_success
     }
 

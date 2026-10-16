@@ -451,6 +451,29 @@ fn instrument_alt_mode_legality() -> Result<()> {
     let processed_scripts = setup_tests("core_suite/alt_mode_legality");
     assert!(!processed_scripts.is_empty());
 
-    // TODO: alt bound funcs on the wei target.
+    // TODO: alt on the wei target.
     run_core_suite("alt_mode_legality", processed_scripts, true, false)
+}
+
+#[test]
+#[should_panic(expected = "block-structured `alt` guarded by a runtime predicate")]
+fn block_alt_with_predicate_is_unimplemented() {
+    setup_logger();
+    let app_bytes =
+        wat::parse_str("(module (func (export \"_start\") (block)))").expect("assemble app wat");
+    let core_lib = whamm::api::load_core_lib_from_path(std::path::Path::new(DEFAULT_CORE_LIB_PATH))
+        .expect("core lib");
+    let defs = whamm::api::load_defs_from_path(std::path::Path::new(DEFAULT_DEFS_PATH));
+    let user_libs = whamm::api::parse_user_libs(vec![]).expect("user libs");
+
+    let mut module = Module::parse(&app_bytes, true, true).expect("parse app");
+    let _ = whamm::api::instrument::instrument_module_with_rewriting(
+        &mut module,
+        "report var a: i32;  wasm:opcode:block:alt / a == 0 / { }"
+            .as_bytes()
+            .to_vec(),
+        user_libs,
+        Some(core_lib),
+        Some(defs),
+    );
 }
