@@ -52,13 +52,11 @@ pub fn instrument_with_config(
 ) -> Result<Instrumented, Diagnostics> {
     let core_lib = resolve_core_lib(core_lib);
     let defs = resolve_defs(defs);
+    let as_monitor_module = config.as_monitor_module;
     match instr::run_on_bytes(
         &core_lib, &defs, wasm_app, script, user_libs, MAX_ERRORS, config,
     ) {
-        Ok((module, diagnostics)) => Ok(Instrumented {
-            module,
-            diagnostics,
-        }),
+        Ok((module, diagnostics)) => finalize_rewritten(module, diagnostics, as_monitor_module),
         Err(e) => Err(e.to_diagnostics()),
     }
 }
@@ -102,12 +100,35 @@ pub fn instrument_module_with_rewriting(
         MAX_ERRORS,
         Config::default_rewriting(),
     ) {
-        Ok((module, diagnostics)) => Ok(Instrumented {
-            module,
-            diagnostics,
-        }),
+        Ok((module, diagnostics)) => finalize_rewritten(module, diagnostics, false),
         Err(e) => Err(e.to_diagnostics()),
     }
+}
+
+/// Validate the final instrumented bytes before handing them back
+fn finalize_rewritten(
+    module: Vec<u8>,
+    mut diagnostics: Diagnostics,
+    as_monitor_module: bool,
+) -> Result<Instrumented, Diagnostics> {
+    use wirm::wasmparser::{Validator, WasmFeatures};
+    if !as_monitor_module {
+        if let Err(e) = Validator::new_with_features(WasmFeatures::all()).validate_all(&module) {
+            diagnostics.items.push(WhammDiagnostic {
+                severity: Severity::Error,
+                code: "invalid-module".to_string(),
+                msg: format!("instrumentation produced an invalid Wasm module: {e}"),
+                match_rule: None,
+                primary: None,
+                secondary: None,
+            });
+            return Err(diagnostics);
+        }
+    }
+    Ok(Instrumented {
+        module,
+        diagnostics,
+    })
 }
 
 /// Using the passed Whamm script, generate a monitor module that

@@ -748,20 +748,20 @@ wasm::call:alt /
     let (_, package) = provider.packages.iter().next().unwrap();
     assert_eq!("opcode", package.def.name);
     assert_eq!(0, package.def.bound_vars.len());
-    assert_eq!(1, package.def.bound_fns.len());
+    assert_eq!(0, package.def.bound_fns.len());
 
     assert_eq!(1, package.events.len());
     let (_, event) = package.events.iter().next().unwrap();
     assert_eq!("call", event.def.name);
     assert_eq!(10, event.def.bound_vars.len());
-    assert_eq!(2, event.def.bound_fns.len());
+    assert_eq!(0, event.def.bound_fns.len()); // alt_call_by_* moved to the `alt` mode
 
     assert_eq!(1, event.probes.len());
     assert_eq!(1, event.probes.get(&ModeKind::Alt).unwrap().len());
 
     let probe = event.probes.get(&ModeKind::Alt).unwrap().first().unwrap();
     assert_eq!(0, probe.def.bound_vars.len());
-    assert_eq!(0, probe.def.bound_fns.len());
+    assert_eq!(3, probe.def.bound_fns.len()); // drop_args, alt_call_by_id, alt_call_by_name
     assert_eq!(ModeKind::Alt, probe.kind);
 
     // probe predicate

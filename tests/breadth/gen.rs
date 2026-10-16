@@ -189,6 +189,12 @@ fn walk_event(
     }
 
     for mode in event.modes.iter() {
+        let mut mode_scope = AllBoundItems {
+            vars: in_scope.vars.clone(),
+            fns: in_scope.fns.clone(),
+        };
+        mode_scope.vars.extend(mode.def.bound_vars.iter());
+        mode_scope.fns.extend(mode.def.bound_fns.iter());
         emit_probe(
             &RuleSite {
                 provider: &provider.def.name,
@@ -196,7 +202,7 @@ fn walk_event(
                 event: Some(&event.def.name),
                 mode: Some(mode),
             },
-            &in_scope,
+            &mode_scope,
             out,
         );
     }

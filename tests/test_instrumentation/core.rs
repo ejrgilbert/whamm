@@ -444,3 +444,13 @@ fn instrument_with_polymorphism_scripts() -> Result<()> {
 
     run_core_suite("polymorphism", processed_scripts, true, true)
 }
+
+#[test]
+fn instrument_alt_mode_legality() -> Result<()> {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/alt_mode_legality");
+    assert!(!processed_scripts.is_empty());
+
+    // TODO: alt bound funcs on the wei target.
+    run_core_suite("alt_mode_legality", processed_scripts, true, false)
+}

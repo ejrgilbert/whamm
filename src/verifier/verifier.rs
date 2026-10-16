@@ -1059,6 +1059,10 @@ impl<'a> TypeChecker<'a> {
                         let Some(rec_id) = rec_id_opt.filter(|id| {
                             matches!(self.table.get_record(*id), Some(Record::Fn { .. }))
                         }) else {
+                            self.err.type_check_error(
+                                format!("No function named `{fn_name}` is in scope"),
+                                &loc.clone().map(|l| l.line_col),
+                            );
                             return Some(DataType::AssumeGood);
                         };
                         CallKind::Global { rec_id, context }
