@@ -17,6 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // -- bundle the provider definitions
     let defs_dir = "./";
     bundle_defs(defs_dir, &mut out_file, "DEF_YAMLS");
+    println!("cargo:rerun-if-changed=providers");
 
     // Build the CLI manual.
 

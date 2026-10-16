@@ -660,11 +660,12 @@ pub struct ModeDef {
 }
 impl CheckedFrom<ModeYml> for ModeDef {
     fn from(value: ModeYml) -> Result<Self, Box<ErrorGen>> {
+        let bound_fns = from_helper::<BoundFunc, BoundFuncYml>(value.bound_fns)?;
         Ok(Self {
             def: Def {
                 name: value.name.clone(),
                 bound_vars: vec![],
-                bound_fns: vec![],
+                bound_fns,
                 docs: value.docs.clone(),
             },
             alias: value.alias_to.clone(),
@@ -1147,4 +1148,6 @@ struct ModeYml {
     name: String,
     docs: String,
     alias_to: Option<String>,
+    #[serde(default)]
+    bound_fns: Vec<BoundFuncYml>,
 }

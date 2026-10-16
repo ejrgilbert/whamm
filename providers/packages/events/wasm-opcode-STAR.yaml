@@ -464,14 +464,43 @@ branching_after: &branching_after
   alias_to: at_target
   name: semantic_after
   docs: This mode will cause the instrumentation logic to run *semantically after* the instrumented location, meaning it will find the target point in the bytecode that will be executed *after* the point is reached (consider blocks and br* opcodes).
+drop_args: &drop_args
+  name: drop_args
+  params: ()
+  results: ()
+  req_args: 0   # does not need to pull arguments for this function to work.
+  lifetime: static
+  docs: Drop the incoming arguments to the instrumented opcode. Only valid in `:alt` mode.
+alt_call_by_id: &alt_call_by_id
+  name: alt_call_by_id
+  lifetime: static
+  params: "(func_id: i32)"
+  results: ()
+  req_args: -1
+  docs: Replace the instrumented opcode with a call (targeting the passed function ID). Re-emits the opcode's original operands onto the stack. Only valid in `:alt` mode.
+alt_call_by_name: &alt_call_by_name
+  name: alt_call_by_name
+  lifetime: static
+  params: "(func_name: str)"
+  results: ()
+  req_args: -1
+  docs: Replace the instrumented opcode with a call (targeting the function with the passed name). Re-emits the opcode's original operands onto the stack. Only valid in `:alt` mode.
 alt: &alt
   alias_to: null
   name: alt
   docs: This mode will cause the instrumentation logic to run *instead of* the probed event (if the predicate evaluates to `true`).
+  bound_fns:
+    - *drop_args
+    - *alt_call_by_id
+    - *alt_call_by_name
 block_alt: &block_alt
   alias_to: alt
   name: block_alt
   docs: This mode will cause the instrumentation logic to run *instead of* the probed block (if the predicate evaluates to `true`).
+  bound_fns:
+    - *drop_args
+    - *alt_call_by_id
+    - *alt_call_by_name
 entry: &entry
   alias_to: null
   name: entry
@@ -522,20 +551,6 @@ target_fn_type: &target_fn_type
   docs: The type of function being called at this call site. This constant will evaluate to either `local` or `import`.
   lifetime: static
   derived_from: null
-alt_call_by_id: &alt_call_by_id
-  name: alt_call_by_id
-  lifetime: static
-  params: "(func_id: i32)"
-  results: ()
-  req_args: -1
-  docs: Insert an alternate call (targeting the passed function ID) into the Wasm bytecode. Will also emit the original parameters onto the stack.
-alt_call_by_name: &alt_call_by_name
-  name: alt_call_by_name
-  lifetime: static
-  params: "(func_name: str)"
-  results: ()
-  req_args: -1
-  docs: Insert an alternate call (targeting the passed function name) into the Wasm bytecode. Will also emit the original parameters onto the stack.
 
 # ========================================
 # ==== *call_indirect* Constants ====
@@ -988,9 +1003,7 @@ call: &call
     - *target_imp_module
     - *target_fn_name
     - *target_fn_type
-  bound_fns:
-    - *alt_call_by_id
-    - *alt_call_by_name
+  bound_fns: []
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
@@ -1044,9 +1057,7 @@ return_call: &return_call
     - *target_imp_module
     - *target_fn_name
     - *target_fn_type
-  bound_fns:
-    - *alt_call_by_id
-    - *alt_call_by_name
+  bound_fns: []
   supported_modes: *default_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/call"
