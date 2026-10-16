@@ -575,6 +575,55 @@ pub fn test_type_errors() {
     }
 }
 
+#[test]
+pub fn test_arity_checks() {
+    setup_logger();
+
+    // Correct arity for compiler builtins and string methods is accepted.
+    for script in &[
+        "wasm:opcode:i32.const:before { var s: u32 = page_size(APP_MEMID); }",
+        "report var s: str = read_str(0, 0, 10);
+         wasm:opcode:drop:before { var a: i32; }",
+        "wasm:opcode:drop:before {
+            var s: str = read_str(0, 0, 10);
+            var b: bool = s.starts_with(\"ab\");
+            var n: u32 = s.len();
+        }",
+    ] {
+        let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+        let res = is_valid_script(script, &mut err);
+        err.report();
+        assert!(
+            res && !err.has_errors,
+            "expected valid (correct arity): {script}"
+        );
+    }
+
+    // Wrong arity (too few and too many) for the same functions is rejected.
+    for script in &[
+        // compiler builtin, too few / too many
+        "wasm:opcode:i32.const:before { var s: u32 = page_size(); }",
+        "wasm:opcode:i32.const:before { var s: u32 = page_size(APP_MEMID, 1 as u32); }",
+        "wasm:opcode:drop:before { var s: str = read_str(0, 1); }",
+        // string method, too few / too many
+        "wasm:opcode:drop:before {
+            var s: str = read_str(0, 0, 10);
+            var b: bool = s.starts_with();
+        }",
+        "wasm:opcode:drop:before {
+            var s: str = read_str(0, 0, 10);
+            var n: u32 = s.len(1);
+        }",
+    ] {
+        let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+        let res = is_valid_script(script, &mut err);
+        assert!(
+            !res && err.has_errors,
+            "expected arity error (wrong arity): {script}"
+        );
+    }
+}
+
 // ===============================
 // = Polymorphism (generic probes) =
 // ===============================
