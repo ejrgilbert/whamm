@@ -608,8 +608,12 @@ impl InstrGenerator<'_, '_> {
     }
     fn after_run(&mut self) -> bool {
         if !self.config.no_report {
-            self.emitter
-                .configure_flush_routines(self.has_reports, self.err, &mut self.ast);
+            self.emitter.configure_flush_routines(
+                self.has_reports,
+                self.on_exit_fid,
+                self.err,
+                &mut self.ast,
+            );
         }
         true
     }
