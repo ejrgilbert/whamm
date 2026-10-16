@@ -1230,6 +1230,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
     pub fn configure_flush_routines(
         &mut self,
         has_reports: bool,
+        on_exit_fid: Option<u32>,
         err: &mut ErrorGen,
         ast: &mut SimpleAST,
     ) {
@@ -1283,12 +1284,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             };
 
             self.locals_tracker.reset_function();
-            let on_exit_id = if let Some(fid) = self
-                .app_iter
-                .module
-                .functions
-                .get_local_fid_by_name("on_exit")
-            {
+            let on_exit_id = if let Some(fid) = on_exit_fid.map(FunctionID) {
                 let Ok(mut on_exit) = self.app_iter.module.functions.get_fn_modifier(fid) else {
                     panic!(
                         "{UNEXPECTED_ERR_MSG} \
