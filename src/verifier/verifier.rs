@@ -962,6 +962,7 @@ impl<'a> TypeChecker<'a> {
                     // post-typecheck). Treat as a global call with no obj.
                     _ => (None, None),
                 };
+                let call_loc = loc.clone().map(|l| l.line_col);
 
                 if annotation.as_ref().is_some_and(|a| a.is_init()) && !self.in_stmt_expr {
                     self.err.type_check_error(
@@ -1155,6 +1156,23 @@ impl<'a> TypeChecker<'a> {
                         "Cannot use a non-static compiler function to initialize this variable with special scoping. Hint: split out the variable's initialization from the declaration.".to_string(),
                         &loc.clone().map(|l| l.line_col),
                     );
+                }
+
+                if *def != Definition::User && params.len() != actual_param_tys.len() {
+                    let noun = if params.len() == 1 {
+                        "argument"
+                    } else {
+                        "arguments"
+                    };
+                    self.err.type_check_error(
+                        format!(
+                            "`{fn_name}` expects {} {noun}, found {}",
+                            params.len(),
+                            actual_param_tys.len()
+                        ),
+                        &call_loc,
+                    );
+                    return Some(ret_ty.clone());
                 }
 
                 for (i, (expected, actual)) in

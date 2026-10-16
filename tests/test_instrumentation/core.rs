@@ -456,6 +456,15 @@ fn instrument_alt_mode_legality() -> Result<()> {
 }
 
 #[test]
+fn instrument_arity_checks() -> Result<()> {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/arity_checks");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("arity_checks", processed_scripts, true, false)
+}
+
+#[test]
 #[should_panic(expected = "block-structured `alt` guarded by a runtime predicate")]
 fn block_alt_with_predicate_is_unimplemented() {
     setup_logger();

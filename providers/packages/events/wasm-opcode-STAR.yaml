@@ -455,7 +455,7 @@ before: &before
 after: &after
   alias_to: null
   name: after
-  docs:  This mode will cause the instrumentation logic to run *after* the probed event (if the predicate evaluates to `true`). For block-structured opcodes, the probe will be injected after the 'end' of the block.
+  docs:  This mode will cause the instrumentation logic to run *after* the probed event (if the predicate evaluates to `true`).
 semantic_after: &semantic_after
   alias_to: after
   name: semantic_after
@@ -504,11 +504,11 @@ block_alt: &block_alt
 entry: &entry
   alias_to: null
   name: entry
-  docs: This mode will cause the instrumentation logic to run *on entry* to the instrumentation point (e.g. functions bodies, blocks, etc.).
+  docs: This mode will cause the instrumentation logic to run *on entry* to the instrumentation point (e.g. each time a block/loop/if is entered).
 exit: &exit
   alias_to: null
   name: exit
-  docs: This mode will cause the instrumentation logic to run *on exiting* to the instrumentation point (e.g. function bodies, blocks, etc.).
+  docs: This mode inserts instrumentation logic right after a block/loop/if/etc.'s closing `end`.
 
 default_modes: &default_modes
   - *before
