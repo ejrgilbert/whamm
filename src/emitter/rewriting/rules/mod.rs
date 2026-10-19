@@ -2629,18 +2629,18 @@ pub fn get_ty_info_for_instr(
             ),
             Operator::MemoryAtomicWait32 { .. } => (
                 vec![
-                    Some(WirmType::I32),
-                    Some(WirmType::I32),
-                    Some(WirmType::I64),
+                    Some(WirmType::I64), // timeout
+                    Some(WirmType::I32), // expected
+                    Some(WirmType::I32), // addr
                 ],
                 vec![Some(WirmType::I32)],
                 None,
             ),
             Operator::MemoryAtomicWait64 { .. } => (
                 vec![
-                    Some(WirmType::I32),
-                    Some(WirmType::I64),
-                    Some(WirmType::I64),
+                    Some(WirmType::I64), // timeout
+                    Some(WirmType::I64), // expected
+                    Some(WirmType::I32), // addr
                 ],
                 vec![Some(WirmType::I32)],
                 None,
