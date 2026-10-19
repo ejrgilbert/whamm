@@ -1,5 +1,6 @@
 use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
+use crate::common::instr::whamm_inserted_name;
 use crate::emitter::rewriting::rules::{LocInfo, MatchState, ProbeRule, StackVal};
 use crate::emitter::rewriting::visiting_emitter::VisitingEmitter;
 use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
@@ -306,7 +307,7 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
                         self.emitter
                             .app_iter
                             .module
-                            .set_fn_name(on_exit_id, "on_exit".to_string());
+                            .set_fn_name(on_exit_id, whamm_inserted_name("on_exit"));
 
                         self.on_exit_fid = Some(*on_exit_id);
                     }

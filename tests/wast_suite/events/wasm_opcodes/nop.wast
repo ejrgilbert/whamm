@@ -94,7 +94,7 @@
 ;; ----------------------
 ;; ==== unpredicated ====
 ;; WHAMM --> var count: i32; wasm:opcode:nop:before { count++; }
-(assert_return (invoke "get_count") (i32.const 6)) ;; matches three nop's (hit 6x)
+(assert_return (invoke "__whamm_get_count") (i32.const 6)) ;; matches three nop's (hit 6x)
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
@@ -102,7 +102,7 @@
 
 
 ;; WHAMM --> var count: i32; wasm:opcode:nop:after { count++; }
-(assert_return (invoke "get_count") (i32.const 6)) ;; matches three nop's (hit 6x)
+(assert_return (invoke "__whamm_get_count") (i32.const 6)) ;; matches three nop's (hit 6x)
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
@@ -110,7 +110,7 @@
 
 
 ;; WHAMM --> var count: i32; wasm:opcode:nop:alt { count++; }
-(assert_return (invoke "get_count") (i32.const 6)) ;; matches three nop's (hit 6x)
+(assert_return (invoke "__whamm_get_count") (i32.const 6)) ;; matches three nop's (hit 6x)
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
@@ -119,7 +119,7 @@
 
 ;; Target with fid
 ;; WHAMM --> var count: i32; wasm:opcode:nop:before /fid == 2/ { count++; }
-(assert_return (invoke "get_count") (i32.const 2)) ;; matches two nop's (hit 1x)
+(assert_return (invoke "__whamm_get_count") (i32.const 2)) ;; matches two nop's (hit 1x)
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
@@ -128,7 +128,7 @@
 
 ;; Target with opidx
 ;; WHAMM --> var count: i32; wasm:opcode:nop:before /opidx == 0/ { count++; }
-(assert_return (invoke "get_count") (i32.const 5)) ;; matches two nop's (hit 5x)
+(assert_return (invoke "__whamm_get_count") (i32.const 5)) ;; matches two nop's (hit 5x)
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
@@ -137,21 +137,21 @@
 
 ;; Target with fid/opidx
 ;; WHAMM --> var count: i32; wasm:opcode:nop:before /fid == 2 && opidx == 0/ { count++; }
-(assert_return (invoke "get_count") (i32.const 1)) ;; matches one nop's (hit 1x)
+(assert_return (invoke "__whamm_get_count") (i32.const 1)) ;; matches one nop's (hit 1x)
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
 ;; WHAMM --> var count: i32; wasm:opcode:nop:before /(fid == 2 || fid == 3) && opidx == 0/ { count++; }
-(assert_return (invoke "get_count") (i32.const 5)) ;; matches two nop's (hit 5x)
+(assert_return (invoke "__whamm_get_count") (i32.const 5)) ;; matches two nop's (hit 5x)
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var1") (i32.const 3)) ;; sanity check
 
 ;; WHAMM --> var count: i32; wasm:opcode:nop:before /fid == 2 && opidx == 0/ { count++; }
-(assert_return (invoke "get_count") (i32.const 1)) ;; matches one nop's (hit 1x)
+(assert_return (invoke "__whamm_get_count") (i32.const 1)) ;; matches one nop's (hit 1x)
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr
@@ -159,7 +159,7 @@
 
 ;; Target with fname
 ;; WHAMM --> var count: i32; wasm:opcode:nop:before /fname == "basic_br" && opidx == 0/ { count++; }
-(assert_return (invoke "get_count") (i32.const 1)) ;; matches one nop's (hit 1x)
+(assert_return (invoke "__whamm_get_count") (i32.const 1)) ;; matches one nop's (hit 1x)
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 ;; @passes_uninstr

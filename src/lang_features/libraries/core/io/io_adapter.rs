@@ -1,6 +1,7 @@
 // may use some of this code in the future (intrusive_puts)
 #![allow(dead_code)]
 use crate::common::error::ErrorGen;
+use crate::common::instr::whamm_inserted_name;
 use crate::emitter::memory_allocator::{EmitMode, MemoryAllocator, PtrSource};
 use crate::emitter::tag_handler::get_tag_for;
 use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
@@ -132,7 +133,7 @@ impl IOAdapter {
         utils.mem_free(alloc_ptr, &mut puts, err);
 
         let puts_fid = puts.finish_module_with_tag(app_wasm, get_tag_for(&None));
-        app_wasm.set_fn_name(puts_fid, PUTS_INTERNAL.to_string());
+        app_wasm.set_fn_name(puts_fid, whamm_inserted_name(PUTS_INTERNAL));
         self.add_fid(PUTS_INTERNAL, *puts_fid);
 
         puts_fid

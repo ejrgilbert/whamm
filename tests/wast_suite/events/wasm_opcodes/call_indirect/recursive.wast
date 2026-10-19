@@ -36,4 +36,4 @@
 ;; from $main -> $f(5) -> ... -> $f(1) -> $f(0) executes call_indirect
 ;; six times (1 in $main + 5 in $f), so `count` must be 6.
 ;; WHAMM --> var count: i32; wasm:opcode:call_indirect:before { var f: i32 = resolved_fid; count++; }
-(assert_return (invoke "get_count") (i32.const 6))
+(assert_return (invoke "__whamm_get_count") (i32.const 6))

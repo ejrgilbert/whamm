@@ -1,4 +1,5 @@
 use crate::common::error::{ErrorGen, WhammError};
+use crate::common::instr::whamm_inserted_name;
 use crate::emitter::rewriting::rules::{
     get_loc_info_for_active_probes, get_ty_info_for_instr, LocInfo, MatchState, ProbeRule, StackVal,
 };
@@ -1397,7 +1398,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                     on_exit.finish_module_with_tag(self.app_iter.module, get_tag_for(&None));
                 self.app_iter
                     .module
-                    .set_fn_name(on_exit_id, "on_exit".to_string());
+                    .set_fn_name(on_exit_id, whamm_inserted_name("on_exit"));
                 on_exit_id
             };
 
@@ -1455,7 +1456,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                 wrapper.finish_module_with_tag(self.app_iter.module, get_tag_for(&None));
             self.app_iter
                 .module
-                .set_fn_name(wrapper_fid, "whamm_entry".to_string());
+                .set_fn_name(wrapper_fid, whamm_inserted_name("whamm_entry"));
 
             match entry_point {
                 EntryPoint::Export(name) => {

@@ -1,5 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
+use crate::common::instr::{whamm_inserted_name, INSTR_INIT_FNAME};
 use crate::emitter::memory_allocator::{EmitMode, MemoryAllocator, PtrSource};
 use crate::emitter::tag_handler::get_probe_tag_data;
 use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
@@ -441,20 +442,16 @@ impl MapLibAdapter {
     // ==== MAP INIT LOGIC ====
     // ========================
 
-    const MAP_INIT_FNAME: &'static str = "instr_init";
-
     pub fn get_map_init_fid(&self, app_wasm: &mut Module) -> FunctionID {
-        match app_wasm
-            .functions
-            .get_local_fid_by_name(Self::MAP_INIT_FNAME)
-        {
+        // map-init reuses the exact `instr_init` function whamm inserts.
+        let map_init_fname = whamm_inserted_name(INSTR_INIT_FNAME);
+        match app_wasm.functions.get_local_fid_by_name(&map_init_fname) {
             Some(to_call) => to_call,
             None => {
                 unreachable!(
                     "{} \
                     No {} function found in the module!",
-                    UNEXPECTED_ERR_MSG,
-                    Self::MAP_INIT_FNAME
+                    UNEXPECTED_ERR_MSG, map_init_fname
                 );
             }
         }

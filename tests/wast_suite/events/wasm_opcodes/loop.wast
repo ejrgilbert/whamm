@@ -49,59 +49,59 @@
 ;; ----------------------
 ;; ==== unpredicated ====
 ;; WHAMM --> var count: i32; wasm:opcode:loop:before { count++; }
-(assert_return (invoke "get_count") (i32.const 301)) ;; (times $foo is called) + (times $start runs)
+(assert_return (invoke "__whamm_get_count") (i32.const 301)) ;; (times $foo is called) + (times $start runs)
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 50)) ;; sanity check
 
 ;; target a specific `block` using `fn_id`/`fname`/`opidx`
 ;; WHAMM --> var count: i32; wasm:opcode:loop:before /fid == 1 && opidx == 0/ { count++; }
-(assert_return (invoke "get_count") (i32.const 300))
+(assert_return (invoke "__whamm_get_count") (i32.const 300))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 50)) ;; sanity check
 
 ;; WHAMM --> var count: i32; wasm:opcode:loop:before /fid == 1 && opidx == 1/ { count++; }
-(assert_return (invoke "get_count") (i32.const 0)) ;; location DNE
+(assert_return (invoke "__whamm_get_count") (i32.const 0)) ;; location DNE
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 50)) ;; sanity check
 
 ;; WHAMM --> var count: i32; wasm:opcode:loop:before /fname == "start" && opidx == 2/ { count++; }
-(assert_return (invoke "get_count") (i32.const 1)) ;; location DNE
+(assert_return (invoke "__whamm_get_count") (i32.const 1)) ;; location DNE
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 50)) ;; sanity check
 
 ;; entry mode
 ;; WHAMM --> var count: i32; wasm:opcode:loop:entry /fname == "start"/ { count++; }
-(assert_return (invoke "get_count") (i32.const 50))
+(assert_return (invoke "__whamm_get_count") (i32.const 50))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 50)) ;; sanity check
 
 ;; exit mode
 ;; WHAMM --> var count: i32; wasm:opcode:loop:exit /fname == "start"/ { count++; }
-(assert_return (invoke "get_count") (i32.const 1))
+(assert_return (invoke "__whamm_get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 50)) ;; sanity check
 ;; WHAMM --> var count: i32; wasm:opcode:loop:exit /fname == "foo"/ { count++; }
-(assert_return (invoke "get_count") (i32.const 300))
+(assert_return (invoke "__whamm_get_count") (i32.const 300))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 50)) ;; sanity check
 
 ;; after mode
 ;; WHAMM --> var count: i32; wasm:opcode:loop:after /fname == "start"/ { count++; }
-(assert_return (invoke "get_count") (i32.const 1))
+(assert_return (invoke "__whamm_get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 50)) ;; sanity check
 ;; WHAMM --> var count: i32; wasm:opcode:loop:after /fname == "foo"/ { count++; }
-(assert_return (invoke "get_count") (i32.const 300))
+(assert_return (invoke "__whamm_get_count") (i32.const 300))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 50)) ;; sanity check
 
 ;; alt mode
 ;; WHAMM --> var count: i32; wasm:opcode:loop:alt /fname == "foo"/ { count++; }
-(assert_return (invoke "get_count") (i32.const 300))
+(assert_return (invoke "__whamm_get_count") (i32.const 300))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 50)) ;; sanity check
 ;; WHAMM --> var count: i32; wasm:opcode:loop:alt /fname == "start"/ { count++; }
-(assert_return (invoke "get_count") (i32.const 1))
+(assert_return (invoke "__whamm_get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var0") (i32.const 0)) ;; sanity check
 

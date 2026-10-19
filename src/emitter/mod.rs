@@ -9,6 +9,7 @@ pub mod tests;
 pub mod utils;
 
 use crate::common::error::ErrorGen;
+use crate::common::instr::whamm_inserted_name;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::lang_features::alloc_vars::rewriting::UnsharedVarHandler;
@@ -74,7 +75,7 @@ pub fn configure_flush_routines(
     );
 
     let on_exit = flush_reports.finish_module_with_tag(wasm, get_tag_for(&None));
-    wasm.set_fn_name(on_exit, "flush_reports".to_string());
+    wasm.set_fn_name(on_exit, whamm_inserted_name("flush_reports"));
 
     Some(*on_exit)
 }

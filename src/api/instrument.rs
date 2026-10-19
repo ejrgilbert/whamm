@@ -261,10 +261,6 @@ impl Config {
         testing: bool,
         library_strategy: Option<LibraryLinkStrategy>,
     ) -> Self {
-        if testing {
-            todo!("Generating helper methods for testing mode is not yet supported!");
-        }
-
         if no_bundle && (!no_body || !no_pred) {
             panic!("Cannot disable argument bundling without also disabling body and predicate emitting! Otherwise invalid Wasm would be generated.")
         }

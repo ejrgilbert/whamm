@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 use crate::common::error::ErrorGen;
+use crate::common::instr::whamm_inserted_name;
 use crate::emitter::memory_allocator::MemoryAllocator;
 use crate::emitter::tag_handler::get_tag_for;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -608,7 +609,7 @@ impl ReportVars {
             .i32_add();
 
         let flush_fid = flush_fn.finish_module_with_tag(wasm, get_tag_for(&None));
-        wasm.set_fn_name(flush_fid, "flush_var_metadata".to_string());
+        wasm.set_fn_name(flush_fid, whamm_inserted_name("flush_var_metadata"));
         self.flush_tracker.flush_var_metadata_fid = Some(*flush_fid);
     }
     fn flush_ty_metadata<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
@@ -761,7 +762,10 @@ impl ReportVars {
         flush_fn.end().end();
 
         let flush_fid = flush_fn.finish_module_with_tag(wasm, get_tag_for(&None));
-        wasm.set_fn_name(flush_fid, format!("flush_{}_vars", dt));
+        wasm.set_fn_name(
+            flush_fid,
+            whamm_inserted_name(&format!("flush_{}_vars", dt)),
+        );
 
         *flush_fid
     }
