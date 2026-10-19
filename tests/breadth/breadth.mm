@@ -16211,7 +16211,8 @@ wasm:opcode:i32.atomic.rmw.cmpxchg:before {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v18: i32 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:i32.atomic.rmw.cmpxchg:after {
@@ -16233,7 +16234,8 @@ wasm:opcode:i32.atomic.rmw.cmpxchg:after {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v18: i32 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:i32.atomic.rmw.cmpxchg:alt {
@@ -16255,7 +16257,8 @@ wasm:opcode:i32.atomic.rmw.cmpxchg:alt {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v18: i32 = arg1;
+    var v19: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16280,7 +16283,8 @@ wasm:opcode:i32.atomic.rmw8.cmpxchg_u:before {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v18: i32 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:i32.atomic.rmw8.cmpxchg_u:after {
@@ -16302,7 +16306,8 @@ wasm:opcode:i32.atomic.rmw8.cmpxchg_u:after {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v18: i32 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:i32.atomic.rmw8.cmpxchg_u:alt {
@@ -16324,7 +16329,8 @@ wasm:opcode:i32.atomic.rmw8.cmpxchg_u:alt {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v18: i32 = arg1;
+    var v19: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16349,7 +16355,8 @@ wasm:opcode:i32.atomic.rmw16.cmpxchg_u:before {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v18: i32 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:i32.atomic.rmw16.cmpxchg_u:after {
@@ -16371,7 +16378,8 @@ wasm:opcode:i32.atomic.rmw16.cmpxchg_u:after {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v18: i32 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:i32.atomic.rmw16.cmpxchg_u:alt {
@@ -16393,7 +16401,8 @@ wasm:opcode:i32.atomic.rmw16.cmpxchg_u:alt {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v18: i32 = arg1;
+    var v19: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16418,7 +16427,8 @@ wasm:opcode:i64.atomic.rmw.cmpxchg:before {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw.cmpxchg:after {
@@ -16440,7 +16450,8 @@ wasm:opcode:i64.atomic.rmw.cmpxchg:after {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw.cmpxchg:alt {
@@ -16462,7 +16473,8 @@ wasm:opcode:i64.atomic.rmw.cmpxchg:alt {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16487,7 +16499,8 @@ wasm:opcode:i64.atomic.rmw8.cmpxchg_u:before {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw8.cmpxchg_u:after {
@@ -16509,7 +16522,8 @@ wasm:opcode:i64.atomic.rmw8.cmpxchg_u:after {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw8.cmpxchg_u:alt {
@@ -16531,7 +16545,8 @@ wasm:opcode:i64.atomic.rmw8.cmpxchg_u:alt {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16556,7 +16571,8 @@ wasm:opcode:i64.atomic.rmw16.cmpxchg_u:before {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw16.cmpxchg_u:after {
@@ -16578,7 +16594,8 @@ wasm:opcode:i64.atomic.rmw16.cmpxchg_u:after {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw16.cmpxchg_u:alt {
@@ -16600,7 +16617,8 @@ wasm:opcode:i64.atomic.rmw16.cmpxchg_u:alt {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16625,7 +16643,8 @@ wasm:opcode:i64.atomic.rmw32.cmpxchg_u:before {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw32.cmpxchg_u:after {
@@ -16647,7 +16666,8 @@ wasm:opcode:i64.atomic.rmw32.cmpxchg_u:after {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw32.cmpxchg_u:alt {
@@ -16669,7 +16689,8 @@ wasm:opcode:i64.atomic.rmw32.cmpxchg_u:alt {
     var v15: bool = is_write;
     var v16: u64 = offset;
     var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");

@@ -277,6 +277,35 @@ fn check_var_types<'a>(
     true
 }
 
+enum BoundMatch {
+    /// type is known satisfied
+    Match,
+    /// type is known, but not satisfied (or out of range)
+    Mismatch,
+    /// type could not be determined
+    Unresolved,
+}
+fn check_arg_type_bound(stack_vals: &[StackVal], name: &str, declared_ty: &DataType) -> BoundMatch {
+    let Some(n) = nth_prefixed(name, "arg") else {
+        // it's not an arg
+        return BoundMatch::Match;
+    };
+    let Some(target_val) = stack_vals.get(n as usize) else {
+        // index out of bound
+        return BoundMatch::Mismatch;
+    };
+    match target_val.ty {
+        Some(target_ty) => {
+            if declared_ty.is_compatible_with(&DataType::from_wasm_type(&target_ty)) {
+                BoundMatch::Match
+            } else {
+                BoundMatch::Mismatch
+            }
+        }
+        None => BoundMatch::Unresolved,
+    }
+}
+
 fn param_items(params: &WhammParams) -> impl Iterator<Item = (&str, &DataType)> {
     params.params.iter().map(|p| (p.name.as_str(), &p.ty))
 }
@@ -326,7 +355,8 @@ fn handle_opcode(
     let mut covered = false;
     for (package, evt) in pkg.evts.iter_mut() {
         // See OpcodeEvent.get_loc_info
-        let (tmp, is_covered) = handle_opcode_events(app_wasm, fid, opidx, instr, package, evt);
+        let (tmp, is_covered) =
+            handle_opcode_events(app_wasm, state, fid, opidx, instr, package, evt, err);
         covered |= is_covered;
         if let Some(mut tmp) = tmp {
             if let Some(r) = &mut res {
@@ -365,11 +395,13 @@ fn uncovered_opcode_name(instr: &Operator) -> String {
 #[rustfmt::skip]
 fn handle_opcode_events(
     app_wasm: &Module,
+    state: &mut MatchState,
     fid: &FunctionID,
     opidx: usize,
     instr: &Operator,
     event: &String,
     evt: &mut SimpleEvt,
+    err: &mut ErrorGen,
 ) -> (Option<LocInfo>, bool) {
     let mut loc_info = LocInfo::new();
 
@@ -1925,6 +1957,25 @@ fn handle_opcode_events(
 
     let (all_args, all_results, ..) = get_ty_info_for_instr(app_wasm, fid, instr);
 
+    // warn on unknowable operand args (til we land the abstract interpreter)
+    for (_, probe, _) in loc_info.probes.iter() {
+        let has_unresolved_bound = type_bound_items(&probe.type_bounds).any(|(name, ty)| {
+            matches!(check_arg_type_bound(&all_args, name, ty), BoundMatch::Unresolved)
+        });
+        if has_unresolved_bound {
+            let key = format!("{}_{}_{event}", probe.script_id, probe.probe_number);
+            if state.warned_unresolved_operand_bounds.insert(key) {
+                err.add_probe_warn(
+                    &format!(
+                        "cannot apply probe to the `{event}` since its operand types could \
+                         not be determined. Supporting polymorphic opcodes is future work."
+                    ),
+                    &probe.loc,
+                );
+            }
+        }
+    }
+
     // figure out which args are requested based on matched probes
     // (we don't have a match if the requested argument or result is beyond the
     // length of what's possible)
@@ -1936,7 +1987,8 @@ fn handle_opcode_events(
             && check_var_types(&all_args, param_items(pred), "arg")
             && check_var_types(&all_results, param_items(body), "res")
             && check_var_types(&all_results, param_items(pred), "res")
-            && check_var_types(&all_args, type_bound_items(bounds), "arg")
+            && type_bound_items(bounds)
+                .all(|(name, ty)| matches!(check_arg_type_bound(&all_args, name, ty), BoundMatch::Match))
             && check_var_types(&all_results, type_bound_items(bounds), "res")
     });
 
@@ -2491,7 +2543,7 @@ pub fn get_ty_info_for_instr(
             | Operator::F64Floor
             | Operator::F64Trunc
             | Operator::F64Nearest
-            | Operator::F64Sqrt => (vec![Some(WirmType::F32)], vec![Some(WirmType::F64)], None),
+            | Operator::F64Sqrt => (vec![Some(WirmType::F64)], vec![Some(WirmType::F64)], None),
             Operator::F64Add
             | Operator::F64Sub
             | Operator::F64Mul
@@ -2512,7 +2564,7 @@ pub fn get_ty_info_for_instr(
                 (vec![Some(WirmType::I64)], vec![Some(WirmType::F64)], None)
             }
             Operator::I64Extend8S | Operator::I64Extend16S | Operator::I64Extend32S => {
-                (vec![Some(WirmType::I32)], vec![Some(WirmType::I64)], None)
+                (vec![Some(WirmType::I64)], vec![Some(WirmType::I64)], None)
             }
             Operator::I32TruncF32S | Operator::I32TruncF32U => {
                 (vec![Some(WirmType::F32)], vec![Some(WirmType::I32)], None)
@@ -2636,11 +2688,21 @@ pub fn get_ty_info_for_instr(
             | Operator::I32AtomicRmw16XorU { .. }
             | Operator::I32AtomicRmwXchg { .. }
             | Operator::I32AtomicRmw8XchgU { .. }
-            | Operator::I32AtomicRmw16XchgU { .. }
-            | Operator::I32AtomicRmwCmpxchg { .. }
+            | Operator::I32AtomicRmw16XchgU { .. } => (
+                vec![Some(WirmType::I32), Some(WirmType::I32)],
+                vec![Some(WirmType::I32)],
+                None,
+            ),
+
+            // [addr, expected, replacement] -> [old]
+            Operator::I32AtomicRmwCmpxchg { .. }
             | Operator::I32AtomicRmw8CmpxchgU { .. }
             | Operator::I32AtomicRmw16CmpxchgU { .. } => (
-                vec![Some(WirmType::I32), Some(WirmType::I32)],
+                vec![
+                    Some(WirmType::I32),
+                    Some(WirmType::I32),
+                    Some(WirmType::I32),
+                ],
                 vec![Some(WirmType::I32)],
                 None,
             ),
@@ -2668,12 +2730,22 @@ pub fn get_ty_info_for_instr(
             | Operator::I64AtomicRmwXchg { .. }
             | Operator::I64AtomicRmw8XchgU { .. }
             | Operator::I64AtomicRmw16XchgU { .. }
-            | Operator::I64AtomicRmw32XchgU { .. }
-            | Operator::I64AtomicRmwCmpxchg { .. }
+            | Operator::I64AtomicRmw32XchgU { .. } => (
+                vec![Some(WirmType::I64), Some(WirmType::I32)],
+                vec![Some(WirmType::I64)],
+                None,
+            ),
+
+            // [addr, expected, replacement] -> [old]
+            Operator::I64AtomicRmwCmpxchg { .. }
             | Operator::I64AtomicRmw8CmpxchgU { .. }
             | Operator::I64AtomicRmw16CmpxchgU { .. }
             | Operator::I64AtomicRmw32CmpxchgU { .. } => (
-                vec![Some(WirmType::I32), Some(WirmType::I64)],
+                vec![
+                    Some(WirmType::I64),
+                    Some(WirmType::I64),
+                    Some(WirmType::I32),
+                ],
                 vec![Some(WirmType::I64)],
                 None,
             ),
@@ -2761,6 +2833,7 @@ fn handle_block(
 pub struct MatchState {
     basic_blocks: BasicBlockState,
     warned_uncovered_opcodes: HashSet<String>,
+    warned_unresolved_operand_bounds: HashSet<String>,
 }
 
 // State to encode the start and end opcode index of a basic block.

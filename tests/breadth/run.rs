@@ -30,6 +30,7 @@ fn breadth_rewriting_compiles_and_runs() -> Result<()> {
         ExpectedOutput::None,
         &out,
         &instr_app,
+        None,
     )
 }
 
@@ -49,6 +50,7 @@ fn breadth_wei_compiles_and_runs() -> Result<()> {
         ExpectedOutput::None,
         &out,
         &instr_app,
+        None,
     )
 }
 
@@ -65,5 +67,6 @@ fn breadth_wei_engine_only_compiles_and_runs() -> Result<()> {
         ExpectedOutput::None,
         &out,
         &instr_app,
+        None,
     )
 }

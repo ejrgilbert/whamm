@@ -1,0 +1,1 @@
+tests/apps/core_suite/handwritten/argtype_i64_extend.wasm
