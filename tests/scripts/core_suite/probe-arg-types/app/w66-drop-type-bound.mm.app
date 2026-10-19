@@ -1,0 +1,1 @@
+tests/apps/core_suite/handwritten/argtype_drop_type_bound.wasm

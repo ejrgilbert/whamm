@@ -230,17 +230,18 @@ pub(crate) fn run_core_suite(
             } else {
                 vec![]
             };
-            // A `.err` file (in place of `.exp`) marks a script that is expected
-            // to fail instrumentation with a matching diagnostic.
-            if let Some(expected_err) = read_expected_err(exp) {
-                run_testcase_expect_error(
-                    script,
-                    &app_path_str,
-                    libs_path_str,
-                    &expected_err,
-                    false,
-                );
-                continue;
+            let expected_err = read_expected_err(exp);
+            if let Some(ref expected_err) = expected_err {
+                if !exp.exists() {
+                    run_testcase_expect_error(
+                        script,
+                        &app_path_str,
+                        libs_path_str,
+                        expected_err,
+                        false,
+                    );
+                    continue;
+                }
             }
             let metadata = fs::metadata(exp).expect("Failed to load expected output file metadata");
             let exp_out = if metadata.len() > MAX_EXP_OUT_SIZE {
@@ -258,6 +259,7 @@ pub(crate) fn run_core_suite(
                 exp_out,
                 &outdir,
                 &instr_app_path,
+                expected_err.as_deref(),
             )?;
         }
     }
@@ -286,17 +288,18 @@ pub(crate) fn run_core_suite(
             } else {
                 vec![]
             };
-            // A `.err` file (in place of `.exp`) marks a script that is expected
-            // to fail instrumentation with a matching diagnostic.
-            if let Some(expected_err) = read_expected_err(exp) {
-                run_testcase_expect_error(
-                    script,
-                    &app_path_str,
-                    libs_path_str,
-                    &expected_err,
-                    true,
-                );
-                continue;
+            let expected_err = read_expected_err(exp);
+            if let Some(ref expected_err) = expected_err {
+                if !exp.exists() {
+                    run_testcase_expect_error(
+                        script,
+                        &app_path_str,
+                        libs_path_str,
+                        expected_err,
+                        true,
+                    );
+                    continue;
+                }
             }
             let metadata = fs::metadata(exp).unwrap_or_else(|_| {
                 panic!("Failed to load expected output file metadata at: {:?}", exp)
@@ -316,6 +319,7 @@ pub(crate) fn run_core_suite(
                 exp_out,
                 &outdir,
                 &instr_app_path,
+                expected_err.as_deref(),
             )?;
         }
     }
@@ -502,6 +506,7 @@ pub(crate) fn run_testcase_rewriting(
     exp_output: ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
+    expected_err: Option<&str>,
 ) -> Result<()> {
     // run the script on configured application
     let wasm = fs::read(app_path_str)?;
@@ -514,13 +519,23 @@ pub(crate) fn run_testcase_rewriting(
         Some(instr_app_path.clone()),
         false,
     )?;
-    // A testcase with no `.err` file must instrument cleanly
-    assert!(
-        diagnostics.is_empty(),
-        "[REWRITE] {script:?} produced unexpected whamm diagnostics \
-         (ship a `.err` file if the diagnostic is intended):\n{}",
-        diagnostics.render(false)
-    );
+    match expected_err {
+        // make sure it errored in the specified way (.err)
+        Some(expected_err) => assert!(
+            diagnostics.render(false).contains(expected_err.trim()),
+            "[REWRITE] {script:?} did not emit the expected diagnostic\n\
+             --- expected (substring) ---\n{}\n--- actual ---\n{}",
+            expected_err.trim(),
+            diagnostics.render(false)
+        ),
+        // make sure it instrumented cleanly
+        None => assert!(
+            diagnostics.is_empty(),
+            "[REWRITE] {script:?} produced unexpected whamm diagnostics \
+             (ship a `.err` file if the diagnostic is intended):\n{}",
+            diagnostics.render(false)
+        ),
+    }
 
     // run the instrumented application on wasmtime
     // let res = Command::new(format!("{home}/.cargo/bin/cargo"))
@@ -544,6 +559,10 @@ pub(crate) fn run_testcase_rewriting(
         .arg(whamm_core_lib_path)
         .arg("--wasm")
         .arg("custom-page-sizes=y")
+        .arg("--wasm")
+        .arg("shared-memory=y")
+        .arg("--wasm")
+        .arg("threads=y")
         .arg("--wasm")
         .arg("function-references=y")
         .arg("--wasm")
@@ -589,6 +608,7 @@ pub(crate) fn run_testcase_wei(
     exp_output: ExpectedOutput,
     outdir: &String,
     instr_app_path: &String,
+    expected_err: Option<&str>,
 ) -> Result<()> {
     let engine_libs = ["whamm:dyninstr"];
     let mut libs_to_link = "".to_string();
@@ -618,7 +638,7 @@ pub(crate) fn run_testcase_wei(
 
     // run the script on configured application
     let mut module_to_instrument = Module::default();
-    run_script(
+    let diagnostics = run_script(
         script,
         app_path_str,
         &mut module_to_instrument,
@@ -626,6 +646,16 @@ pub(crate) fn run_testcase_wei(
         Some(instr_app_path.clone()),
         true,
     )?;
+    // make sure it errored in the specified way (.err)
+    if let Some(expected_err) = expected_err {
+        assert!(
+            diagnostics.render(false).contains(expected_err.trim()),
+            "[WEI] {script:?} did not emit the expected diagnostic\n\
+             --- expected (substring) ---\n{}\n--- actual ---\n{}",
+            expected_err.trim(),
+            diagnostics.render(false)
+        );
+    }
 
     // run the instrumented application on wizard
     let whamm_core_lib_path = "tests/libs/whamm_core.wasm";

@@ -1,0 +1,1 @@
+tests/apps/core_suite/handwritten/argtype_f64_unary.wasm

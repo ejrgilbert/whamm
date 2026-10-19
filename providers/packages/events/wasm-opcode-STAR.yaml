@@ -8610,7 +8610,7 @@ i32_atomic_rmw_cmpxchg: &i32_atomic_rmw_cmpxchg
       docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
     - name: addr
       type: u32
-      derived_from: arg1
+      derived_from: arg2
       lifetime: dynamic
       docs: The memory address argument passed to the opcode.
     - *category_id_atomic
@@ -8621,7 +8621,8 @@ i32_atomic_rmw_cmpxchg: &i32_atomic_rmw_cmpxchg
     - *is_write_true
     - *offset
     - *arg0_i32
-    - *arg1_u32
+    - *arg1_i32
+    - *arg2_u32
   bound_fns: []
   supported_modes: *default_modes
 
@@ -8647,7 +8648,7 @@ i64_atomic_rmw_cmpxchg: &i64_atomic_rmw_cmpxchg
       docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
     - name: addr
       type: u32
-      derived_from: arg1
+      derived_from: arg2
       lifetime: dynamic
       docs: The memory address argument passed to the opcode.
     - *category_id_atomic
@@ -8658,7 +8659,8 @@ i64_atomic_rmw_cmpxchg: &i64_atomic_rmw_cmpxchg
     - *is_write_true
     - *offset
     - *arg0_i64
-    - *arg1_u32
+    - *arg1_i64
+    - *arg2_u32
   bound_fns: []
   supported_modes: *default_modes
 
@@ -8684,7 +8686,7 @@ i32_atomic_rmw8_cmpxchg_u: &i32_atomic_rmw8_cmpxchg_u
       docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
     - name: addr
       type: u32
-      derived_from: arg1
+      derived_from: arg2
       lifetime: dynamic
       docs: The memory address argument passed to the opcode.
     - *category_id_atomic
@@ -8695,7 +8697,8 @@ i32_atomic_rmw8_cmpxchg_u: &i32_atomic_rmw8_cmpxchg_u
     - *is_write_true
     - *offset
     - *arg0_i32
-    - *arg1_u32
+    - *arg1_i32
+    - *arg2_u32
   bound_fns: []
   supported_modes: *default_modes
 
@@ -8721,7 +8724,7 @@ i32_atomic_rmw16_cmpxchg_u: &i32_atomic_rmw16_cmpxchg_u
       docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
     - name: addr
       type: u32
-      derived_from: arg1
+      derived_from: arg2
       lifetime: dynamic
       docs: The memory address argument passed to the opcode.
     - *category_id_atomic
@@ -8732,7 +8735,8 @@ i32_atomic_rmw16_cmpxchg_u: &i32_atomic_rmw16_cmpxchg_u
     - *is_write_true
     - *offset
     - *arg0_i32
-    - *arg1_u32
+    - *arg1_i32
+    - *arg2_u32
   bound_fns: []
   supported_modes: *default_modes
 
@@ -8758,7 +8762,7 @@ i64_atomic_rmw8_cmpxchg_u: &i64_atomic_rmw8_cmpxchg_u
       docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
     - name: addr
       type: u32
-      derived_from: arg1
+      derived_from: arg2
       lifetime: dynamic
       docs: The memory address argument passed to the opcode.
     - *category_id_atomic
@@ -8769,7 +8773,8 @@ i64_atomic_rmw8_cmpxchg_u: &i64_atomic_rmw8_cmpxchg_u
     - *is_write_true
     - *offset
     - *arg0_i64
-    - *arg1_u32
+    - *arg1_i64
+    - *arg2_u32
   bound_fns: []
   supported_modes: *default_modes
 
@@ -8795,7 +8800,7 @@ i64_atomic_rmw16_cmpxchg_u: &i64_atomic_rmw16_cmpxchg_u
       docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
     - name: addr
       type: u32
-      derived_from: arg1
+      derived_from: arg2
       lifetime: dynamic
       docs: The memory address argument passed to the opcode.
     - *category_id_atomic
@@ -8806,7 +8811,8 @@ i64_atomic_rmw16_cmpxchg_u: &i64_atomic_rmw16_cmpxchg_u
     - *is_write_true
     - *offset
     - *arg0_i64
-    - *arg1_u32
+    - *arg1_i64
+    - *arg2_u32
   bound_fns: []
   supported_modes: *default_modes
 
@@ -8832,7 +8838,7 @@ i64_atomic_rmw32_cmpxchg_u: &i64_atomic_rmw32_cmpxchg_u
       docs: The number of bytes that the memory operation is on, e.g. i32.load8_u is 1
     - name: addr
       type: u32
-      derived_from: arg1
+      derived_from: arg2
       lifetime: dynamic
       docs: The memory address argument passed to the opcode.
     - *category_id_atomic
@@ -8843,7 +8849,8 @@ i64_atomic_rmw32_cmpxchg_u: &i64_atomic_rmw32_cmpxchg_u
     - *is_write_true
     - *offset
     - *arg0_i64
-    - *arg1_u32
+    - *arg1_i64
+    - *arg2_u32
   bound_fns: []
   supported_modes: *default_modes
 
