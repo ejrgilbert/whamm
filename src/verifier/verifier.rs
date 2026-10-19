@@ -266,6 +266,13 @@ impl<'a> TypeChecker<'a> {
         } else if matches!(rhs_ty, DataType::AssumeGood) {
             return Some(lhs_ty);
         }
+        if !lhs_ty.is_numeric() {
+            self.err.type_check_error(
+                format!("Arithmetic operation not allowed on non-numeric type: {lhs_ty}"),
+                full_line_col,
+            );
+            return Some(DataType::AssumeGood);
+        }
 
         if let Some(exp_ty) = expected {
             // Guided by assignment target: try to cast operands toward exp_ty.
@@ -323,6 +330,12 @@ impl<'a> TypeChecker<'a> {
                 || attempt_implicit_cast(rhs, &lhs_ty, &rhs_ty, rhs_line_col, "value", self.err))
         {
             return Some(lhs_ty);
+        }
+        if !lhs_ty.is_numeric() {
+            self.err.type_check_error(
+                format!("{op_name} operation not allowed on type: {lhs_ty}"),
+                full_line_col,
+            );
         }
         Some(DataType::AssumeGood)
     }
@@ -932,6 +945,13 @@ impl<'a> TypeChecker<'a> {
                             if expr_ty.is_numeric() {
                                 return Some(expr_ty);
                             }
+                            self.err.type_check_error(
+                                format!(
+                                    "The bitwise NOT operation not allowed on type: {}",
+                                    expr_ty
+                                ),
+                                &loc.clone().map(|l| l.line_col),
+                            );
                             Some(DataType::AssumeGood)
                         }
                     }
