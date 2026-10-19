@@ -1,5 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::common::error::ErrorGen;
+use crate::common::instr::whamm_inserted_name;
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{EmitMode, MemoryAllocator, PtrSource};
 use crate::emitter::tag_handler::get_tag_for;
@@ -771,7 +772,6 @@ pub fn emit_global_getter(
     ty: WirmType,
     loc: &Option<Location>,
 ) -> FunctionID {
-    // todo -- make this conditional on 'testing' mode
     let getter_params = vec![];
     let getter_res = vec![ty];
 
@@ -779,7 +779,7 @@ pub fn emit_global_getter(
     getter.global_get(GlobalID(*global_id));
 
     let getter_id = getter.finish_module_with_tag(app_wasm, get_tag_for(loc));
-    let fn_name = format!("get_{name}");
+    let fn_name = whamm_inserted_name(&format!("get_{name}"));
     app_wasm.set_fn_name(getter_id, fn_name.clone());
     app_wasm
         .exports

@@ -1,4 +1,5 @@
 use crate::common::error::ErrorGen;
+use crate::common::instr::{whamm_inserted_name, INSTR_INIT_FNAME, STRCMP_FNAME};
 use crate::emitter::locals_tracker::LocalsTracker;
 use crate::emitter::memory_allocator::{MemoryAllocator, VAR_BLOCK_BASE_VAR};
 use crate::emitter::tag_handler::{get_probe_tag_data, get_tag_for};
@@ -41,6 +42,8 @@ pub struct ModuleEmitter<'a, 'ir> {
     pub map_lib_adapter: &'a mut MapLibAdapter,
     pub report_vars: &'a mut ReportVars,
     pub registry: &'a mut WasmRegistry,
+    /// Whether to emit the extra accessors: `get_<var>`
+    pub testing: bool,
     fn_providing_contexts: Vec<String>,
 }
 
@@ -55,6 +58,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
         map_lib_adapter: &'a mut MapLibAdapter,
         report_vars: &'a mut ReportVars,
         registry: &'a mut WasmRegistry,
+        testing: bool,
     ) -> Self {
         Self {
             strategy,
@@ -67,6 +71,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
             report_vars,
             table,
             registry,
+            testing,
             fn_providing_contexts: vec!["whamm".to_string()],
         }
     }
@@ -393,7 +398,8 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
             }
 
             let on_exit_id = on_exit.finish_module_with_tag(self.app_wasm, get_tag_for(&None));
-            self.app_wasm.set_fn_name(on_exit_id, "on_exit".to_string());
+            self.app_wasm
+                .set_fn_name(on_exit_id, whamm_inserted_name("on_exit"));
 
             self.app_wasm.exports.add_export_func_with_tag(
                 "wasm:exit".to_string(),
@@ -507,7 +513,8 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
             .return_stmt();
 
         let strcmp_id = strcmp.finish_module_with_tag(self.app_wasm, get_tag_for(&None));
-        self.app_wasm.set_fn_name(strcmp_id, "strcmp".to_string());
+        self.app_wasm
+            .set_fn_name(strcmp_id, whamm_inserted_name(STRCMP_FNAME));
 
         let Record::Fn { addr, .. } = self.table.lookup_fn_mut(&f.name.name)? else {
             unreachable!("unexpected type")
@@ -521,7 +528,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
         let strcmp_fid = *self
             .app_wasm
             .functions
-            .get_local_fid_by_name("strcmp")
+            .get_local_fid_by_name(&whamm_inserted_name(STRCMP_FNAME))
             .expect("strcmp must be emitted before strcontains");
 
         // strcontains(hs_addr: i32, hs_len: i32, nd_addr: i32, nd_len: i32) -> i32
@@ -605,7 +612,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
 
         let strcontains_id = strcontains.finish_module_with_tag(self.app_wasm, get_tag_for(&None));
         self.app_wasm
-            .set_fn_name(strcontains_id, "strcontains".to_string());
+            .set_fn_name(strcontains_id, whamm_inserted_name("strcontains"));
 
         let Record::Fn { addr, .. } = self.table.lookup_fn_mut(&f.name.name)? else {
             unreachable!("unexpected type")
@@ -628,7 +635,11 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
             false,
             get_tag_for(&None),
         );
-        match self.app_wasm.functions.get_local_fid_by_name("instr_init") {
+        match self
+            .app_wasm
+            .functions
+            .get_local_fid_by_name(&whamm_inserted_name(INSTR_INIT_FNAME))
+        {
             Some(_) => {
                 unreachable!("instr_init function already exists - needs to be created by Whamm");
             }
@@ -638,7 +649,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
                 let instr_init_id =
                     instr_init_fn.finish_module_with_tag(self.app_wasm, get_tag_for(&None));
                 self.app_wasm
-                    .set_fn_name(instr_init_id, "instr_init".to_string());
+                    .set_fn_name(instr_init_id, whamm_inserted_name(INSTR_INIT_FNAME));
                 instr_init_id
             }
         }
@@ -724,7 +735,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
                 for (global_id, global_ty) in globals.iter() {
                     addrs.push(VarAddr::Global { addr: **global_id });
 
-                    if only_one {
+                    if only_one && self.testing {
                         getter = Some(emit_global_getter(
                             self.app_wasm,
                             global_id,

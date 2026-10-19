@@ -55,6 +55,6 @@
 ;; -------------------------------
 ;; ==== ARGS, predicate, arg0 ====
 ;; WHAMM --> var count: i32; wasm:opcode:call:before { count = 1; }
-(assert_return (invoke "get_count") (i32.const 1))
+(assert_return (invoke "__whamm_get_count") (i32.const 1))
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var") (i64.const 10))

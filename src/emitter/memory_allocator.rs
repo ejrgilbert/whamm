@@ -1,5 +1,5 @@
 use crate::common::error::ErrorGen;
-use crate::common::instr::ENGINE_BUFFER_MAX_SIZE;
+use crate::common::instr::{whamm_inserted_name, ENGINE_BUFFER_MAX_SIZE};
 use crate::emitter::tag_handler::get_tag_for;
 use crate::emitter::utils::{emit_expr, EmitCtx};
 use crate::emitter::InjectStrategy;
@@ -450,7 +450,7 @@ impl MemoryAllocator {
         let check_memsize_fid = check_memsize.finish_module_with_tag(wasm, get_tag_for(&None));
         wasm.set_fn_name(
             check_memsize_fid,
-            format!("check_memsize_for_mem{}", mem_id),
+            whamm_inserted_name(&format!("check_memsize_for_mem{}", mem_id)),
         );
         check_memsize_fid
     }

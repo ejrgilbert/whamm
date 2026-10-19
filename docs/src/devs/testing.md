@@ -84,7 +84,7 @@ Below is an example `.wast` test using imports:
  
 ;; WHAMM --> var count: i32; wasm:opcode:call:alt / arg0 == 0 / { count = 5; return 1; }
 (assert_return (invoke "get_global_var") (i32.const 1)) ;; alt, so global should be return value
-(assert_return (invoke "get_count") (i32.const 5))
+(assert_return (invoke "__whamm_get_count") (i32.const 5))
 ```
 
 There are several conventions to follow when writing `.wast` test cases for `whamm`.
@@ -131,5 +131,5 @@ See the repo's `README.md` for how to set up the interpreters to run with our te
 ;; REPORT_TRACE(ID) --> 1, 3, 5, 6, 7
 
 ;; Use something like below to assert on report variable values!
-;; WITH_WHAMM --> (assert_return (invoke "get_report_var" (i32.const 1)) (i32.const 7))
+;; WITH_WHAMM --> (assert_return (invoke "__whamm_get_report_var" (i32.const 1)) (i32.const 7))
 ```

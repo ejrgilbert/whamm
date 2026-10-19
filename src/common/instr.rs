@@ -40,6 +40,14 @@ const ENGINE_BUFFER_NAME: &str = "whamm_buffer";
 const ENGINE_BUFFER_START_NAME: &str = "whamm_buffer:start";
 const ENGINE_BUFFER_MAX_NAME: &str = "whamm_buffer:max";
 pub const ENGINE_BUFFER_MAX_SIZE: i32 = 2i32.pow(10); // max set to 1KB = 2^10 = 1024 bytes
+pub const INSTR_INIT_FNAME: &str = "instr_init";
+pub const STRCMP_FNAME: &str = "strcmp";
+
+/// Reserved prefix applied to every inserted whamm identifier
+pub const WHAMM_INSERTED_PREFIX: &str = "__whamm_";
+pub fn whamm_inserted_name(base: &str) -> String {
+    format!("{WHAMM_INSERTED_PREFIX}{base}")
+}
 
 /// create output path if it doesn't exist
 pub(crate) fn try_path(path: &Path) {
@@ -393,6 +401,7 @@ fn run_instr_wei<'lib, 'ir>(
             report_vars,
             // shouldn't need this for `wei`!
             &mut registry,
+            config.testing,
         ),
         io_adapter,
         context_name: "".to_string(),
@@ -456,6 +465,7 @@ fn run_instr_rewrite<'lib, 'ir>(
                 map_lib_adapter,
                 report_vars,
                 &mut registry,
+                config.testing,
             ),
             context_name: "".to_string(),
             err,
@@ -520,7 +530,7 @@ pub fn configure_init_func<'a>(
     let state_init_id = if init_func.body.num_instructions > 0 {
         // Call the probe init state function in the instr_init body
         let state_init_id = init_func.finish_module_with_tag(module, get_tag_for(&None));
-        module.set_fn_name(state_init_id, "init_probe_state".to_string());
+        module.set_fn_name(state_init_id, whamm_inserted_name("init_probe_state"));
         Some(state_init_id)
     } else {
         None
@@ -533,7 +543,10 @@ fn call_instr_init_at_start(
     module: &mut Module,
     err: &mut ErrorGen,
 ) {
-    if let Some(instr_init_fid) = module.functions.get_local_fid_by_name("instr_init") {
+    if let Some(instr_init_fid) = module
+        .functions
+        .get_local_fid_by_name(&whamm_inserted_name(INSTR_INIT_FNAME))
+    {
         if let Some(state_init_id) = state_init_id {
             if let Ok(mut instr_init) = module.functions.get_fn_modifier(instr_init_fid) {
                 instr_init.call(state_init_id);

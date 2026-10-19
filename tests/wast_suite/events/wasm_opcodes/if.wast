@@ -57,25 +57,25 @@
 ;; WHAMM --> var count: i32; wasm:opcode:if:before { count++; }
 ;; @passes_uninstr
 (assert_return (invoke "get_global_var") (i32.const 1))
-(assert_return (invoke "get_count") (i32.const 3))
+(assert_return (invoke "__whamm_get_count") (i32.const 3))
 ;; WHAMM --> var count: i32; wasm:opcode:if:entry { count++; }
-(assert_return (invoke "get_count") (i32.const 2)) ;; the if is only true 2 of the 3 times
+(assert_return (invoke "__whamm_get_count") (i32.const 2)) ;; the if is only true 2 of the 3 times
 
 ;; -------------------------------
 ;; ==== arg0, predicate ====
 ;; -------------------------------
 ;; WHAMM --> var count: i32; wasm:opcode:if:before /arg0 == 0/ { count++; }
-(assert_return (invoke "get_count") (i32.const 1)) ;; only false 1 of the 3 times
+(assert_return (invoke "__whamm_get_count") (i32.const 1)) ;; only false 1 of the 3 times
 ;; WHAMM --> var count: i32; wasm:opcode:if:before /arg0 != 0/ { count++; }
-(assert_return (invoke "get_count") (i32.const 2)) ;; only true 2 of the 3 times
+(assert_return (invoke "__whamm_get_count") (i32.const 2)) ;; only true 2 of the 3 times
 ;; WHAMM --> var count: i32; wasm:opcode:if:before /arg0 > 0/ { count++; }
-(assert_return (invoke "get_count") (i32.const 2)) ;; only true 2 of the 3 times
+(assert_return (invoke "__whamm_get_count") (i32.const 2)) ;; only true 2 of the 3 times
 ;; WHAMM --> var count: i32; wasm:opcode:if:entry /arg0 == 0/ { count++; }
-(assert_return (invoke "get_count") (i32.const 0)) ;; should never be executed! (doesn't enter the if block!)
+(assert_return (invoke "__whamm_get_count") (i32.const 0)) ;; should never be executed! (doesn't enter the if block!)
 ;;;; WHAMM --> var count: i32; wasm:opcode:if:entry /arg0 != 0/ { count++; }
-;;(assert_return (invoke "get_count") (i32.const 2)) ;; only true 2 of the 3 times
+;;(assert_return (invoke "__whamm_get_count") (i32.const 2)) ;; only true 2 of the 3 times
 ;;;; WHAMM --> var count: i32; wasm:opcode:if:entry /arg0 > 0/ { count++; }
-;;(assert_return (invoke "get_count") (i32.const 2)) ;; only true 2 of the 3 times
+;;(assert_return (invoke "__whamm_get_count") (i32.const 2)) ;; only true 2 of the 3 times
 
 ;;;; --------------------
 ;;;; ==== arg0, body ====
@@ -86,39 +86,39 @@
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; arg change doesn't matter at this point!
 ;;;; WHAMM --> var count: i32; wasm:opcode:if:before { count = count + arg0; }
-;;(assert_return (invoke "get_count") (i32.const 2))
+;;(assert_return (invoke "__whamm_get_count") (i32.const 2))
 ;;
 ;;;; target a specific `if` using `fn_id`/`fname`/`opidx`
 ;;;; WHAMM --> var count: i32; wasm:opcode:if:entry /fid == 1 && opidx == 1/ { count++; }
-;;(assert_return (invoke "get_count") (i32.const 1))
+;;(assert_return (invoke "__whamm_get_count") (i32.const 1))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
 ;;;; WHAMM --> var count: i32; wasm:opcode:if:entry /fid == 1 && opidx == 0/ { count++; }
-;;(assert_return (invoke "get_count") (i32.const 0)) ;; loc DNE
+;;(assert_return (invoke "__whamm_get_count") (i32.const 0)) ;; loc DNE
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
 ;;;; WHAMM --> var count: i32; wasm:opcode:if:entry /fid == 1 && opidx == 2/ { count++; }
-;;(assert_return (invoke "get_count") (i32.const 0)) ;; loc DNE
+;;(assert_return (invoke "__whamm_get_count") (i32.const 0)) ;; loc DNE
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
 ;;;; WHAMM --> var count: i32; wasm:opcode:if:entry /fname == "check" && opidx == 1/ { count++; }
-;;(assert_return (invoke "get_count") (i32.const 1))
+;;(assert_return (invoke "__whamm_get_count") (i32.const 1))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
 ;;
 ;;;; exit mode
 ;;;; WHAMM --> var count: i32; wasm:opcode:if:exit /fid == 1 && opidx == 1/ { count++; }
-;;(assert_return (invoke "get_count") (i32.const 1))
+;;(assert_return (invoke "__whamm_get_count") (i32.const 1))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
 ;;;; WHAMM --> var count: i32; wasm:opcode:if:exit /fid == 2 && opidx == 1/ { count++; }
-;;(assert_return (invoke "get_count") (i32.const 0))
+;;(assert_return (invoke "__whamm_get_count") (i32.const 0))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
 ;;
 ;;;; after mode
 ;;;; WHAMM --> var count: i32; wasm:opcode:if:after /fid == 1 && opidx == 1/ { count++; }
-;;(assert_return (invoke "get_count") (i32.const 1))
+;;(assert_return (invoke "__whamm_get_count") (i32.const 1))
 ;;;; @passes_uninstr
 ;;(assert_return (invoke "get_global_var") (i32.const 1)) ;; sanity check
 ;;

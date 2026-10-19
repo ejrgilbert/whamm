@@ -38,13 +38,13 @@
 ;; ---------------------------------
 ;; ==== IMMS, predicate, `imm0` ====
 ;; WHAMM --> var count: i32; wasm:opcode:call:before / imm0 == 0 / { count++; }
-(assert_return (invoke "get_count") (i32.const 0)) ;; predicate is 'false'
+(assert_return (invoke "__whamm_get_count") (i32.const 0)) ;; predicate is 'false'
 ;; WHAMM --> var count: i32; wasm:opcode:call:before / imm0 == 1 / { count++; }
-(assert_return (invoke "get_count") (i32.const 1)) ;; predicate is 'true'
+(assert_return (invoke "__whamm_get_count") (i32.const 1)) ;; predicate is 'true'
 
 ;; ----------------------------
 ;; ==== IMMS, body, `imm0` ====
 ;; WHAMM --> var count: i32; wasm:opcode:call:before { count = imm0 == 0 ? 1 : 0; }
-(assert_return (invoke "get_count") (i32.const 0)) ;; condition is 'false'
+(assert_return (invoke "__whamm_get_count") (i32.const 0)) ;; condition is 'false'
 ;; WHAMM --> var count: i32; wasm:opcode:call:before { count = imm0 == 1 ? 1 : 0; }
-(assert_return (invoke "get_count") (i32.const 1)) ;; condition is 'true'
+(assert_return (invoke "__whamm_get_count") (i32.const 1)) ;; condition is 'true'
