@@ -254,6 +254,16 @@ impl DataType {
                 | DataType::F64
         )
     }
+    /// Inclusive range of values that can be represented in a type's bit width
+    pub fn int_bounds(&self) -> Option<(i128, i128)> {
+        Some(match self {
+            DataType::I8 | DataType::U8 => (i8::MIN as i128, u8::MAX as i128),
+            DataType::I16 | DataType::U16 => (i16::MIN as i128, u16::MAX as i128),
+            DataType::I32 | DataType::U32 => (i32::MIN as i128, u32::MAX as i128),
+            DataType::I64 | DataType::U64 => (i64::MIN as i128, u64::MAX as i128),
+            _ => return None,
+        })
+    }
     pub fn is_compatible_with(&self, other: &DataType) -> bool {
         match self {
             DataType::U8
