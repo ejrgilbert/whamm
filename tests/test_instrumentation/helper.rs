@@ -558,6 +558,8 @@ pub(crate) fn run_testcase_rewriting(
         .arg("--preload")
         .arg(whamm_core_lib_path)
         .arg("--wasm")
+        .arg("threads=y")
+        .arg("--wasm")
         .arg("custom-page-sizes=y")
         .arg("--wasm")
         .arg("shared-memory=y")

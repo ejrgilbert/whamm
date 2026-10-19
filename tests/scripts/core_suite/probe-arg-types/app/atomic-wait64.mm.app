@@ -1,0 +1,1 @@
+tests/apps/core_suite/handwritten/argtype_atomic_wait64.wasm
