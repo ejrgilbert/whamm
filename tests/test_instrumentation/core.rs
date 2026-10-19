@@ -465,6 +465,15 @@ fn instrument_arity_checks() -> Result<()> {
 }
 
 #[test]
+fn instrument_bool_ops() -> Result<()> {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/bool-ops");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("bool-ops", processed_scripts, true, true)
+}
+
+#[test]
 #[should_panic(expected = "block-structured `alt` guarded by a runtime predicate")]
 fn block_alt_with_predicate_is_unimplemented() {
     setup_logger();
