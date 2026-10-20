@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::api::instrument::{Config, LibraryLinkStrategy};
-use crate::api::utils::wasm2wat_on_file;
+use crate::api::utils::validate_wasm_file;
 use crate::common::instr::{run, try_path};
 use crate::common::metrics::Metrics;
 use crate::parser::yml_processor::pull_all_yml_files;
@@ -221,7 +221,7 @@ fn generate_instrumented_bin_wast(
         let buff = wat::parse_bytes(cloned_module.as_slice())
             .expect("couldn't convert the input wat to Wasm");
         let mut module_to_instrument = Module::parse(&buff, true, true).unwrap();
-        // make sure that this is a valid file by running wasm2wat through CLI
+
         let debug_file_path = format!(
             "{TEST_DEBUG_DIR}/{}.wasm",
             wast_path.file_name().unwrap().to_str().unwrap()
@@ -268,7 +268,7 @@ fn generate_instrumented_bin_wast(
                 &debug_file_path, e
             )
         }
-        wasm2wat_on_file(debug_file_path.as_str());
+        validate_wasm_file(debug_file_path.as_str());
 
         // create the wast
         // call.wast -> call.idx.bin.wast

@@ -1,12 +1,12 @@
 use crate::test_instrumentation::helper::{
-    run_basic_instrumentation, run_core_suite, run_script, run_whamm_bin, setup_fault_injection,
-    setup_numerics_monitors, setup_replay, setup_tests, setup_wizard_monitors,
-    DEFAULT_CORE_LIB_PATH, DEFAULT_DEFS_PATH,
+    run_basic_instrumentation, run_core_suite, run_on_wasmtime, run_script, run_whamm_bin,
+    setup_fault_injection, setup_numerics_monitors, setup_replay, setup_tests,
+    setup_wizard_monitors, DEFAULT_CORE_LIB_PATH, DEFAULT_DEFS_PATH,
 };
 use crate::util::setup_logger;
 use anyhow::Result;
 use std::fs;
-use whamm::api::utils::wasm2wat_on_file;
+use whamm::api::utils::validate_wasm_file;
 use wirm::Module;
 
 const APP_WASM_PATH: &str = "tests/apps/core_suite/handwritten/basic.wasm";
@@ -83,7 +83,7 @@ fn instrument_control_flow() {
         DEFAULT_DEFS_PATH,
         DEFAULT_CORE_LIB_PATH,
     );
-    wasm2wat_on_file(instrumented_wasm_path);
+    validate_wasm_file(instrumented_wasm_path);
 }
 
 /// A trap in a callee (`unreachable`) must still flush the report: the flush is
@@ -105,31 +105,22 @@ fn flush_runs_before_trap_in_callee() {
         DEFAULT_CORE_LIB_PATH,
     );
 
-    let res = std::process::Command::new("wasmtime")
-        .arg("run")
-        .arg("--env")
-        .arg("TO_CONSOLE=true")
-        .arg("--preload")
-        .arg("whamm_core=tests/libs/whamm_core.wasm")
-        .arg("--wasm")
-        .arg("custom-page-sizes=y")
-        .arg("--wasm")
-        .arg("function-references=y")
-        .arg("--wasm")
-        .arg("gc=y")
-        .arg("--wasm")
-        .arg("exceptions=y")
-        .arg(instrumented_wasm_path)
-        .output()
-        .expect("failed to run on wasmtime");
+    let run = run_on_wasmtime(
+        instrumented_wasm_path,
+        &[(
+            "whamm_core".to_string(),
+            "tests/libs/whamm_core.wasm".to_string(),
+        )],
+    )
+    .expect("failed to run on wasmtime");
 
     // The program traps in the callee, so it does not exit successfully...
     assert!(
-        !res.status.success(),
+        !run.success,
         "expected the callee trap to terminate with a non-zero code"
     );
     // ...but the report was flushed before the trap: the single `drop` was counted.
-    let stdout = String::from_utf8(res.stdout).unwrap();
+    let stdout = String::from_utf8(run.stdout).unwrap();
     assert_eq!(
         stdout.trim(),
         "1",
