@@ -1,5 +1,5 @@
 use crate::test_instrumentation::helper::{
-    run_basic_instrumentation, run_core_suite, run_on_wasmtime, run_script, run_whamm_bin,
+    run_basic_instrumentation, run_core_suite, run_on_wasmtime, run_script, run_whamm,
     setup_fault_injection, setup_numerics_monitors, setup_replay, setup_tests,
     setup_wizard_monitors, DEFAULT_CORE_LIB_PATH, DEFAULT_DEFS_PATH,
 };
@@ -76,7 +76,7 @@ fn instrument_control_flow() {
     let original_wasm_path = "tests/apps/core_suite/rust/cf.wasm";
     let instrumented_wasm_path = "output/tests/integration-control_flow.wasm";
 
-    run_whamm_bin(
+    run_whamm(
         original_wasm_path,
         monitor_path,
         instrumented_wasm_path,
@@ -97,7 +97,7 @@ fn flush_runs_before_trap_in_callee() {
     let monitor_path = "tests/scripts/trap/callee-trap.mm";
     let instrumented_wasm_path = "output/tests/integration-callee-trap.wasm";
 
-    run_whamm_bin(
+    run_whamm(
         original_wasm_path,
         monitor_path,
         instrumented_wasm_path,
