@@ -3,7 +3,7 @@
 use crate::common::error::ErrorGen;
 use crate::emitter::memory_allocator::StringAddr;
 use crate::emitter::rewriting::rules::data_segments::{
-    get_active_data_len, get_active_data_start, get_page_size_of,
+    get_active_data_len, get_active_data_start, get_page_size_of, mem_id_exists,
 };
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::type_utils::strings::StringUtils;
@@ -1685,9 +1685,10 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
             "addr" => self.handle_addr(call, &folded_args, table, err),
             "len" => self.handle_len(call, &folded_args, table, err),
             "memid" => self.handle_mem(&folded_args, table),
-            "active_data_start" => self.handle_active_data_start(call, &folded_args),
-            "active_data_len" => self.handle_active_data_len(call, &folded_args),
-            "page_size" => self.handle_page_size_of(call, &folded_args),
+            "active_data_start" => self.handle_active_data_start(call, &folded_args, err),
+            "active_data_len" => self.handle_active_data_len(call, &folded_args, err),
+            "page_size" => self.handle_page_size_of(call, &folded_args, err),
+            "mem_size" => self.handle_mem_size(call, &folded_args, err),
             _ => {
                 let Expr::Call {
                     fn_target,
@@ -1708,39 +1709,79 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
         }
     }
 
-    fn handle_active_data_start(&self, orig_call: &Expr, args: &[Expr]) -> Expr {
-        let mem_id = match Self::get_u32(&args[0]) {
-            Some(id) => id,
-            None => return orig_call.clone(),
+    fn check_mem_id(&self, orig_call: &Expr, args: &[Expr], err: &mut ErrorGen) -> Option<u32> {
+        let mem_id = Self::get_u32(&args[0])?;
+        if !mem_id_exists(self.app_wasm, MemoryID(mem_id)) {
+            err.add_instr_error_at(&format!("no memory with id {mem_id}"), orig_call.loc());
+            return None;
+        }
+        Some(mem_id)
+    }
+
+    fn fold_mem_builtin(
+        &self,
+        orig_call: &Expr,
+        args: &[Expr],
+        err: &mut ErrorGen,
+        value_of: impl FnOnce(u32) -> u32,
+    ) -> Expr {
+        if Self::get_u32(&args[0]).is_none() {
+            return orig_call.clone();
+        }
+        let val = match self.check_mem_id(orig_call, args, err) {
+            Some(mem_id) => value_of(mem_id),
+            None => 0,
         };
-        let start = get_active_data_start(self.app_wasm, MemoryID(mem_id));
         Expr::Primitive {
-            val: Value::gen_u32(start),
+            val: Value::gen_u32(val),
             loc: orig_call.loc().clone(),
         }
     }
 
-    fn handle_active_data_len(&self, orig_call: &Expr, args: &[Expr]) -> Expr {
-        let mem_id = match Self::get_u32(&args[0]) {
-            Some(id) => id,
-            None => return orig_call.clone(),
-        };
-        let len = get_active_data_len(self.app_wasm, MemoryID(mem_id));
-        Expr::Primitive {
-            val: Value::gen_u32(len),
-            loc: orig_call.loc().clone(),
-        }
+    fn handle_active_data_start(
+        &self,
+        orig_call: &Expr,
+        args: &[Expr],
+        err: &mut ErrorGen,
+    ) -> Expr {
+        self.fold_mem_builtin(orig_call, args, err, |mem_id| {
+            get_active_data_start(self.app_wasm, MemoryID(mem_id))
+        })
     }
 
-    fn handle_page_size_of(&self, orig_call: &Expr, args: &[Expr]) -> Expr {
-        let mem_id = match Self::get_u32(&args[0]) {
-            Some(id) => id,
-            None => return orig_call.clone(),
+    fn handle_active_data_len(&self, orig_call: &Expr, args: &[Expr], err: &mut ErrorGen) -> Expr {
+        self.fold_mem_builtin(orig_call, args, err, |mem_id| {
+            get_active_data_len(self.app_wasm, MemoryID(mem_id))
+        })
+    }
+
+    fn handle_page_size_of(&self, orig_call: &Expr, args: &[Expr], err: &mut ErrorGen) -> Expr {
+        self.fold_mem_builtin(orig_call, args, err, |mem_id| {
+            get_page_size_of(self.app_wasm, MemoryID(mem_id))
+        })
+    }
+
+    fn handle_mem_size(&self, orig_call: &Expr, args: &[Expr], err: &mut ErrorGen) -> Expr {
+        if Self::get_u32(&args[0]).is_some() && self.check_mem_id(orig_call, args, err).is_none() {
+            return Expr::Primitive {
+                val: Value::gen_u32(0),
+                loc: orig_call.loc().clone(),
+            };
+        }
+        let Expr::Call {
+            fn_target,
+            kind,
+            loc,
+            ..
+        } = orig_call
+        else {
+            unreachable!();
         };
-        let page_size = get_page_size_of(self.app_wasm, MemoryID(mem_id));
-        Expr::Primitive {
-            val: Value::gen_u32(page_size),
-            loc: orig_call.loc().clone(),
+        Expr::Call {
+            fn_target: fn_target.clone(),
+            args: args.to_vec(),
+            kind: kind.clone(),
+            loc: loc.clone(),
         }
     }
 

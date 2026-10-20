@@ -94,6 +94,13 @@ pub fn get_active_data_len(app_wasm: &Module, mem_id: MemoryID) -> u32 {
     max - min
 }
 
+pub fn mem_id_exists(app_wasm: &Module, mem_id: MemoryID) -> bool {
+    app_wasm
+        .memories
+        .iter()
+        .any(|mem| matches!(mem.kind(), MemKind::Local(info) if info.mem_id == mem_id))
+}
+
 const PAGE_SIZE_LOG2: u32 = 16;
 pub fn get_page_size_of(app_wasm: &Module, mid: MemoryID) -> u32 {
     for mem in app_wasm.memories.iter() {
