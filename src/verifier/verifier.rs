@@ -1242,6 +1242,17 @@ impl<'a> TypeChecker<'a> {
                 Some(ret_ty.clone())
             }
             Expr::MapGet { map, key, loc } => {
+                // A map read in a special-scoping decl-init reads probe-local state, just like a
+                // bare VarId does; reject it the same way so the stale pre-init value isn't baked in.
+                if let (Some(_), Some(scope_id)) = self.table.lookup_with_scope_id(map) {
+                    if self.restrict_probe_local_state && self.table.scope_is_probe_local(scope_id)
+                    {
+                        self.err.type_check_error(
+                            "Cannot use the probe-local state to initialize this variable with special scoping. Hint: split out the variable's initialization from the declaration.".to_string(),
+                            &loc.clone().map(|l| l.line_col),
+                        );
+                    }
+                }
                 //ensure that map is a map, then get the other stuff from the map info
                 let map_ty = self.lookup_var_type(map, loc);
                 let key_ty = self.visit_expr_impl(key, None);
