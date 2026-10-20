@@ -72,7 +72,7 @@ jobs:
       - name: Setup `wasmtime`
         uses: bytecodealliance/actions/wasmtime/setup@v1
         with:
-          version: "v43.0.1"
+          version: "v49.0.4"
 
       - name: Check `wasmtime`
         run: "wasmtime --version"

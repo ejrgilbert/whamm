@@ -562,8 +562,6 @@ pub(crate) fn run_testcase_rewriting(
         .arg("--wasm")
         .arg("custom-page-sizes=y")
         .arg("--wasm")
-        .arg("shared-memory=y")
-        .arg("--wasm")
         .arg("threads=y")
         .arg("--wasm")
         .arg("function-references=y")
