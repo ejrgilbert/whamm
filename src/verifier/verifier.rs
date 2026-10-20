@@ -1242,8 +1242,6 @@ impl<'a> TypeChecker<'a> {
                 Some(ret_ty.clone())
             }
             Expr::MapGet { map, key, loc } => {
-                // A map read in a special-scoping decl-init reads probe-local state, just like a
-                // bare VarId does; reject it the same way so the stale pre-init value isn't baked in.
                 if let (Some(_), Some(scope_id)) = self.table.lookup_with_scope_id(map) {
                     if self.restrict_probe_local_state && self.table.scope_is_probe_local(scope_id)
                     {
