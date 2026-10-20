@@ -1703,6 +1703,16 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                         return None;
                     }
                 }
+                // TODO: handle string map values
+                if let DataType::Map { val_ty, .. } = ty {
+                    if let DataType::Str = val_ty.as_ref() {
+                        self.err.type_check_error(
+                            "Maps with `str` values are not yet supported".to_owned(),
+                            &loc.clone().map(|l| l.line_col),
+                        );
+                        return None;
+                    }
+                }
                 //check to make sure that that if tuple, doesn't contain a map
                 if let DataType::Tuple { ty_info } = ty {
                     for elem_ty in ty_info {

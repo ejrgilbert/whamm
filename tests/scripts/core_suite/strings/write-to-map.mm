@@ -1,5 +1,4 @@
 report var m: map<u32, str>;
 wasm:opcode:drop:before {
-    // TODO: need to identify this pattern and replace with string handler!
     m[pc] = "drop";
 }
