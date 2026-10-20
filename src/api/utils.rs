@@ -6,7 +6,6 @@ use crate::parser;
 use crate::wast::test_harness::setup_and_run_tests;
 use log::debug;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 /// Utility to print the info about a match rule to console.
 ///
@@ -57,20 +56,14 @@ pub fn run_wast_tests_at(wast_tests: &Vec<PathBuf>) {
     println!("The wast test passed!");
 }
 
-/// Translate the wasm module at the specified path to human-readable WAT.
-pub fn wasm2wat_on_file(instrumented_wasm_path: &str) {
-    debug!("Running 'wasm-tools validate' on file: {instrumented_wasm_path}");
-    let res = Command::new("wasm-tools")
-        .arg("validate")
-        .arg(instrumented_wasm_path)
-        .output()
-        .expect("failed to execute process");
+/// Validate the wasm module at the specified path.
+pub fn validate_wasm_file(instrumented_wasm_path: &str) {
+    use wirm::wasmparser::{Validator, WasmFeatures};
+    debug!("Validating Wasm module at file: {instrumented_wasm_path}");
+    let bytes = std::fs::read(instrumented_wasm_path)
+        .unwrap_or_else(|e| panic!("failed to read {instrumented_wasm_path}: {e}"));
 
-    if !res.status.success() {
-        println!("wasm-tools validate failed on: {}", instrumented_wasm_path);
-        println!("STDOUT: {}", String::from_utf8(res.stdout).unwrap());
-        println!("STDERR: {}", String::from_utf8(res.stderr).unwrap());
+    if let Err(e) = Validator::new_with_features(WasmFeatures::all()).validate_all(&bytes) {
+        panic!("Wasm validation failed on {instrumented_wasm_path}: {e}");
     }
-
-    assert!(res.status.success());
 }

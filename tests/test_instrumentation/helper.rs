@@ -7,7 +7,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use whamm::api::instrument::{instrument_as_dry_run_rewriting, Diagnostics, WhammError};
-use whamm::api::utils::{wasm2wat_on_file, write_to_file};
+use whamm::api::utils::{validate_wasm_file, write_to_file};
 use wirm::Module;
 
 const TEST_DRY_RUN: bool = true;
@@ -95,23 +95,14 @@ pub fn run_basic_instrumentation(
         DEFAULT_DEFS_PATH,
         DEFAULT_CORE_LIB_PATH,
     );
-    wasm2wat_on_file(instrumented_wasm_path);
+    validate_wasm_file(instrumented_wasm_path);
 }
 
 pub fn wat2wasm_on_file(original_wat_path: &str, original_wasm_path: &str) {
-    let res = Command::new("wasm-tools")
-        .arg("parse")
-        .arg(original_wat_path)
-        .arg("-o")
-        .arg(original_wasm_path)
-        .output()
-        .expect("failed to execute process");
-    if !res.status.success() {
-        error!(
-            "'wasm-tools parse' failed:\n{}\n{}",
-            String::from_utf8(res.stdout).unwrap(),
-            String::from_utf8(res.stderr).unwrap()
-        );
+    match wat::parse_file(original_wat_path) {
+        Ok(wasm) => fs::write(original_wasm_path, wasm)
+            .unwrap_or_else(|e| panic!("failed to write {original_wasm_path}: {e}")),
+        Err(e) => error!("'wat::parse_file' failed on {original_wat_path}: {e}"),
     }
 }
 
@@ -499,13 +490,92 @@ fn run_testcase_expect_error(
     }
 }
 
+/// Output of instrumented module run
+pub(crate) struct WasmtimeRun {
+    pub success: bool,
+    pub stdout: Vec<u8>,
+    pub stderr: Vec<u8>,
+    /// The trap/exit message
+    pub error: Option<String>,
+}
+
+/// Split a `name=path` preload spec, as passed to `wasmtime run --preload`.
+fn split_preload(lib: &str) -> Result<(String, String)> {
+    let (name, path) = lib
+        .split_once('=')
+        .ok_or_else(|| anyhow!("preload lib must be `name=path`, got: {lib}"))?;
+    Ok((name.to_string(), path.to_string()))
+}
+
+pub(crate) fn run_on_wasmtime(
+    app_path: &str,
+    preloads: &[(String, String)],
+) -> Result<WasmtimeRun> {
+    use wasmtime::{Config, Engine, Linker, Module as WtModule, Store};
+    use wasmtime_wasi::p1::{add_to_linker_sync, WasiP1Ctx};
+    use wasmtime_wasi::p2::pipe::MemoryOutputPipe;
+    use wasmtime_wasi::{I32Exit, WasiCtxBuilder};
+
+    // Enable the same proposals the `wasmtime run --wasm <feature>=y` flags did.
+    let mut config = Config::new();
+    config
+        .wasm_threads(true)
+        .shared_memory(true)
+        .wasm_custom_page_sizes(true)
+        .wasm_function_references(true)
+        .wasm_gc(true)
+        .wasm_exceptions(true);
+    let engine = Engine::new(&config)?;
+
+    let mut linker: Linker<WasiP1Ctx> = Linker::new(&engine);
+    add_to_linker_sync(&mut linker, |s| s)?;
+
+    // Generous cap; the buffer only grows as the guest writes.
+    const PIPE_CAPACITY: usize = 512 << 20;
+    let stdout = MemoryOutputPipe::new(PIPE_CAPACITY);
+    let stderr = MemoryOutputPipe::new(PIPE_CAPACITY);
+    let wasi = WasiCtxBuilder::new()
+        .stdout(stdout.clone())
+        .stderr(stderr.clone())
+        .env("TO_CONSOLE", "true")
+        .build_p1();
+    let mut store = Store::new(&engine, wasi);
+
+    for (name, path) in preloads {
+        let module = WtModule::from_file(&engine, path)
+            .map_err(|e| anyhow!("failed to load preload module `{name}` from {path}: {e}"))?;
+        linker.module(&mut store, name, &module)?;
+    }
+    let app = WtModule::from_file(&engine, app_path)
+        .map_err(|e| anyhow!("failed to load app module from {app_path}: {e}"))?;
+    let instance = linker.instantiate(&mut store, &app)?;
+    let result = instance
+        .get_typed_func::<(), ()>(&mut store, "_start")?
+        .call(&mut store, ());
+
+    let (success, error) = match result {
+        Ok(()) => (true, None),
+        Err(e) => match e.downcast_ref::<I32Exit>() {
+            Some(I32Exit(0)) => (true, None),
+            Some(I32Exit(code)) => (false, Some(format!("exited with code {code}"))),
+            None => (false, Some(format!("{e:?}"))),
+        },
+    };
+    Ok(WasmtimeRun {
+        success,
+        stdout: stdout.contents().to_vec(),
+        stderr: stderr.contents().to_vec(),
+        error,
+    })
+}
+
 pub(crate) fn run_testcase_rewriting(
     script: &Path,
     app_path_str: &str,
     user_libs: Vec<String>,
     exp_output: ExpectedOutput,
     outdir: &String,
-    instr_app_path: &String,
+    instr_app_path: &str,
     expected_err: Option<&str>,
 ) -> Result<()> {
     // run the script on configured application
@@ -516,7 +586,7 @@ pub(crate) fn run_testcase_rewriting(
         app_path_str,
         &mut module_to_instrument,
         user_libs.clone(),
-        Some(instr_app_path.clone()),
+        Some(instr_app_path.to_owned()),
         false,
     )?;
     match expected_err {
@@ -538,68 +608,47 @@ pub(crate) fn run_testcase_rewriting(
     }
 
     // run the instrumented application on wasmtime
-    // let res = Command::new(format!("{home}/.cargo/bin/cargo"))
-
-    let whamm_core_lib_path = "whamm_core=tests/libs/whamm_core.wasm";
     let out_filename = "instr-flush.out";
     let out_file = format!("{outdir}/{out_filename}");
     let _ = fs::remove_file(out_file.clone());
-    let mut cmd = Command::new("wasmtime");
-    if matches!(exp_output, ExpectedOutput::Hash(_)) {
-        cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
-    }
-    cmd.arg("run").arg("--env").arg("TO_CONSOLE=true");
 
-    for lib in user_libs.iter() {
-        cmd.arg("--preload").arg(lib);
-    }
+    let mut preloads = user_libs
+        .iter()
+        .map(|lib| split_preload(lib))
+        .collect::<Result<Vec<_>>>()?;
+    preloads.push((
+        "whamm_core".to_string(),
+        "tests/libs/whamm_core.wasm".to_string(),
+    ));
 
-    let res = cmd
-        .arg("--preload")
-        .arg(whamm_core_lib_path)
-        .arg("--wasm")
-        .arg("threads=y")
-        .arg("--wasm")
-        .arg("custom-page-sizes=y")
-        .arg("--wasm")
-        .arg("shared-memory=y")
-        .arg("--wasm")
-        .arg("threads=y")
-        .arg("--wasm")
-        .arg("function-references=y")
-        .arg("--wasm")
-        .arg("gc=y")
-        .arg("--wasm")
-        .arg("exceptions=y")
-        .arg(instr_app_path)
-        .output()
-        .expect("failed to run on wasmtime");
-    if !res.status.success() {
+    let run = run_on_wasmtime(instr_app_path, &preloads)?;
+    if !run.success {
         println!(
-            "[ERROR] Failed to run on wasmtime:\n{}\n{}",
-            String::from_utf8(res.stdout).unwrap(),
-            String::from_utf8(res.stderr).unwrap()
+            "[ERROR] Failed to run on wasmtime:\n{}\n{}\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr),
+            run.error.unwrap_or_default()
         );
         panic!();
-    } else {
-        assert!(
-            res.stderr.is_empty(),
-            "Had error: {}",
-            String::from_utf8(res.stderr).unwrap()
-        );
-        match exp_output {
-            ExpectedOutput::Str(exp_str) => {
-                let stdout = String::from_utf8(res.stdout).unwrap();
-                fs::write(out_file, &stdout).expect("failed to write to log");
-                assert_eq!(stdout.trim(), exp_str.trim());
-            }
-            ExpectedOutput::Hash(exp_hash) => {
-                let hash = file_hash(&PathBuf::from(out_file));
-                assert_eq!(hash, exp_hash);
-            }
-            ExpectedOutput::None => {}
-        };
     }
+    assert!(
+        run.stderr.is_empty(),
+        "Had error: {}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+    match exp_output {
+        ExpectedOutput::Str(exp_str) => {
+            let stdout = String::from_utf8(run.stdout).unwrap();
+            fs::write(out_file, &stdout).expect("failed to write to log");
+            assert_eq!(stdout.trim(), exp_str.trim());
+        }
+        ExpectedOutput::Hash(exp_hash) => {
+            fs::write(&out_file, &run.stdout).expect("failed to write to log");
+            let hash = file_hash(&PathBuf::from(out_file));
+            assert_eq!(hash, exp_hash);
+        }
+        ExpectedOutput::None => {}
+    };
     Ok(())
 }
 
