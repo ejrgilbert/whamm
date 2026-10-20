@@ -36,6 +36,14 @@ const VALID_SCRIPTS: &[&str] = &[
         // `ptr` and `l` are scope-compatible!!
         unshared var l: i32 = ptr;
     }",
+    // split declaration + assignment reads probe-local map state fine
+    "
+    wasm:opcode:drop:before {
+        report var m: map<u32,i32>;
+        m[1 as u32] = 42 as i32;
+        report var r: i32;
+        r = m[1 as u32];
+    }",
     "wasm:opcode:call:alt { new_target_fn_name = redirect_to_fault_injector; }",
     r#"
 wasm::call:alt /
@@ -167,6 +175,23 @@ const TYPE_ERROR_SCRIPTS: &[&str] = &[
 
         // `ptr` and `l` are in a different scope!!
         unshared var l: i32 = ptr;
+    }",
+    // read probe-local map state in a report/unshared variable DeclInit
+    "
+    wasm:opcode:drop:before {
+        report var m: map<u32,i32>;
+        m[1 as u32] = 42 as i32;
+
+        // `m` and `r` are in a different scope!!
+        report var r: i32 = m[1 as u32];
+    }",
+    "
+    wasm:opcode:drop:before {
+        unshared var m: map<u32,i32>;
+        m[1 as u32] = 42 as i32;
+
+        // `m` and `r` are in a different scope!!
+        unshared var r: i32 = m[1 as u32];
     }",
     // binary operations
     "wasm:opcode:call:alt {

@@ -6,7 +6,7 @@ use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use whamm::api::instrument::{instrument_as_dry_run_rewriting, Diagnostics, WhammError};
+use whamm::api::instrument::{instrument_as_dry_run_rewriting, Diagnostics, UserLibs, WhammError};
 use whamm::api::utils::{validate_wasm_file, write_to_file};
 use wirm::Module;
 
@@ -49,36 +49,41 @@ fn get_test_scripts(sub_dir: &str) -> Vec<(PathBuf, String)> {
     scripts
 }
 
-pub fn run_whamm_bin(
+pub fn run_whamm(
     original_wasm_path: &str,
     monitor_path: &str,
     instrumented_wasm_path: &str,
     defs_path: &str,
     core_lib_path: &str,
 ) {
-    // executable is located at target/debug/whamm
-    let executable = "target/debug/whamm";
+    let raw = fs::read(original_wasm_path)
+        .unwrap_or_else(|e| panic!("failed to read app at {original_wasm_path}: {e}"));
+    let wasm_app = wat::parse_bytes(&raw)
+        .unwrap_or_else(|e| panic!("failed to parse app at {original_wasm_path}: {e}"))
+        .into_owned();
+    let script = fs::read(monitor_path)
+        .unwrap_or_else(|e| panic!("failed to read script at {monitor_path}: {e}"));
+    let core_lib = whamm::api::load_core_lib_from_path(Path::new(core_lib_path))
+        .unwrap_or_else(|e| panic!("failed to load core lib at {core_lib_path}: {e}"));
+    let defs = whamm::api::load_defs_from_path(Path::new(defs_path));
 
-    let res = Command::new(executable)
-        .arg("instr")
-        .arg("--script")
-        .arg(monitor_path)
-        .arg("--app")
-        .arg(original_wasm_path)
-        .arg("--output-path")
-        .arg(instrumented_wasm_path)
-        .arg("--defs-path")
-        .arg(defs_path)
-        .arg("--core-lib")
-        .arg(core_lib_path)
-        .output()
-        .expect("failed to execute process");
-    assert!(
-        res.status.success(),
-        "'run_whamm_bin' add target failed:\n{}\n{}",
-        String::from_utf8(res.stdout).unwrap(),
-        String::from_utf8(res.stderr).unwrap()
-    );
+    match whamm::api::instrument::instrument_with_rewriting(
+        wasm_app,
+        script,
+        UserLibs::default(),
+        Some(core_lib),
+        Some(defs),
+    ) {
+        Ok(instrumented) => {
+            write_to_file(instrumented.module, Path::new(instrumented_wasm_path));
+        }
+        Err(diagnostics) => {
+            panic!(
+                "'run_whamm_bin' add target failed:\n{}",
+                diagnostics.render(false)
+            );
+        }
+    }
 }
 
 pub fn run_basic_instrumentation(
@@ -88,7 +93,7 @@ pub fn run_basic_instrumentation(
     instrumented_wasm_path: &str,
 ) {
     wat2wasm_on_file(original_wat_path, original_wasm_path);
-    run_whamm_bin(
+    run_whamm(
         original_wasm_path,
         monitor_path,
         instrumented_wasm_path,
