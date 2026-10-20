@@ -543,6 +543,16 @@ impl<'a> TypeChecker<'a> {
                 // Resolve the raw integer to a concrete NumLit.
                 // Use `expected` if present; otherwise default to i32 (fits) or i64 or u64.
                 let resolved_ty = if let Some(exp_ty) = expected {
+                    if let Some((min, max)) = exp_ty.int_bounds() {
+                        if *raw < min || *raw > max {
+                            let loc = self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
+                            self.err.type_check_error(
+                                format!("CastError: The value `{raw}` overflows for the type `{exp_ty}`. Please add an explicit cast."),
+                                &loc,
+                            );
+                            return Some(DataType::AssumeGood);
+                        }
+                    }
                     exp_ty.clone()
                 } else if *raw >= i32::MIN as i128 && *raw <= i32::MAX as i128 {
                     DataType::I32
