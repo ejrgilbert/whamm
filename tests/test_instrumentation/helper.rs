@@ -548,11 +548,9 @@ pub(crate) fn run_on_wasmtime(
     }
     let app = WtModule::from_file(&engine, app_path)
         .map_err(|e| anyhow!("failed to load app module from {app_path}: {e}"))?;
-    linker.module(&mut store, "", &app)?;
-
-    let result = linker
-        .get_default(&mut store, "")?
-        .typed::<(), ()>(&store)?
+    let instance = linker.instantiate(&mut store, &app)?;
+    let result = instance
+        .get_typed_func::<(), ()>(&mut store, "_start")?
         .call(&mut store, ());
 
     let (success, error) = match result {
