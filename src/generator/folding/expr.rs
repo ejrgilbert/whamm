@@ -1738,7 +1738,12 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
         }
     }
 
-    fn handle_active_data_start(&self, orig_call: &Expr, args: &[Expr], err: &mut ErrorGen) -> Expr {
+    fn handle_active_data_start(
+        &self,
+        orig_call: &Expr,
+        args: &[Expr],
+        err: &mut ErrorGen,
+    ) -> Expr {
         self.fold_mem_builtin(orig_call, args, err, |mem_id| {
             get_active_data_start(self.app_wasm, MemoryID(mem_id))
         })
