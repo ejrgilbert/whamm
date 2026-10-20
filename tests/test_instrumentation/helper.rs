@@ -507,7 +507,10 @@ fn split_preload(lib: &str) -> Result<(String, String)> {
     Ok((name.to_string(), path.to_string()))
 }
 
-pub(crate) fn run_on_wasmtime(app_path: &str, preloads: &[(String, String)]) -> Result<WasmtimeRun> {
+pub(crate) fn run_on_wasmtime(
+    app_path: &str,
+    preloads: &[(String, String)],
+) -> Result<WasmtimeRun> {
     use wasmtime::{Config, Engine, Linker, Module as WtModule, Store};
     use wasmtime_wasi::p1::{add_to_linker_sync, WasiP1Ctx};
     use wasmtime_wasi::p2::pipe::MemoryOutputPipe;
@@ -574,7 +577,7 @@ pub(crate) fn run_testcase_rewriting(
     user_libs: Vec<String>,
     exp_output: ExpectedOutput,
     outdir: &String,
-    instr_app_path: &String,
+    instr_app_path: &str,
     expected_err: Option<&str>,
 ) -> Result<()> {
     // run the script on configured application
@@ -585,7 +588,7 @@ pub(crate) fn run_testcase_rewriting(
         app_path_str,
         &mut module_to_instrument,
         user_libs.clone(),
-        Some(instr_app_path.clone()),
+        Some(instr_app_path.to_owned()),
         false,
     )?;
     match expected_err {
