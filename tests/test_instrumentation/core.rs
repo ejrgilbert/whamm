@@ -386,6 +386,15 @@ fn instrument_with_memsize_scripts() -> Result<()> {
 }
 
 #[test]
+fn instrument_mem_builtins_invalid_id() -> Result<()> {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/mem_builtins-invalid_id");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("mem_builtins-invalid_id", processed_scripts, true, false)
+}
+
+#[test]
 fn instrument_with_mem_grow_scripts() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/grow-failed");
