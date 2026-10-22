@@ -203,20 +203,25 @@ pub fn run<'lib, 'ir>(
     let mut user_lib_bytes: HashMap<String, Vec<u8>> = HashMap::new();
     let mut user_lib_modules: HashMap<String, (Option<String>, Module)> = HashMap::default();
     for (lib_name, (import_override, lib_buff)) in user_libs.iter() {
-        user_lib_modules.insert(
-            lib_name.clone(),
-            (
-                import_override.clone(),
-                Module::parse(lib_buff, true, false).unwrap(),
-            ),
-        );
+        let module = match parse_module(lib_buff, &format!("user library `{lib_name}`")) {
+            Ok(m) => m,
+            Err(e) => {
+                err.add_instr_error(&e);
+                return Err(Box::new(err));
+            }
+        };
+        user_lib_modules.insert(lib_name.clone(), (import_override.clone(), module));
         user_lib_bytes.insert(lib_name.clone(), lib_buff.clone());
     }
     // add the core library just in case the script needs it
-    user_lib_modules.insert(
-        WHAMM_CORE_LIB_NAME.to_string(),
-        (None, Module::parse(core_lib, true, false).unwrap()),
-    );
+    let core_module = match parse_module(core_lib, "the core library") {
+        Ok(m) => m,
+        Err(e) => {
+            err.add_instr_error(&e);
+            return Err(Box::new(err));
+        }
+    };
+    user_lib_modules.insert(WHAMM_CORE_LIB_NAME.to_string(), (None, core_module));
 
     // Process the script
     let mut whamm = match get_script_ast(def_yamls, whamm_script, &mut err) {
@@ -362,6 +367,10 @@ pub fn run<'lib, 'ir>(
     }
     // Surface warnings to the caller
     Ok(err.warnings_as_diagnostics())
+}
+
+fn parse_module<'a>(buff: &'a [u8], what: &str) -> Result<Module<'a>, String> {
+    Module::parse(buff, true, false).map_err(|e| format!("failed to parse {what} as Wasm: {e}"))
 }
 
 fn run_instr_wei<'lib, 'ir>(
@@ -691,7 +700,7 @@ fn get_symbol_table(
     err: &mut ErrorGen,
 ) -> Result<(SymbolTable, bool), ()> {
     let mut st = build_symbol_table(ast, user_libs, err);
-    if err.too_many {
+    if err.too_many || err.has_errors {
         return Err(());
     }
 

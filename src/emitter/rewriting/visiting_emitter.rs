@@ -25,7 +25,7 @@ use crate::lang_features::report_vars::ReportVars;
 use crate::parser;
 use crate::parser::provider_handler::ModeKind;
 use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
-use crate::verifier::types::{FoldClass, Record, SymbolTable, VarAddr};
+use crate::verifier::types::{FoldClass, Record, SymbolTable, VarAddr, ValueLiveness};
 use itertools::Itertools;
 use log::warn;
 use std::iter::Iterator;
@@ -399,6 +399,8 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                         def: Definition::CompilerDynamic,
                         addr: new_addr,
                         fold_class: FoldClass::default(),
+                        liveness: ValueLiveness::ProbeLocal,
+                        requires: Vec::new(),
                         loc: None,
                     },
                 )
@@ -512,6 +514,8 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                     def: Definition::CompilerDynamic,
                     addr: new_addr,
                     fold_class: FoldClass::default(),
+                    liveness: ValueLiveness::ProbeLocal,
+                    requires: Vec::new(),
                     loc: None,
                 },
             );
@@ -553,6 +557,8 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                     def: Definition::CompilerStatic,
                     addr: None,
                     fold_class: FoldClass::default(),
+                    liveness: ValueLiveness::ProbeLocal,
+                    requires: Vec::new(),
                     loc: None,
                 },
             );
@@ -1589,6 +1595,8 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                         def: Definition::CompilerStatic,
                         addr: Some(vec![local]),
                         fold_class: FoldClass::default(),
+                        liveness: ValueLiveness::ProbeLocal,
+                        requires: Vec::new(),
                         loc: None,
                     },
                 );

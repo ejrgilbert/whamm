@@ -19,10 +19,13 @@ impl StringUtils {
         };
         s
     }
-    /// Returns the address of the string in memory.
-    pub(crate) fn addr(s: &Value, emitted_strings: &HashMap<String, StringAddr>) -> u32 {
+    /// Returns the address of the string in memory, or `None` if the string
+    /// has not been emitted into the data section yet.
+    pub(crate) fn addr(s: &Value, emitted_strings: &HashMap<String, StringAddr>) -> Option<u32> {
         let s = Self::get_str(s);
-        emitted_strings.get(&s.to_string()).unwrap().mem_offset as u32
+        emitted_strings
+            .get(&s.to_string())
+            .map(|addr| addr.mem_offset as u32)
     }
     /// Returns the length of the string.
     /// This length is in bytes, not chars or graphemes. In other words, it might not be

@@ -499,6 +499,13 @@ impl<'a> MetadataCollector<'a> {
                     // CompilerDerived vars are computed locally in the probe body from
                     // other engine vars; don't request them directly from the engine.
                     self.push_metadata(name, &ty);
+
+                    // Also request dependencies listed in YAML provider config.
+                    let requires = self.table.var_requires(name).to_vec();
+                    for req in requires {
+                        let (_, req_ty, ..) = get_def(&req, self.table);
+                        self.push_metadata(&req, &req_ty);
+                    }
                 }
                 expr.clone()
             }

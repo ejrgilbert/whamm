@@ -427,6 +427,12 @@ wasm:opcode:br:before {
 ];
 
 const INVALID_SCRIPTS: &[&str] = &[
+    "::a[ {}",                                                              // malformed glob in a probe spec
+    r#"wasm::br:before { var x: str = "\u{110000}"; }"#,                    // out-of-range unicode escape
+    r#"wasm::br:before { var x: str = "\u{FFFFFFFFFFFFFFFFFFFF}"; }"#,      // overflowing unicode escape
+    "wasm:opcode:call:before { var t: (i32, i32) = (1, 2); var y: i32 = t.99999999999; }", // tuple index too large
+    "::: { }",                                                             // empty probe specification
+    "(arg0:i32)::: { }",                                                   // empty probe specification with ty-bounds
     // call annotations (should parse, but not recognize the annotations)
     r#"
 use lib;

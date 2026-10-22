@@ -9,7 +9,7 @@ use crate::parser::types::{
     UnOp, Value, Whamm, WhammVisitorMut,
 };
 use crate::verifier::builder_visitor::SymbolTableBuilder;
-use crate::verifier::types::{FoldClass, Record, SymbolTable};
+use crate::verifier::types::{FoldClass, Record, SymbolTable, ValueLiveness};
 use crate::verifier::visitor::VerifierVisitorTyped;
 use pest::error::LineColLocation;
 use std::collections::{HashMap, HashSet};
@@ -69,14 +69,7 @@ pub fn check_duplicate_id(
             //make sure old_rec is comp defined
             if old_rec.is_comp_defined() {
                 let new_loc = loc.as_ref().map(|l| l.line_col.clone());
-                if loc.is_none() {
-                    // happens if new_loc is compiler-defined or is a user-def func without location -- both should throw unexpected error
-                    println!("{:#?}", old_rec);
-                    println!("{:#?}", table.get_curr_scope());
-                    panic!("{UNEXPECTED_ERR_MSG} No location found for record: {name}");
-                } else {
-                    err.compiler_fn_overload_error(name.to_string(), new_loc);
-                }
+                err.compiler_fn_overload_error(name.to_string(), new_loc);
             } else {
                 panic!("{UNEXPECTED_ERR_MSG} Expected other record to be defined by compiler.");
             }
@@ -185,6 +178,7 @@ impl<'a> TypeChecker<'a> {
         ty: DataType,
         name: String,
         definition: Definition,
+        liveness: ValueLiveness,
         loc: &Option<Location>,
     ) {
         if let Some(owner) = self.table.bound_var_owner(&name) {
@@ -211,9 +205,24 @@ impl<'a> TypeChecker<'a> {
                 def: definition,
                 addr: None,
                 fold_class: FoldClass::default(),
+                liveness,
+                requires: Vec::new(),
                 loc: loc.clone(),
             },
         );
+    }
+
+    fn reject_probe_local_read_in_persistent_init(&mut self, name: &str, loc: &Option<Location>) {
+        let reads_probe_local_value = matches!(
+            self.table.lookup(name).and_then(|id| self.table.var_liveness(id)),
+            Some(ValueLiveness::ProbeLocal)
+        );
+        if self.restrict_probe_local_state && reads_probe_local_value {
+            self.err.type_check_error(
+                "Cannot use the probe-local state to initialize this variable with special scoping. Hint: split out the variable's initialization from the declaration.".to_string(),
+                &loc.clone().map(|l| l.line_col),
+            );
+        }
     }
 
     /// Report bound/user var shadow at use site (once per probe)
@@ -849,14 +858,8 @@ impl<'a> TypeChecker<'a> {
             } => {
                 self.check_bound_var_shadow(name, loc);
                 // get type from symbol table
-                if let (Some(id), Some(scope_id)) = self.table.lookup_with_scope_id(name) {
-                    if self.restrict_probe_local_state && self.table.scope_is_probe_local(scope_id)
-                    {
-                        self.err.type_check_error(
-                            "Cannot use the probe-local state to initialize this variable with special scoping. Hint: split out the variable's initialization from the declaration.".to_string(),
-                            &loc.clone().map(|l| l.line_col),
-                        );
-                    }
+                if let (Some(id), Some(_)) = self.table.lookup_with_scope_id(name) {
+                    self.reject_probe_local_read_in_persistent_init(name, loc);
                     if let Some(rec) = self.table.get_record(id) {
                         if let Record::Var { ty, def, value, .. } = rec {
                             *definition = *def;
@@ -871,9 +874,18 @@ impl<'a> TypeChecker<'a> {
                         } else if let Record::Library { .. } = rec {
                             return Some(DataType::Lib);
                         } else {
-                            // unexpected record type
+                            // The identifier resolves to a non-value symbol, so it
+                            // can't be used as a variable here.
                             // TODO: make this look up the local-most var (overshadowing should work)
-                            unreachable!("{} Expected Var type, got: {rec:?}\nHave you overshadowed some bound variable?", UNEXPECTED_ERR_MSG)
+                            let msg = match rec {
+                                Record::Mode { .. } => {
+                                    format!("`{name}` is a probe mode, not a variable")
+                                }
+                                _ => format!("`{name}` is not a variable in scope"),
+                            };
+                            self.err
+                                .type_check_error(msg, &loc.clone().map(|l| l.line_col));
+                            return Some(DataType::AssumeGood);
                         }
                     }
                 }
@@ -921,6 +933,22 @@ impl<'a> TypeChecker<'a> {
                                         &loc.clone().map(|l| l.line_col),
                                     );
                                 }
+                            }
+                            // Only numeric/boolean scalars can be cast
+                            let castable =
+                                |t: &DataType| t.is_numeric() || matches!(t, DataType::Boolean);
+                            let known = |t: &DataType| {
+                                !matches!(t, DataType::TypeParam(_) | DataType::AssumeGood)
+                            };
+                            if known(&expr_ty)
+                                && known(target)
+                                && (!castable(&expr_ty) || !castable(target))
+                            {
+                                self.err.type_check_error(
+                                    format!("unsupported cast from `{expr_ty}` to `{target}`"),
+                                    &loc.clone().map(|l| l.line_col),
+                                );
+                                return Some(DataType::AssumeGood);
                             }
                             // If the inner expression's type is the same as the cast,
                             // we can remove the cast from the AST!
@@ -1055,6 +1083,9 @@ impl<'a> TypeChecker<'a> {
                             Some(Record::Var {
                                 ty, def: var_def, ..
                             }) => {
+                                // Receiver of a type-util method (e.g. `s.len()`).
+                                // Check if called in an invalid var init context.
+                                self.reject_probe_local_read_in_persistent_init(&obj_name, loc);
                                 let Some(fns) = self.get_type_utils(&ty) else {
                                     self.err.type_check_error(
                                         "Could not find function for the invocation".to_string(),
@@ -1148,9 +1179,13 @@ impl<'a> TypeChecker<'a> {
                     } => {
                         let ret_ty = if results.len() > 1 {
                             let qualifier = kind.obj_prefix().unwrap_or("<unknown>");
-                            panic!(
-                                "We don't support functions with multiple return types: {qualifier}.{name}"
+                            self.err.type_check_error(
+                                format!(
+                                    "library functions with multiple return values are not supported: {qualifier}.{name}"
+                                ),
+                                &loc.clone().map(|l| l.line_col),
                             );
+                            DataType::AssumeGood
                         } else if results.is_empty() {
                             DataType::empty_tuple()
                         } else {
@@ -1242,15 +1277,7 @@ impl<'a> TypeChecker<'a> {
                 Some(ret_ty.clone())
             }
             Expr::MapGet { map, key, loc } => {
-                if let (Some(_), Some(scope_id)) = self.table.lookup_with_scope_id(map) {
-                    if self.restrict_probe_local_state && self.table.scope_is_probe_local(scope_id)
-                    {
-                        self.err.type_check_error(
-                            "Cannot use the probe-local state to initialize this variable with special scoping. Hint: split out the variable's initialization from the declaration.".to_string(),
-                            &loc.clone().map(|l| l.line_col),
-                        );
-                    }
-                }
+                self.reject_probe_local_read_in_persistent_init(map, loc);
                 //ensure that map is a map, then get the other stuff from the map info
                 let map_ty = self.lookup_var_type(map, loc);
                 let key_ty = self.visit_expr_impl(key, None);
@@ -1724,6 +1751,13 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                 }
                 //check to make sure that that if tuple, doesn't contain a map
                 if let DataType::Tuple { ty_info } = ty {
+                    if ty_info.is_empty() {
+                        self.err.type_check_error(
+                            "variables cannot have the empty-tuple type `()`".to_string(),
+                            &loc.clone().map(|l| l.line_col),
+                        );
+                        return None;
+                    }
                     for elem_ty in ty_info {
                         if let DataType::Map { .. } = elem_ty {
                             self.err.type_check_error(
@@ -1735,7 +1769,8 @@ impl WhammVisitorMut<Option<DataType>> for TypeChecker<'_> {
                     }
                 }
                 if !self.in_script_global {
-                    self.add_local(ty.to_owned(), name.to_owned(), *definition, loc);
+                    let liveness = ValueLiveness::for_decl(modifiers, ty);
+                    self.add_local(ty.to_owned(), name.to_owned(), *definition, liveness, loc);
                 }
                 if let Some(init_expr) = init {
                     // Former UnsharedDeclInit: visit init under restricted probe-local state.

@@ -158,26 +158,20 @@ pub fn basic_test() {
 }
 
 fn fatal_fold(expr: &Expr) {
-    let result = std::panic::catch_unwind(|| {
-        let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
-        ExprFolder::fold_expr(
-            expr,
-            &mut WasmRegistry::default(),
-            false,
-            &SymbolTable::new(),
-            &HashMap::default(),
-            &Module::default(),
-            &mut err,
-        );
-    });
-    match result {
-        Ok(_) => {
-            panic!("Expected a fatal error, but got Ok");
-        }
-        Err(_) => {
-            //this means the function properly exited with a fatal error
-        }
-    }
+    let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+    ExprFolder::fold_expr(
+        expr,
+        &mut WasmRegistry::default(),
+        false,
+        &SymbolTable::new(),
+        &HashMap::default(),
+        &Module::default(),
+        &mut err,
+    );
+    assert!(
+        err.has_errors,
+        "expected a divide-by-zero diagnostic to be recorded"
+    );
 }
 #[test]
 pub fn div_by_zero() {

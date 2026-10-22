@@ -305,7 +305,7 @@ impl DataType {
             DataType::F32 => vec![WirmType::F32],
             DataType::I64 | DataType::U64 => vec![WirmType::I64],
             DataType::F64 => vec![WirmType::F64],
-            DataType::FuncRef => vec![WirmType::FuncRef],
+            DataType::FuncRef => vec![WirmType::FuncRefNull],
             // the ID used to track this var in the lib
             DataType::Map { .. } => vec![WirmType::I32],
             DataType::Null => unimplemented!(),
@@ -1555,6 +1555,36 @@ pub enum Expr {
     },
 }
 impl Expr {
+    /// Whether this expression reads the variable named `target`
+    pub fn references_var(&self, target: &str) -> bool {
+        match self {
+            Expr::VarId { name, .. } => name == target,
+            Expr::UnOp { expr, .. } => expr.references_var(target),
+            Expr::Ternary {
+                cond, conseq, alt, ..
+            } => {
+                cond.references_var(target)
+                    || conseq.references_var(target)
+                    || alt.references_var(target)
+            }
+            Expr::BinOp { lhs, rhs, .. } => {
+                lhs.references_var(target) || rhs.references_var(target)
+            }
+            Expr::Call {
+                fn_target, args, ..
+            } => {
+                fn_target.references_var(target)
+                    || args.iter().any(|a| a.references_var(target))
+            }
+            Expr::MapGet { map, key, .. } => map == target || key.references_var(target),
+            Expr::TupleGet { tuple, .. } => tuple.references_var(target),
+            Expr::Primitive {
+                val: Value::Tuple { vals, .. },
+                ..
+            } => vals.iter().any(|v| v.references_var(target)),
+            Expr::Primitive { .. } => false,
+        }
+    }
     pub fn empty_tuple(loc: &Option<Location>) -> Self {
         Expr::Primitive {
             val: Value::gen_empty_tuple(),
@@ -2158,6 +2188,7 @@ impl Whamm {
             ty: DataType::U32,
             lifetime: Definition::CompilerStatic,
             derived_from: None,
+            requires: vec![],
             engine_only: false,
         }
     }
@@ -2477,22 +2508,20 @@ impl Script {
             &probe_rule.package,
             &probe_rule.event,
             &probe_rule.mode,
-            "start",
         );
 
         let loc_end = if let Some(body) = &body {
             if let Some(loc) = body.loc.as_ref() {
-                loc.clone()
+                Some(loc.clone())
             } else if let Some(predicate) = &predicate {
                 if let Some(loc) = predicate.loc().as_ref() {
-                    loc.clone()
+                    Some(loc.clone())
                 } else {
                     get_loc_with_priority(
                         &probe_rule.mode,
                         &probe_rule.event,
                         &probe_rule.package,
                         &probe_rule.provider,
-                        "start",
                     )
                 }
             } else {
@@ -2501,7 +2530,6 @@ impl Script {
                     &probe_rule.event,
                     &probe_rule.package,
                     &probe_rule.provider,
-                    "start",
                 )
             }
         } else {
@@ -2510,8 +2538,26 @@ impl Script {
                 &probe_rule.event,
                 &probe_rule.package,
                 &probe_rule.provider,
-                "start",
             )
+        };
+
+        // An empty probe specification (e.g. `:::`) names no provider, package,
+        // event, or mode, so there is no location to anchor the probe to.
+        let (loc_start, loc_end) = match (loc_start, loc_end) {
+            (Some(loc_start), Some(loc_end)) => (loc_start, loc_end),
+            _ => {
+                err.parse_error(
+                    Some(
+                        "empty probe specification: a probe must name at least a provider, \
+                         package, event, or mode"
+                            .to_string(),
+                    ),
+                    None,
+                    vec![],
+                    vec![],
+                );
+                return;
+            }
         };
 
         let loc = Location::from(
@@ -2542,19 +2588,11 @@ fn get_loc_with_priority(
     p1: &Option<RulePart>,
     p2: &Option<RulePart>,
     p3: &Option<RulePart>,
-    err: &str,
-) -> Location {
-    if let Some(p0) = get_loc(p0) {
-        p0
-    } else if let Some(p1) = get_loc(p1) {
-        p1
-    } else if let Some(p2) = get_loc(p2) {
-        p2
-    } else if let Some(p3) = get_loc(p3) {
-        p3
-    } else {
-        panic!("Could not find a {err} for the probe's location!")
-    }
+) -> Option<Location> {
+    get_loc(p0)
+        .or_else(|| get_loc(p1))
+        .or_else(|| get_loc(p2))
+        .or_else(|| get_loc(p3))
 }
 
 fn get_loc(rule_part: &Option<RulePart>) -> Option<Location> {

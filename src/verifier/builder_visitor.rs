@@ -6,7 +6,7 @@ use crate::parser::types::{
     BoundFunction, DeclModifiers, Definition, FnId, Global, WhammVisitorMut,
 };
 use crate::verifier::builder_visitor::parser_types::Location;
-use crate::verifier::types::{FoldClass, Record, ScopeType, SymbolTable};
+use crate::verifier::types::{FoldClass, Record, ScopeType, SymbolTable, ValueLiveness};
 use crate::verifier::verifier::check_duplicate_id;
 use itertools::Itertools;
 use parser_types::{
@@ -176,18 +176,10 @@ impl SymbolTableBuilder<'_, '_> {
             .set_curr_scope_info(package.def.name.clone(), ScopeType::Package);
     }
 
-    fn add_event(&mut self, event: &Event) {
-        /*check_duplicate_id is necessary to make sure we don't try to have 2 records with the same string pointing to them in the hashmap.
-        In some cases, it gives a non-fatal error, but in others, it is fatal. Thats why if it finds any error, we return here ->
-        just in case it is non-fatal to avoid having 2 strings w/same name in record */
-        if check_duplicate_id(
-            &event.def.name,
-            &None,
-            &Definition::CompilerStatic,
-            &self.table,
-            self.err,
-        ) {
-            return;
+    fn add_event(&mut self, event: &Event) -> bool {
+        // check if event name collides with another record in this scope
+        if self.table.lookup_in_curr_scope(&event.def.name).is_some() {
+            return false;
         }
 
         // create record
@@ -221,6 +213,7 @@ impl SymbolTableBuilder<'_, '_> {
         // set scope name and type
         self.table
             .set_curr_scope_info(event.def.name.clone(), ScopeType::Event);
+        true
     }
 
     fn add_probe(&mut self, probe: &mut Probe) {
@@ -500,6 +493,8 @@ impl SymbolTableBuilder<'_, '_> {
             def,
             addr: None,
             fold_class: FoldClass::default(),
+            liveness: ValueLiveness::ProbeLocal,
+            requires: Vec::new(),
             loc: var_id.loc().clone(),
         };
 
@@ -524,6 +519,7 @@ impl SymbolTableBuilder<'_, '_> {
         name: String,
         value: Option<Value>,
         definition: Definition,
+        requires: Vec<String>,
         loc: Option<Location>,
     ) {
         // If bound var/user var shadow each other
@@ -544,6 +540,8 @@ impl SymbolTableBuilder<'_, '_> {
                 def: definition,
                 addr: None,
                 fold_class: FoldClass::default(),
+                liveness: ValueLiveness::Persistent,
+                requires,
                 loc,
             },
         );
@@ -559,6 +557,7 @@ impl SymbolTableBuilder<'_, '_> {
             name,
             ty,
             derived_from,
+            requires,
             lifetime,
             ..
         } in vars.iter()
@@ -590,6 +589,7 @@ impl SymbolTableBuilder<'_, '_> {
                         name.clone(),
                         Some(resolved_val),
                         *lifetime,
+                        requires.clone(),
                         None,
                     );
                 } else {
@@ -598,7 +598,7 @@ impl SymbolTableBuilder<'_, '_> {
                 }
             } else {
                 // Add other globals to the scope itself
-                self.add_global(ty.clone(), name.clone(), None, *lifetime, None);
+                self.add_global(ty.clone(), name.clone(), None, *lifetime, requires.clone(), None);
             }
         }
 
@@ -654,6 +654,8 @@ impl SymbolTableBuilder<'_, '_> {
                     def: Definition::CompilerDynamic,
                     addr: None,
                     fold_class: FoldClass::default(),
+                    liveness: ValueLiveness::ProbeLocal,
+                    requires: Vec::new(),
                     loc: loc.clone(),
                 },
             );
@@ -840,7 +842,10 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
     }
 
     fn visit_event(&mut self, event: &mut Event) {
-        self.add_event(event);
+        if !self.add_event(event) {
+            // The event was not added
+            return;
+        }
         event
             .def
             .bound_fns
@@ -960,7 +965,14 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
                     ..
                 } => {
                     // Add symbol to table
-                    self.add_global(ty.clone(), name.clone(), None, *definition, loc.clone());
+                    self.add_global(
+                        ty.clone(),
+                        name.clone(),
+                        None,
+                        *definition,
+                        Vec::new(),
+                        loc.clone(),
+                    );
                 }
                 _ => {}
             }
