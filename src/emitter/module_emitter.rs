@@ -14,7 +14,7 @@ use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Location, Statement, Value};
-use crate::verifier::types::{FoldClass, Record, SymbolTable, VarAddr, ValueLiveness};
+use crate::verifier::types::{FoldClass, Record, SymbolTable, ValueLiveness, VarAddr};
 use log::debug;
 use std::collections::HashSet;
 use wirm::ir::function::FunctionBuilder;

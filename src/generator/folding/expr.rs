@@ -35,7 +35,7 @@ fn zero(ty: &DataType, loc: Option<Location>) -> Expr {
         DataType::I64 => Value::gen_i64(0),
         _ => Value::gen_u32(0),
     };
-    Expr::Primitive { val, loc}
+    Expr::Primitive { val, loc }
 }
 
 pub struct ExprFolder<'a, 'ir> {

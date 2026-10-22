@@ -1572,10 +1572,7 @@ impl Expr {
             }
             Expr::Call {
                 fn_target, args, ..
-            } => {
-                fn_target.references_var(target)
-                    || args.iter().any(|a| a.references_var(target))
-            }
+            } => fn_target.references_var(target) || args.iter().any(|a| a.references_var(target)),
             Expr::MapGet { map, key, .. } => map == target || key.references_var(target),
             Expr::TupleGet { tuple, .. } => tuple.references_var(target),
             Expr::Primitive {

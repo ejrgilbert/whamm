@@ -9,7 +9,7 @@ use crate::generator::ast::{UnsharedVar, WhammParams};
 use crate::lang_features::report_vars::Metadata as ReportMetadata;
 use crate::lang_features::report_vars::ReportVars;
 use crate::parser::types::{DataType, Definition, Statement};
-use crate::verifier::types::{FoldClass, Record, VarAddr, ValueLiveness};
+use crate::verifier::types::{FoldClass, Record, ValueLiveness, VarAddr};
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::{GlobalID, LocalID};
 use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmValue};

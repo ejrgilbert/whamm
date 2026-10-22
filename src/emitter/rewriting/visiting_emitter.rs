@@ -25,7 +25,7 @@ use crate::lang_features::report_vars::ReportVars;
 use crate::parser;
 use crate::parser::provider_handler::ModeKind;
 use crate::parser::types::{Block, DataType, Definition, Expr, NumLit, RulePart, Statement, Value};
-use crate::verifier::types::{FoldClass, Record, SymbolTable, VarAddr, ValueLiveness};
+use crate::verifier::types::{FoldClass, Record, SymbolTable, ValueLiveness, VarAddr};
 use itertools::Itertools;
 use log::warn;
 use std::iter::Iterator;

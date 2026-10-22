@@ -59,7 +59,11 @@ pub fn get_loc_info_for_active_probes(
 }
 
 /// Drop probes that reference a var the matched opcode does not provide.
-fn reject_invalid_opcode_var_deps(loc_info: &mut LocInfo, state: &mut MatchState, err: &mut ErrorGen) {
+fn reject_invalid_opcode_var_deps(
+    loc_info: &mut LocInfo,
+    state: &mut MatchState,
+    err: &mut ErrorGen,
+) {
     // Only opcode locations carry a matched opcode; func/block events have none.
     let Some(event) = loc_info.opcode_name.clone() else {
         return;
@@ -67,7 +71,11 @@ fn reject_invalid_opcode_var_deps(loc_info: &mut LocInfo, state: &mut MatchState
 
     let mut to_remove = vec![];
     for (i, (rule, probe, _)) in loc_info.probes.iter().enumerate() {
-        let event_is_explicit = rule.event.as_ref().map(|e| e.name == event).unwrap_or(false);
+        let event_is_explicit = rule
+            .event
+            .as_ref()
+            .map(|e| e.name == event)
+            .unwrap_or(false);
         let bad_var = param_items(&probe.metadata.body_args)
             .chain(param_items(&probe.metadata.pred_args))
             .chain(type_bound_items(&probe.type_bounds))

@@ -214,7 +214,9 @@ impl<'a> TypeChecker<'a> {
 
     fn reject_probe_local_read_in_persistent_init(&mut self, name: &str, loc: &Option<Location>) {
         let reads_probe_local_value = matches!(
-            self.table.lookup(name).and_then(|id| self.table.var_liveness(id)),
+            self.table
+                .lookup(name)
+                .and_then(|id| self.table.var_liveness(id)),
             Some(ValueLiveness::ProbeLocal)
         );
         if self.restrict_probe_local_state && reads_probe_local_value {

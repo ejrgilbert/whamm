@@ -598,7 +598,14 @@ impl SymbolTableBuilder<'_, '_> {
                 }
             } else {
                 // Add other globals to the scope itself
-                self.add_global(ty.clone(), name.clone(), None, *lifetime, requires.clone(), None);
+                self.add_global(
+                    ty.clone(),
+                    name.clone(),
+                    None,
+                    *lifetime,
+                    requires.clone(),
+                    None,
+                );
             }
         }
 

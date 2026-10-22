@@ -13,7 +13,7 @@ use crate::parser::types::{
     BinOp, Block, CallKind, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
 };
 use crate::verifier::types::{
-    line_col_from_loc, FoldClass, Record, SymbolTable, VarAddr, ValueLiveness,
+    line_col_from_loc, FoldClass, Record, SymbolTable, ValueLiveness, VarAddr,
 };
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::{FunctionID, GlobalID, LocalID, MemoryID};
@@ -1197,7 +1197,9 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                 Some(Record::Var { addr, def, .. }) => {
                     if matches!(def, Definition::CompilerStatic) && addr.is_none() {
                         ctx.err.add_internal_error(
-                            &format!("compiler-static variable `{name}` was not folded before emission"),
+                            &format!(
+                                "compiler-static variable `{name}` was not folded before emission"
+                            ),
                             expr.loc(),
                         );
                         return false;
@@ -1212,7 +1214,7 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                         expr.loc(),
                     );
                     return false;
-                },
+                }
             };
             // this will be different based on if this is a global or local var
             if let Some(addrs) = addr {
