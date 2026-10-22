@@ -1059,6 +1059,16 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             done_on,
             loc,
         } => {
+            let Some(done_on) = done_on else {
+                ctx.err.add_internal_error(
+                    &format!(
+                        "{}\n\tUnOp `done_on` should have been set by the type checker",
+                        ctx.err_msg
+                    ),
+                    loc,
+                );
+                return false;
+            };
             let mut is_success = emit_expr(expr, None, strategy, injector, ctx);
             is_success &= emit_unop(op, done_on, loc, injector, ctx);
             is_success
@@ -1068,8 +1078,18 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             op,
             rhs,
             done_on,
-            ..
+            loc,
         } => {
+            let Some(done_on) = done_on else {
+                ctx.err.add_internal_error(
+                    &format!(
+                        "{}\n\tBinOp `done_on` should have been set by the type checker",
+                        ctx.err_msg
+                    ),
+                    loc,
+                );
+                return false;
+            };
             let mut is_success = emit_expr(lhs, None, strategy, injector, ctx);
             is_success &= emit_expr(rhs, None, strategy, injector, ctx);
             is_success &= emit_binop(op, done_on, injector, ctx);
@@ -1080,12 +1100,17 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             conseq,
             alt,
             ty,
-            ..
+            loc,
         } => {
             let Some(ty) = ty else {
-                unreachable!(
-                        "{} \
-                                The result type of the ternary should have been set in the type checker.", ctx.err_msg);
+                ctx.err.add_internal_error(
+                    &format!(
+                        "{}\n\tthe result type of the ternary should have been set in the type checker",
+                        ctx.err_msg
+                    ),
+                    loc,
+                );
+                return false;
             };
 
             let conseq_block = Block {

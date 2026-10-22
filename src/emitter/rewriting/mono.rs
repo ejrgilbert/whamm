@@ -154,21 +154,25 @@ fn subst_expr(expr: &mut Expr, binding: &HashMap<String, DataType>) {
         } => {
             subst_expr(lhs, binding);
             subst_expr(rhs, binding);
-            *done_on = resolve_dt(done_on, binding);
-            // Resolve deferred numeric literals to the operation's concrete type.
-            resolve_literal(lhs, done_on);
-            resolve_literal(rhs, done_on);
+            if let Some(done_on) = done_on {
+                *done_on = resolve_dt(done_on, binding);
+                // Resolve deferred numeric literals to the operation's concrete type.
+                resolve_literal(lhs, done_on);
+                resolve_literal(rhs, done_on);
+            }
         }
         Expr::UnOp {
             op, expr, done_on, ..
         } => {
             subst_expr(expr, binding);
-            *done_on = resolve_dt(done_on, binding);
             // Resolve a cast target `x as T` to its concrete type so `emit_unop` can lower it.
             if let UnOp::Cast { target } = op {
                 *target = resolve_dt(target, binding);
             }
-            resolve_literal(expr, done_on);
+            if let Some(done_on) = done_on {
+                *done_on = resolve_dt(done_on, binding);
+                resolve_literal(expr, done_on);
+            }
         }
         Expr::Ternary {
             cond,

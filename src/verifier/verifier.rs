@@ -752,11 +752,11 @@ impl<'a> TypeChecker<'a> {
                         || matches!(rhs_ty, DataType::TypeParam(_))
                     {
                         // `done_on` is the operand type being operated on — the type parameter.
-                        *done_on = if matches!(lhs_ty, DataType::TypeParam(_)) {
+                        *done_on = Some(if matches!(lhs_ty, DataType::TypeParam(_)) {
                             lhs_ty.clone()
                         } else {
                             rhs_ty.clone()
-                        };
+                        });
                         return self.check_typeparam_binop(
                             op,
                             &lhs_ty,
@@ -766,7 +766,7 @@ impl<'a> TypeChecker<'a> {
                             &full_line_col,
                         );
                     }
-                    *done_on = lhs_ty.clone();
+                    *done_on = Some(lhs_ty.clone());
                     match op {
                         BinOp::Add
                         | BinOp::Subtract
@@ -914,7 +914,7 @@ impl<'a> TypeChecker<'a> {
                 };
                 let expr_ty_op = self.visit_expr_impl(inner_expr, inner_expected);
                 if let Some(expr_ty) = expr_ty_op {
-                    *done_on = expr_ty.clone();
+                    *done_on = Some(expr_ty.clone());
                     match op {
                         UnOp::Cast { target } => {
                             // Casting to a type parameter (`x as T`) bridges a concrete operand

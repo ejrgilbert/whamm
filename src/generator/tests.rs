@@ -186,7 +186,7 @@ pub fn div_by_zero() {
             val: Value::gen_i32(0),
             loc: None,
         }),
-        done_on: DataType::U8,
+        done_on: Some(DataType::U8),
         loc: None,
     })
 }
@@ -204,7 +204,7 @@ pub fn mod_by_zero() {
             val: Value::gen_i32(0),
             loc: None,
         }),
-        done_on: DataType::U8,
+        done_on: Some(DataType::U8),
         loc: None,
     })
 }

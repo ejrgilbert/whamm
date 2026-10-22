@@ -733,7 +733,7 @@ fn handle_custom_binop(
         op,
         rhs: Box::new(rhs),
 
-        done_on: DataType::Unknown,
+        done_on: None,
         loc: Some(Location {
             line_col: full_loc.clone(),
             path: None,
@@ -1366,7 +1366,7 @@ pub fn handle_expr(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<W
                     Ok(Expr::UnOp {
                         op,
                         expr: Box::new(rhs),
-                        done_on: DataType::Unknown,
+                        done_on: None,
                         loc,
                     })
                 }
@@ -1446,7 +1446,7 @@ pub fn handle_expr(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<W
                         lhs: Box::new(lhs),
                         op,
                         rhs: Box::new(rhs),
-                        done_on: DataType::Unknown,
+                        done_on: None,
                         loc,
                     })
                 }
@@ -1486,7 +1486,7 @@ pub fn handle_expr(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<W
                     Ok(Expr::UnOp {
                         op,
                         expr: Box::new(lhs),
-                        done_on: DataType::Unknown,
+                        done_on: None,
                         loc,
                     })
                 }
@@ -1561,7 +1561,7 @@ fn rebalance_logical_chain(expr: Expr) -> Expr {
                     lhs: Box::new(a),
                     op: chain_op.clone(),
                     rhs: Box::new(b),
-                    done_on: DataType::Unknown,
+                    done_on: None,
                     loc: loc.clone(),
                 }),
                 None => next.push(a),

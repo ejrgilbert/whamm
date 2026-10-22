@@ -1490,7 +1490,8 @@ pub enum Expr {
         op: UnOp,
         expr: Box<Expr>,
 
-        done_on: DataType, // The type of data that this unary operation is performed on (populated by type checker)
+        // The type of data that this unary operation is performed on (populated by type checker)
+        done_on: Option<DataType>,
         loc: Option<Location>,
     },
     Ternary {
@@ -1507,7 +1508,8 @@ pub enum Expr {
         op: BinOp,
         rhs: Box<Expr>,
 
-        done_on: DataType, // The type of data that this binary operation is performed on (populated by type checker)
+        // The type this binary op is performed on; `None` until the type-checker fills it in.
+        done_on: Option<DataType>,
         loc: Option<Location>,
     },
     Call {
