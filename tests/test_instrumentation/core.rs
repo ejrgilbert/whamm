@@ -147,6 +147,15 @@ fn instrument_wildcard_opcode_warns_on_uncovered() -> Result<()> {
 }
 
 #[test]
+fn instrument_check_erroring() -> Result<()> {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/check_erroring");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("check_erroring", processed_scripts, true, false)
+}
+
+#[test]
 fn instrument_spin_with_fault_injection() {
     setup_logger();
     let processed_scripts = setup_fault_injection("spin");

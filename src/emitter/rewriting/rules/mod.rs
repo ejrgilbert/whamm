@@ -53,8 +53,48 @@ pub fn get_loc_info_for_active_probes(
     }
     if let Some(r) = &mut res {
         r.static_data.extend(init_whamm_bound_vars(app_wasm, err));
+        reject_invalid_opcode_var_deps(r, err);
     }
     res
+}
+
+/// Drop probes that reference a var the matched opcode does not provide.
+fn reject_invalid_opcode_var_deps(loc_info: &mut LocInfo, err: &mut ErrorGen) {
+    // Only opcode locations carry a matched opcode; func/block events have none.
+    let Some(event) = loc_info.opcode_name.clone() else {
+        return;
+    };
+
+    let mut reported_invalid_vars = HashSet::new();
+    let mut to_remove = vec![];
+    for (i, (rule, probe, _)) in loc_info.probes.iter().enumerate() {
+        let event_is_explicit = rule
+            .event
+            .as_ref()
+            .map(|e| e.name == event)
+            .unwrap_or(false);
+        let bad_var = param_items(&probe.metadata.body_args)
+            .chain(param_items(&probe.metadata.pred_args))
+            .chain(type_bound_items(&probe.type_bounds))
+            .map(|(name, _)| name)
+            .find(|name| !loc_info.provides_var(name));
+        if let Some(name) = bad_var {
+            if event_is_explicit {
+                // The probe named this exact opcode (no glob), user error instead of non-match
+                let key = format!("{}_{}_{event}_{name}", probe.script_id, probe.probe_number);
+                if reported_invalid_vars.insert(key) {
+                    err.add_instr_error_at(
+                        &format!("`{name}` is not a valid bound var for `{event}`"),
+                        &probe.loc,
+                    );
+                }
+            }
+            to_remove.push(i);
+        }
+    }
+    for i in to_remove.into_iter().rev() {
+        loc_info.probes.remove(i);
+    }
 }
 
 pub fn init_whamm_bound_vars(
@@ -404,7 +444,7 @@ fn handle_opcode_events(
     err: &mut ErrorGen,
 ) -> (Option<LocInfo>, bool) {
     let mut loc_info = LocInfo::new();
-
+    loc_info.opcode_name = Some(event.clone());
     loc_info
         .static_data
         .insert("opname".to_string(), Some(Value::Str{val: event.clone()}));
@@ -1990,6 +2030,9 @@ fn handle_opcode_events(
             && type_bound_items(bounds)
                 .all(|(name, ty)| matches!(check_arg_type_bound(&all_args, name, ty), BoundMatch::Match))
             && check_var_types(&all_results, type_bound_items(bounds), "res")
+
+        // NOTE: we don't check other bound vars here, we do that after we've merged
+        // all matches against the full operand set to user-error OR un-match
     });
 
     for (_, probe, _) in loc_info.probes.iter() {
@@ -2020,14 +2063,12 @@ fn define_imm0_u32_imm1_u32(
 ) {
     for param in all_params.iter() {
         if let Some(n) = param.n_for("imm") {
-            assert!(matches!(param.ty, DataType::U32));
             if n == 0 {
                 define_imm_n(n, Some(Value::gen_u32(value0)), loc_info);
             } else if n == 1 {
                 define_imm_n(n, Some(Value::gen_u32(value1)), loc_info);
-            } else {
-                panic!("WhammParam not available for opcode: {}", param.name);
             }
+            // leave out of range immediates unbound, error at emit time
         }
     }
 }
@@ -2041,9 +2082,10 @@ fn define_imm0<T>(
 ) {
     for param in all_params.iter() {
         if let Some(n) = param.n_for("imm") {
-            assert_eq!(n, 0);
-            assert!(matches!(&param.ty, _dt));
-
+            if n != 0 {
+                // leave out of range immediates unbound, error at emit time
+                continue;
+            }
             define_imm_n(0, Some(gen(value)), loc_info);
             return;
         }
@@ -2127,12 +2169,11 @@ fn bind_vars_br_table(
 ) -> Option<()> {
     for param in all_params.iter() {
         if let Some(n) = param.n_for("imm") {
-            if n > targets.len() {
+            if n > targets.len() || !matches!(param.ty, DataType::U32) {
                 // this location doesn't match since the immN is out of bound
                 // of the immN's available
                 return None;
             }
-            assert!(matches!(param.ty, DataType::U32));
 
             if n == targets.len() {
                 // requesting the default value!
@@ -2211,13 +2252,10 @@ fn bind_vars_call(loc_info: &mut LocInfo, all_params: &[WhammParam], fid: u32, a
         if param.n_for("arg").is_some() {
             // arg arity/type is validated per-probe in the generic filter.
         } else if let Some(n) = param.n_for("imm") {
-            assert_eq!(n, 0);
-            assert!(
-                matches!(param.ty, DataType::U32),
-                "wrong type: {}",
-                param.ty
-            );
-
+            if n != 0 || !matches!(param.ty, DataType::U32) {
+                // leave out of range immediates unbound, error at emit time
+                continue;
+            }
             define_imm_n(0, Some(Value::gen_u32(fid)), loc_info);
         } else {
             match param.name.as_str() {
@@ -2950,6 +2988,7 @@ fn handle_block_events(
             if (opidx == 0 && event == "start")
                 // handle block:exit if this is program exit call
                 || (is_prog_exit && event == "end") {
+                define_block_data(event.as_str(), block_state, &mut loc_info);
                 Some(InstrumentationMode::Before)
             } else {
                 None
@@ -3170,6 +3209,9 @@ pub struct LocInfo {
     /// The value is the table index (imm1) used to derive target_funcref via table.get.
     pub funcref_table_idx: Option<u32>,
 
+    /// The concrete opcode matched at this location, if this is an opcode event.
+    pub(crate) opcode_name: Option<String>,
+
     pub num_alt_probes: usize,
     /// the probes that were matched for this instruction
     /// note the Script ID is contained in Probe
@@ -3181,6 +3223,23 @@ impl LocInfo {
     }
     fn has_match(&self) -> bool {
         !self.probes.is_empty()
+    }
+    fn provides_var(&self, name: &str) -> bool {
+        if self.static_data.contains_key(name)
+            || self.dynamic_data.contains_key(name)
+            || self.dynamic_alias.contains_key(name)
+        {
+            return true;
+        }
+        // We know whether this will be derived _later_ based on
+        // whether we have table indices now
+        if name == "target_funcref" {
+            return self.funcref_table_idx.is_some();
+        }
+        // already validated previously, accept these
+        nth_prefixed(name, "arg").is_some()
+            || nth_prefixed(name, "res").is_some()
+            || nth_prefixed(name, "local").is_some()
     }
     fn configure_stack_reqs(
         &mut self,
@@ -3489,6 +3548,11 @@ impl LocInfo {
         // handle funcref_table_idx
         if self.funcref_table_idx.is_none() {
             self.funcref_table_idx = other.funcref_table_idx;
+        }
+
+        // handle opcode_name (all merged events share one instruction)
+        if self.opcode_name.is_none() {
+            self.opcode_name = other.opcode_name.take();
         }
 
         // handle probes

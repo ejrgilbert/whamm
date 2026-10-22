@@ -568,6 +568,8 @@ target_funcref: &target_funcref
   docs: The funcref retrieved from the table targeted by this opcode. Derived by performing table.get with the table_entry_idx on the table specified by imm1.
   lifetime: dynamic
   derived_from: null
+  # Deriving target_funcref needs the table-index operand (arg0)
+  requires: [arg0]
 resolved_fid: &resolved_fid
   name: resolved_fid
   type: i32

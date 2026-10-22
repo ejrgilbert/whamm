@@ -12,7 +12,9 @@ use crate::lang_features::type_utils::strings::StringUtils;
 use crate::parser::types::{
     BinOp, Block, CallKind, DataType, Definition, Expr, Location, NumLit, Statement, UnOp, Value,
 };
-use crate::verifier::types::{line_col_from_loc, FoldClass, Record, SymbolTable, VarAddr};
+use crate::verifier::types::{
+    line_col_from_loc, FoldClass, Record, SymbolTable, ValueLiveness, VarAddr,
+};
 use wirm::ir::function::FunctionBuilder;
 use wirm::ir::id::{FunctionID, GlobalID, LocalID, MemoryID};
 use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmValue};
@@ -183,7 +185,7 @@ fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             )
         }
         "memcpy" => handle_memcpy(args, strategy, injector, ctx),
-        "mem_size" => handle_mem_size(args, injector),
+        "mem_size" => handle_mem_size(args, injector, ctx),
         "write_str" => handle_write_str(args, strategy, injector, ctx),
         "read_str" => handle_read_str(args, strategy, injector, ctx),
         "resolve_funcref" => handle_resolve_funcref(args, strategy, injector, ctx),
@@ -229,10 +231,15 @@ fn handle_memcpy<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
 fn handle_mem_size<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     args: &[Expr],
     injector: &mut T,
+    ctx: &mut EmitCtx,
 ) -> bool {
-    let target_mem = args[0]
-        .get_primitive_u32()
-        .unwrap_or_else(|| unreachable!());
+    let Some(target_mem) = args[0].get_primitive_u32() else {
+        ctx.err.add_internal_error(
+            "mem_size reached emit with a non-constant memory index",
+            args[0].loc(),
+        );
+        return false;
+    };
 
     injector.memory_size(MemoryID(target_mem));
     true
@@ -478,7 +485,8 @@ fn emit_decl_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             let var_rec_id = match ctx.table.lookup(name) {
                 Some(rec_id) => rec_id,
                 None => {
-                    // add variables from body into symbol table (at this point, the verifier should have run to catch variable initialization without declaration)
+                    // add variables from body into symbol table (at this point, the verifier should
+                    // have run to catch variable initialization without declaration)
                     ctx.table.put(
                         name.clone(),
                         Record::Var {
@@ -487,6 +495,8 @@ fn emit_decl_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                             def: *definition,
                             addr: None,
                             fold_class: FoldClass::default(),
+                            liveness: ValueLiveness::ProbeLocal,
+                            requires: Vec::new(),
                             loc: None,
                         },
                     )
@@ -519,7 +529,14 @@ fn emit_decl_stmt<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             }
             match &mut addr {
                 Some(addrs) => {
-                    match addrs.first().unwrap() {
+                    let Some(first_addr) = addrs.first() else {
+                        ctx.err.add_internal_error(
+                            "empty-tuple-typed variable reached emit with no address",
+                            stmt.loc(),
+                        );
+                        return false;
+                    };
+                    match first_addr {
                         VarAddr::Global { addr: _addr } | VarAddr::MapId { addr: _addr } => {
                             //ignore, initial setup is done in init_gen
                             true
@@ -1037,10 +1054,13 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
     // FoldPass) before reaching here; no inline folding is needed.
     match expr {
         Expr::UnOp {
-            op, expr, done_on, ..
+            op,
+            expr,
+            done_on,
+            loc,
         } => {
             let mut is_success = emit_expr(expr, None, strategy, injector, ctx);
-            is_success &= emit_unop(op, done_on, injector);
+            is_success &= emit_unop(op, done_on, loc, injector, ctx);
             is_success
         }
         Expr::BinOp {
@@ -1173,18 +1193,28 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             is_success
         }
         Expr::VarId { name, .. } => {
-            let addr = if let Some(Record::Var { addr, def, .. }) =
-                ctx.table.lookup_var_mut(name, true)
-            {
-                if matches!(def, Definition::CompilerStatic) && addr.is_none() {
-                    unreachable!("{} \
-                    Variable is bound statically by the compiler, it should've been folded by this point: {}", ctx.err_msg,
-                                 name);
+            let addr = match ctx.table.lookup_var_mut(name, true) {
+                Some(Record::Var { addr, def, .. }) => {
+                    if matches!(def, Definition::CompilerStatic) && addr.is_none() {
+                        ctx.err.add_internal_error(
+                            &format!(
+                                "compiler-static variable `{name}` was not folded before emission"
+                            ),
+                            expr.loc(),
+                        );
+                        return false;
+                    } else {
+                        // clone to avoid two mutable borrows of `ctx.table`
+                        addr.clone()
+                    }
                 }
-                // this is done to avoid two mutable borrows of `ctx.table`
-                addr.clone()
-            } else {
-                unreachable!("unexpected type");
+                _ => {
+                    ctx.err.add_internal_error(
+                        &format!("variable `{name}` not in scope, but reached emit"),
+                        expr.loc(),
+                    );
+                    return false;
+                }
             };
             // this will be different based on if this is a global or local var
             if let Some(addrs) = addr {
@@ -1211,21 +1241,21 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                             );
                         }
                         VarAddr::MapId { .. } => {
-                            unreachable!(
-                                "{} \
-                                Variable you are trying to use in expr is a Map object {}",
-                                ctx.err_msg, name
+                            ctx.err.add_internal_error(
+                                &format!("map variable `{name}` reached emit as a value"),
+                                expr.loc(),
                             );
+                            return false;
                         }
                     }
                 }
                 is_success
             } else {
-                panic!(
-                    "{} \
-                Variable does not exist in scope: {}",
-                    ctx.err_msg, name
+                ctx.err.add_internal_error(
+                    &format!("variable `{name}` not in scope, but reached emit"),
+                    expr.loc(),
                 );
+                false
             }
         }
         Expr::Primitive { val, .. } => emit_value(val, idx, strategy, injector, ctx),
@@ -1948,7 +1978,13 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
     true
 }
 
-fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T) -> bool {
+fn emit_unop<'a, T: Opcode<'a>>(
+    op: &UnOp,
+    done_on: &DataType,
+    loc: &Option<Location>,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) -> bool {
     assert!(
         !matches!(done_on, DataType::TypeParam(_)),
         "unary op reached codegen with an unresolved type parameter `{done_on}`; generic probes must be monomorphized before emit"
@@ -1981,8 +2017,11 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.f64_convert_i32_u();
                 }
                 (DataType::U8, _) => {
-                    // should've been handled by type checker
-                    unreachable!();
+                    ctx.err.add_internal_error(
+                        &format!("unsupported cast from `{done_on}` to `{target}` reached emit"),
+                        loc,
+                    );
+                    return false;
                 }
 
                 // From I8
@@ -2025,8 +2064,11 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.f64_convert_i32_s();
                 }
                 (DataType::I8, _) => {
-                    // should've been handled by type checker
-                    unreachable!();
+                    ctx.err.add_internal_error(
+                        &format!("unsupported cast from `{done_on}` to `{target}` reached emit"),
+                        loc,
+                    );
+                    return false;
                 }
 
                 // From U16
@@ -2051,8 +2093,11 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.f64_convert_i32_u();
                 }
                 (DataType::U16, _) => {
-                    // should've been handled by type checker
-                    unreachable!();
+                    ctx.err.add_internal_error(
+                        &format!("unsupported cast from `{done_on}` to `{target}` reached emit"),
+                        loc,
+                    );
+                    return false;
                 }
 
                 // From I16
@@ -2083,8 +2128,11 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.f64_convert_i32_s();
                 }
                 (DataType::I16, _) => {
-                    // should've been handled by type checker
-                    unreachable!();
+                    ctx.err.add_internal_error(
+                        &format!("unsupported cast from `{done_on}` to `{target}` reached emit"),
+                        loc,
+                    );
+                    return false;
                 }
 
                 // From U32
@@ -2114,8 +2162,11 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.f64_convert_i32_u();
                 }
                 (DataType::U32, _) => {
-                    // should've been handled by type checker
-                    unreachable!();
+                    ctx.err.add_internal_error(
+                        &format!("unsupported cast from `{done_on}` to `{target}` reached emit"),
+                        loc,
+                    );
+                    return false;
                 }
 
                 // From I32
@@ -2145,8 +2196,11 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.f64_convert_i32_s();
                 }
                 (DataType::I32, _) => {
-                    // should've been handled by type checker
-                    unreachable!();
+                    ctx.err.add_internal_error(
+                        &format!("unsupported cast from `{done_on}` to `{target}` reached emit"),
+                        loc,
+                    );
+                    return false;
                 }
 
                 // From U64
@@ -2179,8 +2233,11 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.f64_convert_i64_u();
                 }
                 (DataType::U64, _) => {
-                    // should've been handled by type checker
-                    unreachable!();
+                    ctx.err.add_internal_error(
+                        &format!("unsupported cast from `{done_on}` to `{target}` reached emit"),
+                        loc,
+                    );
+                    return false;
                 }
 
                 // From I64
@@ -2213,8 +2270,11 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.f64_convert_i64_s();
                 }
                 (DataType::I64, _) => {
-                    // should've been handled by type checker
-                    unreachable!();
+                    ctx.err.add_internal_error(
+                        &format!("unsupported cast from `{done_on}` to `{target}` reached emit"),
+                        loc,
+                    );
+                    return false;
                 }
 
                 // From F32
@@ -2265,8 +2325,11 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     injector.f64_promote_f32();
                 }
                 (DataType::F32, _) => {
-                    // should've been handled by type checker
-                    unreachable!();
+                    ctx.err.add_internal_error(
+                        &format!("unsupported cast from `{done_on}` to `{target}` reached emit"),
+                        loc,
+                    );
+                    return false;
                 }
 
                 // From F64
@@ -2326,12 +2389,18 @@ fn emit_unop<'a, T: Opcode<'a>>(op: &UnOp, done_on: &DataType, injector: &mut T)
                     | DataType::U32,
                 ) => {} // nothing to do
                 (DataType::F64, _) => {
-                    // should've been handled by type checker
-                    unreachable!();
+                    ctx.err.add_internal_error(
+                        &format!("unsupported cast from `{done_on}` to `{target}` reached emit"),
+                        loc,
+                    );
+                    return false;
                 }
                 (from, to) => {
-                    // should've been handled by type checker
-                    unreachable!("{} to {}", from, to);
+                    ctx.err.add_internal_error(
+                        &format!("unsupported cast from `{from}` to `{to}` reached emit"),
+                        loc,
+                    );
+                    return false;
                 }
             };
         }

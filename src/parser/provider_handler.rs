@@ -676,7 +676,19 @@ impl MatchOn for ModeDef {
             } else {
                 self.def.name.clone()
             };
-            if is_match(&match_on, md_patt) {
+            let matched = match is_match(&match_on, md_patt) {
+                Ok(matched) => matched,
+                Err(e) => {
+                    err_ctxt.on_mode = Some(ErrorGen::get_parse_error(
+                        Some(format!("invalid mode pattern `{md_patt}`: {e}")),
+                        loc.as_ref().map(|l| l.line_col.clone()),
+                        vec![],
+                        vec![],
+                    ));
+                    return Err(());
+                }
+            };
+            if matched {
                 Ok(Box::new(self.clone()))
             } else {
                 err_ctxt.on_mode = Some(ErrorGen::get_parse_error(
@@ -729,6 +741,8 @@ pub struct BoundVar {
     pub ty: DataType,
     pub lifetime: Definition,
     pub derived_from: Option<Expr>,
+    /// Other state that this var depends on
+    pub requires: Vec<String>,
     pub engine_only: bool,
 }
 impl CheckedFrom<BoundVarYml> for BoundVar {
@@ -744,6 +758,7 @@ impl CheckedFrom<BoundVarYml> for BoundVar {
             docs: value.docs.to_owned(),
             ty,
             derived_from,
+            requires: value.requires.unwrap_or_default(),
             lifetime: Definition::from(value.lifetime.as_str()),
             engine_only: value.engine_only.unwrap_or(false),
         })
@@ -965,7 +980,17 @@ fn match_helper<T: MatchOn>(
     err_ctxt: &mut ErrCtxt,
 ) -> Result<Vec<Box<T>>, Box<WhammError>> {
     let mut matches = vec![];
-    if is_match(name, pattern) {
+    let matched = is_match(name, pattern).map_err(|e| {
+        Box::new(ErrorGen::get_parse_error(
+            Some(format!(
+                "invalid pattern `{pattern}` in the {ctxt} probe specification: {e}"
+            )),
+            loc.as_ref().map(|l| l.line_col.clone()),
+            vec![],
+            vec![],
+        ))
+    })?;
+    if matched {
         for item in to_check.iter() {
             if let Ok(m) = item.match_on(rule, err_ctxt) {
                 matches.push(m);
@@ -985,24 +1010,24 @@ fn match_helper<T: MatchOn>(
     Ok(matches)
 }
 
-fn is_match(name: &str, patt: &str) -> bool {
-    let globs = get_globs(&patt.to_lowercase());
+fn is_match(name: &str, patt: &str) -> Result<bool, glob::PatternError> {
+    let globs = get_globs(&patt.to_lowercase())?;
 
     for glob in globs.iter() {
         if glob.matches(&name.to_lowercase()) {
-            return true;
+            return Ok(true);
         }
     }
-    false
+    Ok(false)
 }
 
-fn get_globs(patt: &str) -> Vec<Pattern> {
+fn get_globs(patt: &str) -> Result<Vec<Pattern>, glob::PatternError> {
     let mut globs = vec![];
     for p in patt.split('|') {
-        globs.push(Pattern::new(p).unwrap());
+        globs.push(Pattern::new(p)?);
     }
 
-    globs
+    Ok(globs)
 }
 
 type RuleHandler<T> = dyn Fn(Pair<Rule>, &LineIndex) -> Result<T, Vec<WhammError>>;
@@ -1114,6 +1139,8 @@ struct BoundVarYml {
     #[serde(rename = "type")]
     ty: String,
     derived_from: Option<String>,
+    #[serde(default)]
+    requires: Option<Vec<String>>,
     lifetime: String,
     #[serde(default)]
     engine_only: Option<bool>,

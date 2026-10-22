@@ -508,10 +508,14 @@ impl<T: GeneratingVisitor> WhammVisitorMut<bool> for T {
                 // ignore, will not have a string to emit
                 true
             }
-            Value::NumericLiteral { .. } => {
-                unreachable!(
-                    "NumericLiteral must be resolved by the type checker before code generation"
-                )
+            Value::NumericLiteral { token, .. } => {
+                self.add_internal_error(
+                    &format!(
+                        "numeric literal `{token}` was not resolved to a concrete type before code generation"
+                    ),
+                    &None,
+                );
+                false
             }
         }
     }

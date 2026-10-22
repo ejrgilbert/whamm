@@ -14,7 +14,7 @@ use crate::lang_features::libraries::core::utils::utils_adapter::UtilsAdapter;
 use crate::lang_features::libraries::registry::WasmRegistry;
 use crate::lang_features::report_vars::{Metadata, ReportVars};
 use crate::parser::types::{Block, DataType, Definition, Expr, Fn, Location, Statement, Value};
-use crate::verifier::types::{FoldClass, Record, SymbolTable, VarAddr};
+use crate::verifier::types::{FoldClass, Record, SymbolTable, ValueLiveness, VarAddr};
 use log::debug;
 use std::collections::HashSet;
 use wirm::ir::function::FunctionBuilder;
@@ -165,6 +165,8 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
                     def: Definition::CompilerStatic,
                     addr: Some(vec![VarAddr::Local { addr: *alloc }]),
                     fold_class: FoldClass::default(),
+                    liveness: ValueLiveness::ProbeLocal,
+                    requires: Vec::new(),
                     loc: None,
                 },
             );
@@ -182,6 +184,8 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
                     def: Definition::CompilerStatic,
                     addr: Some(vec![VarAddr::Local { addr: local_id }]),
                     fold_class: FoldClass::default(),
+                    liveness: ValueLiveness::ProbeLocal,
+                    requires: Vec::new(),
                     loc: None,
                 },
             );
@@ -235,6 +239,8 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
                     def: Definition::CompilerStatic,
                     addr: Some(addrs),
                     fold_class: FoldClass::default(),
+                    liveness: ValueLiveness::ProbeLocal,
+                    requires: Vec::new(),
                     loc: None,
                 },
             );

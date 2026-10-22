@@ -842,8 +842,17 @@ fn handle_decl_init(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut ErrorGen) 
                     modifiers,
                     ..
                 } => {
-                    if modifiers.is_unshared {
-                        // Former UnsharedDeclInit: store the init expression in VarDecl
+                    // A variable cannot self-reference in its own initializer
+                    if expr.references_var(name) {
+                        err.type_check_error(
+                            format!("`{name}` cannot be used in its own initializer"),
+                            &Some(expr_line_col.clone()),
+                        );
+                        return vec![];
+                    }
+                    if modifiers.is_unshared || modifiers.is_report {
+                        // These vars keep their init on the decl so the verifier
+                        // can enforce that it does not read probe-local state
                         let mut d = decl.to_owned();
                         if let Statement::VarDecl { init, .. } = &mut d {
                             *init = Some(expr);
@@ -2043,8 +2052,32 @@ fn handle_string(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<Wha
                     Rule::unicode_escape => {
                         let s = inner.as_str();
                         let hex = &s[2..s.len() - 1];
-                        let codepoint = u32::from_str_radix(hex, 16).unwrap();
-                        val.push(char::from_u32(codepoint).unwrap());
+                        let codepoint = match u32::from_str_radix(hex, 16) {
+                            Ok(codepoint) => codepoint,
+                            Err(_) => {
+                                return Err(vec![ErrorGen::get_parse_error(
+                                    Some(format!(
+                                        "invalid unicode escape `\\u{{{hex}}}`: value is out of range"
+                                    )),
+                                    Some(line_idx.linecol(span)),
+                                    vec![],
+                                    vec![],
+                                )]);
+                            }
+                        };
+                        match char::from_u32(codepoint) {
+                            Some(c) => val.push(c),
+                            None => {
+                                return Err(vec![ErrorGen::get_parse_error(
+                                    Some(format!(
+                                        "invalid unicode escape `\\u{{{hex}}}`: not a valid Unicode scalar value"
+                                    )),
+                                    Some(line_idx.linecol(span)),
+                                    vec![],
+                                    vec![],
+                                )]);
+                            }
+                        }
                     }
                     _ => unreachable!(),
                 }
@@ -2085,10 +2118,20 @@ fn handle_tuple_get(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<
 
     // Remaining elements are TUPLE_IDX digit strings, one per access level
     for idx_pair in inner {
-        let index: u32 = idx_pair
-            .as_str()
-            .parse()
-            .expect("TUPLE_IDX must be a valid u32");
+        let index: u32 = match idx_pair.as_str().parse() {
+            Ok(index) => index,
+            Err(_) => {
+                return Err(vec![ErrorGen::get_parse_error(
+                    Some(format!(
+                        "tuple index `{}` is too large (must fit in a u32)",
+                        idx_pair.as_str()
+                    )),
+                    Some(line_idx.linecol(idx_pair.as_span())),
+                    vec![],
+                    vec![],
+                )]);
+            }
+        };
         expr = Expr::TupleGet {
             tuple: Box::new(expr),
             index,

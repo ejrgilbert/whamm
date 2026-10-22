@@ -23,6 +23,21 @@ use wirm::Module;
 // = Constant Propagation via ExprFolder =
 // =======================================
 
+fn zero(ty: &DataType, loc: Option<Location>) -> Expr {
+    let val = match ty {
+        DataType::U8 => Value::gen_u8(0),
+        DataType::I8 => Value::gen_i8(0),
+        DataType::U16 => Value::gen_u16(0),
+        DataType::I16 => Value::gen_i16(0),
+        DataType::U32 => Value::gen_u32(0),
+        DataType::I32 => Value::gen_i32(0),
+        DataType::U64 => Value::gen_u64(0),
+        DataType::I64 => Value::gen_i64(0),
+        _ => Value::gen_u32(0),
+    };
+    Expr::Primitive { val, loc }
+}
+
 pub struct ExprFolder<'a, 'ir> {
     registry: &'a mut WasmRegistry,
     emitted_strings: &'a HashMap<String, StringAddr>,
@@ -126,7 +141,7 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
             }
         }
         match receiver_ty {
-            DataType::Str => Some(self.fold_string_utils_call(func_name, &val, arg_vals, loc)),
+            DataType::Str => Some(self.fold_string_utils_call(func_name, &val, arg_vals, loc, err)),
             _ => unreachable!("Utility functions not supported for type: {receiver_ty}"),
         }
     }
@@ -137,6 +152,7 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
         val: &Value,
         args: Vec<Value>,
         loc: &Option<Location>,
+        err: &mut ErrorGen,
     ) -> Expr {
         match fn_name {
             "len" => {
@@ -168,7 +184,16 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                 }
             }
             "addr" => {
-                let res = StringUtils::addr(val, self.emitted_strings);
+                let res = match StringUtils::addr(val, self.emitted_strings) {
+                    Some(res) => res,
+                    None => {
+                        err.add_internal_error(
+                            "could not resolve the address of a string that was not emitted into memory",
+                            loc,
+                        );
+                        0
+                    }
+                };
                 Expr::Primitive {
                     val: Value::gen_u32(res),
                     loc: loc.clone(),
@@ -736,7 +761,8 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                     }),
                     BinOp::Divide => {
                         if *rhs_int == 0 {
-                            err.div_by_zero(self.curr_loc.clone())
+                            err.div_by_zero(self.curr_loc.clone());
+                            return Some(zero(&DataType::U32, None));
                         }
                         Some(Expr::Primitive {
                             val: Value::gen_u32(lhs_int.wrapping_div(*rhs_int) as u32),
@@ -745,7 +771,8 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                     }
                     BinOp::Modulo => {
                         if *rhs_int == 0 {
-                            err.div_by_zero(self.curr_loc.clone())
+                            err.div_by_zero(self.curr_loc.clone());
+                            return Some(zero(&DataType::U32, None));
                         }
                         Some(Expr::Primitive {
                             val: Value::gen_u32((lhs_int % rhs_int) as u32),
@@ -917,7 +944,8 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                     }
                     BinOp::Divide => {
                         if *rhs_int == 0 {
-                            err.div_by_zero(self.curr_loc.clone())
+                            err.div_by_zero(self.curr_loc.clone());
+                            return Some(zero(done_on, None));
                         }
                         // handle what's represented as u32s in the compiler
                         match done_on {
@@ -950,7 +978,8 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                     }
                     BinOp::Modulo => {
                         if *rhs_int == 0 {
-                            err.div_by_zero(self.curr_loc.clone())
+                            err.div_by_zero(self.curr_loc.clone());
+                            return Some(zero(done_on, None));
                         }
                         // handle what's represented as u32s in the compiler
                         match done_on {
@@ -1064,7 +1093,8 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                     }),
                     BinOp::Divide => {
                         if *rhs_int == 0 {
-                            err.div_by_zero(self.curr_loc.clone())
+                            err.div_by_zero(self.curr_loc.clone());
+                            return Some(zero(&DataType::U64, None));
                         }
                         Some(Expr::Primitive {
                             val: Value::gen_u64(lhs_int.wrapping_div(*rhs_int) as u64),
@@ -1073,7 +1103,8 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                     }
                     BinOp::Modulo => {
                         if *rhs_int == 0 {
-                            err.div_by_zero(self.curr_loc.clone())
+                            err.div_by_zero(self.curr_loc.clone());
+                            return Some(zero(&DataType::U64, None));
                         }
                         Some(Expr::Primitive {
                             val: Value::gen_u64((lhs_int % rhs_int) as u64),
@@ -1166,7 +1197,8 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                     }),
                     BinOp::Divide => {
                         if *rhs_int == 0 {
-                            err.div_by_zero(self.curr_loc.clone())
+                            err.div_by_zero(self.curr_loc.clone());
+                            return Some(zero(&DataType::U64, None));
                         }
                         Some(Expr::Primitive {
                             val: Value::gen_u64(lhs_int.wrapping_div(*rhs_int)),
@@ -1175,7 +1207,8 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                     }
                     BinOp::Modulo => {
                         if *rhs_int == 0 {
-                            err.div_by_zero(self.curr_loc.clone())
+                            err.div_by_zero(self.curr_loc.clone());
+                            return Some(zero(&DataType::U64, None));
                         }
                         Some(Expr::Primitive {
                             val: Value::gen_u64(lhs_int % rhs_int),
@@ -1684,7 +1717,7 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
         match target_fn_name {
             "addr" => self.handle_addr(call, &folded_args, table, err),
             "len" => self.handle_len(call, &folded_args, table, err),
-            "memid" => self.handle_mem(&folded_args, table),
+            "memid" => self.handle_mem(&folded_args, table, err),
             "active_data_start" => self.handle_active_data_start(call, &folded_args, err),
             "active_data_len" => self.handle_active_data_len(call, &folded_args, err),
             "page_size" => self.handle_page_size_of(call, &folded_args, err),
@@ -1762,7 +1795,11 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
     }
 
     fn handle_mem_size(&self, orig_call: &Expr, args: &[Expr], err: &mut ErrorGen) -> Expr {
-        if Self::get_u32(&args[0]).is_some() && self.check_mem_id(orig_call, args, err).is_none() {
+        if Self::get_u32(&args[0]).is_none() {
+            err.add_instr_error_at("mem_size expects a constant memory index", args[0].loc());
+            return zero(&DataType::U32, orig_call.loc().clone());
+        }
+        if self.check_mem_id(orig_call, args, err).is_none() {
             return Expr::Primitive {
                 val: Value::gen_u32(0),
                 loc: orig_call.loc().clone(),
@@ -1832,10 +1869,10 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
         }
     }
 
-    fn handle_mem(&mut self, args: &[Expr], table: &SymbolTable) -> Expr {
+    fn handle_mem(&mut self, args: &[Expr], table: &SymbolTable, err: &mut ErrorGen) -> Expr {
         // Assume the correct args since we've gone through typechecking at this point!
-        let libname = match args.iter().next().unwrap() {
-            Expr::VarId { name, .. } => name.clone(),
+        let (libname, loc) = match args.iter().next() {
+            Some(arg @ Expr::VarId { name, .. }) => (name.clone(), arg.loc().clone()),
             _ => unreachable!(),
         };
         let Some(Record::Library { mem_id, .. }) = table.lookup_lib(libname.as_str(), false) else {
@@ -1847,7 +1884,11 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                 loc: None,
             }
         } else {
-            panic!("memory has not been imported for {libname}")
+            err.add_instr_error_at(
+                &format!("memory has not been imported for library `{libname}`"),
+                &loc,
+            );
+            zero(&DataType::U32, None)
         }
     }
 

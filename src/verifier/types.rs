@@ -1,5 +1,7 @@
 use crate::generator::ast::StackReq;
-use crate::parser::types::{CallKind, DataType, Definition, FnId, Location, ProbeRule, Value};
+use crate::parser::types::{
+    CallKind, DataType, DeclModifiers, Definition, FnId, Location, ProbeRule, Value,
+};
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt;
@@ -25,6 +27,15 @@ impl SymbolTable {
             curr_scope: 0,
             records: vec![],
             curr_rec: 0,
+        }
+    }
+
+    /// State that the `name` var depends on (from YAML)
+    pub fn var_requires(&self, name: &str) -> &[String] {
+        if let Some(Record::Var { requires, .. }) = self.lookup_var(name, false) {
+            requires
+        } else {
+            &[]
         }
     }
 
@@ -432,6 +443,19 @@ impl SymbolTable {
     pub fn lookup(&self, key: &str) -> Option<usize> {
         self.lookup_with_context(key).0
     }
+
+    /// Look up `key` only in the current scope (no ancestor search).
+    pub fn lookup_in_curr_scope(&self, key: &str) -> Option<usize> {
+        self.get_curr_scope().and_then(|s| s.lookup(key).copied())
+    }
+
+    /// The read-liveness of var record `id`, if it is a var.
+    pub fn var_liveness(&self, id: usize) -> Option<ValueLiveness> {
+        match self.get_record(id) {
+            Some(Record::Var { liveness, .. }) => Some(*liveness),
+            _ => None,
+        }
+    }
     pub fn lookup_with_scope_id(&self, key: &str) -> (Option<usize>, Option<usize>) {
         let (rec_id, scope_id, _) = self.lookup_with_context(key);
         (rec_id, scope_id)
@@ -472,29 +496,6 @@ impl SymbolTable {
             scope = s.parent.and_then(|p| self.scopes.get(p));
         }
         has_user.then_some(bound_owner).flatten()
-    }
-
-    pub fn scope_is_probe_local(&self, scope_id: usize) -> bool {
-        let mut is_probe_local = false;
-        if let Some(scope) = self.scopes.get(scope_id) {
-            is_probe_local |= matches!(scope.ty, ScopeType::Probe);
-            let rec_id: Option<&usize> = None;
-            let mut curr_scope = scope;
-            let mut next_parent: Option<&Scope> = match curr_scope.parent {
-                None => None,
-                Some(p_id) => self.scopes.get(p_id),
-            };
-            while rec_id.is_none() && next_parent.is_some() {
-                is_probe_local |= matches!(next_parent.unwrap().ty, ScopeType::Probe);
-
-                curr_scope = next_parent.unwrap();
-                next_parent = match curr_scope.parent {
-                    None => None,
-                    Some(p_id) => self.scopes.get(p_id),
-                };
-            }
-        }
-        is_probe_local
     }
 
     fn get_scope_context(&self, scope_id: usize) -> String {
@@ -722,8 +723,35 @@ pub enum Record {
         addr: Option<Vec<VarAddr>>,
         /// The constant-folding classifier's verdict for this var.
         fold_class: FoldClass,
+        /// When this var's readable value is available
+        liveness: ValueLiveness,
+        /// Other state (by var name) that this var depends on for derivation
+        requires: Vec<String>,
         loc: Option<Location>,
     },
+}
+
+/// When a variable's readable value is available
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum ValueLiveness {
+    /// exists only during a probe firing
+    #[default]
+    ProbeLocal,
+    /// available for the whole module run (globals/report/unshared)
+    Persistent,
+}
+impl ValueLiveness {
+    /// Liveness of a probe-scoped variable declared with the given modifiers and type
+    pub fn for_decl(modifiers: &DeclModifiers, ty: &DataType) -> Self {
+        if matches!(ty, DataType::Map { .. }) {
+            // only map entries are readable values, written in the probe scope
+            Self::ProbeLocal
+        } else if modifiers.is_report || modifiers.is_unshared {
+            Self::Persistent
+        } else {
+            Self::ProbeLocal
+        }
+    }
 }
 
 /// The classifier's verdict on whether a user var's constant definition may be
