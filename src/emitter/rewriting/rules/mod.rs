@@ -53,22 +53,19 @@ pub fn get_loc_info_for_active_probes(
     }
     if let Some(r) = &mut res {
         r.static_data.extend(init_whamm_bound_vars(app_wasm, err));
-        reject_invalid_opcode_var_deps(r, state, err);
+        reject_invalid_opcode_var_deps(r, err);
     }
     res
 }
 
 /// Drop probes that reference a var the matched opcode does not provide.
-fn reject_invalid_opcode_var_deps(
-    loc_info: &mut LocInfo,
-    state: &mut MatchState,
-    err: &mut ErrorGen,
-) {
+fn reject_invalid_opcode_var_deps(loc_info: &mut LocInfo, err: &mut ErrorGen) {
     // Only opcode locations carry a matched opcode; func/block events have none.
     let Some(event) = loc_info.opcode_name.clone() else {
         return;
     };
 
+    let mut reported_invalid_vars = HashSet::new();
     let mut to_remove = vec![];
     for (i, (rule, probe, _)) in loc_info.probes.iter().enumerate() {
         let event_is_explicit = rule
@@ -85,7 +82,7 @@ fn reject_invalid_opcode_var_deps(
             if event_is_explicit {
                 // The probe named this exact opcode (no glob), user error instead of non-match
                 let key = format!("{}_{}_{event}_{name}", probe.script_id, probe.probe_number);
-                if state.reported_invalid_vars.insert(key) {
+                if reported_invalid_vars.insert(key) {
                     err.add_instr_error_at(
                         &format!("`{name}` is not a valid bound var for `{event}`"),
                         &probe.loc,
@@ -2875,7 +2872,6 @@ pub struct MatchState {
     basic_blocks: BasicBlockState,
     warned_uncovered_opcodes: HashSet<String>,
     warned_unresolved_operand_bounds: HashSet<String>,
-    reported_invalid_vars: HashSet<String>,
 }
 
 // State to encode the start and end opcode index of a basic block.
