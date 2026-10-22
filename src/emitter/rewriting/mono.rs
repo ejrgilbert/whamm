@@ -180,7 +180,9 @@ fn subst_expr(expr: &mut Expr, binding: &HashMap<String, DataType>) {
             subst_expr(cond, binding);
             subst_expr(conseq, binding);
             subst_expr(alt, binding);
-            *ty = resolve_dt(ty, binding);
+            if let Some(ty) = ty {
+                *ty = resolve_dt(ty, binding);
+            }
         }
         Expr::Call {
             fn_target, args, ..

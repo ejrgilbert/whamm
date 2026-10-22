@@ -1393,7 +1393,7 @@ impl<'a> TypeChecker<'a> {
                 match (alt_ty, conseq_ty.clone()) {
                     (Some(alt_t), Some(conseq_t)) => {
                         if alt_t == conseq_t {
-                            *ty = alt_t.clone();
+                            *ty = Some(alt_t.clone());
                             conseq_ty
                         } else {
                             self.err.type_check_error(

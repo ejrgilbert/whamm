@@ -99,7 +99,6 @@ pub enum DataType {
     I64,
     F64,
     Boolean,
-    Null,
     Str,
     FuncRef,
     Tuple {
@@ -130,7 +129,6 @@ impl Hash for DataType {
             | DataType::I64
             | DataType::F64
             | DataType::Boolean
-            | DataType::Null
             | DataType::Str
             | DataType::FuncRef
             | DataType::Lib
@@ -170,7 +168,6 @@ impl PartialEq for DataType {
             | (DataType::F32, DataType::F32)
             | (DataType::F64, DataType::F64)
             | (DataType::Boolean, DataType::Boolean)
-            | (DataType::Null, DataType::Null)
             | (DataType::Str, DataType::Str)
             | (DataType::FuncRef, DataType::FuncRef)
             | (DataType::Lib, DataType::Lib)
@@ -214,7 +211,6 @@ impl Display for DataType {
             DataType::I64 => write!(f, "i64"),
             DataType::F64 => write!(f, "f64"),
             DataType::Boolean => write!(f, "bool"),
-            DataType::Null => write!(f, "null"),
             DataType::Str => write!(f, "str"),
             DataType::FuncRef => write!(f, "funcref"),
             DataType::Lib => write!(f, "lib"),
@@ -276,7 +272,6 @@ impl DataType {
             DataType::U64 | DataType::I64 => other.as_i64_in_wasm(),
             DataType::F32
             | DataType::F64
-            | DataType::Null
             | DataType::Str
             | DataType::FuncRef
             | DataType::Lib
@@ -308,7 +303,6 @@ impl DataType {
             DataType::FuncRef => vec![WirmType::FuncRefNull],
             // the ID used to track this var in the lib
             DataType::Map { .. } => vec![WirmType::I32],
-            DataType::Null => unimplemented!(),
             DataType::Str => vec![WirmType::I32, WirmType::I32],
             // Flatten each element's wasm types: e.g. (i32, str) → [I32, I32, I32]
             DataType::Tuple { ty_info } => ty_info.iter().flat_map(|t| t.to_wasm_type()).collect(),
@@ -385,7 +379,6 @@ impl DataType {
                 false
             }
             DataType::Boolean
-            | DataType::Null
             | DataType::Str
             | DataType::FuncRef
             // | DataType::Tuple { .. }
@@ -408,7 +401,7 @@ impl DataType {
             DataType::I64 => 8,
             DataType::F64 => 9,
             DataType::Boolean => 10,
-            DataType::Null => 11,
+            // id 11 was DataType::Null (removed)
             DataType::Str => 12,
             DataType::FuncRef => 13,
             DataType::Tuple { .. } => 14,
@@ -442,7 +435,6 @@ impl DataType {
             DataType::Str => Some(8), // (two i32s)
             DataType::FuncRef |
             DataType::TypeParam(..) |
-            DataType::Null |
             DataType::Lib |
             DataType::AssumeGood |
             DataType::Unknown => {
@@ -487,9 +479,6 @@ impl DataType {
             }
             DataType::Boolean => {
                 yellow(true, "bool".to_string(), buffer);
-            }
-            DataType::Null => {
-                yellow(true, "null".to_string(), buffer);
             }
             DataType::Str => {
                 yellow(true, "str".to_string(), buffer);
@@ -555,7 +544,6 @@ impl DataType {
                 res
             }
             DataType::FuncRef |
-            DataType::Null |
             DataType::Lib |
             DataType::Unknown |
             DataType::TypeParam(..) |
@@ -1509,7 +1497,8 @@ pub enum Expr {
         cond: Box<Expr>,
         conseq: Box<Expr>,
         alt: Box<Expr>,
-        ty: DataType, // populated by the type-checker (for knowing the return_ty of the emitted blocks)
+        // The return_ty of the blocks, populated by type-checker
+        ty: Option<DataType>,
         loc: Option<Location>,
     },
     BinOp {

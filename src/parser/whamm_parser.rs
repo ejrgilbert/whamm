@@ -1301,7 +1301,7 @@ fn handle_ternary(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<Wh
         cond: Box::new(cond),
         conseq: Box::new(conseq),
         alt: Box::new(alt),
-        ty: DataType::Null,
+        ty: None,
         loc: Some(Location {
             line_col: pair_loc,
             path: None,
