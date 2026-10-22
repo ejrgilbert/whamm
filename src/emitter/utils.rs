@@ -1210,7 +1210,7 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                 }
                 _ => {
                     ctx.err.add_internal_error(
-                        &format!("variable `{name}` not in scope, but reached init"),
+                        &format!("variable `{name}` not in scope, but reached emit"),
                         expr.loc(),
                     );
                     return false;
@@ -1252,7 +1252,7 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                 is_success
             } else {
                 ctx.err.add_internal_error(
-                    &format!("variable `{name}` not in scope, but reached init"),
+                    &format!("variable `{name}` not in scope, but reached emit"),
                     expr.loc(),
                 );
                 false
