@@ -367,8 +367,7 @@ impl DataType {
             | DataType::F32
             | DataType::U64
             | DataType::I64
-            | DataType::F64
-            | DataType::Unknown => true,
+            | DataType::F64 => true,
             DataType::Tuple { ty_info } => {
                 // check for numeric types
                 for ty in ty_info.iter() {
@@ -385,6 +384,7 @@ impl DataType {
             | DataType::Map { .. }
             | DataType::Lib
             | DataType::AssumeGood
+            | DataType::Unknown
             | DataType::TypeParam(..) => false,
         }
     }
@@ -1118,17 +1118,29 @@ impl Value {
     pub fn gen_bool(val: bool) -> Self {
         Self::Boolean { val }
     }
-    pub fn ty(&self) -> DataType {
+
+    // The value's type (or None if assigned during type checking)
+    pub fn ty(&self) -> Option<DataType> {
         match self {
-            Value::NumericLiteral { .. } => DataType::Unknown,
-            Value::Number { ty, .. } => ty.clone(),
-            Value::Boolean { .. } => DataType::Boolean,
-            Value::Str { .. } => DataType::Str,
-            Value::Tuple { ty, .. } => ty.clone(),
-            Value::U32U32Map { .. } => DataType::Map {
+            Value::NumericLiteral { .. } => None,
+            Value::Number { ty, .. } => Some(ty.clone()),
+            Value::Boolean { .. } => Some(DataType::Boolean),
+            Value::Str { .. } => Some(DataType::Str),
+            Value::Tuple { ty, .. } => Some(ty.clone()),
+            Value::U32U32Map { .. } => Some(DataType::Map {
                 key_ty: Box::new(DataType::U32),
                 val_ty: Box::new(DataType::U32),
-            },
+            }),
+        }
+    }
+    /// A human-readable type name for diagnostics.
+    fn ty_name(&self) -> String {
+        match self {
+            Value::NumericLiteral { .. } => "numeric literal".to_string(),
+            _ => self
+                .ty()
+                .unwrap_or_else(|| unreachable!("unhandled variant of Value!"))
+                .to_string(),
         }
     }
     pub fn implicit_cast(&mut self, target: &DataType) -> Result<(), String> {
@@ -1213,7 +1225,7 @@ impl Value {
                     }
                     Ok(())
                 } else {
-                    Err(format!("{} to {}", self.ty(), target))
+                    Err(format!("{} to {}", self.ty_name(), target))
                 }
             }
             Value::Boolean { val } => {
@@ -1230,7 +1242,7 @@ impl Value {
                     DataType::I64 => Value::gen_num(NumLit::i64(num_rep as i64), target.clone()),
                     DataType::F32 => Value::gen_num(NumLit::f32(num_rep as f32), target.clone()),
                     DataType::F64 => Value::gen_num(NumLit::f64(num_rep as f64), target.clone()),
-                    _ => return Err(format!("{} to {}", self.ty(), target)),
+                    _ => return Err(format!("{} to {}", self.ty_name(), target)),
                 };
                 Ok(())
             }

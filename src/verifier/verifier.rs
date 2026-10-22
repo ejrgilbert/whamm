@@ -613,12 +613,15 @@ impl<'a> TypeChecker<'a> {
                         exp_ty
                     };
 
-                    let val_ty = val.ty();
+                    let Some(val_ty) = val.ty() else {
+                        // This arm only matches `Number`/`Boolean`, which always have a type.
+                        unreachable!("a resolved Number/Boolean value always has a type")
+                    };
                     return if *exp_ty == val_ty {
                         Some(val_ty)
                     } else if exp_ty.can_implicitly_cast() && val_ty.can_implicitly_cast() {
                         match val.implicit_cast(exp_ty) {
-                            Ok(_) => Some(val.ty()),
+                            Ok(_) => val.ty(),
                             Err(msg) => {
                                 let loc = self.curr_loc.as_ref().map(|loc| loc.line_col.clone());
                                 self.err.type_check_error(
@@ -632,13 +635,8 @@ impl<'a> TypeChecker<'a> {
                         Some(DataType::Unknown)
                     };
                 }
-                Some(val.ty())
+                val.ty()
             }
-            Value::Str { .. } => Some(DataType::Str),
-            Value::U32U32Map { .. } => Some(DataType::Map {
-                key_ty: Box::new(DataType::U32),
-                val_ty: Box::new(DataType::U32),
-            }),
             Value::Tuple { ty, vals } => {
                 let expected_elems: Option<&Vec<DataType>> = match expected {
                     Some(DataType::Tuple { ty_info }) => Some(ty_info),
@@ -673,6 +671,7 @@ impl<'a> TypeChecker<'a> {
                 *ty = tuple_ty.clone();
                 Some(tuple_ty)
             }
+            Value::Str { .. } | Value::U32U32Map { .. } => val.ty(),
         }
     }
 
