@@ -632,7 +632,8 @@ impl<'a> TypeChecker<'a> {
                             }
                         }
                     } else {
-                        Some(DataType::Unknown)
+                        // TODO(phase 3): this give-up case should become an inference `Error`.
+                        Some(DataType::BoundVar(Box::new(GenericConstraint::Top)))
                     };
                 }
                 val.ty()

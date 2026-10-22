@@ -302,11 +302,10 @@ fn materialize_pattern_name(name: &str) -> String {
     }
 }
 
-// Per agreed convention: `Unknown` collapses to `i32` for the breadth tests, since this
-// suite is about parity of bound-item exposure, not type correctness (covered elsewhere).
 fn breadth_type(ty: &DataType) -> String {
     match ty {
-        DataType::Unknown => "i32".to_string(),
+        // Default to i32 for BoundVars (we care about covering bound items, not types)
+        DataType::BoundVar(..) => "i32".to_string(),
         other => other.to_string(),
     }
 }
@@ -333,7 +332,7 @@ fn synth_literal(ty: &DataType) -> Option<String> {
         | DataType::I32
         | DataType::U64
         | DataType::I64
-        | DataType::Unknown => format!("0 as {}", breadth_type(ty)),
+        | DataType::BoundVar(..) => format!("0 as {}", breadth_type(ty)),
         DataType::F32 | DataType::F64 => format!("0.0 as {}", ty),
         DataType::Boolean => "false".to_string(),
         DataType::Str => "\"\"".to_string(),

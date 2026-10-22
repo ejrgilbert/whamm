@@ -109,7 +109,9 @@ pub enum DataType {
         val_ty: Box<DataType>,
     },
     Lib,
-    Unknown,
+    /// A bound variable whose concrete type is resolved per match site by
+    /// instruction matching. Can be bound by generics
+    BoundVar(Box<GenericConstraint>),
     AssumeGood,
     /// An unresolved polymorphic type parameter, as in <T>
     TypeParam(String),
@@ -132,9 +134,12 @@ impl Hash for DataType {
             | DataType::Str
             | DataType::FuncRef
             | DataType::Lib
-            | DataType::AssumeGood
-            | DataType::Unknown => {
+            | DataType::AssumeGood => {
                 state.write_u8(self.id() as u8);
+            }
+            DataType::BoundVar(constraint) => {
+                state.write_u8(self.id() as u8);
+                constraint.hash(state);
             }
             DataType::Tuple { ty_info } => {
                 for ty in ty_info {
@@ -171,9 +176,9 @@ impl PartialEq for DataType {
             | (DataType::Str, DataType::Str)
             | (DataType::FuncRef, DataType::FuncRef)
             | (DataType::Lib, DataType::Lib)
-            | (DataType::Unknown, DataType::Unknown)
             | (_, DataType::AssumeGood)
             | (DataType::AssumeGood, _) => true,
+            (DataType::BoundVar(c0), DataType::BoundVar(c1)) => c0 == c1,
             (DataType::Tuple { ty_info: ty_info0 }, DataType::Tuple { ty_info: ty_info1 }) => {
                 let res = ty_info0.len() == ty_info1.len()
                     && ty_info0
@@ -230,7 +235,7 @@ impl Display for DataType {
             }
             DataType::TypeParam(name) => write!(f, "{name}"),
             DataType::AssumeGood => write!(f, "assume_good"),
-            DataType::Unknown => write!(f, "unknown"),
+            DataType::BoundVar(_) => write!(f, "any"),
         }
     }
 }
@@ -277,7 +282,7 @@ impl DataType {
             | DataType::Lib
             | DataType::TypeParam(..)
             | DataType::AssumeGood
-            | DataType::Unknown
+            | DataType::BoundVar(..)
             | DataType::Tuple { .. }
             | DataType::Map { .. } => *other == *self,
         }
@@ -310,7 +315,7 @@ impl DataType {
                 unreachable!("unresolved type parameter `{name}` reached codegen")
             }
             DataType::Lib => unreachable!(),
-            DataType::Unknown => unreachable!(),
+            DataType::BoundVar(..) => unreachable!(),
             DataType::AssumeGood => unreachable!(),
         }
     }
@@ -384,7 +389,7 @@ impl DataType {
             | DataType::Map { .. }
             | DataType::Lib
             | DataType::AssumeGood
-            | DataType::Unknown
+            | DataType::BoundVar(..)
             | DataType::TypeParam(..) => false,
         }
     }
@@ -409,7 +414,7 @@ impl DataType {
             DataType::Lib => 16,
             DataType::TypeParam(..) => 17,
             DataType::AssumeGood => 18,
-            DataType::Unknown => 19,
+            DataType::BoundVar(..) => 19,
         }
     }
     pub fn num_bytes(&self) -> Option<usize> {
@@ -437,7 +442,7 @@ impl DataType {
             DataType::TypeParam(..) |
             DataType::Lib |
             DataType::AssumeGood |
-            DataType::Unknown => {
+            DataType::BoundVar(..) => {
                 // TODO -- is this okay for AssumeGood?
                 // size should be determined respective to the context!
                 None
@@ -516,8 +521,8 @@ impl DataType {
             DataType::AssumeGood => {
                 yellow(true, "assume_good, not type checked".to_string(), buffer);
             }
-            DataType::Unknown => {
-                yellow(true, "unknown, not type checked".to_string(), buffer);
+            DataType::BoundVar(_) => {
+                yellow(true, "any".to_string(), buffer);
             }
         }
     }
@@ -545,7 +550,7 @@ impl DataType {
             }
             DataType::FuncRef |
             DataType::Lib |
-            DataType::Unknown |
+            DataType::BoundVar(..) |
             DataType::TypeParam(..) |
             DataType::AssumeGood => unreachable!()
         }

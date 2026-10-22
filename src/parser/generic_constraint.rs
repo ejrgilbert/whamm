@@ -19,7 +19,7 @@ use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
 /// A constraint on a generic type parameter.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum GenericConstraint {
     Exact(DataType),
     Numeric,

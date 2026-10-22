@@ -233,7 +233,7 @@ impl MemoryAllocator {
             DataType::FuncRef
             | DataType::Lib
             | DataType::AssumeGood
-            | DataType::Unknown
+            | DataType::BoundVar(..)
             | DataType::TypeParam(..) => {
                 unreachable!()
             }
@@ -330,7 +330,7 @@ impl MemoryAllocator {
             DataType::FuncRef
             | DataType::Lib
             | DataType::AssumeGood
-            | DataType::Unknown
+            | DataType::BoundVar(..)
             | DataType::TypeParam(..) => {
                 unreachable!()
             }

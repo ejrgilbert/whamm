@@ -1810,7 +1810,8 @@ fn type_from_rule_handler(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut Erro
         Ok(ty) => ty,
         Err(errors) => {
             let _ = err.add_errors(errors);
-            DataType::Unknown
+            // TODO(phase 3): parse-recovery should become an inference `Error`, not a type.
+            DataType::BoundVar(Box::new(GenericConstraint::Top))
         }
     }
 }
@@ -1830,7 +1831,7 @@ pub fn type_from_rule(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<DataType
         Rule::TY_BOOL => Ok(DataType::Boolean),
         Rule::TY_STRING => Ok(DataType::Str),
         Rule::TY_FUNCREF => Ok(DataType::FuncRef),
-        Rule::TY_UNKNOWN => Ok(DataType::Unknown),
+        Rule::TY_ANY => Ok(DataType::BoundVar(Box::new(GenericConstraint::Top))),
         Rule::TY_TYPEPARAM => Ok(DataType::TypeParam(pair.as_str().to_string())),
         Rule::TY_TUPLE => {
             let mut tuple_content_types = vec![];
