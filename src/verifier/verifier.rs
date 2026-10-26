@@ -284,6 +284,17 @@ impl<'a> TypeChecker<'a> {
         InferTy::Error
     }
 
+    fn ty_storable_in_linear_memory(&self, ty: &DataType) -> bool {
+        match ty {
+            DataType::TypeParam(name) => self
+                .type_param_constraints
+                .get(name)
+                .map(GenericConstraint::all_leaves_storable)
+                .unwrap_or(true),
+            other => other.num_bytes().is_some(),
+        }
+    }
+
     /// Shared type-checking logic for arithmetic binary ops: Add, Subtract, Multiply, Divide, Modulo.
     ///
     /// `cast_to` is the assignment target type when this expression is the RHS of an assignment,
@@ -707,11 +718,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    fn visit_expr_impl(
-        &mut self,
-        expr: &mut Expr,
-        cast_to: Option<&DataType>,
-    ) -> InferTy {
+    fn visit_expr_impl(&mut self, expr: &mut Expr, cast_to: Option<&DataType>) -> InferTy {
         match expr {
             Expr::Primitive { val, loc } => {
                 self.curr_loc = loc.clone();
@@ -1403,9 +1410,7 @@ impl<'a> TypeChecker<'a> {
                             InferTy::Error
                         }
                     }
-                    _ => {
-                        InferTy::Error
-                    }
+                    _ => InferTy::Error,
                 }
             }
         }
@@ -1567,7 +1572,9 @@ impl WhammVisitorMut<Option<InferTy>> for TypeChecker<'_> {
         let num_statements = block.stmts.len();
         let start_of_range: usize;
         for i in 0..num_statements {
-            let temp = self.visit_stmt(&mut block.stmts[i]).and_then(InferTy::known);
+            let temp = self
+                .visit_stmt(&mut block.stmts[i])
+                .and_then(InferTy::known);
             if temp.is_some() && ret_type.is_none() {
                 ret_type = temp;
             } else if ret_type.is_some() {
@@ -1739,6 +1746,16 @@ impl WhammVisitorMut<Option<InferTy>> for TypeChecker<'_> {
                             return None;
                         }
                     }
+                }
+
+                if modifiers.is_mem_backed() && !self.ty_storable_in_linear_memory(ty) {
+                    self.err.type_check_error(
+                        format!(
+                            "the type of variable that `{name}` uses (report/unshared/etc.) must be representable in memory, but its data type (`{ty}`) has no such representation."
+                        ),
+                        &loc.clone().map(|l| l.line_col),
+                    );
+                    return None;
                 }
                 if !self.in_script_global {
                     let liveness = ValueLiveness::for_decl(modifiers, ty);

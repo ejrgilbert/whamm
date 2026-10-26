@@ -2432,10 +2432,7 @@ fn emit_unop<'a, T: Opcode<'a>>(
                 injector.f64_const(0f64);
                 injector.f64_eq();
             }
-            DataType::FuncRef
-            | DataType::Str
-            | DataType::Tuple { .. }
-            | DataType::Map { .. } => {
+            DataType::FuncRef | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                 unimplemented!("We do not support NOT for {done_on}")
             }
             _ => {

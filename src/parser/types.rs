@@ -1673,6 +1673,10 @@ impl DeclModifiers {
             is_report,
         }
     }
+    /// Whether this variable would be stored in linear memory
+    pub fn is_mem_backed(&self) -> bool {
+        self.is_unshared || self.is_report
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
