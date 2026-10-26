@@ -1,8 +1,9 @@
 use crate::common::rule_tracker::RuleTracker;
 use crate::parser::provider_handler::{Event, Package, Provider};
-use crate::parser::types::{DataType, WhammVisitorMut};
+use crate::parser::types::WhammVisitorMut;
+use crate::verifier::verifier::InferTy;
 
-/// Supertrait for visitors that type-check (`WhammVisitorMut<Option<DataType>>`).
+/// Supertrait for visitors that type-check (`WhammVisitorMut<Option<InferTy>>`).
 ///
 /// Provides `do_visit_provider`, `do_visit_package`, and `do_visit_event` helpers
 /// that handle the shared scope-entry / rule-tracking / child-traversal pattern,
@@ -23,9 +24,9 @@ pub trait VerifierVisitorTyped {
     /// Called after entering scope and pushing the rule, before visiting children.
     fn before_children_event(&mut self, _event: &mut Event) {}
 
-    fn do_visit_provider(&mut self, provider: &mut Provider) -> Option<DataType>
+    fn do_visit_provider(&mut self, provider: &mut Provider) -> Option<InferTy>
     where
-        Self: WhammVisitorMut<Option<DataType>> + Sized,
+        Self: WhammVisitorMut<Option<InferTy>> + Sized,
     {
         let name = provider.def.name.clone();
         self.enter_named_scope(&name);
@@ -39,9 +40,9 @@ pub trait VerifierVisitorTyped {
         None
     }
 
-    fn do_visit_package(&mut self, package: &mut Package) -> Option<DataType>
+    fn do_visit_package(&mut self, package: &mut Package) -> Option<InferTy>
     where
-        Self: WhammVisitorMut<Option<DataType>> + Sized,
+        Self: WhammVisitorMut<Option<InferTy>> + Sized,
     {
         let name = format!(":{}", package.def.name);
         self.enter_named_scope(&package.def.name.clone());
@@ -55,9 +56,9 @@ pub trait VerifierVisitorTyped {
         None
     }
 
-    fn do_visit_event(&mut self, event: &mut Event) -> Option<DataType>
+    fn do_visit_event(&mut self, event: &mut Event) -> Option<InferTy>
     where
-        Self: WhammVisitorMut<Option<DataType>> + Sized,
+        Self: WhammVisitorMut<Option<InferTy>> + Sized,
     {
         let name = format!(":{}", event.def.name);
         self.enter_named_scope(&event.def.name.clone());

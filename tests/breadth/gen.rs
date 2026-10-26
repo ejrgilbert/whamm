@@ -340,7 +340,6 @@ fn synth_literal(ty: &DataType) -> Option<String> {
         | DataType::Tuple { .. }
         | DataType::Map { .. }
         | DataType::Lib
-        | DataType::TypeParam(_)
-        | DataType::AssumeGood => return None,
+        | DataType::TypeParam(_) => return None,
     })
 }

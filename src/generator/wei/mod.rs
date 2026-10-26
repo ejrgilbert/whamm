@@ -223,7 +223,7 @@ impl WeiGenerator<'_, '_, '_> {
                                 "CallKind::Lib resolved to non-LibFn record",
                                 lib_call.loc(),
                             );
-                            DataType::AssumeGood
+                            return;
                         }
                     },
                     _ => {
@@ -231,7 +231,7 @@ impl WeiGenerator<'_, '_, '_> {
                             "Expected a resolved Lib call here",
                             lib_call.loc(),
                         );
-                        DataType::AssumeGood
+                        return;
                     }
                 };
                 let wirm_ty = match ty.to_wasm_type().first() {

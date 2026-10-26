@@ -232,7 +232,6 @@ impl MemoryAllocator {
             DataType::Map { .. } => todo!(),
             DataType::FuncRef
             | DataType::Lib
-            | DataType::AssumeGood
             | DataType::BoundVar(..)
             | DataType::TypeParam(..) => {
                 unreachable!()
@@ -329,7 +328,6 @@ impl MemoryAllocator {
             DataType::Map { .. } => todo!(),
             DataType::FuncRef
             | DataType::Lib
-            | DataType::AssumeGood
             | DataType::BoundVar(..)
             | DataType::TypeParam(..) => {
                 unreachable!()

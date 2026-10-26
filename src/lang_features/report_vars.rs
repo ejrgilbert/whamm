@@ -351,7 +351,7 @@ impl ReportVars {
 
         // iterate through all the data type flush functions and emit calls
         // sort these by the datatype to make the flush deterministic!
-        // Tuple variants all share id()=13, so use the Display string as a secondary key
+        // Tuple variants all share one id(), so use the Display string as a secondary key
         // to get a stable ordering when multiple distinct tuple types are present.
         let sorted_keys = self.alloc_tracker.keys().sorted_by(|a, b| {
             a.id()

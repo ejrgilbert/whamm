@@ -1810,7 +1810,6 @@ fn type_from_rule_handler(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut Erro
         Ok(ty) => ty,
         Err(errors) => {
             let _ = err.add_errors(errors);
-            // TODO(phase 3): parse-recovery should become an inference `Error`, not a type.
             DataType::BoundVar(Box::new(GenericConstraint::Top))
         }
     }
