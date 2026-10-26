@@ -6,7 +6,7 @@
 
 argN: &argN
   name: arg[0:9]+
-  type: unknown
+  type: any
   docs: The argument to the call at the specific index, [0:9]+. (For example, the number of arguments to a call changes based on the targeted function.)
   lifetime: dynamic
   derived_from: null
@@ -53,9 +53,9 @@ arg0_f64: &arg0_f64
   lifetime: dynamic
   derived_from: null
 
-arg0_unknown: &arg0_unknown
+arg0_any: &arg0_any
   name: arg0
-  type: unknown
+  type: any
   docs: The argument to the opcode at index 0.
   lifetime: dynamic
   derived_from: null
@@ -122,7 +122,7 @@ arg2_u32: &arg2_u32
 
 resN: &resN
   name: res[0:9]+
-  type: unknown
+  type: any
   docs: The result of the opcode at the specific index, [0:9]+. Can only be used in `after` probes. (For example, the number of `call` results changes based on the targeted function.)
   lifetime: dynamic
   derived_from: null
@@ -159,9 +159,9 @@ res0_f64: &res0_f64
 # ==== immN Constants ====
 # ========================
 
-immN_unknown: &immN
+immN_any: &immN
   name: imm[0:9]+
-  type: unknown
+  type: any
   docs: The immediate to the opcode at the specific index, e.g. [0:9]+, not including the default target. The number of immediates on the br_table is not statically known.
   lifetime: static
   derived_from: null
@@ -215,16 +215,16 @@ imm1_u32: &imm1_u32
   lifetime: static
   derived_from: null
 
-imm1_unknown: &imm1_unknown
+imm1_any: &imm1_any
   name: imm1
-  type: unknown
+  type: any
   docs: The immediate to the opcode at index 1.
   lifetime: static
   derived_from: null
 
-imm2_unknown: &imm2_unknown
+imm2_any: &imm2_any
   name: imm2
-  type: unknown
+  type: any
   docs: The immediate to the opcode at index 2.
   lifetime: static
   derived_from: null
@@ -1262,7 +1262,7 @@ local_set: &local_set
       derived_from: 0x0021
     - *category_id_local
     - *category_name_local
-    - *arg0_unknown
+    - *arg0_any
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
@@ -1284,7 +1284,7 @@ local_tee: &local_tee
       derived_from: 0x0022
     - *category_id_local
     - *category_name_local
-    - *arg0_unknown
+    - *arg0_any
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
@@ -1327,7 +1327,7 @@ global_set: &global_set
       derived_from: 0x0024
     - *category_id_global
     - *category_name_global
-    - *arg0_unknown
+    - *arg0_any
     - *imm0_u32
   bound_fns: []
   supported_modes: *default_modes
@@ -5864,8 +5864,8 @@ br_on_cast: &br_on_cast
     - *category_id_control
     - *category_name_control
     - *imm0_u32
-    - *imm1_unknown
-    - *imm2_unknown
+    - *imm1_any
+    - *imm2_any
     - *argN
   bound_fns: []
   supported_modes: *default_modes
@@ -5888,8 +5888,8 @@ br_on_cast_fail: &br_on_cast_fail
     - *category_id_control
     - *category_name_control
     - *imm0_u32
-    - *imm1_unknown
-    - *imm2_unknown
+    - *imm1_any
+    - *imm2_any
     - *argN
   bound_fns: []
   supported_modes: *default_modes

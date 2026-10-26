@@ -19,7 +19,7 @@ use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
 /// A constraint on a generic type parameter.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum GenericConstraint {
     Exact(DataType),
     Numeric,
@@ -53,6 +53,11 @@ impl GenericConstraint {
                 vec![DataType::I32, DataType::I64, DataType::F32, DataType::F64]
             }
         }
+    }
+
+    /// Whether every concrete type this constraint has a linear-memory representation
+    pub fn all_leaves_storable(&self) -> bool {
+        self.leaves().iter().all(|t| t.num_bytes().is_some())
     }
 
     /// Whether a concrete type satisfies this constraint.
@@ -184,6 +189,22 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn all_leaves_storable_tracks_the_lattice() {
+        // Every numeric class is storable in linear memory...
+        for bound in [
+            GenericConstraint::Numeric,
+            GenericConstraint::Int,
+            GenericConstraint::Float,
+            GenericConstraint::Top,
+            GenericConstraint::Exact(DataType::I64),
+        ] {
+            assert!(bound.all_leaves_storable(), "{bound:?}");
+        }
+        // ...but a constraint admitting a type with no linear-memory size is not.
+        assert!(!GenericConstraint::Exact(DataType::FuncRef).all_leaves_storable());
     }
 
     #[test]

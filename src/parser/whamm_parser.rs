@@ -733,7 +733,7 @@ fn handle_custom_binop(
         op,
         rhs: Box::new(rhs),
 
-        done_on: DataType::Unknown,
+        done_on: None,
         loc: Some(Location {
             line_col: full_loc.clone(),
             path: None,
@@ -1301,7 +1301,7 @@ fn handle_ternary(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<Wh
         cond: Box::new(cond),
         conseq: Box::new(conseq),
         alt: Box::new(alt),
-        ty: DataType::Null,
+        ty: None,
         loc: Some(Location {
             line_col: pair_loc,
             path: None,
@@ -1366,7 +1366,7 @@ pub fn handle_expr(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<W
                     Ok(Expr::UnOp {
                         op,
                         expr: Box::new(rhs),
-                        done_on: DataType::Unknown,
+                        done_on: None,
                         loc,
                     })
                 }
@@ -1446,7 +1446,7 @@ pub fn handle_expr(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<W
                         lhs: Box::new(lhs),
                         op,
                         rhs: Box::new(rhs),
-                        done_on: DataType::Unknown,
+                        done_on: None,
                         loc,
                     })
                 }
@@ -1486,7 +1486,7 @@ pub fn handle_expr(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<Expr, Vec<W
                     Ok(Expr::UnOp {
                         op,
                         expr: Box::new(lhs),
-                        done_on: DataType::Unknown,
+                        done_on: None,
                         loc,
                     })
                 }
@@ -1561,7 +1561,7 @@ fn rebalance_logical_chain(expr: Expr) -> Expr {
                     lhs: Box::new(a),
                     op: chain_op.clone(),
                     rhs: Box::new(b),
-                    done_on: DataType::Unknown,
+                    done_on: None,
                     loc: loc.clone(),
                 }),
                 None => next.push(a),
@@ -1810,7 +1810,7 @@ fn type_from_rule_handler(pair: Pair<Rule>, line_idx: &LineIndex, err: &mut Erro
         Ok(ty) => ty,
         Err(errors) => {
             let _ = err.add_errors(errors);
-            DataType::Unknown
+            DataType::BoundVar(Box::new(GenericConstraint::Top))
         }
     }
 }
@@ -1830,7 +1830,7 @@ pub fn type_from_rule(pair: Pair<Rule>, line_idx: &LineIndex) -> Result<DataType
         Rule::TY_BOOL => Ok(DataType::Boolean),
         Rule::TY_STRING => Ok(DataType::Str),
         Rule::TY_FUNCREF => Ok(DataType::FuncRef),
-        Rule::TY_UNKNOWN => Ok(DataType::Unknown),
+        Rule::TY_ANY => Ok(DataType::BoundVar(Box::new(GenericConstraint::Top))),
         Rule::TY_TYPEPARAM => Ok(DataType::TypeParam(pair.as_str().to_string())),
         Rule::TY_TUPLE => {
             let mut tuple_content_types = vec![];

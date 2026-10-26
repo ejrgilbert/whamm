@@ -407,7 +407,7 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                                 lhs: Box::new(lhs),
                                 op: BinOp::Or,
                                 rhs: Box::new(rhs),
-                                done_on: DataType::I32,
+                                done_on: Some(DataType::I32),
                                 loc: None,
                             }
                         }
@@ -418,8 +418,10 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                     if let Some(res) = self.fold_bools(&lhs_val, &rhs_val, op) {
                         return res;
                     }
-                    if let Some(res) = self.fold_numeric_binop(&lhs, &rhs, op, done_on, err) {
-                        return res;
+                    if let Some(done_on) = done_on {
+                        if let Some(res) = self.fold_numeric_binop(&lhs, &rhs, op, done_on, err) {
+                            return res;
+                        }
                     }
                     let (lhs_val, rhs_val) = self.get_str(&lhs, &rhs);
                     if let Some(res) = self.fold_strings(&lhs_val, &rhs_val, op) {
@@ -445,8 +447,10 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                     if let Some(res) = self.fold_bools(&lhs_val, &rhs_val, op) {
                         return res;
                     }
-                    if let Some(res) = self.fold_numeric_binop(&lhs, &rhs, op, done_on, err) {
-                        return res;
+                    if let Some(done_on) = done_on {
+                        if let Some(res) = self.fold_numeric_binop(&lhs, &rhs, op, done_on, err) {
+                            return res;
+                        }
                     }
                     let (lhs_val, rhs_val) = self.get_str(&lhs, &rhs);
                     if let Some(res) = self.fold_strings(&lhs_val, &rhs_val, op) {
@@ -467,7 +471,7 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                                 kind: table.resolve_global_call("strcmp"),
                                 loc: None,
                             }),
-                            done_on: DataType::I32,
+                            done_on: Some(DataType::I32),
                             loc: loc.clone(),
                         };
                     }
@@ -486,8 +490,10 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                 | BinOp::BitAnd
                 | BinOp::BitOr
                 | BinOp::BitXor => {
-                    if let Some(res) = self.fold_numeric_binop(&lhs, &rhs, op, done_on, err) {
-                        return res;
+                    if let Some(done_on) = done_on {
+                        if let Some(res) = self.fold_numeric_binop(&lhs, &rhs, op, done_on, err) {
+                            return res;
+                        }
                     }
                 }
             }
@@ -621,7 +627,10 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
                     }
                 }
                 UnOp::BitwiseNot => {
-                    if let Some(res) = self.fold_numeric_unop(&expr, op, done_on, err) {
+                    if let Some(res) = done_on
+                        .as_ref()
+                        .and_then(|done_on| self.fold_numeric_unop(&expr, op, done_on, err))
+                    {
                         res
                     } else {
                         Expr::UnOp {

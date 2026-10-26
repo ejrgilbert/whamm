@@ -3434,10 +3434,13 @@ impl LocInfo {
                 unreachable!("NumericLiteral must be resolved by the type checker before emission")
             }
             Value::U32U32Map { val: map_val } => {
+                let Some(ty) = val.ty() else {
+                    unreachable!("a U32U32Map value always has a Map type")
+                };
                 // create a declaration
                 let decl = Statement::VarDecl {
                     name: name.clone(),
-                    ty: val.ty(),
+                    ty,
                     definition: Definition::CompilerDynamic,
                     modifiers: DeclModifiers::default(),
                     init: None,

@@ -3,7 +3,6 @@
 use pest::error::LineColLocation;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
-use std::hash::{Hash, Hasher};
 use termcolor::Buffer;
 
 use crate::common::error::ErrorGen;
@@ -86,7 +85,7 @@ impl Location {
     }
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialOrd)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum DataType {
     U8,
     I8,
@@ -99,7 +98,6 @@ pub enum DataType {
     I64,
     F64,
     Boolean,
-    Null,
     Str,
     FuncRef,
     Tuple {
@@ -110,95 +108,11 @@ pub enum DataType {
         val_ty: Box<DataType>,
     },
     Lib,
-    Unknown,
-    AssumeGood,
+    /// A bound variable whose concrete type is resolved per match site by
+    /// instruction matching. Can be bound by generics
+    BoundVar(Box<GenericConstraint>),
     /// An unresolved polymorphic type parameter, as in <T>
     TypeParam(String),
-}
-impl Hash for DataType {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        // use any distinct number as an enum variant identifier
-        match self {
-            DataType::U8
-            | DataType::I8
-            | DataType::U16
-            | DataType::I16
-            | DataType::U32
-            | DataType::I32
-            | DataType::F32
-            | DataType::U64
-            | DataType::I64
-            | DataType::F64
-            | DataType::Boolean
-            | DataType::Null
-            | DataType::Str
-            | DataType::FuncRef
-            | DataType::Lib
-            | DataType::AssumeGood
-            | DataType::Unknown => {
-                state.write_u8(self.id() as u8);
-            }
-            DataType::Tuple { ty_info } => {
-                for ty in ty_info {
-                    state.write_u8(self.id() as u8);
-                    ty.hash(state);
-                }
-            }
-            DataType::Map { key_ty, val_ty } => {
-                state.write_u8(self.id() as u8);
-                key_ty.hash(state);
-                val_ty.hash(state);
-            }
-            DataType::TypeParam(name) => {
-                state.write_u8(self.id() as u8);
-                name.hash(state);
-            }
-        }
-    }
-}
-impl PartialEq for DataType {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (DataType::U8, DataType::U8)
-            | (DataType::I8, DataType::I8)
-            | (DataType::U16, DataType::U16)
-            | (DataType::I16, DataType::I16)
-            | (DataType::U32, DataType::U32)
-            | (DataType::I32, DataType::I32)
-            | (DataType::U64, DataType::U64)
-            | (DataType::I64, DataType::I64)
-            | (DataType::F32, DataType::F32)
-            | (DataType::F64, DataType::F64)
-            | (DataType::Boolean, DataType::Boolean)
-            | (DataType::Null, DataType::Null)
-            | (DataType::Str, DataType::Str)
-            | (DataType::FuncRef, DataType::FuncRef)
-            | (DataType::Lib, DataType::Lib)
-            | (DataType::Unknown, DataType::Unknown)
-            | (_, DataType::AssumeGood)
-            | (DataType::AssumeGood, _) => true,
-            (DataType::Tuple { ty_info: ty_info0 }, DataType::Tuple { ty_info: ty_info1 }) => {
-                let res = ty_info0.len() == ty_info1.len()
-                    && ty_info0
-                        .iter()
-                        .zip(ty_info1.iter())
-                        .all(|(ty0, ty1)| ty0 == ty1);
-                res
-            }
-            (
-                DataType::Map {
-                    key_ty: key_ty0,
-                    val_ty: val_ty0,
-                },
-                DataType::Map {
-                    key_ty: key_ty1,
-                    val_ty: val_ty1,
-                },
-            ) => key_ty0 == key_ty1 && val_ty0 == val_ty1,
-            (DataType::TypeParam(name0), DataType::TypeParam(name1)) => name0 == name1,
-            _ => false,
-        }
-    }
 }
 impl Display for DataType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -214,7 +128,6 @@ impl Display for DataType {
             DataType::I64 => write!(f, "i64"),
             DataType::F64 => write!(f, "f64"),
             DataType::Boolean => write!(f, "bool"),
-            DataType::Null => write!(f, "null"),
             DataType::Str => write!(f, "str"),
             DataType::FuncRef => write!(f, "funcref"),
             DataType::Lib => write!(f, "lib"),
@@ -233,8 +146,7 @@ impl Display for DataType {
                 write!(f, "map<{},{}>", key_ty, val_ty)
             }
             DataType::TypeParam(name) => write!(f, "{name}"),
-            DataType::AssumeGood => write!(f, "assume_good"),
-            DataType::Unknown => write!(f, "unknown"),
+            DataType::BoundVar(_) => write!(f, "any"),
         }
     }
 }
@@ -276,13 +188,11 @@ impl DataType {
             DataType::U64 | DataType::I64 => other.as_i64_in_wasm(),
             DataType::F32
             | DataType::F64
-            | DataType::Null
             | DataType::Str
             | DataType::FuncRef
             | DataType::Lib
             | DataType::TypeParam(..)
-            | DataType::AssumeGood
-            | DataType::Unknown
+            | DataType::BoundVar(..)
             | DataType::Tuple { .. }
             | DataType::Map { .. } => *other == *self,
         }
@@ -308,7 +218,6 @@ impl DataType {
             DataType::FuncRef => vec![WirmType::FuncRefNull],
             // the ID used to track this var in the lib
             DataType::Map { .. } => vec![WirmType::I32],
-            DataType::Null => unimplemented!(),
             DataType::Str => vec![WirmType::I32, WirmType::I32],
             // Flatten each element's wasm types: e.g. (i32, str) → [I32, I32, I32]
             DataType::Tuple { ty_info } => ty_info.iter().flat_map(|t| t.to_wasm_type()).collect(),
@@ -316,8 +225,7 @@ impl DataType {
                 unreachable!("unresolved type parameter `{name}` reached codegen")
             }
             DataType::Lib => unreachable!(),
-            DataType::Unknown => unreachable!(),
-            DataType::AssumeGood => unreachable!(),
+            DataType::BoundVar(..) => unreachable!(),
         }
     }
     pub fn from_wasm_type(ty: &WirmType) -> Self {
@@ -373,8 +281,7 @@ impl DataType {
             | DataType::F32
             | DataType::U64
             | DataType::I64
-            | DataType::F64
-            | DataType::Unknown => true,
+            | DataType::F64 => true,
             DataType::Tuple { ty_info } => {
                 // check for numeric types
                 for ty in ty_info.iter() {
@@ -385,16 +292,16 @@ impl DataType {
                 false
             }
             DataType::Boolean
-            | DataType::Null
             | DataType::Str
             | DataType::FuncRef
             // | DataType::Tuple { .. }
             | DataType::Map { .. }
             | DataType::Lib
-            | DataType::AssumeGood
+            | DataType::BoundVar(..)
             | DataType::TypeParam(..) => false,
         }
     }
+
     pub fn id(&self) -> i32 {
         match self {
             DataType::U8 => 0,
@@ -408,15 +315,13 @@ impl DataType {
             DataType::I64 => 8,
             DataType::F64 => 9,
             DataType::Boolean => 10,
-            DataType::Null => 11,
             DataType::Str => 12,
             DataType::FuncRef => 13,
             DataType::Tuple { .. } => 14,
             DataType::Map { .. } => 15,
             DataType::Lib => 16,
             DataType::TypeParam(..) => 17,
-            DataType::AssumeGood => 18,
-            DataType::Unknown => 19,
+            DataType::BoundVar(..) => 19,
         }
     }
     pub fn num_bytes(&self) -> Option<usize> {
@@ -442,12 +347,9 @@ impl DataType {
             DataType::Str => Some(8), // (two i32s)
             DataType::FuncRef |
             DataType::TypeParam(..) |
-            DataType::Null |
             DataType::Lib |
-            DataType::AssumeGood |
-            DataType::Unknown => {
-                // TODO -- is this okay for AssumeGood?
-                // size should be determined respective to the context!
+            DataType::BoundVar(..) => {
+                // No fixed linear-memory size
                 None
             }
         }
@@ -488,9 +390,6 @@ impl DataType {
             DataType::Boolean => {
                 yellow(true, "bool".to_string(), buffer);
             }
-            DataType::Null => {
-                yellow(true, "null".to_string(), buffer);
-            }
             DataType::Str => {
                 yellow(true, "str".to_string(), buffer);
             }
@@ -524,11 +423,8 @@ impl DataType {
             DataType::TypeParam(name) => {
                 yellow(true, name.clone(), buffer);
             }
-            DataType::AssumeGood => {
-                yellow(true, "assume_good, not type checked".to_string(), buffer);
-            }
-            DataType::Unknown => {
-                yellow(true, "unknown, not type checked".to_string(), buffer);
+            DataType::BoundVar(_) => {
+                yellow(true, "any".to_string(), buffer);
             }
         }
     }
@@ -555,11 +451,9 @@ impl DataType {
                 res
             }
             DataType::FuncRef |
-            DataType::Null |
             DataType::Lib |
-            DataType::Unknown |
-            DataType::TypeParam(..) |
-            DataType::AssumeGood => unreachable!()
+            DataType::BoundVar(..) |
+            DataType::TypeParam(..) => unreachable!()
         }
     }
     pub fn empty_tuple() -> Self {
@@ -1130,17 +1024,29 @@ impl Value {
     pub fn gen_bool(val: bool) -> Self {
         Self::Boolean { val }
     }
-    pub fn ty(&self) -> DataType {
+
+    // The value's type (or None if assigned during type checking)
+    pub fn ty(&self) -> Option<DataType> {
         match self {
-            Value::NumericLiteral { .. } => DataType::Unknown,
-            Value::Number { ty, .. } => ty.clone(),
-            Value::Boolean { .. } => DataType::Boolean,
-            Value::Str { .. } => DataType::Str,
-            Value::Tuple { ty, .. } => ty.clone(),
-            Value::U32U32Map { .. } => DataType::Map {
+            Value::NumericLiteral { .. } => None,
+            Value::Number { ty, .. } => Some(ty.clone()),
+            Value::Boolean { .. } => Some(DataType::Boolean),
+            Value::Str { .. } => Some(DataType::Str),
+            Value::Tuple { ty, .. } => Some(ty.clone()),
+            Value::U32U32Map { .. } => Some(DataType::Map {
                 key_ty: Box::new(DataType::U32),
                 val_ty: Box::new(DataType::U32),
-            },
+            }),
+        }
+    }
+    /// A human-readable type name for diagnostics.
+    fn ty_name(&self) -> String {
+        match self {
+            Value::NumericLiteral { .. } => "numeric literal".to_string(),
+            _ => self
+                .ty()
+                .unwrap_or_else(|| unreachable!("unhandled variant of Value!"))
+                .to_string(),
         }
     }
     pub fn implicit_cast(&mut self, target: &DataType) -> Result<(), String> {
@@ -1225,7 +1131,7 @@ impl Value {
                     }
                     Ok(())
                 } else {
-                    Err(format!("{} to {}", self.ty(), target))
+                    Err(format!("{} to {}", self.ty_name(), target))
                 }
             }
             Value::Boolean { val } => {
@@ -1242,7 +1148,7 @@ impl Value {
                     DataType::I64 => Value::gen_num(NumLit::i64(num_rep as i64), target.clone()),
                     DataType::F32 => Value::gen_num(NumLit::f32(num_rep as f32), target.clone()),
                     DataType::F64 => Value::gen_num(NumLit::f64(num_rep as f64), target.clone()),
-                    _ => return Err(format!("{} to {}", self.ty(), target)),
+                    _ => return Err(format!("{} to {}", self.ty_name(), target)),
                 };
                 Ok(())
             }
@@ -1502,14 +1408,16 @@ pub enum Expr {
         op: UnOp,
         expr: Box<Expr>,
 
-        done_on: DataType, // The type of data that this unary operation is performed on (populated by type checker)
+        // The type of data that this unary operation is performed on (populated by type checker)
+        done_on: Option<DataType>,
         loc: Option<Location>,
     },
     Ternary {
         cond: Box<Expr>,
         conseq: Box<Expr>,
         alt: Box<Expr>,
-        ty: DataType, // populated by the type-checker (for knowing the return_ty of the emitted blocks)
+        // The return_ty of the blocks, populated by type-checker
+        ty: Option<DataType>,
         loc: Option<Location>,
     },
     BinOp {
@@ -1518,7 +1426,8 @@ pub enum Expr {
         op: BinOp,
         rhs: Box<Expr>,
 
-        done_on: DataType, // The type of data that this binary operation is performed on (populated by type checker)
+        // The type this binary op is performed on; `None` until the type-checker fills it in.
+        done_on: Option<DataType>,
         loc: Option<Location>,
     },
     Call {
@@ -1763,6 +1672,10 @@ impl DeclModifiers {
             is_unshared: true,
             is_report,
         }
+    }
+    /// Whether this variable would be stored in linear memory
+    pub fn is_mem_backed(&self) -> bool {
+        self.is_unshared || self.is_report
     }
 }
 

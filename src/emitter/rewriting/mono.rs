@@ -154,21 +154,25 @@ fn subst_expr(expr: &mut Expr, binding: &HashMap<String, DataType>) {
         } => {
             subst_expr(lhs, binding);
             subst_expr(rhs, binding);
-            *done_on = resolve_dt(done_on, binding);
-            // Resolve deferred numeric literals to the operation's concrete type.
-            resolve_literal(lhs, done_on);
-            resolve_literal(rhs, done_on);
+            if let Some(done_on) = done_on {
+                *done_on = resolve_dt(done_on, binding);
+                // Resolve deferred numeric literals to the operation's concrete type.
+                resolve_literal(lhs, done_on);
+                resolve_literal(rhs, done_on);
+            }
         }
         Expr::UnOp {
             op, expr, done_on, ..
         } => {
             subst_expr(expr, binding);
-            *done_on = resolve_dt(done_on, binding);
             // Resolve a cast target `x as T` to its concrete type so `emit_unop` can lower it.
             if let UnOp::Cast { target } = op {
                 *target = resolve_dt(target, binding);
             }
-            resolve_literal(expr, done_on);
+            if let Some(done_on) = done_on {
+                *done_on = resolve_dt(done_on, binding);
+                resolve_literal(expr, done_on);
+            }
         }
         Expr::Ternary {
             cond,
@@ -180,7 +184,9 @@ fn subst_expr(expr: &mut Expr, binding: &HashMap<String, DataType>) {
             subst_expr(cond, binding);
             subst_expr(conseq, binding);
             subst_expr(alt, binding);
-            *ty = resolve_dt(ty, binding);
+            if let Some(ty) = ty {
+                *ty = resolve_dt(ty, binding);
+            }
         }
         Expr::Call {
             fn_target, args, ..
@@ -215,7 +221,7 @@ fn resolve_literal(expr: &mut Expr, ty: &DataType) {
                 };
             }
         }
-        Value::Number { .. } if val.ty() != *ty => {
+        Value::Number { .. } if val.ty().as_ref() != Some(ty) => {
             // Type checker should guarantee this to be successful, fail loudly if this fails!!
             if let Err(msg) = val.implicit_cast(ty) {
                 unreachable!("failed to monomorphize a numeric literal to `{ty}`: {msg}");

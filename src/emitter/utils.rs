@@ -1059,6 +1059,16 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             done_on,
             loc,
         } => {
+            let Some(done_on) = done_on else {
+                ctx.err.add_internal_error(
+                    &format!(
+                        "{}\n\tUnOp `done_on` should have been set by the type checker",
+                        ctx.err_msg
+                    ),
+                    loc,
+                );
+                return false;
+            };
             let mut is_success = emit_expr(expr, None, strategy, injector, ctx);
             is_success &= emit_unop(op, done_on, loc, injector, ctx);
             is_success
@@ -1068,8 +1078,18 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             op,
             rhs,
             done_on,
-            ..
+            loc,
         } => {
+            let Some(done_on) = done_on else {
+                ctx.err.add_internal_error(
+                    &format!(
+                        "{}\n\tBinOp `done_on` should have been set by the type checker",
+                        ctx.err_msg
+                    ),
+                    loc,
+                );
+                return false;
+            };
             let mut is_success = emit_expr(lhs, None, strategy, injector, ctx);
             is_success &= emit_expr(rhs, None, strategy, injector, ctx);
             is_success &= emit_binop(op, done_on, injector, ctx);
@@ -1080,13 +1100,18 @@ pub(crate) fn emit_expr<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             conseq,
             alt,
             ty,
-            ..
+            loc,
         } => {
-            if matches!(ty, DataType::Null) {
-                unreachable!(
-                        "{} \
-                                The result type of the ternary should have been set in the type checker.", ctx.err_msg);
-            }
+            let Some(ty) = ty else {
+                ctx.err.add_internal_error(
+                    &format!(
+                        "{}\n\tthe result type of the ternary should have been set in the type checker",
+                        ctx.err_msg
+                    ),
+                    loc,
+                );
+                return false;
+            };
 
             let conseq_block = Block {
                 stmts: vec![Statement::Expr {
@@ -1348,7 +1373,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     injector.f64_reinterpret_i64()
                 }
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1380,7 +1404,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                     injector.f64_reinterpret_i64()
                 }
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1404,7 +1427,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::F32 => injector.f32_eq(),
                 DataType::F64 => injector.f64_eq(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1429,7 +1451,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::F32 => injector.f32_ne(),
                 DataType::F64 => injector.f64_ne(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1455,7 +1476,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::F32 => injector.f32_ge(),
                 DataType::F64 => injector.f64_ge(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1480,7 +1500,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::F32 => injector.f32_gt(),
                 DataType::F64 => injector.f64_gt(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1505,7 +1524,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::F32 => injector.f32_le(),
                 DataType::F64 => injector.f64_le(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1530,7 +1548,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::F32 => injector.f32_lt(),
                 DataType::F64 => injector.f64_lt(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1578,7 +1595,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::F32 => injector.f32_add(),
                 DataType::F64 => injector.f64_add(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1626,7 +1642,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::F32 => injector.f32_sub(),
                 DataType::F64 => injector.f64_sub(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1674,7 +1689,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::F32 => injector.f32_mul(),
                 DataType::F64 => injector.f64_mul(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1723,7 +1737,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::F32 => injector.f32_div(),
                 DataType::F64 => injector.f64_div(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1832,7 +1845,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                         .f64_copysign()
                 }
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1878,7 +1890,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 }
                 DataType::U64 | DataType::I64 => injector.i64_shl(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str     // todo
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1896,7 +1907,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::U64 => injector.i64_shr_u(),
                 DataType::I64 => injector.i64_shr_s(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1918,7 +1928,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Boolean => injector.i32_and(),
                 DataType::U64 | DataType::I64 => injector.i64_and(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1940,7 +1949,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 | DataType::Boolean => injector.i32_or(),
                 DataType::U64 | DataType::I64 => injector.i64_or(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -1963,7 +1971,6 @@ fn emit_binop<'a, T: Opcode<'a> + AddLocal>(
                 DataType::U64 | DataType::I64 => injector.i64_xor(),
                 DataType::F32 | DataType::F64 => unreachable!(),
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {
@@ -2425,11 +2432,7 @@ fn emit_unop<'a, T: Opcode<'a>>(
                 injector.f64_const(0f64);
                 injector.f64_eq();
             }
-            DataType::FuncRef
-            | DataType::Null
-            | DataType::Str
-            | DataType::Tuple { .. }
-            | DataType::Map { .. } => {
+            DataType::FuncRef | DataType::Str | DataType::Tuple { .. } | DataType::Map { .. } => {
                 unimplemented!("We do not support NOT for {done_on}")
             }
             _ => {
@@ -2469,7 +2472,6 @@ fn emit_unop<'a, T: Opcode<'a>>(
                     injector.i64_xor()
                 }
                 DataType::FuncRef
-                | DataType::Null
                 | DataType::Str
                 | DataType::Tuple { .. }
                 | DataType::Map { .. } => {

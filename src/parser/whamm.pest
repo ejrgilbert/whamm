@@ -112,10 +112,10 @@ TYPE_PRIMITIVE = _{
     TY_FUNCREF |
     TY_TYPEPARAM
 }
-TY_UNKNOWN = @{ "unknown" }
+TY_ANY = @{ "any" }
 TYPE_YML = _{
     TYPE |
-    TY_UNKNOWN
+    TY_ANY
 }
 
 // ====================
