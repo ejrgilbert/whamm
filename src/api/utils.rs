@@ -35,8 +35,8 @@ pub fn print_info(
 ///
 /// * `module`: The module to write to the file.
 /// * `output_wasm_path`: Where to write the module to.
-pub fn write_to_file(module: Vec<u8>, output_wasm_path: &Path) {
-    instr::write_to_file(module, output_wasm_path);
+pub fn write_to_file(module: Vec<u8>, output_wasm_path: &Path) -> std::io::Result<()> {
+    instr::write_to_file(module, output_wasm_path)
 }
 
 /// Run all wast files through the harness.

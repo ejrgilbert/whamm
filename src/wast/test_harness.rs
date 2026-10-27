@@ -261,7 +261,7 @@ fn generate_instrumented_bin_wast(
 
         let instrumented_module_wasm = module_to_instrument.encode().unwrap();
 
-        try_path(std::path::Path::new(&debug_file_path));
+        try_path(std::path::Path::new(&debug_file_path)).unwrap();
         if let Err(e) = std::fs::write(&debug_file_path, instrumented_module_wasm.clone()) {
             panic!(
                 "Failed to dump instrumented wasm to {} from error: {}",
@@ -558,7 +558,7 @@ fn new_wast_path(
     };
 
     let new_path = format!("{target_parent_dir}/{}/{new_name}", new_sub_path);
-    try_path(std::path::Path::new(&new_path));
+    try_path(std::path::Path::new(&new_path)).unwrap();
 
     new_path
 }

@@ -3,7 +3,7 @@ mod cli;
 
 use cli::{Cmd, WhammCli};
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use clap::Parser;
 use cli::LibraryLinkStrategyArg;
 use std::process::exit;
@@ -23,7 +23,9 @@ pub fn main() {
         for c in e.chain().skip(1) {
             eprintln!("  caused by {}", c);
         }
-        eprintln!("{}", e.backtrace());
+        if e.backtrace().status() == std::backtrace::BacktraceStatus::Captured {
+            eprintln!("{}", e.backtrace());
+        }
         exit(1)
     }
 }
@@ -90,7 +92,12 @@ fn try_main() -> Result<()> {
                     diagnostics,
                 }) => {
                     eprint!("{}", diagnostics.render(true));
-                    write_to_file(module, &args.output_path)
+                    write_to_file(module, &args.output_path).with_context(|| {
+                        format!(
+                            "cannot write instrumented module to '{}'",
+                            args.output_path.display()
+                        )
+                    })?;
                 }
                 Err(diagnostics) => {
                     eprint!("{}", diagnostics.render(true));
