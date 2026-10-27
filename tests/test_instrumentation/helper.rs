@@ -586,11 +586,7 @@ pub(crate) fn run_testcase_rewriting(
         "Had error: {}",
         String::from_utf8_lossy(&run.stderr)
     );
-    assert_expected_output(
-        &String::from_utf8(run.stdout)?,
-        &exp_output,
-        &out_file,
-    );
+    assert_expected_output(&String::from_utf8(run.stdout)?, &exp_output, &out_file);
     Ok(())
 }
 
