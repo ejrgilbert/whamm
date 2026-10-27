@@ -178,6 +178,11 @@ fn handle_special_fn_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         "dup_at" | "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
             unreachable!("static function call should already be handled: {target_fn_name}")
         }
+        "active_data_start" | "active_data_len" | "page_size"
+            if matches!(strategy, InjectStrategy::Wei) =>
+        {
+            unimplemented!("`{target_fn_name}` is not yet supported under `wei`")
+        }
         "active_data_start" | "active_data_len" => {
             unreachable!(
                 "{target_fn_name} should have been folded to a u32 constant by ExprFolder \

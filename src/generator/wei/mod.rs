@@ -330,11 +330,27 @@ impl WeiGenerator<'_, '_, '_> {
             &body_param_str,
         );
         if let Some(fid) = body_fid {
-            self.emitter.app_wasm.exports.add_export_func_with_tag(
-                match_rule,
-                fid,
-                get_tag_for(&None),
-            );
+            if self
+                .emitter
+                .app_wasm
+                .exports
+                .get_by_name(match_rule.clone())
+                .is_some()
+            {
+                self.err.wei_error(
+                    format!(
+                        "two probes derive the same wei export name `{match_rule}`; \
+                         HINT: probes that only differ in their type-bounds are not supported yet under -w (wei)"
+                    ),
+                    &probe.loc,
+                );
+            } else {
+                self.emitter.app_wasm.exports.add_export_func_with_tag(
+                    match_rule,
+                    fid,
+                    get_tag_for(&None),
+                );
+            }
         } else {
             self.err.add_probe_warn(
                 "Are you sure you meant to emit a probe with no body?",
