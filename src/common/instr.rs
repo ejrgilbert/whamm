@@ -50,10 +50,11 @@ pub fn whamm_inserted_name(base: &str) -> String {
 }
 
 /// create output path if it doesn't exist
-pub(crate) fn try_path(path: &Path) {
+pub(crate) fn try_path(path: &Path) -> std::io::Result<()> {
     if !path.exists() {
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(path.parent().unwrap())?;
     }
+    Ok(())
 }
 
 pub fn run_on_bytes(
@@ -139,7 +140,16 @@ pub fn run_on_module_and_encode<'lib, 'ir>(
         config,
     )?;
 
-    let wasm = target_wasm.encode().unwrap();
+    let wasm = match target_wasm.encode() {
+        Ok(wasm) => wasm,
+        Err(e) => {
+            let mut err = ErrorGen::new("".to_string(), "".to_string(), max_errors);
+            err.add_instr_error(&format!(
+                "failed to encode instrumented module (internal error): {e}"
+            ));
+            return Err(Box::new(err));
+        }
+    };
     metrics.flush();
     Ok((wasm, warnings))
 }
@@ -175,15 +185,9 @@ pub fn run_on_module<'lib, 'ir>(
     )
 }
 
-pub fn write_to_file(module: Vec<u8>, output_wasm_path: &Path) {
-    try_path(output_wasm_path);
-    if let Err(e) = std::fs::write(output_wasm_path, module) {
-        unreachable!(
-            "Failed to dump instrumented wasm to {} from error: {}",
-            output_wasm_path.display(),
-            e
-        )
-    }
+pub fn write_to_file(module: Vec<u8>, output_wasm_path: &Path) -> std::io::Result<()> {
+    try_path(output_wasm_path)?;
+    std::fs::write(output_wasm_path, module)
 }
 
 pub fn run<'lib, 'ir>(

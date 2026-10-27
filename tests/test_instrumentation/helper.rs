@@ -74,7 +74,7 @@ pub fn run_whamm(
         Some(defs),
     ) {
         Ok(instrumented) => {
-            write_to_file(instrumented.module, Path::new(instrumented_wasm_path));
+            write_to_file(instrumented.module, Path::new(instrumented_wasm_path)).unwrap();
         }
         Err(diagnostics) => {
             panic!(
@@ -330,7 +330,7 @@ pub(crate) fn run_script(
         // print_side_effects(&_side_effects);
     }
     if let Some(path) = output_path {
-        write_to_file(wasm_result, Path::new(&path));
+        write_to_file(wasm_result, Path::new(&path)).unwrap();
     }
     Ok(diagnostics)
 }

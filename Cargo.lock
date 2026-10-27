@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "add"
-version = "1.2.1"
+version = "2.0.0"
 dependencies = [
  "wasm-bindgen",
 ]
@@ -609,7 +609,7 @@ dependencies = [
 
 [[package]]
 name = "example"
-version = "1.2.1"
+version = "2.0.0"
 dependencies = [
  "wasm-bindgen",
 ]
@@ -1961,7 +1961,7 @@ dependencies = [
 
 [[package]]
 name = "wasm_runner"
-version = "1.2.1"
+version = "2.0.0"
 dependencies = [
  "wasmtime",
  "wasmtime-wasi",
@@ -2327,7 +2327,7 @@ dependencies = [
 
 [[package]]
 name = "whamm"
-version = "1.2.1"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2351,7 +2351,7 @@ dependencies = [
 
 [[package]]
 name = "whamm_core"
-version = "1.2.1"
+version = "2.0.0"
 dependencies = [
  "itertools",
  "log",
@@ -2625,9 +2625,9 @@ dependencies = [
 
 [[package]]
 name = "wirm"
-version = "4.0.6"
+version = "5.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3398cfb47e9ac60f209294450b58f9577ba3019e299da09e9b1efeeba726930a"
+checksum = "cbf24563802785ba2885e5357ab24d56a3b13b9884d9102347fe663d712df462"
 dependencies = [
  "log",
  "paste",
