@@ -1,0 +1,6 @@
+================================= REPORT CSV FLUSH ====================================
+id, id_type, name, whamm_type, wasm_type, script_id, fname, fid, pc, probe_id, value(s)
+1, global_id, a, i32, i32, script0, , , , , 1
+2, global_id, af, i32, i32, script0, , , , , 0
+3, global_id, en, i32, i32, script0, , , , , 0
+4, global_id, ex, i32, i32, script0, , , , , 0

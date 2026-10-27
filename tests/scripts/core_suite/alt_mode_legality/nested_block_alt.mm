@@ -1,0 +1,1 @@
+wasm:opcode:block:alt { }
