@@ -3,7 +3,6 @@ use anyhow::{anyhow, Context, Result};
 use glob::{glob, glob_with};
 use log::{error, warn};
 use std::fs;
-use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use whamm::api::instrument::{instrument_as_dry_run_rewriting, Diagnostics, UserLibs, WhammError};
@@ -203,55 +202,16 @@ pub(crate) fn run_core_suite(
     let instr_app_path = format!("{outdir}/output.wasm");
 
     if with_br {
-        for TestCase {
-            script,
-            app,
-            libs,
-            exp,
-            ..
-        } in rewriting_tests.iter()
-        {
+        for tc in rewriting_tests.iter() {
             println!(
                 "[REWRITE] Running test case with monitor at the following path: {:#?}",
-                script
+                tc.script
             );
-            let app_path_str = fs::read_to_string(app)
-                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
-            let libs_path_str = if let Ok(res) = fs::read_to_string(libs) {
-                let mut libs = vec![];
-                for lib in res.split('\n') {
-                    libs.push(lib.to_string());
-                }
-                libs
-            } else {
-                vec![]
-            };
-            let expected_err = read_expected_err(exp);
-            if let Some(ref expected_err) = expected_err {
-                if !exp.exists() {
-                    run_testcase_expect_error(
-                        script,
-                        &app_path_str,
-                        libs_path_str,
-                        expected_err,
-                        false,
-                    );
-                    continue;
-                }
-            }
-            let metadata = fs::metadata(exp).expect("Failed to load expected output file metadata");
-            let exp_out = if metadata.len() > MAX_EXP_OUT_SIZE {
-                ExpectedOutput::hash(exp)
-            } else {
-                ExpectedOutput::Str(
-                    fs::read_to_string(exp)
-                        .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp)),
-                )
-            };
+            let (app_path_str, user_libs, expected_err, exp_out) = load_testcase(tc);
             run_testcase_rewriting(
-                script,
+                &tc.script,
                 &app_path_str,
-                libs_path_str,
+                user_libs,
                 exp_out,
                 &outdir,
                 &instr_app_path,
@@ -261,57 +221,16 @@ pub(crate) fn run_core_suite(
     }
 
     if with_wei {
-        for TestCase {
-            script,
-            app,
-            libs,
-            exp,
-            ..
-        } in wei_tests.iter()
-        {
+        for tc in wei_tests.iter() {
             println!(
                 "[WEI] Running test case with monitor at the following path: {:#?}",
-                script
+                tc.script
             );
-            let app_path_str = fs::read_to_string(app)
-                .unwrap_or_else(|_| panic!("Unable to read file at {:?}", app));
-            let libs_path_str = if let Ok(res) = fs::read_to_string(libs) {
-                let mut libs = vec![];
-                for lib in res.split('\n') {
-                    libs.push(lib.to_string());
-                }
-                libs
-            } else {
-                vec![]
-            };
-            let expected_err = read_expected_err(exp);
-            if let Some(ref expected_err) = expected_err {
-                if !exp.exists() {
-                    run_testcase_expect_error(
-                        script,
-                        &app_path_str,
-                        libs_path_str,
-                        expected_err,
-                        true,
-                    );
-                    continue;
-                }
-            }
-            let metadata = fs::metadata(exp).unwrap_or_else(|_| {
-                panic!("Failed to load expected output file metadata at: {:?}", exp)
-            });
-            let exp_out = if metadata.len() > MAX_EXP_OUT_SIZE {
-                ExpectedOutput::hash(exp)
-            } else {
-                ExpectedOutput::Str(
-                    fs::read_to_string(exp)
-                        .unwrap_or_else(|_| panic!("Unable to read file at {:?}", exp)),
-                )
-            };
+            let (app_path_str, user_libs, expected_err, exp_out) = load_testcase(tc);
             run_testcase_wei(
-                script,
+                &tc.script,
                 &app_path_str,
-                libs_path_str,
+                user_libs,
                 exp_out,
                 &outdir,
                 &instr_app_path,
@@ -450,51 +369,6 @@ fn read_expected_err(exp: &Path) -> Option<String> {
     fs::read_to_string(exp.with_extension("err")).ok()
 }
 
-/// Assert that instrumenting `script` emits a diagnostic containing `expected_err`
-fn run_testcase_expect_error(
-    script: &Path,
-    app_path_str: &str,
-    user_libs: Vec<String>,
-    expected_err: &str,
-    target_wei: bool,
-) {
-    let label = if target_wei { "WEI" } else { "REWRITE" };
-    let wasm = fs::read(app_path_str)
-        .unwrap_or_else(|_| panic!("Unable to read app wasm at {app_path_str}"));
-    let mut module = if target_wei {
-        Module::default()
-    } else {
-        Module::parse(&wasm, false, true).unwrap()
-    };
-    match run_script(
-        script,
-        app_path_str,
-        &mut module,
-        user_libs.clone(),
-        None,
-        target_wei,
-    ) {
-        Ok(diagnostics) => {
-            let actual = diagnostics.render(false);
-            let expected = expected_err.trim();
-            assert!(
-                actual.contains(expected),
-                "[{label}] {script:?} succeeded without the expected diagnostic\n\
-                 --- expected (substring) ---\n{expected}\n--- actual (warnings) ---\n{actual}"
-            );
-        }
-        Err(e) => {
-            let actual = format!("{e:#}");
-            let expected = expected_err.trim();
-            assert!(
-                actual.contains(expected),
-                "[{label}] error mismatch for {script:?}\n\
-                 --- expected (substring) ---\n{expected}\n--- actual ---\n{actual}"
-            );
-        }
-    }
-}
-
 /// Output of instrumented module run
 pub(crate) struct WasmtimeRun {
     pub success: bool,
@@ -574,6 +448,75 @@ pub(crate) fn run_on_wasmtime(
     })
 }
 
+fn load_testcase(tc: &TestCase) -> (String, Vec<String>, Option<String>, ExpectedOutput) {
+    let app_path_str = fs::read_to_string(&tc.app)
+        .unwrap_or_else(|_| panic!("Unable to read file at {:?}", tc.app));
+    let user_libs = match fs::read_to_string(&tc.libs) {
+        Ok(res) => res.split('\n').map(str::to_string).collect(),
+        Err(_) => vec![],
+    };
+    let expected_err = read_expected_err(&tc.exp);
+    let exp_output = if tc.exp.exists() {
+        let metadata = fs::metadata(&tc.exp).unwrap_or_else(|_| {
+            panic!(
+                "Failed to load expected output file metadata at: {:?}",
+                tc.exp
+            )
+        });
+        if metadata.len() > MAX_EXP_OUT_SIZE {
+            ExpectedOutput::hash(&tc.exp)
+        } else {
+            ExpectedOutput::Str(
+                fs::read_to_string(&tc.exp)
+                    .unwrap_or_else(|_| panic!("Unable to read file at {:?}", tc.exp)),
+            )
+        }
+    } else if expected_err.is_some() {
+        ExpectedOutput::None
+    } else {
+        panic!("No `.exp` or `.err` fixture found for {:?}", tc.script);
+    };
+    (app_path_str, user_libs, expected_err, exp_output)
+}
+
+fn compiled_or_expected_error(
+    label: &str,
+    script: &Path,
+    compiled: Result<Diagnostics>,
+    expected_err: Option<&str>,
+) -> Result<Option<Diagnostics>> {
+    match compiled {
+        Ok(diagnostics) => Ok(Some(diagnostics)),
+        Err(e) => {
+            let Some(expected) = expected_err else {
+                return Err(e);
+            };
+            let actual = format!("{e:#}");
+            assert!(
+                actual.contains(expected.trim()),
+                "[{label}] {script:?} compile error did not match the expected `.err`\n\
+                 --- expected (substring) ---\n{}\n--- actual ---\n{actual}",
+                expected.trim()
+            );
+            Ok(None)
+        }
+    }
+}
+
+fn assert_expected_output(stdout: &str, exp_output: &ExpectedOutput, out_file: &str) {
+    match exp_output {
+        ExpectedOutput::Str(exp_str) => {
+            fs::write(out_file, stdout).expect("failed to write to log");
+            assert_eq!(stdout.trim(), exp_str.trim());
+        }
+        ExpectedOutput::Hash(exp_hash) => {
+            fs::write(out_file, stdout).expect("failed to write to log");
+            assert_eq!(&file_hash(&PathBuf::from(out_file)), exp_hash);
+        }
+        ExpectedOutput::None => {}
+    }
+}
+
 pub(crate) fn run_testcase_rewriting(
     script: &Path,
     app_path_str: &str,
@@ -583,19 +526,23 @@ pub(crate) fn run_testcase_rewriting(
     instr_app_path: &str,
     expected_err: Option<&str>,
 ) -> Result<()> {
-    // run the script on configured application
+    // compile the script onto the configured application
     let wasm = fs::read(app_path_str)?;
     let mut module_to_instrument = Module::parse(&wasm, true, true)?;
-    let diagnostics = run_script(
+    let compiled = run_script(
         script,
         app_path_str,
         &mut module_to_instrument,
         user_libs.clone(),
         Some(instr_app_path.to_owned()),
         false,
-    )?;
+    );
+    let Some(diagnostics) = compiled_or_expected_error("REWRITE", script, compiled, expected_err)?
+    else {
+        return Ok(()); // an expected compile error was matched; nothing to run
+    };
+
     match expected_err {
-        // make sure it errored in the specified way (.err)
         Some(expected_err) => assert!(
             diagnostics.render(false).contains(expected_err.trim()),
             "[REWRITE] {script:?} did not emit the expected diagnostic\n\
@@ -603,7 +550,6 @@ pub(crate) fn run_testcase_rewriting(
             expected_err.trim(),
             diagnostics.render(false)
         ),
-        // make sure it instrumented cleanly
         None => assert!(
             diagnostics.is_empty(),
             "[REWRITE] {script:?} produced unexpected whamm diagnostics \
@@ -613,9 +559,8 @@ pub(crate) fn run_testcase_rewriting(
     }
 
     // run the instrumented application on wasmtime
-    let out_filename = "instr-flush.out";
-    let out_file = format!("{outdir}/{out_filename}");
-    let _ = fs::remove_file(out_file.clone());
+    let out_file = format!("{outdir}/instr-flush.out");
+    let _ = fs::remove_file(&out_file);
 
     let mut preloads = user_libs
         .iter()
@@ -641,19 +586,7 @@ pub(crate) fn run_testcase_rewriting(
         "Had error: {}",
         String::from_utf8_lossy(&run.stderr)
     );
-    match exp_output {
-        ExpectedOutput::Str(exp_str) => {
-            let stdout = String::from_utf8(run.stdout).unwrap();
-            fs::write(out_file, &stdout).expect("failed to write to log");
-            assert_eq!(stdout.trim(), exp_str.trim());
-        }
-        ExpectedOutput::Hash(exp_hash) => {
-            fs::write(&out_file, &run.stdout).expect("failed to write to log");
-            let hash = file_hash(&PathBuf::from(out_file));
-            assert_eq!(hash, exp_hash);
-        }
-        ExpectedOutput::None => {}
-    };
+    assert_expected_output(&String::from_utf8(run.stdout)?, &exp_output, &out_file);
     Ok(())
 }
 
@@ -692,73 +625,50 @@ pub(crate) fn run_testcase_wei(
         libs_to_link += &format!("+{}", parts.get(1).unwrap());
     }
 
-    // run the script on configured application
+    // compile the script to a wei monitor module
     let mut module_to_instrument = Module::default();
-    let diagnostics = run_script(
+    let compiled = run_script(
         script,
         app_path_str,
         &mut module_to_instrument,
         user_libs,
         Some(instr_app_path.clone()),
         true,
-    )?;
-    // make sure it errored in the specified way (.err)
-    if let Some(expected_err) = expected_err {
-        assert!(
-            diagnostics.render(false).contains(expected_err.trim()),
-            "[WEI] {script:?} did not emit the expected diagnostic\n\
-             --- expected (substring) ---\n{}\n--- actual ---\n{}",
-            expected_err.trim(),
-            diagnostics.render(false)
-        );
+    );
+
+    if compiled_or_expected_error("WEI", script, compiled, expected_err)?.is_none() {
+        return Ok(()); // an expected compile error was matched; nothing to run
     }
 
     // run the instrumented application on wizard
     let whamm_core_lib_path = "tests/libs/whamm_core.wasm";
     let wizeng_path = "output/tests/engines/wizeng";
+    let out_file = format!("{outdir}/instr-flush.out");
+    let _ = fs::remove_file(&out_file);
 
-    let out_filename = "instr-flush.out";
-    let out_file = format!("{outdir}/{out_filename}");
-    let _ = fs::remove_file(out_file.clone());
-    let mut cmd = Command::new(wizeng_path);
-    if matches!(exp_output, ExpectedOutput::Hash(_)) {
-        cmd.stdout(File::create(out_file.clone()).expect("failed to open log"));
-    }
-
-    // TODO -- uncomment once we figure out the OOM issue:
+    // TODO -- pass `--mode=jit` once the OOM issue is resolved:
     //         https://github.com/ejrgilbert/whamm/actions/runs/16132265689/job/45521736032?pr=237
-    // #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    // {
-    //     cmd.arg("--mode=jit");
-    // }
-
-    let res = cmd
-        // .arg("-tw")
+    let res = Command::new(wizeng_path)
         .arg("--env=TO_CONSOLE=true")
         .arg(format!("--monitors={}+{}{}", instr_app_path, whamm_core_lib_path, libs_to_link))
         .arg(app_path_str)
         .output()
         .unwrap_or_else(|_| panic!("Failed to run wizard command, please make sure the wizeng executable is available at the path: {}", wizeng_path));
-    if !res.status.success() {
-        println!(
-            "[ERROR] Failed to run wei monitor:\n{}\n{}",
-            String::from_utf8(res.stdout).unwrap(),
-            String::from_utf8(res.stderr).unwrap()
+    let stdout = String::from_utf8_lossy(&res.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&res.stderr).into_owned();
+
+    if let Some(expected_err) = expected_err {
+        assert!(
+            format!("{stdout}\n{stderr}").contains(expected_err.trim()),
+            "[WEI] {script:?} did not print the expected wizard error\n\
+             --- expected (substring) ---\n{}\n--- actual stdout ---\n{stdout}\n--- actual stderr ---\n{stderr}",
+            expected_err.trim()
         );
+    } else if !res.status.success() {
+        println!("[ERROR] Failed to run wei monitor:\n{stdout}\n{stderr}");
         panic!();
-    } else {
-        match exp_output {
-            ExpectedOutput::Str(exp_str) => {
-                let stdout = String::from_utf8(res.stdout).unwrap();
-                assert_eq!(stdout.trim(), exp_str.trim());
-            }
-            ExpectedOutput::Hash(exp_hash) => {
-                let hash = file_hash(&PathBuf::from(out_file));
-                assert_eq!(hash, exp_hash);
-            }
-            ExpectedOutput::None => {}
-        };
     }
+    assert_expected_output(&stdout, &exp_output, &out_file);
     Ok(())
 }
 
