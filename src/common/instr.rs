@@ -139,7 +139,16 @@ pub fn run_on_module_and_encode<'lib, 'ir>(
         config,
     )?;
 
-    let wasm = target_wasm.encode().unwrap();
+    let wasm = match target_wasm.encode() {
+        Ok(wasm) => wasm,
+        Err(e) => {
+            let mut err = ErrorGen::new("".to_string(), "".to_string(), max_errors);
+            err.add_instr_error(&format!(
+                "failed to encode instrumented module (internal error): {e}"
+            ));
+            return Err(Box::new(err));
+        }
+    };
     metrics.flush();
     Ok((wasm, warnings))
 }

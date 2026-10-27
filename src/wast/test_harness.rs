@@ -256,14 +256,14 @@ fn generate_instrumented_bin_wast(
             },
         ) {
             err.report();
-            unreachable!("Shouldn't have had errors!")
+            panic!("Shouldn't have had errors!")
         }
 
         let instrumented_module_wasm = module_to_instrument.encode().unwrap();
 
         try_path(std::path::Path::new(&debug_file_path));
         if let Err(e) = std::fs::write(&debug_file_path, instrumented_module_wasm.clone()) {
-            unreachable!(
+            panic!(
                 "Failed to dump instrumented wasm to {} from error: {}",
                 &debug_file_path, e
             )
