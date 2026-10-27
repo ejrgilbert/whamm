@@ -265,7 +265,7 @@ fn generate_instrumented_bin_wast(
         if let Err(e) = std::fs::write(&debug_file_path, instrumented_module_wasm.clone()) {
             panic!(
                 "Failed to dump instrumented wasm to {} from error: {}",
-                &debug_file_path, e
+                debug_file_path, e
             )
         }
         validate_wasm_file(debug_file_path.as_str());
