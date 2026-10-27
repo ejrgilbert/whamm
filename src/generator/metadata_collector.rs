@@ -4,7 +4,9 @@ use crate::common::rule_tracker::RuleTracker;
 use crate::generator::analysis_visitor::AnalysisVisitor;
 use crate::generator::ast::{Probe, Script, StackReq, WhammParam, WhammParams};
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData, Metadata as ReportMetadata};
-use crate::parser::provider_handler::{Event, ModeKind, Package, Probe as ParserProbe, Provider};
+use crate::parser::provider_handler::{
+    BoundVar, Event, ModeKind, Package, Probe as ParserProbe, Provider,
+};
 use crate::parser::types::{
     Annotation, BinOp, Block, CallKind, DataType, Definition, Expr, Location,
     Script as ParserScript, Statement, Value, Whamm, WhammVisitor,
@@ -788,8 +790,15 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
                 self.curr_mode = probe.kind.clone();
                 self.visit_probe(probe);
 
-                // copy over data from original probe
-                self.curr_script.probes.push(self.curr_probe.clone());
+                // Drop opcodes we know will never match this glob (even without the program)
+                let is_impossible_glob_match = self.curr_probe.opcode_wildcard
+                    && !opcode_satisfies_type_bounds(
+                        &self.curr_probe.type_bounds,
+                        &event.def.bound_vars,
+                    );
+                if !is_impossible_glob_match {
+                    self.curr_script.probes.push(self.curr_probe.clone());
+                }
 
                 // reset per-probe track data
                 self.rule_tracker.pop();
@@ -846,6 +855,52 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
             self.curr_probe.set_pred(Some(new_expr))
         }
     }
+}
+
+/// The stack-operand index named by `argN`/`resN`, if `name` is such an operand.
+fn operand_index(name: &str) -> Option<u32> {
+    ["arg", "res"]
+        .into_iter()
+        .find_map(|prefix| name.strip_prefix(prefix)?.parse::<u32>().ok())
+}
+
+/// Find the type of the bound var for an opcode's args/results (configured in YAML)
+fn opcode_operand_decl<'a>(opcode_vars: &'a [BoundVar], op_name: &str) -> Option<&'a DataType> {
+    let prefix = op_name.trim_end_matches(|c: char| c.is_ascii_digit());
+    // generic pattern in yaml
+    let generic = format!("{prefix}[0:9]+");
+    opcode_vars
+        .iter()
+        .find(|bv| bv.name == op_name || bv.name == generic)
+        .map(|bv| &bv.ty)
+}
+
+/// Whether an opcode matches given a probe's type bounds (checks args/results types
+/// that are known statically, without looking at the program).
+fn opcode_satisfies_type_bounds(
+    type_bounds: &[(Expr, DataType)],
+    opcode_vars: &[BoundVar],
+) -> bool {
+    for (expr, bound_ty) in type_bounds {
+        let Expr::VarId { name, .. } = expr else {
+            continue;
+        };
+        if operand_index(name).is_none() {
+            continue;
+        }
+        match opcode_operand_decl(opcode_vars, name) {
+            // the opcode doesn't provide this operand, can never match
+            None => return false,
+            // can't decide statically, defer match to when we have the program
+            Some(DataType::BoundVar(_)) => continue,
+            Some(declared) => {
+                if !bound_ty.is_compatible_with(declared) {
+                    return false;
+                }
+            }
+        }
+    }
+    true
 }
 
 fn get_def(name: &str, table: &SymbolTable) -> (Definition, DataType, Option<Location>) {

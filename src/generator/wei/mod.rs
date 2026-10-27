@@ -2,7 +2,7 @@ use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
 use crate::emitter::module_emitter::ModuleEmitter;
 use crate::emitter::tag_handler::get_tag_for;
-use crate::generator::ast::{Probe, Script, WhammParams};
+use crate::generator::ast::{Probe, Script, WhammParam, WhammParams};
 use crate::generator::{create_curr_loc, emit_needed_funcs, GeneratingVisitor};
 use crate::lang_features::alloc_vars::wei::UnsharedVarHandler;
 use crate::lang_features::libraries::core::io::io_adapter::IOAdapter;
@@ -144,6 +144,8 @@ impl WeiGenerator<'_, '_, '_> {
             );
             return;
         }
+
+        let tb_params = type_bound_request_params(probe);
         self.set_curr_loc(create_curr_loc(self.curr_script_id, probe, true));
 
         let (pred_fid, pred_param_str, dynamic_pred) = if let Some(pred) = &mut probe.predicate {
@@ -262,7 +264,7 @@ impl WeiGenerator<'_, '_, '_> {
             });
 
         // create the probe body function
-        let (mut body_fid, body_param_str) = if let Some(body) = &mut probe.body {
+        let (mut body_fid, mut body_param_str) = if let Some(body) = &mut probe.body {
             let alloc_local = if alloc_fid.is_some() {
                 Some(LocalID(0))
             } else {
@@ -292,6 +294,8 @@ impl WeiGenerator<'_, '_, '_> {
                 // need to request predicate params now that we're pushing down into the body
                 params.extend(probe.metadata.pred_args.clone());
             }
+            // request any type-bound operands not already in the param list
+            params.extend(tb_params.clone());
 
             self.fold_stmts(&mut body_block.stmts);
             self.emitter.emit_special_func(
@@ -319,7 +323,22 @@ impl WeiGenerator<'_, '_, '_> {
 
         if body_fid.is_none() && !probe.init_logic.is_empty() {
             // emit an empty function for the probe body (ensures that the init logic runs!)
-            body_fid = Some(*self.emitter.emit_empty_fn_with_alloc_param(&probe.loc));
+            // also, make sure to still request type-bounds so wei filters by type against
+            // the target program
+            let alloc_local = alloc_fid.map(|_| LocalID(0));
+            let (fid, param_str) = self.emitter.emit_special_func(
+                alloc_local,
+                &[],
+                &tb_params,
+                None,
+                &[],
+                &Block::default(),
+                false,
+                &probe.loc,
+                self.err,
+            );
+            body_fid = fid;
+            body_param_str = param_str;
         }
 
         let match_rule = self.create_wei_match_rule(
@@ -527,6 +546,19 @@ impl GeneratingVisitor for WeiGenerator<'_, '_, '_> {
         }
         true
     }
+}
+
+fn type_bound_request_params(probe: &Probe) -> WhammParams {
+    let mut params = WhammParams::default();
+    for (expr, ty) in probe.type_bounds.iter() {
+        if let Expr::VarId { name, .. } = expr {
+            params.params.insert(WhammParam {
+                name: name.clone(),
+                ty: ty.clone(),
+            });
+        }
+    }
+    params
 }
 
 // =============================================================================
