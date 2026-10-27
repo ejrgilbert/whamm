@@ -848,7 +848,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
             "read_str" => self.handle_read_str(),
             "dup_at" => unimplemented!("Function not implemented in `wei` yet: {target_fn_name}"),
             "alt_call_by_name" | "alt_call_by_id" | "drop_args" => {
-                panic!("Function unsupported in `wei`: {target_fn_name}")
+                unimplemented!("Function not implemented in `wei` yet: {target_fn_name}")
             }
             _ => {
                 unreachable!(
