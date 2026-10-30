@@ -1,7 +1,7 @@
 use std::env;
 use wasmtime::*;
 use wasmtime_wasi::p1::{add_to_linker_sync, WasiP1Ctx};
-use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder};
+use wasmtime_wasi::{FsPerms, WasiCtxBuilder};
 
 const WASM_MODULE: &str = "../output/output.wasm";
 const CORE_LIB_NAME: &str = "whamm_core";
@@ -42,7 +42,7 @@ fn main() -> Result<()> {
         .inherit_stdio()
         .inherit_args()
         .inherit_env()
-        .preopened_dir("../", "./", DirPerms::all(), FilePerms::all())?
+        .preopened_dir("../", "./", FsPerms::ReadWrite)?
         .build_p1();
     let mut store = Store::new(&engine, wasi);
 
