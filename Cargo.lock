@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "add"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "wasm-bindgen",
 ]
@@ -585,7 +585,7 @@ dependencies = [
 
 [[package]]
 name = "example"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "wasm-bindgen",
 ]
@@ -1949,7 +1949,7 @@ dependencies = [
 
 [[package]]
 name = "wasm_runner"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "wasmtime",
  "wasmtime-wasi",
@@ -2310,7 +2310,7 @@ dependencies = [
 
 [[package]]
 name = "whamm"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2334,7 +2334,7 @@ dependencies = [
 
 [[package]]
 name = "whamm_core"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "itertools",
  "log",
