@@ -1,0 +1,1 @@
+tests/apps/core_suite/handwritten/loop_edges.wasm

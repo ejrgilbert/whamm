@@ -575,10 +575,7 @@ fn call_instr_init_at_start(
             start_func.call(instr_init_fid);
 
             let op_idx = start_func.curr_instr_len() as u32;
-            start_func.append_tag_at(
-                get_probe_tag_data(&None, op_idx),
-                0
-            );
+            start_func.append_tag_at(get_probe_tag_data(&None, op_idx), 0);
             start_func.finish_instr();
         } else {
             err.add_internal_error("Should have found the function in the module.", &None);

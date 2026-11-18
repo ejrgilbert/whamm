@@ -485,10 +485,7 @@ impl MapLibAdapter {
         };
 
         let op_idx = init_fn.curr_instr_len() as u32;
-        init_fn.append_tag_at(
-            get_probe_tag_data(loc, op_idx),
-            0
-        );
+        init_fn.append_tag_at(get_probe_tag_data(loc, op_idx), 0);
 
         init_fn.finish_instr();
         map_id
