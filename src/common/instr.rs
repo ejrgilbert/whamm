@@ -577,11 +577,7 @@ fn call_instr_init_at_start(
             let op_idx = start_func.curr_instr_len() as u32;
             start_func.append_tag_at(
                 get_probe_tag_data(&None, op_idx),
-                // location is unused
-                wirm::Location::Module {
-                    func_idx: FunctionID(0),
-                    instr_idx: 0,
-                },
+                0
             );
             start_func.finish_instr();
         } else {

@@ -237,6 +237,20 @@ wasm:opcode:loop:after {
     var v10: i32 = arg0;
 }
 
+wasm:opcode:loop:back_edge {
+    var v0: u32 = fid;
+    var v1: u32 = pc;
+    var v2: u32 = opidx;
+    var v3: bool = at_func_end;
+    var v4: str = fname;
+    var v5: i32 = local0;
+    var v6: str = opname;
+    var v7: u16 = bytecode;
+    var v8: u32 = category_id;
+    var v9: str = category_name;
+    var v10: i32 = arg0;
+}
+
 wasm:opcode:loop:alt {
     var v0: u32 = fid;
     var v1: u32 = pc;

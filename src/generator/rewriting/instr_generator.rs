@@ -126,6 +126,7 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
             ModeKind::After => self.emitter.after(),
             ModeKind::Alt => self.emitter.alternate(),
             ModeKind::SemanticAfter => self.emitter.semantic_after(),
+            ModeKind::BackEdge => self.emitter.back_edge(),
             ModeKind::Entry => self.emitter.block_entry(),
             ModeKind::Exit => self.emitter.block_exit(),
             ModeKind::BlockAlt => self.emitter.block_alt(),
@@ -139,6 +140,7 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
             InstrumentationMode::After => self.emitter.after(),
             InstrumentationMode::Alternate => self.emitter.alternate(),
             InstrumentationMode::SemanticAfter => self.emitter.semantic_after(),
+            InstrumentationMode::BackEdge => self.emitter.back_edge(),
             InstrumentationMode::BlockEntry => self.emitter.block_entry(),
             InstrumentationMode::BlockExit => self.emitter.block_exit(),
             InstrumentationMode::BlockAlt => self.emitter.block_alt(),
@@ -419,6 +421,7 @@ impl InstrGenerator<'_, '_> {
             match curr_probe_mode {
                 ModeKind::Before
                 | ModeKind::SemanticAfter
+                | ModeKind::BackEdge
                 | ModeKind::Entry
                 | ModeKind::Exit
                 | ModeKind::Null => {

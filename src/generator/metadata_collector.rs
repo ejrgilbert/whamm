@@ -812,6 +812,17 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
         let _ = self.table.enter_named_scope(&probe.kind.name()); // enter mode scope
         let _ = self.table.enter_named_scope(&probe.scope_id.to_string()); // enter probe scope
         self.rule_tracker.push(&format!(":{}", probe.kind.name()));
+
+        if self.config.as_monitor_module {
+            // we need to check if we support the current modes
+            if !wei_supports_mode(&probe.kind) {
+                self.err.add_unimplemented_error(
+                    &format!("the wei target doesn't support this mode yet: '{}'", probe.kind),
+                    &Some(probe.loc.clone())
+                )
+            }
+        }
+
         if let Some(pred) = &probe.predicate {
             self.visiting = Visiting::Predicate;
             self.visit_expr(pred);
@@ -854,6 +865,20 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
         if matches!(self.visiting, Visiting::Predicate) {
             self.curr_probe.set_pred(Some(new_expr))
         }
+    }
+}
+
+fn wei_supports_mode(mode: &ModeKind) -> bool {
+    match mode {
+        ModeKind::Before
+        | ModeKind::After
+        | ModeKind::Entry
+        | ModeKind::Exit
+        | ModeKind::Null => true,
+        ModeKind::Alt
+        | ModeKind::SemanticAfter
+        | ModeKind::BackEdge
+        | ModeKind::BlockAlt => false
     }
 }
 

@@ -464,6 +464,10 @@ branching_after: &branching_after
   alias_to: at_target
   name: semantic_after
   docs: This mode will cause the instrumentation logic to run *semantically after* the instrumented location, meaning it will find the target point in the bytecode that will be executed *after* the point is reached (consider blocks and br* opcodes).
+back_edge: &back_edge
+  alias_to: null
+  name: back_edge
+  docs: This mode will cause the instrumentation logic to run on any *back edges* to a loop's entry point (if there are multiple back edges for a loop, it inserts the logic that many times).
 drop_args: &drop_args
   name: drop_args
   params: ()
@@ -520,6 +524,13 @@ default_modes_no_alt: &default_modes_no_alt
 block_modes: &block_modes
   - *before
   - *semantic_after
+  - *block_alt
+  - *entry
+  - *exit
+loop_modes: &loop_modes
+  - *before
+  - *semantic_after
+  - *back_edge
   - *block_alt
   - *entry
   - *exit
@@ -766,7 +777,7 @@ loop: &loop
     - *category_name_control
     - *argN
   bound_fns: []
-  supported_modes: *block_modes
+  supported_modes: *loop_modes
 
   docs: "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow/loop"
 
