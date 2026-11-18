@@ -474,6 +474,15 @@ fn instrument_arity_checks() -> Result<()> {
 }
 
 #[test]
+fn instrument_back_edge() -> Result<()> {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/back_edge");
+    assert!(!processed_scripts.is_empty());
+
+    run_core_suite("back_edge", processed_scripts, true, true)
+}
+
+#[test]
 fn instrument_bool_ops() -> Result<()> {
     setup_logger();
     let processed_scripts = setup_tests("core_suite/bool-ops");
