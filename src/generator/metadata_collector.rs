@@ -817,8 +817,11 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
             // we need to check if we support the current modes
             if !wei_supports_mode(&probe.kind) {
                 self.err.add_unimplemented_error(
-                    &format!("the wei target doesn't support this mode yet: '{}'", probe.kind),
-                    &Some(probe.loc.clone())
+                    &format!(
+                        "the wei target doesn't support this mode yet: '{}'",
+                        probe.kind
+                    ),
+                    &Some(probe.loc.clone()),
                 )
             }
         }
@@ -870,15 +873,11 @@ impl WhammVisitor<()> for MetadataCollector<'_> {
 
 fn wei_supports_mode(mode: &ModeKind) -> bool {
     match mode {
-        ModeKind::Before
-        | ModeKind::After
-        | ModeKind::Entry
-        | ModeKind::Exit
-        | ModeKind::Null => true,
-        ModeKind::Alt
-        | ModeKind::SemanticAfter
-        | ModeKind::BackEdge
-        | ModeKind::BlockAlt => false
+        ModeKind::Before | ModeKind::After | ModeKind::Entry | ModeKind::Exit | ModeKind::Null => {
+            true
+        }
+        // TODO: Support ALL of these modes in wei!
+        ModeKind::Alt | ModeKind::SemanticAfter | ModeKind::BackEdge | ModeKind::BlockAlt => false,
     }
 }
 
