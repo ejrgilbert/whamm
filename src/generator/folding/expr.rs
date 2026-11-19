@@ -142,7 +142,36 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
         }
         match receiver_ty {
             DataType::Str => Some(self.fold_string_utils_call(func_name, &val, arg_vals, loc, err)),
+            DataType::Bytes => Some(self.fold_bytes_utils_call(func_name, &val, loc, err)),
             _ => unreachable!("Utility functions not supported for type: {receiver_ty}"),
+        }
+    }
+
+    fn fold_bytes_utils_call(
+        &mut self,
+        fn_name: &str,
+        val: &Value,
+        loc: &Option<Location>,
+        err: &mut ErrorGen,
+    ) -> Expr {
+        let Value::Bytes { addr, len } = val else {
+            err.add_internal_error(
+                &format!("expected a bytes value for a bytes utility call, got: {val:?}"),
+                loc,
+            );
+            return Expr::Primitive {
+                val: Value::gen_u32(0),
+                loc: loc.clone(),
+            };
+        };
+        let res = match fn_name {
+            "addr" => *addr,
+            "len" => *len,
+            _ => unreachable!("Unrecognized bytes utility function name: {:?}", fn_name),
+        };
+        Expr::Primitive {
+            val: Value::gen_u32(res),
+            loc: loc.clone(),
         }
     }
 

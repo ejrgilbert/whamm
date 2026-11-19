@@ -695,7 +695,7 @@ impl<'a> TypeChecker<'a> {
                 *ty = tuple_ty.clone();
                 InferTy::Known(tuple_ty)
             }
-            Value::Str { .. } | Value::U32U32Map { .. } => val.ty().into(),
+            Value::Str { .. } | Value::Bytes { .. } | Value::U32U32Map { .. } => val.ty().into(),
         }
     }
 

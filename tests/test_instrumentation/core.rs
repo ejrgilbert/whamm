@@ -53,6 +53,14 @@ fn instrument_handwritten_wasm_call() {
 }
 
 #[test]
+fn instrument_app_bytes() -> Result<()> {
+    setup_logger();
+    let processed_scripts = setup_tests("core_suite/app_bytes");
+    assert!(!processed_scripts.is_empty());
+    run_core_suite("app_bytes", processed_scripts, true, false)
+}
+
+#[test]
 fn instrument_no_matches() {
     setup_logger();
     let original_wat_path = "tests/apps/core_suite/handwritten/no_matched_events.wat";

@@ -86,6 +86,7 @@ pub fn run_on_bytes(
         core_lib,
         def_yamls,
         &mut target_wasm,
+        &wasm_app,
         script,
         user_libs,
         max_errors,
@@ -103,10 +104,13 @@ pub fn dry_run_on_bytes<'ir>(
     config: Config,
 ) -> Result<HashMap<WirmInjectType, Vec<WirmInjection<'ir>>>, Vec<WhammError>> {
     let mut metrics = Metrics::default();
+
+    let app_bytes = target_wasm.encode().unwrap_or_default();
     if let Err(err) = run_on_module(
         core_lib,
         def_yamls,
         target_wasm,
+        &app_bytes,
         script,
         user_libs,
         max_errors,
@@ -123,6 +127,7 @@ pub fn run_on_module_and_encode<'lib, 'ir>(
     core_lib: &'lib [u8],
     def_yamls: &[String],
     target_wasm: &mut Module<'ir>,
+    app_bytes: &[u8],
     script: Vec<u8>,
     user_libs: UserLibs,
     max_errors: i32,
@@ -133,6 +138,7 @@ pub fn run_on_module_and_encode<'lib, 'ir>(
         core_lib,
         def_yamls,
         target_wasm,
+        app_bytes,
         script,
         user_libs,
         max_errors,
@@ -158,6 +164,7 @@ pub fn run_on_module<'lib, 'ir>(
     core_lib: &'lib [u8],
     def_yamls: &[String],
     target_wasm: &mut Module<'ir>,
+    app_bytes: &[u8],
     script: Vec<u8>,
     user_libs: UserLibs,
     max_errors: i32,
@@ -177,6 +184,7 @@ pub fn run_on_module<'lib, 'ir>(
         core_lib,
         def_yamls,
         target_wasm,
+        app_bytes,
         &whamm_script,
         user_libs,
         max_errors,
@@ -194,6 +202,7 @@ pub fn run<'lib, 'ir>(
     core_lib: &'lib [u8],
     def_yamls: &[String],
     target_wasm: &mut Module<'ir>,
+    app_bytes: &[u8],
     whamm_script: &String,
     user_libs: UserLibs,
     max_errors: i32,
@@ -246,7 +255,8 @@ pub fn run<'lib, 'ir>(
     if err.has_errors {
         return Err(Box::new(err));
     }
-    let mut mem_allocator = get_memory_allocator(target_wasm, true, config.as_monitor_module);
+    let mut mem_allocator =
+        get_memory_allocator(target_wasm, app_bytes, true, config.as_monitor_module);
 
     // Collect the metadata for the AST and transform to different representation
     // specifically used for targeting wei during compilation.
@@ -459,6 +469,7 @@ fn run_instr_rewrite<'lib, 'ir>(
     let ast = metadata_collector.ast;
     let used_funcs = metadata_collector.used_bound_fns;
     let used_strings = metadata_collector.strings_to_emit;
+    let uses_app_bytes = metadata_collector.used_app_bytes;
     let has_probe_state_init = metadata_collector.has_probe_state_init;
     let config = metadata_collector.config;
 
@@ -486,7 +497,13 @@ fn run_instr_rewrite<'lib, 'ir>(
             user_lib_modules,
             injected_funcs,
         };
-        init.run(whamm, used_funcs, used_strings, has_probe_state_init);
+        init.run(
+            whamm,
+            used_funcs,
+            used_strings,
+            uses_app_bytes,
+            has_probe_state_init,
+        );
     } // init dropped: err, table, mem_allocator borrows released
 
     if err.has_errors {
@@ -590,6 +607,7 @@ fn call_instr_init_at_start(
 
 fn get_memory_allocator(
     target_wasm: &mut Module,
+    app_bytes: &[u8],
     create_new_mem: bool,
     as_monitor_module: bool,
 ) -> MemoryAllocator {
@@ -688,6 +706,7 @@ fn get_memory_allocator(
         alloc_var_mem_tracker_global,
         engine_mem_id,
         engine_mem_start_id,
+        app_bytes,
     )
 }
 

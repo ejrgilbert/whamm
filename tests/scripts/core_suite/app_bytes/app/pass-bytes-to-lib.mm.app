@@ -1,0 +1,1 @@
+tests/apps/core_suite/handwritten/app_bytes_smiley.wasm

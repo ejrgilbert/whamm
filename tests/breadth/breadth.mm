@@ -7,7 +7,8 @@ wasm:begin {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
 }
 
 wasm:end {
@@ -16,7 +17,8 @@ wasm:end {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
 }
 
 wasm:report {
@@ -25,7 +27,8 @@ wasm:report {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
 }
 
 wasm:func:entry {
@@ -34,7 +37,8 @@ wasm:func:entry {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
 }
 
 wasm:func:exit {
@@ -43,7 +47,8 @@ wasm:func:exit {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
 }
 
 wasm:block:start {
@@ -52,7 +57,8 @@ wasm:block:start {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
 }
 
 wasm:block:end {
@@ -61,8 +67,9 @@ wasm:block:end {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: u32 = instr_count;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: u32 = instr_count;
 }
 
 wasm:opcode:unreachable:alt {
@@ -71,11 +78,12 @@ wasm:opcode:unreachable:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -87,11 +95,12 @@ wasm:opcode:unreachable:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:nop:before {
@@ -100,11 +109,12 @@ wasm:opcode:nop:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:nop:after {
@@ -113,11 +123,12 @@ wasm:opcode:nop:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:nop:alt {
@@ -126,11 +137,12 @@ wasm:opcode:nop:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -142,12 +154,13 @@ wasm:opcode:block:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:block:after {
@@ -156,12 +169,13 @@ wasm:opcode:block:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:block:alt {
@@ -170,12 +184,13 @@ wasm:opcode:block:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -187,12 +202,13 @@ wasm:opcode:block:entry {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:block:exit {
@@ -201,12 +217,13 @@ wasm:opcode:block:exit {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:loop:before {
@@ -215,12 +232,13 @@ wasm:opcode:loop:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:loop:after {
@@ -229,12 +247,13 @@ wasm:opcode:loop:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:loop:back_edge {
@@ -243,12 +262,13 @@ wasm:opcode:loop:back_edge {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:loop:alt {
@@ -257,12 +277,13 @@ wasm:opcode:loop:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -274,12 +295,13 @@ wasm:opcode:loop:entry {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:loop:exit {
@@ -288,12 +310,13 @@ wasm:opcode:loop:exit {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:if:before {
@@ -302,12 +325,13 @@ wasm:opcode:if:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
 }
 
 wasm:opcode:if:after {
@@ -316,12 +340,13 @@ wasm:opcode:if:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
 }
 
 wasm:opcode:if:alt {
@@ -330,12 +355,13 @@ wasm:opcode:if:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -347,12 +373,13 @@ wasm:opcode:if:entry {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
 }
 
 wasm:opcode:if:exit {
@@ -361,12 +388,13 @@ wasm:opcode:if:exit {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
 }
 
 wasm:opcode:else:before {
@@ -375,11 +403,12 @@ wasm:opcode:else:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:else:after {
@@ -388,11 +417,12 @@ wasm:opcode:else:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:else:alt {
@@ -401,11 +431,12 @@ wasm:opcode:else:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -417,11 +448,12 @@ wasm:opcode:else:entry {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:else:exit {
@@ -430,11 +462,12 @@ wasm:opcode:else:exit {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:try_table:before {
@@ -443,11 +476,12 @@ wasm:opcode:try_table:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:try_table:after {
@@ -456,11 +490,12 @@ wasm:opcode:try_table:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:try_table:alt {
@@ -469,11 +504,12 @@ wasm:opcode:try_table:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -485,11 +521,12 @@ wasm:opcode:try_table:entry {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:try_table:exit {
@@ -498,11 +535,12 @@ wasm:opcode:try_table:exit {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:throw:before {
@@ -511,13 +549,14 @@ wasm:opcode:throw:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
 }
 
 wasm:opcode:throw:after {
@@ -526,13 +565,14 @@ wasm:opcode:throw:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
 }
 
 wasm:opcode:throw:alt {
@@ -541,13 +581,14 @@ wasm:opcode:throw:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -559,12 +600,13 @@ wasm:opcode:throw_ref:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:throw_ref:after {
@@ -573,12 +615,13 @@ wasm:opcode:throw_ref:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:throw_ref:alt {
@@ -587,12 +630,13 @@ wasm:opcode:throw_ref:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -604,11 +648,12 @@ wasm:opcode:end:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:end:after {
@@ -617,11 +662,12 @@ wasm:opcode:end:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:br:before {
@@ -630,12 +676,13 @@ wasm:opcode:br:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
 }
 
 wasm:opcode:br:after {
@@ -644,12 +691,13 @@ wasm:opcode:br:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
 }
 
 wasm:opcode:br:alt {
@@ -658,12 +706,13 @@ wasm:opcode:br:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -675,12 +724,13 @@ wasm:opcode:br:at_target {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
 }
 
 wasm:opcode:br_if:before {
@@ -689,13 +739,14 @@ wasm:opcode:br_if:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = imm0;
 }
 
 wasm:opcode:br_if:after {
@@ -704,13 +755,14 @@ wasm:opcode:br_if:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = imm0;
 }
 
 wasm:opcode:br_if:alt {
@@ -719,13 +771,14 @@ wasm:opcode:br_if:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -737,13 +790,14 @@ wasm:opcode:br_if:at_target {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = imm0;
 }
 
 wasm:opcode:br_table:before {
@@ -752,17 +806,18 @@ wasm:opcode:br_table:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = imm0;
-    var v12: map<u32,u32> = targets;
-    var v13: u32 = default_target;
-    var v14: u32 = num_targets;
-    var v15: u32 = target;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = imm0;
+    var v13: map<u32,u32> = targets;
+    var v14: u32 = default_target;
+    var v15: u32 = num_targets;
+    var v16: u32 = target;
 }
 
 wasm:opcode:br_table:after {
@@ -771,17 +826,18 @@ wasm:opcode:br_table:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = imm0;
-    var v12: map<u32,u32> = targets;
-    var v13: u32 = default_target;
-    var v14: u32 = num_targets;
-    var v15: u32 = target;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = imm0;
+    var v13: map<u32,u32> = targets;
+    var v14: u32 = default_target;
+    var v15: u32 = num_targets;
+    var v16: u32 = target;
 }
 
 wasm:opcode:br_table:alt {
@@ -790,17 +846,18 @@ wasm:opcode:br_table:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = imm0;
-    var v12: map<u32,u32> = targets;
-    var v13: u32 = default_target;
-    var v14: u32 = num_targets;
-    var v15: u32 = target;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = imm0;
+    var v13: map<u32,u32> = targets;
+    var v14: u32 = default_target;
+    var v15: u32 = num_targets;
+    var v16: u32 = target;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -812,17 +869,18 @@ wasm:opcode:br_table:at_target {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = imm0;
-    var v12: map<u32,u32> = targets;
-    var v13: u32 = default_target;
-    var v14: u32 = num_targets;
-    var v15: u32 = target;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = imm0;
+    var v13: map<u32,u32> = targets;
+    var v14: u32 = default_target;
+    var v15: u32 = num_targets;
+    var v16: u32 = target;
 }
 
 wasm:opcode:return:before {
@@ -831,11 +889,12 @@ wasm:opcode:return:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:return:after {
@@ -844,11 +903,12 @@ wasm:opcode:return:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:return:alt {
@@ -857,11 +917,12 @@ wasm:opcode:return:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -873,17 +934,18 @@ wasm:opcode:call:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
-    var v12: i32 = res0;
-    var v13: str = target_imp_module;
-    var v14: str = target_fn_name;
-    var v15: str = target_fn_type;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
+    var v13: i32 = res0;
+    var v14: str = target_imp_module;
+    var v15: str = target_fn_name;
+    var v16: str = target_fn_type;
 }
 
 wasm:opcode:call:after {
@@ -892,17 +954,18 @@ wasm:opcode:call:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
-    var v12: i32 = res0;
-    var v13: str = target_imp_module;
-    var v14: str = target_fn_name;
-    var v15: str = target_fn_type;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
+    var v13: i32 = res0;
+    var v14: str = target_imp_module;
+    var v15: str = target_fn_name;
+    var v16: str = target_fn_type;
 }
 
 wasm:opcode:call:alt {
@@ -911,17 +974,18 @@ wasm:opcode:call:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
-    var v12: i32 = res0;
-    var v13: str = target_imp_module;
-    var v14: str = target_fn_name;
-    var v15: str = target_fn_type;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
+    var v13: i32 = res0;
+    var v14: str = target_imp_module;
+    var v15: str = target_fn_name;
+    var v16: str = target_fn_type;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -933,19 +997,20 @@ wasm:opcode:call_indirect:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
     var v11: i32 = arg0;
-    var v12: u32 = imm0;
-    var v13: u32 = imm1;
-    var v14: i32 = res0;
-    var v15: i32 = table_entry_idx;
-    var v16: funcref = target_funcref;
-    var v17: i32 = resolved_fid;
+    var v12: i32 = arg0;
+    var v13: u32 = imm0;
+    var v14: u32 = imm1;
+    var v15: i32 = res0;
+    var v16: i32 = table_entry_idx;
+    var v17: funcref = target_funcref;
+    var v18: i32 = resolved_fid;
 }
 
 wasm:opcode:call_indirect:after {
@@ -954,19 +1019,20 @@ wasm:opcode:call_indirect:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
     var v11: i32 = arg0;
-    var v12: u32 = imm0;
-    var v13: u32 = imm1;
-    var v14: i32 = res0;
-    var v15: i32 = table_entry_idx;
-    var v16: funcref = target_funcref;
-    var v17: i32 = resolved_fid;
+    var v12: i32 = arg0;
+    var v13: u32 = imm0;
+    var v14: u32 = imm1;
+    var v15: i32 = res0;
+    var v16: i32 = table_entry_idx;
+    var v17: funcref = target_funcref;
+    var v18: i32 = resolved_fid;
 }
 
 wasm:opcode:call_indirect:alt {
@@ -975,19 +1041,20 @@ wasm:opcode:call_indirect:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
     var v11: i32 = arg0;
-    var v12: u32 = imm0;
-    var v13: u32 = imm1;
-    var v14: i32 = res0;
-    var v15: i32 = table_entry_idx;
-    var v16: funcref = target_funcref;
-    var v17: i32 = resolved_fid;
+    var v12: i32 = arg0;
+    var v13: u32 = imm0;
+    var v14: u32 = imm1;
+    var v15: i32 = res0;
+    var v16: i32 = table_entry_idx;
+    var v17: funcref = target_funcref;
+    var v18: i32 = resolved_fid;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -999,16 +1066,17 @@ wasm:opcode:return_call:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
-    var v12: str = target_imp_module;
-    var v13: str = target_fn_name;
-    var v14: str = target_fn_type;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
+    var v13: str = target_imp_module;
+    var v14: str = target_fn_name;
+    var v15: str = target_fn_type;
 }
 
 wasm:opcode:return_call:after {
@@ -1017,16 +1085,17 @@ wasm:opcode:return_call:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
-    var v12: str = target_imp_module;
-    var v13: str = target_fn_name;
-    var v14: str = target_fn_type;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
+    var v13: str = target_imp_module;
+    var v14: str = target_fn_name;
+    var v15: str = target_fn_type;
 }
 
 wasm:opcode:return_call:alt {
@@ -1035,16 +1104,17 @@ wasm:opcode:return_call:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
-    var v12: str = target_imp_module;
-    var v13: str = target_fn_name;
-    var v14: str = target_fn_type;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
+    var v13: str = target_imp_module;
+    var v14: str = target_fn_name;
+    var v15: str = target_fn_type;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1056,19 +1126,20 @@ wasm:opcode:return_call_indirect:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
     var v11: i32 = arg0;
-    var v12: u32 = imm0;
-    var v13: u32 = imm1;
-    var v14: i32 = res0;
-    var v15: i32 = table_entry_idx;
-    var v16: funcref = target_funcref;
-    var v17: i32 = resolved_fid;
+    var v12: i32 = arg0;
+    var v13: u32 = imm0;
+    var v14: u32 = imm1;
+    var v15: i32 = res0;
+    var v16: i32 = table_entry_idx;
+    var v17: funcref = target_funcref;
+    var v18: i32 = resolved_fid;
 }
 
 wasm:opcode:return_call_indirect:after {
@@ -1077,19 +1148,20 @@ wasm:opcode:return_call_indirect:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
     var v11: i32 = arg0;
-    var v12: u32 = imm0;
-    var v13: u32 = imm1;
-    var v14: i32 = res0;
-    var v15: i32 = table_entry_idx;
-    var v16: funcref = target_funcref;
-    var v17: i32 = resolved_fid;
+    var v12: i32 = arg0;
+    var v13: u32 = imm0;
+    var v14: u32 = imm1;
+    var v15: i32 = res0;
+    var v16: i32 = table_entry_idx;
+    var v17: funcref = target_funcref;
+    var v18: i32 = resolved_fid;
 }
 
 wasm:opcode:return_call_indirect:alt {
@@ -1098,19 +1170,20 @@ wasm:opcode:return_call_indirect:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
     var v11: i32 = arg0;
-    var v12: u32 = imm0;
-    var v13: u32 = imm1;
-    var v14: i32 = res0;
-    var v15: i32 = table_entry_idx;
-    var v16: funcref = target_funcref;
-    var v17: i32 = resolved_fid;
+    var v12: i32 = arg0;
+    var v13: u32 = imm0;
+    var v14: u32 = imm1;
+    var v15: i32 = res0;
+    var v16: i32 = table_entry_idx;
+    var v17: funcref = target_funcref;
+    var v18: i32 = resolved_fid;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1122,12 +1195,13 @@ wasm:opcode:drop:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:drop:after {
@@ -1136,12 +1210,13 @@ wasm:opcode:drop:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:drop:alt {
@@ -1150,12 +1225,13 @@ wasm:opcode:drop:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1167,12 +1243,13 @@ wasm:opcode:select:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:select:after {
@@ -1181,12 +1258,13 @@ wasm:opcode:select:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:select:alt {
@@ -1195,12 +1273,13 @@ wasm:opcode:select:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1212,12 +1291,13 @@ wasm:opcode:typed_select:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:typed_select:after {
@@ -1226,12 +1306,13 @@ wasm:opcode:typed_select:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:typed_select:alt {
@@ -1240,12 +1321,13 @@ wasm:opcode:typed_select:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1257,12 +1339,13 @@ wasm:opcode:local.get:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
 }
 
 wasm:opcode:local.get:after {
@@ -1271,12 +1354,13 @@ wasm:opcode:local.get:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
 }
 
 wasm:opcode:local.get:alt {
@@ -1285,12 +1369,13 @@ wasm:opcode:local.get:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1302,13 +1387,14 @@ wasm:opcode:local.set:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
 }
 
 wasm:opcode:local.set:after {
@@ -1317,13 +1403,14 @@ wasm:opcode:local.set:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
 }
 
 wasm:opcode:local.set:alt {
@@ -1332,13 +1419,14 @@ wasm:opcode:local.set:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1350,13 +1438,14 @@ wasm:opcode:local.tee:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
 }
 
 wasm:opcode:local.tee:after {
@@ -1365,13 +1454,14 @@ wasm:opcode:local.tee:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
 }
 
 wasm:opcode:local.tee:alt {
@@ -1380,13 +1470,14 @@ wasm:opcode:local.tee:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1398,12 +1489,13 @@ wasm:opcode:global.get:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
 }
 
 wasm:opcode:global.get:after {
@@ -1412,12 +1504,13 @@ wasm:opcode:global.get:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
 }
 
 wasm:opcode:global.get:alt {
@@ -1426,12 +1519,13 @@ wasm:opcode:global.get:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1443,13 +1537,14 @@ wasm:opcode:global.set:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
 }
 
 wasm:opcode:global.set:after {
@@ -1458,13 +1553,14 @@ wasm:opcode:global.set:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
 }
 
 wasm:opcode:global.set:alt {
@@ -1473,13 +1569,14 @@ wasm:opcode:global.set:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: u32 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1491,20 +1588,21 @@ wasm:opcode:i32.load:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.load:after {
@@ -1513,20 +1611,21 @@ wasm:opcode:i32.load:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.load:alt {
@@ -1535,20 +1634,21 @@ wasm:opcode:i32.load:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1560,20 +1660,21 @@ wasm:opcode:i64.load:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.load:after {
@@ -1582,20 +1683,21 @@ wasm:opcode:i64.load:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.load:alt {
@@ -1604,20 +1706,21 @@ wasm:opcode:i64.load:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1629,20 +1732,21 @@ wasm:opcode:f32.load:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: f32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: f32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:f32.load:after {
@@ -1651,20 +1755,21 @@ wasm:opcode:f32.load:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: f32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: f32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:f32.load:alt {
@@ -1673,20 +1778,21 @@ wasm:opcode:f32.load:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: f32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: f32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1698,20 +1804,21 @@ wasm:opcode:f64.load:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: f64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: f64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:f64.load:after {
@@ -1720,20 +1827,21 @@ wasm:opcode:f64.load:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: f64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: f64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:f64.load:alt {
@@ -1742,20 +1850,21 @@ wasm:opcode:f64.load:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: f64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: f64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1767,20 +1876,21 @@ wasm:opcode:i32.load8_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.load8_s:after {
@@ -1789,20 +1899,21 @@ wasm:opcode:i32.load8_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.load8_s:alt {
@@ -1811,20 +1922,21 @@ wasm:opcode:i32.load8_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1836,20 +1948,21 @@ wasm:opcode:i32.load8_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.load8_u:after {
@@ -1858,20 +1971,21 @@ wasm:opcode:i32.load8_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.load8_u:alt {
@@ -1880,20 +1994,21 @@ wasm:opcode:i32.load8_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1905,20 +2020,21 @@ wasm:opcode:i32.load16_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.load16_s:after {
@@ -1927,20 +2043,21 @@ wasm:opcode:i32.load16_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.load16_s:alt {
@@ -1949,20 +2066,21 @@ wasm:opcode:i32.load16_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -1974,20 +2092,21 @@ wasm:opcode:i32.load16_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.load16_u:after {
@@ -1996,20 +2115,21 @@ wasm:opcode:i32.load16_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.load16_u:alt {
@@ -2018,20 +2138,21 @@ wasm:opcode:i32.load16_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i32 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i32 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -2043,20 +2164,21 @@ wasm:opcode:i64.load8_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.load8_s:after {
@@ -2065,20 +2187,21 @@ wasm:opcode:i64.load8_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.load8_s:alt {
@@ -2087,20 +2210,21 @@ wasm:opcode:i64.load8_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -2112,20 +2236,21 @@ wasm:opcode:i64.load8_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.load8_u:after {
@@ -2134,20 +2259,21 @@ wasm:opcode:i64.load8_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.load8_u:alt {
@@ -2156,20 +2282,21 @@ wasm:opcode:i64.load8_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -2181,20 +2308,21 @@ wasm:opcode:i64.load16_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.load16_s:after {
@@ -2203,20 +2331,21 @@ wasm:opcode:i64.load16_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.load16_s:alt {
@@ -2225,20 +2354,21 @@ wasm:opcode:i64.load16_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -2250,20 +2380,21 @@ wasm:opcode:i64.load16_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.load16_u:after {
@@ -2272,20 +2403,21 @@ wasm:opcode:i64.load16_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.load16_u:alt {
@@ -2294,20 +2426,21 @@ wasm:opcode:i64.load16_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -2319,20 +2452,21 @@ wasm:opcode:i64.load32_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.load32_s:after {
@@ -2341,20 +2475,21 @@ wasm:opcode:i64.load32_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.load32_s:alt {
@@ -2363,20 +2498,21 @@ wasm:opcode:i64.load32_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -2388,20 +2524,21 @@ wasm:opcode:i64.load32_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.load32_u:after {
@@ -2410,20 +2547,21 @@ wasm:opcode:i64.load32_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.load32_u:alt {
@@ -2432,20 +2570,21 @@ wasm:opcode:i64.load32_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = arg0;
-    var v13: i64 = res0;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = arg0;
+    var v14: i64 = res0;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -2457,20 +2596,21 @@ wasm:opcode:i32.store:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i32 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i32 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.store:after {
@@ -2479,20 +2619,21 @@ wasm:opcode:i32.store:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i32 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i32 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.store:alt {
@@ -2501,20 +2642,21 @@ wasm:opcode:i32.store:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i32 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i32 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -2526,20 +2668,21 @@ wasm:opcode:i64.store:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.store:after {
@@ -2548,20 +2691,21 @@ wasm:opcode:i64.store:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.store:alt {
@@ -2570,20 +2714,21 @@ wasm:opcode:i64.store:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -2595,20 +2740,21 @@ wasm:opcode:f32.store:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: f32 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: f32 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:f32.store:after {
@@ -2617,20 +2763,21 @@ wasm:opcode:f32.store:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: f32 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: f32 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:f32.store:alt {
@@ -2639,20 +2786,21 @@ wasm:opcode:f32.store:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: f32 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: f32 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -2664,20 +2812,21 @@ wasm:opcode:f64.store:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: f64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: f64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:f64.store:after {
@@ -2686,20 +2835,21 @@ wasm:opcode:f64.store:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: f64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: f64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:f64.store:alt {
@@ -2708,20 +2858,21 @@ wasm:opcode:f64.store:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: f64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: f64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -2733,20 +2884,21 @@ wasm:opcode:i32.store8:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i32 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i32 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.store8:after {
@@ -2755,20 +2907,21 @@ wasm:opcode:i32.store8:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i32 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i32 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.store8:alt {
@@ -2777,20 +2930,21 @@ wasm:opcode:i32.store8:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i32 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i32 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -2802,20 +2956,21 @@ wasm:opcode:i32.store16:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i32 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i32 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.store16:after {
@@ -2824,20 +2979,21 @@ wasm:opcode:i32.store16:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i32 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i32 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i32.store16:alt {
@@ -2846,20 +3002,21 @@ wasm:opcode:i32.store16:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i32 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i32 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -2871,20 +3028,21 @@ wasm:opcode:i64.store8:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.store8:after {
@@ -2893,20 +3051,21 @@ wasm:opcode:i64.store8:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.store8:alt {
@@ -2915,20 +3074,21 @@ wasm:opcode:i64.store8:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -2940,20 +3100,21 @@ wasm:opcode:i64.store16:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.store16:after {
@@ -2962,20 +3123,21 @@ wasm:opcode:i64.store16:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.store16:alt {
@@ -2984,20 +3146,21 @@ wasm:opcode:i64.store16:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3009,20 +3172,21 @@ wasm:opcode:i64.store32:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.store32:after {
@@ -3031,20 +3195,21 @@ wasm:opcode:i64.store32:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
 }
 
 wasm:opcode:i64.store32:alt {
@@ -3053,20 +3218,21 @@ wasm:opcode:i64.store32:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: i64 = arg0;
-    var v13: u32 = arg1;
-    var v14: u32 = memory;
-    var v15: u32 = align;
-    var v16: u32 = effective_addr;
-    var v17: bool = is_write;
-    var v18: u64 = offset;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: i64 = arg0;
+    var v14: u32 = arg1;
+    var v15: u32 = memory;
+    var v16: u32 = align;
+    var v17: u32 = effective_addr;
+    var v18: bool = is_write;
+    var v19: u64 = offset;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3078,13 +3244,14 @@ wasm:opcode:memory.size:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = res0;
 }
 
 wasm:opcode:memory.size:after {
@@ -3093,13 +3260,14 @@ wasm:opcode:memory.size:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = res0;
 }
 
 wasm:opcode:memory.size:alt {
@@ -3108,13 +3276,14 @@ wasm:opcode:memory.size:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = res0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3126,15 +3295,16 @@ wasm:opcode:memory.grow:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: bool = failed;
-    var v9: u32 = category_id;
-    var v10: str = category_name;
-    var v11: u32 = arg0;
-    var v12: u32 = imm0;
-    var v13: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: bool = failed;
+    var v10: u32 = category_id;
+    var v11: str = category_name;
+    var v12: u32 = arg0;
+    var v13: u32 = imm0;
+    var v14: i32 = res0;
 }
 
 wasm:opcode:memory.grow:after {
@@ -3143,15 +3313,16 @@ wasm:opcode:memory.grow:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: bool = failed;
-    var v9: u32 = category_id;
-    var v10: str = category_name;
-    var v11: u32 = arg0;
-    var v12: u32 = imm0;
-    var v13: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: bool = failed;
+    var v10: u32 = category_id;
+    var v11: str = category_name;
+    var v12: u32 = arg0;
+    var v13: u32 = imm0;
+    var v14: i32 = res0;
 }
 
 wasm:opcode:memory.grow:alt {
@@ -3160,15 +3331,16 @@ wasm:opcode:memory.grow:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: bool = failed;
-    var v9: u32 = category_id;
-    var v10: str = category_name;
-    var v11: u32 = arg0;
-    var v12: u32 = imm0;
-    var v13: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: bool = failed;
+    var v10: u32 = category_id;
+    var v11: str = category_name;
+    var v12: u32 = arg0;
+    var v13: u32 = imm0;
+    var v14: i32 = res0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3180,12 +3352,13 @@ wasm:opcode:i32.const:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
 }
 
 wasm:opcode:i32.const:after {
@@ -3194,12 +3367,13 @@ wasm:opcode:i32.const:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
 }
 
 wasm:opcode:i32.const:alt {
@@ -3208,12 +3382,13 @@ wasm:opcode:i32.const:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3225,12 +3400,13 @@ wasm:opcode:i64.const:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = imm0;
 }
 
 wasm:opcode:i64.const:after {
@@ -3239,12 +3415,13 @@ wasm:opcode:i64.const:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = imm0;
 }
 
 wasm:opcode:i64.const:alt {
@@ -3253,12 +3430,13 @@ wasm:opcode:i64.const:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3270,12 +3448,13 @@ wasm:opcode:f32.const:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = imm0;
 }
 
 wasm:opcode:f32.const:after {
@@ -3284,12 +3463,13 @@ wasm:opcode:f32.const:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = imm0;
 }
 
 wasm:opcode:f32.const:alt {
@@ -3298,12 +3478,13 @@ wasm:opcode:f32.const:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3315,12 +3496,13 @@ wasm:opcode:f64.const:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = imm0;
 }
 
 wasm:opcode:f64.const:after {
@@ -3329,12 +3511,13 @@ wasm:opcode:f64.const:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = imm0;
 }
 
 wasm:opcode:f64.const:alt {
@@ -3343,12 +3526,13 @@ wasm:opcode:f64.const:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3360,11 +3544,12 @@ wasm:opcode:ref.null:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:ref.null:after {
@@ -3373,11 +3558,12 @@ wasm:opcode:ref.null:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:ref.null:alt {
@@ -3386,11 +3572,12 @@ wasm:opcode:ref.null:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3402,12 +3589,13 @@ wasm:opcode:ref.is_null:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:ref.is_null:after {
@@ -3416,12 +3604,13 @@ wasm:opcode:ref.is_null:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:ref.is_null:alt {
@@ -3430,12 +3619,13 @@ wasm:opcode:ref.is_null:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3447,13 +3637,14 @@ wasm:opcode:ref.func:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = resolved_fid;
 }
 
 wasm:opcode:ref.func:after {
@@ -3462,13 +3653,14 @@ wasm:opcode:ref.func:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = resolved_fid;
 }
 
 wasm:opcode:ref.func:alt {
@@ -3477,13 +3669,14 @@ wasm:opcode:ref.func:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = resolved_fid;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3495,12 +3688,13 @@ wasm:opcode:ref.eq:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:ref.eq:after {
@@ -3509,12 +3703,13 @@ wasm:opcode:ref.eq:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:ref.eq:alt {
@@ -3523,12 +3718,13 @@ wasm:opcode:ref.eq:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3540,12 +3736,13 @@ wasm:opcode:i32.eqz:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i32.eqz:after {
@@ -3554,12 +3751,13 @@ wasm:opcode:i32.eqz:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i32.eqz:alt {
@@ -3568,12 +3766,13 @@ wasm:opcode:i32.eqz:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3585,13 +3784,14 @@ wasm:opcode:i32.eq:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.eq:after {
@@ -3600,13 +3800,14 @@ wasm:opcode:i32.eq:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.eq:alt {
@@ -3615,13 +3816,14 @@ wasm:opcode:i32.eq:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3633,13 +3835,14 @@ wasm:opcode:i32.ne:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.ne:after {
@@ -3648,13 +3851,14 @@ wasm:opcode:i32.ne:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.ne:alt {
@@ -3663,13 +3867,14 @@ wasm:opcode:i32.ne:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3681,13 +3886,14 @@ wasm:opcode:i32.lt_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.lt_s:after {
@@ -3696,13 +3902,14 @@ wasm:opcode:i32.lt_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.lt_s:alt {
@@ -3711,13 +3918,14 @@ wasm:opcode:i32.lt_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3729,13 +3937,14 @@ wasm:opcode:i32.lt_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
 }
 
 wasm:opcode:i32.lt_u:after {
@@ -3744,13 +3953,14 @@ wasm:opcode:i32.lt_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
 }
 
 wasm:opcode:i32.lt_u:alt {
@@ -3759,13 +3969,14 @@ wasm:opcode:i32.lt_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3777,13 +3988,14 @@ wasm:opcode:i32.gt_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.gt_s:after {
@@ -3792,13 +4004,14 @@ wasm:opcode:i32.gt_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.gt_s:alt {
@@ -3807,13 +4020,14 @@ wasm:opcode:i32.gt_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3825,13 +4039,14 @@ wasm:opcode:i32.gt_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
 }
 
 wasm:opcode:i32.gt_u:after {
@@ -3840,13 +4055,14 @@ wasm:opcode:i32.gt_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
 }
 
 wasm:opcode:i32.gt_u:alt {
@@ -3855,13 +4071,14 @@ wasm:opcode:i32.gt_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3873,13 +4090,14 @@ wasm:opcode:i32.le_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.le_s:after {
@@ -3888,13 +4106,14 @@ wasm:opcode:i32.le_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.le_s:alt {
@@ -3903,13 +4122,14 @@ wasm:opcode:i32.le_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3921,13 +4141,14 @@ wasm:opcode:i32.le_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
 }
 
 wasm:opcode:i32.le_u:after {
@@ -3936,13 +4157,14 @@ wasm:opcode:i32.le_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
 }
 
 wasm:opcode:i32.le_u:alt {
@@ -3951,13 +4173,14 @@ wasm:opcode:i32.le_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -3969,13 +4192,14 @@ wasm:opcode:i32.ge_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.ge_s:after {
@@ -3984,13 +4208,14 @@ wasm:opcode:i32.ge_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.ge_s:alt {
@@ -3999,13 +4224,14 @@ wasm:opcode:i32.ge_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4017,13 +4243,14 @@ wasm:opcode:i32.ge_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
 }
 
 wasm:opcode:i32.ge_u:after {
@@ -4032,13 +4259,14 @@ wasm:opcode:i32.ge_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
 }
 
 wasm:opcode:i32.ge_u:alt {
@@ -4047,13 +4275,14 @@ wasm:opcode:i32.ge_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4065,12 +4294,13 @@ wasm:opcode:i64.eqz:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.eqz:after {
@@ -4079,12 +4309,13 @@ wasm:opcode:i64.eqz:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.eqz:alt {
@@ -4093,12 +4324,13 @@ wasm:opcode:i64.eqz:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4110,12 +4342,13 @@ wasm:opcode:i64.eq:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.eq:after {
@@ -4124,12 +4357,13 @@ wasm:opcode:i64.eq:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.eq:alt {
@@ -4138,12 +4372,13 @@ wasm:opcode:i64.eq:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4155,13 +4390,14 @@ wasm:opcode:i64.ne:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.ne:after {
@@ -4170,13 +4406,14 @@ wasm:opcode:i64.ne:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.ne:alt {
@@ -4185,13 +4422,14 @@ wasm:opcode:i64.ne:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4203,13 +4441,14 @@ wasm:opcode:i64.lt_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.lt_s:after {
@@ -4218,13 +4457,14 @@ wasm:opcode:i64.lt_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.lt_s:alt {
@@ -4233,13 +4473,14 @@ wasm:opcode:i64.lt_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4251,13 +4492,14 @@ wasm:opcode:i64.lt_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
-    var v11: u64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
+    var v12: u64 = arg1;
 }
 
 wasm:opcode:i64.lt_u:after {
@@ -4266,13 +4508,14 @@ wasm:opcode:i64.lt_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
-    var v11: u64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
+    var v12: u64 = arg1;
 }
 
 wasm:opcode:i64.lt_u:alt {
@@ -4281,13 +4524,14 @@ wasm:opcode:i64.lt_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
-    var v11: u64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
+    var v12: u64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4299,13 +4543,14 @@ wasm:opcode:i64.gt_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.gt_s:after {
@@ -4314,13 +4559,14 @@ wasm:opcode:i64.gt_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.gt_s:alt {
@@ -4329,13 +4575,14 @@ wasm:opcode:i64.gt_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4347,13 +4594,14 @@ wasm:opcode:i64.gt_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
-    var v11: u64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
+    var v12: u64 = arg1;
 }
 
 wasm:opcode:i64.gt_u:after {
@@ -4362,13 +4610,14 @@ wasm:opcode:i64.gt_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
-    var v11: u64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
+    var v12: u64 = arg1;
 }
 
 wasm:opcode:i64.gt_u:alt {
@@ -4377,13 +4626,14 @@ wasm:opcode:i64.gt_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
-    var v11: u64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
+    var v12: u64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4395,13 +4645,14 @@ wasm:opcode:i64.le_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.le_s:after {
@@ -4410,13 +4661,14 @@ wasm:opcode:i64.le_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.le_s:alt {
@@ -4425,13 +4677,14 @@ wasm:opcode:i64.le_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4443,13 +4696,14 @@ wasm:opcode:i64.le_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
-    var v11: u64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
+    var v12: u64 = arg1;
 }
 
 wasm:opcode:i64.le_u:after {
@@ -4458,13 +4712,14 @@ wasm:opcode:i64.le_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
-    var v11: u64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
+    var v12: u64 = arg1;
 }
 
 wasm:opcode:i64.le_u:alt {
@@ -4473,13 +4728,14 @@ wasm:opcode:i64.le_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
-    var v11: u64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
+    var v12: u64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4491,13 +4747,14 @@ wasm:opcode:i64.ge_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.ge_s:after {
@@ -4506,13 +4763,14 @@ wasm:opcode:i64.ge_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.ge_s:alt {
@@ -4521,13 +4779,14 @@ wasm:opcode:i64.ge_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4539,13 +4798,14 @@ wasm:opcode:i64.ge_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
-    var v11: u64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
+    var v12: u64 = arg1;
 }
 
 wasm:opcode:i64.ge_u:after {
@@ -4554,13 +4814,14 @@ wasm:opcode:i64.ge_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
-    var v11: u64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
+    var v12: u64 = arg1;
 }
 
 wasm:opcode:i64.ge_u:alt {
@@ -4569,13 +4830,14 @@ wasm:opcode:i64.ge_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
-    var v11: u64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
+    var v12: u64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4587,13 +4849,14 @@ wasm:opcode:f32.eq:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.eq:after {
@@ -4602,13 +4865,14 @@ wasm:opcode:f32.eq:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.eq:alt {
@@ -4617,13 +4881,14 @@ wasm:opcode:f32.eq:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4635,13 +4900,14 @@ wasm:opcode:f32.ne:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.ne:after {
@@ -4650,13 +4916,14 @@ wasm:opcode:f32.ne:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.ne:alt {
@@ -4665,13 +4932,14 @@ wasm:opcode:f32.ne:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4683,13 +4951,14 @@ wasm:opcode:f32.lt:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.lt:after {
@@ -4698,13 +4967,14 @@ wasm:opcode:f32.lt:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.lt:alt {
@@ -4713,13 +4983,14 @@ wasm:opcode:f32.lt:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4731,13 +5002,14 @@ wasm:opcode:f32.gt:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.gt:after {
@@ -4746,13 +5018,14 @@ wasm:opcode:f32.gt:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.gt:alt {
@@ -4761,13 +5034,14 @@ wasm:opcode:f32.gt:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4779,13 +5053,14 @@ wasm:opcode:f32.le:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.le:after {
@@ -4794,13 +5069,14 @@ wasm:opcode:f32.le:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.le:alt {
@@ -4809,13 +5085,14 @@ wasm:opcode:f32.le:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4827,13 +5104,14 @@ wasm:opcode:f32.ge:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.ge:after {
@@ -4842,13 +5120,14 @@ wasm:opcode:f32.ge:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.ge:alt {
@@ -4857,13 +5136,14 @@ wasm:opcode:f32.ge:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4875,13 +5155,14 @@ wasm:opcode:f64.eq:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.eq:after {
@@ -4890,13 +5171,14 @@ wasm:opcode:f64.eq:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.eq:alt {
@@ -4905,13 +5187,14 @@ wasm:opcode:f64.eq:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4923,13 +5206,14 @@ wasm:opcode:f64.ne:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.ne:after {
@@ -4938,13 +5222,14 @@ wasm:opcode:f64.ne:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.ne:alt {
@@ -4953,13 +5238,14 @@ wasm:opcode:f64.ne:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -4971,13 +5257,14 @@ wasm:opcode:f64.lt:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.lt:after {
@@ -4986,13 +5273,14 @@ wasm:opcode:f64.lt:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.lt:alt {
@@ -5001,13 +5289,14 @@ wasm:opcode:f64.lt:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5019,13 +5308,14 @@ wasm:opcode:f64.gt:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.gt:after {
@@ -5034,13 +5324,14 @@ wasm:opcode:f64.gt:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.gt:alt {
@@ -5049,13 +5340,14 @@ wasm:opcode:f64.gt:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5067,13 +5359,14 @@ wasm:opcode:f64.le:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.le:after {
@@ -5082,13 +5375,14 @@ wasm:opcode:f64.le:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.le:alt {
@@ -5097,13 +5391,14 @@ wasm:opcode:f64.le:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5115,13 +5410,14 @@ wasm:opcode:f64.ge:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.ge:after {
@@ -5130,13 +5426,14 @@ wasm:opcode:f64.ge:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.ge:alt {
@@ -5145,13 +5442,14 @@ wasm:opcode:f64.ge:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5163,12 +5461,13 @@ wasm:opcode:i32.clz:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i32.clz:after {
@@ -5177,12 +5476,13 @@ wasm:opcode:i32.clz:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i32.clz:alt {
@@ -5191,12 +5491,13 @@ wasm:opcode:i32.clz:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5208,12 +5509,13 @@ wasm:opcode:i32.ctz:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i32.ctz:after {
@@ -5222,12 +5524,13 @@ wasm:opcode:i32.ctz:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i32.ctz:alt {
@@ -5236,12 +5539,13 @@ wasm:opcode:i32.ctz:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5253,12 +5557,13 @@ wasm:opcode:i32.popcnt:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i32.popcnt:after {
@@ -5267,12 +5572,13 @@ wasm:opcode:i32.popcnt:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i32.popcnt:alt {
@@ -5281,12 +5587,13 @@ wasm:opcode:i32.popcnt:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5298,13 +5605,14 @@ wasm:opcode:i32.add:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.add:after {
@@ -5313,13 +5621,14 @@ wasm:opcode:i32.add:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.add:alt {
@@ -5328,13 +5637,14 @@ wasm:opcode:i32.add:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5346,13 +5656,14 @@ wasm:opcode:i32.sub:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.sub:after {
@@ -5361,13 +5672,14 @@ wasm:opcode:i32.sub:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.sub:alt {
@@ -5376,13 +5688,14 @@ wasm:opcode:i32.sub:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5394,13 +5707,14 @@ wasm:opcode:i32.mul:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.mul:after {
@@ -5409,13 +5723,14 @@ wasm:opcode:i32.mul:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.mul:alt {
@@ -5424,13 +5739,14 @@ wasm:opcode:i32.mul:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5442,13 +5758,14 @@ wasm:opcode:i32.div_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.div_s:after {
@@ -5457,13 +5774,14 @@ wasm:opcode:i32.div_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.div_s:alt {
@@ -5472,13 +5790,14 @@ wasm:opcode:i32.div_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5490,13 +5809,14 @@ wasm:opcode:i32.div_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
 }
 
 wasm:opcode:i32.div_u:after {
@@ -5505,13 +5825,14 @@ wasm:opcode:i32.div_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
 }
 
 wasm:opcode:i32.div_u:alt {
@@ -5520,13 +5841,14 @@ wasm:opcode:i32.div_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5538,13 +5860,14 @@ wasm:opcode:i32.rem_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.rem_s:after {
@@ -5553,13 +5876,14 @@ wasm:opcode:i32.rem_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.rem_s:alt {
@@ -5568,13 +5892,14 @@ wasm:opcode:i32.rem_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5586,13 +5911,14 @@ wasm:opcode:i32.rem_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
 }
 
 wasm:opcode:i32.rem_u:after {
@@ -5601,13 +5927,14 @@ wasm:opcode:i32.rem_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
 }
 
 wasm:opcode:i32.rem_u:alt {
@@ -5616,13 +5943,14 @@ wasm:opcode:i32.rem_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
-    var v11: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
+    var v12: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5634,13 +5962,14 @@ wasm:opcode:i32.and:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.and:after {
@@ -5649,13 +5978,14 @@ wasm:opcode:i32.and:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.and:alt {
@@ -5664,13 +5994,14 @@ wasm:opcode:i32.and:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5682,13 +6013,14 @@ wasm:opcode:i32.or:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.or:after {
@@ -5697,13 +6029,14 @@ wasm:opcode:i32.or:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.or:alt {
@@ -5712,13 +6045,14 @@ wasm:opcode:i32.or:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5730,13 +6064,14 @@ wasm:opcode:i32.xor:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.xor:after {
@@ -5745,13 +6080,14 @@ wasm:opcode:i32.xor:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.xor:alt {
@@ -5760,13 +6096,14 @@ wasm:opcode:i32.xor:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5778,13 +6115,14 @@ wasm:opcode:i32.shl:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.shl:after {
@@ -5793,13 +6131,14 @@ wasm:opcode:i32.shl:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.shl:alt {
@@ -5808,13 +6147,14 @@ wasm:opcode:i32.shl:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5826,13 +6166,14 @@ wasm:opcode:i32.shr_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.shr_s:after {
@@ -5841,13 +6182,14 @@ wasm:opcode:i32.shr_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.shr_s:alt {
@@ -5856,13 +6198,14 @@ wasm:opcode:i32.shr_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5874,13 +6217,14 @@ wasm:opcode:i32.shr_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.shr_u:after {
@@ -5889,13 +6233,14 @@ wasm:opcode:i32.shr_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.shr_u:alt {
@@ -5904,13 +6249,14 @@ wasm:opcode:i32.shr_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5922,13 +6268,14 @@ wasm:opcode:i32.rotl:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.rotl:after {
@@ -5937,13 +6284,14 @@ wasm:opcode:i32.rotl:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.rotl:alt {
@@ -5952,13 +6300,14 @@ wasm:opcode:i32.rotl:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -5970,13 +6319,14 @@ wasm:opcode:i32.rotr:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.rotr:after {
@@ -5985,13 +6335,14 @@ wasm:opcode:i32.rotr:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
 }
 
 wasm:opcode:i32.rotr:alt {
@@ -6000,13 +6351,14 @@ wasm:opcode:i32.rotr:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
-    var v11: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
+    var v12: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6018,12 +6370,13 @@ wasm:opcode:i64.clz:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.clz:after {
@@ -6032,12 +6385,13 @@ wasm:opcode:i64.clz:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.clz:alt {
@@ -6046,12 +6400,13 @@ wasm:opcode:i64.clz:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6063,12 +6418,13 @@ wasm:opcode:i64.ctz:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.ctz:after {
@@ -6077,12 +6433,13 @@ wasm:opcode:i64.ctz:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.ctz:alt {
@@ -6091,12 +6448,13 @@ wasm:opcode:i64.ctz:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6108,12 +6466,13 @@ wasm:opcode:i64.popcnt:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.popcnt:after {
@@ -6122,12 +6481,13 @@ wasm:opcode:i64.popcnt:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.popcnt:alt {
@@ -6136,12 +6496,13 @@ wasm:opcode:i64.popcnt:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6153,13 +6514,14 @@ wasm:opcode:i64.add:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.add:after {
@@ -6168,13 +6530,14 @@ wasm:opcode:i64.add:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.add:alt {
@@ -6183,13 +6546,14 @@ wasm:opcode:i64.add:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6201,13 +6565,14 @@ wasm:opcode:i64.sub:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.sub:after {
@@ -6216,13 +6581,14 @@ wasm:opcode:i64.sub:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.sub:alt {
@@ -6231,13 +6597,14 @@ wasm:opcode:i64.sub:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6249,13 +6616,14 @@ wasm:opcode:i64.mul:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.mul:after {
@@ -6264,13 +6632,14 @@ wasm:opcode:i64.mul:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.mul:alt {
@@ -6279,13 +6648,14 @@ wasm:opcode:i64.mul:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6297,13 +6667,14 @@ wasm:opcode:i64.div_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.div_s:after {
@@ -6312,13 +6683,14 @@ wasm:opcode:i64.div_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.div_s:alt {
@@ -6327,13 +6699,14 @@ wasm:opcode:i64.div_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6345,13 +6718,14 @@ wasm:opcode:i64.div_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.div_u:after {
@@ -6360,13 +6734,14 @@ wasm:opcode:i64.div_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.div_u:alt {
@@ -6375,13 +6750,14 @@ wasm:opcode:i64.div_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6393,13 +6769,14 @@ wasm:opcode:i64.rem_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.rem_s:after {
@@ -6408,13 +6785,14 @@ wasm:opcode:i64.rem_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.rem_s:alt {
@@ -6423,13 +6801,14 @@ wasm:opcode:i64.rem_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6441,13 +6820,14 @@ wasm:opcode:i64.rem_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.rem_u:after {
@@ -6456,13 +6836,14 @@ wasm:opcode:i64.rem_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.rem_u:alt {
@@ -6471,13 +6852,14 @@ wasm:opcode:i64.rem_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6489,13 +6871,14 @@ wasm:opcode:i64.and:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.and:after {
@@ -6504,13 +6887,14 @@ wasm:opcode:i64.and:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.and:alt {
@@ -6519,13 +6903,14 @@ wasm:opcode:i64.and:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6537,13 +6922,14 @@ wasm:opcode:i64.or:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.or:after {
@@ -6552,13 +6938,14 @@ wasm:opcode:i64.or:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.or:alt {
@@ -6567,13 +6954,14 @@ wasm:opcode:i64.or:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6585,13 +6973,14 @@ wasm:opcode:i64.xor:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.xor:after {
@@ -6600,13 +6989,14 @@ wasm:opcode:i64.xor:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.xor:alt {
@@ -6615,13 +7005,14 @@ wasm:opcode:i64.xor:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6633,13 +7024,14 @@ wasm:opcode:i64.shl:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.shl:after {
@@ -6648,13 +7040,14 @@ wasm:opcode:i64.shl:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.shl:alt {
@@ -6663,13 +7056,14 @@ wasm:opcode:i64.shl:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6681,13 +7075,14 @@ wasm:opcode:i64.shr_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.shr_s:after {
@@ -6696,13 +7091,14 @@ wasm:opcode:i64.shr_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.shr_s:alt {
@@ -6711,13 +7107,14 @@ wasm:opcode:i64.shr_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6729,13 +7126,14 @@ wasm:opcode:i64.shr_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.shr_u:after {
@@ -6744,13 +7142,14 @@ wasm:opcode:i64.shr_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.shr_u:alt {
@@ -6759,13 +7158,14 @@ wasm:opcode:i64.shr_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6777,13 +7177,14 @@ wasm:opcode:i64.rotl:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.rotl:after {
@@ -6792,13 +7193,14 @@ wasm:opcode:i64.rotl:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.rotl:alt {
@@ -6807,13 +7209,14 @@ wasm:opcode:i64.rotl:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6825,13 +7228,14 @@ wasm:opcode:i64.rotr:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.rotr:after {
@@ -6840,13 +7244,14 @@ wasm:opcode:i64.rotr:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
 }
 
 wasm:opcode:i64.rotr:alt {
@@ -6855,13 +7260,14 @@ wasm:opcode:i64.rotr:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
-    var v11: i64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
+    var v12: i64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6873,12 +7279,13 @@ wasm:opcode:f32.abs:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f32.abs:after {
@@ -6887,12 +7294,13 @@ wasm:opcode:f32.abs:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f32.abs:alt {
@@ -6901,12 +7309,13 @@ wasm:opcode:f32.abs:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6918,12 +7327,13 @@ wasm:opcode:f32.neg:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f32.neg:after {
@@ -6932,12 +7342,13 @@ wasm:opcode:f32.neg:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f32.neg:alt {
@@ -6946,12 +7357,13 @@ wasm:opcode:f32.neg:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -6963,12 +7375,13 @@ wasm:opcode:f32.ceil:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f32.ceil:after {
@@ -6977,12 +7390,13 @@ wasm:opcode:f32.ceil:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f32.ceil:alt {
@@ -6991,12 +7405,13 @@ wasm:opcode:f32.ceil:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7008,12 +7423,13 @@ wasm:opcode:f32.floor:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f32.floor:after {
@@ -7022,12 +7438,13 @@ wasm:opcode:f32.floor:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f32.floor:alt {
@@ -7036,12 +7453,13 @@ wasm:opcode:f32.floor:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7053,12 +7471,13 @@ wasm:opcode:f32.trunc:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f32.trunc:after {
@@ -7067,12 +7486,13 @@ wasm:opcode:f32.trunc:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f32.trunc:alt {
@@ -7081,12 +7501,13 @@ wasm:opcode:f32.trunc:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7098,12 +7519,13 @@ wasm:opcode:f32.nearest:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f32.nearest:after {
@@ -7112,12 +7534,13 @@ wasm:opcode:f32.nearest:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f32.nearest:alt {
@@ -7126,12 +7549,13 @@ wasm:opcode:f32.nearest:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7143,12 +7567,13 @@ wasm:opcode:f32.sqrt:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f32.sqrt:after {
@@ -7157,12 +7582,13 @@ wasm:opcode:f32.sqrt:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f32.sqrt:alt {
@@ -7171,12 +7597,13 @@ wasm:opcode:f32.sqrt:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7188,13 +7615,14 @@ wasm:opcode:f32.add:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.add:after {
@@ -7203,13 +7631,14 @@ wasm:opcode:f32.add:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.add:alt {
@@ -7218,13 +7647,14 @@ wasm:opcode:f32.add:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7236,13 +7666,14 @@ wasm:opcode:f32.sub:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.sub:after {
@@ -7251,13 +7682,14 @@ wasm:opcode:f32.sub:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.sub:alt {
@@ -7266,13 +7698,14 @@ wasm:opcode:f32.sub:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7284,13 +7717,14 @@ wasm:opcode:f32.mul:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.mul:after {
@@ -7299,13 +7733,14 @@ wasm:opcode:f32.mul:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.mul:alt {
@@ -7314,13 +7749,14 @@ wasm:opcode:f32.mul:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7332,13 +7768,14 @@ wasm:opcode:f32.div:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.div:after {
@@ -7347,13 +7784,14 @@ wasm:opcode:f32.div:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.div:alt {
@@ -7362,13 +7800,14 @@ wasm:opcode:f32.div:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7380,13 +7819,14 @@ wasm:opcode:f32.min:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.min:after {
@@ -7395,13 +7835,14 @@ wasm:opcode:f32.min:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.min:alt {
@@ -7410,13 +7851,14 @@ wasm:opcode:f32.min:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7428,13 +7870,14 @@ wasm:opcode:f32.max:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.max:after {
@@ -7443,13 +7886,14 @@ wasm:opcode:f32.max:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.max:alt {
@@ -7458,13 +7902,14 @@ wasm:opcode:f32.max:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7476,13 +7921,14 @@ wasm:opcode:f32.copysign:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.copysign:after {
@@ -7491,13 +7937,14 @@ wasm:opcode:f32.copysign:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
 }
 
 wasm:opcode:f32.copysign:alt {
@@ -7506,13 +7953,14 @@ wasm:opcode:f32.copysign:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
-    var v11: f32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
+    var v12: f32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7524,12 +7972,13 @@ wasm:opcode:f64.abs:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f64.abs:after {
@@ -7538,12 +7987,13 @@ wasm:opcode:f64.abs:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f64.abs:alt {
@@ -7552,12 +8002,13 @@ wasm:opcode:f64.abs:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7569,12 +8020,13 @@ wasm:opcode:f64.neg:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f64.neg:after {
@@ -7583,12 +8035,13 @@ wasm:opcode:f64.neg:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f64.neg:alt {
@@ -7597,12 +8050,13 @@ wasm:opcode:f64.neg:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7614,12 +8068,13 @@ wasm:opcode:f64.ceil:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f64.ceil:after {
@@ -7628,12 +8083,13 @@ wasm:opcode:f64.ceil:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f64.ceil:alt {
@@ -7642,12 +8098,13 @@ wasm:opcode:f64.ceil:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7659,12 +8116,13 @@ wasm:opcode:f64.floor:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f64.floor:after {
@@ -7673,12 +8131,13 @@ wasm:opcode:f64.floor:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f64.floor:alt {
@@ -7687,12 +8146,13 @@ wasm:opcode:f64.floor:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7704,12 +8164,13 @@ wasm:opcode:f64.trunc:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f64.trunc:after {
@@ -7718,12 +8179,13 @@ wasm:opcode:f64.trunc:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f64.trunc:alt {
@@ -7732,12 +8194,13 @@ wasm:opcode:f64.trunc:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7749,12 +8212,13 @@ wasm:opcode:f64.nearest:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f64.nearest:after {
@@ -7763,12 +8227,13 @@ wasm:opcode:f64.nearest:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f64.nearest:alt {
@@ -7777,12 +8242,13 @@ wasm:opcode:f64.nearest:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7794,12 +8260,13 @@ wasm:opcode:f64.sqrt:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f64.sqrt:after {
@@ -7808,12 +8275,13 @@ wasm:opcode:f64.sqrt:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f64.sqrt:alt {
@@ -7822,12 +8290,13 @@ wasm:opcode:f64.sqrt:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7839,13 +8308,14 @@ wasm:opcode:f64.add:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.add:after {
@@ -7854,13 +8324,14 @@ wasm:opcode:f64.add:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.add:alt {
@@ -7869,13 +8340,14 @@ wasm:opcode:f64.add:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7887,13 +8359,14 @@ wasm:opcode:f64.sub:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.sub:after {
@@ -7902,13 +8375,14 @@ wasm:opcode:f64.sub:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.sub:alt {
@@ -7917,13 +8391,14 @@ wasm:opcode:f64.sub:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7935,13 +8410,14 @@ wasm:opcode:f64.mul:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.mul:after {
@@ -7950,13 +8426,14 @@ wasm:opcode:f64.mul:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.mul:alt {
@@ -7965,13 +8442,14 @@ wasm:opcode:f64.mul:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -7983,13 +8461,14 @@ wasm:opcode:f64.div:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.div:after {
@@ -7998,13 +8477,14 @@ wasm:opcode:f64.div:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.div:alt {
@@ -8013,13 +8493,14 @@ wasm:opcode:f64.div:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8031,13 +8512,14 @@ wasm:opcode:f64.min:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.min:after {
@@ -8046,13 +8528,14 @@ wasm:opcode:f64.min:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.min:alt {
@@ -8061,13 +8544,14 @@ wasm:opcode:f64.min:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8079,13 +8563,14 @@ wasm:opcode:f64.max:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.max:after {
@@ -8094,13 +8579,14 @@ wasm:opcode:f64.max:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.max:alt {
@@ -8109,13 +8595,14 @@ wasm:opcode:f64.max:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8127,13 +8614,14 @@ wasm:opcode:f64.copysign:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.copysign:after {
@@ -8142,13 +8630,14 @@ wasm:opcode:f64.copysign:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
 }
 
 wasm:opcode:f64.copysign:alt {
@@ -8157,13 +8646,14 @@ wasm:opcode:f64.copysign:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
-    var v11: f64 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
+    var v12: f64 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8175,12 +8665,13 @@ wasm:opcode:i32.wrap_i64:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i32.wrap_i64:after {
@@ -8189,12 +8680,13 @@ wasm:opcode:i32.wrap_i64:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i32.wrap_i64:alt {
@@ -8203,12 +8695,13 @@ wasm:opcode:i32.wrap_i64:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8220,12 +8713,13 @@ wasm:opcode:i32.trunc_f32_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i32.trunc_f32_s:after {
@@ -8234,12 +8728,13 @@ wasm:opcode:i32.trunc_f32_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i32.trunc_f32_s:alt {
@@ -8248,12 +8743,13 @@ wasm:opcode:i32.trunc_f32_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8265,12 +8761,13 @@ wasm:opcode:i32.trunc_f32_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i32.trunc_f32_u:after {
@@ -8279,12 +8776,13 @@ wasm:opcode:i32.trunc_f32_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i32.trunc_f32_u:alt {
@@ -8293,12 +8791,13 @@ wasm:opcode:i32.trunc_f32_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8310,12 +8809,13 @@ wasm:opcode:i32.trunc_f64_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i32.trunc_f64_s:after {
@@ -8324,12 +8824,13 @@ wasm:opcode:i32.trunc_f64_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i32.trunc_f64_s:alt {
@@ -8338,12 +8839,13 @@ wasm:opcode:i32.trunc_f64_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8355,12 +8857,13 @@ wasm:opcode:i32.trunc_f64_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i32.trunc_f64_u:after {
@@ -8369,12 +8872,13 @@ wasm:opcode:i32.trunc_f64_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i32.trunc_f64_u:alt {
@@ -8383,12 +8887,13 @@ wasm:opcode:i32.trunc_f64_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8400,12 +8905,13 @@ wasm:opcode:i64.extend_i32_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i64.extend_i32_s:after {
@@ -8414,12 +8920,13 @@ wasm:opcode:i64.extend_i32_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i64.extend_i32_s:alt {
@@ -8428,12 +8935,13 @@ wasm:opcode:i64.extend_i32_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8445,12 +8953,13 @@ wasm:opcode:i64.extend_i32_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
 }
 
 wasm:opcode:i64.extend_i32_u:after {
@@ -8459,12 +8968,13 @@ wasm:opcode:i64.extend_i32_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
 }
 
 wasm:opcode:i64.extend_i32_u:alt {
@@ -8473,12 +8983,13 @@ wasm:opcode:i64.extend_i32_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8490,12 +9001,13 @@ wasm:opcode:i64.trunc_f32_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i64.trunc_f32_s:after {
@@ -8504,12 +9016,13 @@ wasm:opcode:i64.trunc_f32_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i64.trunc_f32_s:alt {
@@ -8518,12 +9031,13 @@ wasm:opcode:i64.trunc_f32_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8535,12 +9049,13 @@ wasm:opcode:i64.trunc_f32_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i64.trunc_f32_u:after {
@@ -8549,12 +9064,13 @@ wasm:opcode:i64.trunc_f32_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i64.trunc_f32_u:alt {
@@ -8563,12 +9079,13 @@ wasm:opcode:i64.trunc_f32_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8580,12 +9097,13 @@ wasm:opcode:i64.trunc_f64_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i64.trunc_f64_s:after {
@@ -8594,12 +9112,13 @@ wasm:opcode:i64.trunc_f64_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i64.trunc_f64_s:alt {
@@ -8608,12 +9127,13 @@ wasm:opcode:i64.trunc_f64_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8625,12 +9145,13 @@ wasm:opcode:i64.trunc_f64_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i64.trunc_f64_u:after {
@@ -8639,12 +9160,13 @@ wasm:opcode:i64.trunc_f64_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i64.trunc_f64_u:alt {
@@ -8653,12 +9175,13 @@ wasm:opcode:i64.trunc_f64_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8670,12 +9193,13 @@ wasm:opcode:f32.convert_i32_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:f32.convert_i32_s:after {
@@ -8684,12 +9208,13 @@ wasm:opcode:f32.convert_i32_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:f32.convert_i32_s:alt {
@@ -8698,12 +9223,13 @@ wasm:opcode:f32.convert_i32_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8715,12 +9241,13 @@ wasm:opcode:f32.convert_i32_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
 }
 
 wasm:opcode:f32.convert_i32_u:after {
@@ -8729,12 +9256,13 @@ wasm:opcode:f32.convert_i32_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
 }
 
 wasm:opcode:f32.convert_i32_u:alt {
@@ -8743,12 +9271,13 @@ wasm:opcode:f32.convert_i32_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8760,12 +9289,13 @@ wasm:opcode:f32.convert_i64_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:f32.convert_i64_s:after {
@@ -8774,12 +9304,13 @@ wasm:opcode:f32.convert_i64_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:f32.convert_i64_s:alt {
@@ -8788,12 +9319,13 @@ wasm:opcode:f32.convert_i64_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8805,12 +9337,13 @@ wasm:opcode:f32.convert_i64_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
 }
 
 wasm:opcode:f32.convert_i64_u:after {
@@ -8819,12 +9352,13 @@ wasm:opcode:f32.convert_i64_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
 }
 
 wasm:opcode:f32.convert_i64_u:alt {
@@ -8833,12 +9367,13 @@ wasm:opcode:f32.convert_i64_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8850,12 +9385,13 @@ wasm:opcode:f32.demote_f64:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f32.demote_f64:after {
@@ -8864,12 +9400,13 @@ wasm:opcode:f32.demote_f64:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:f32.demote_f64:alt {
@@ -8878,12 +9415,13 @@ wasm:opcode:f32.demote_f64:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8895,12 +9433,13 @@ wasm:opcode:f64.convert_i32_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:f64.convert_i32_s:after {
@@ -8909,12 +9448,13 @@ wasm:opcode:f64.convert_i32_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:f64.convert_i32_s:alt {
@@ -8923,12 +9463,13 @@ wasm:opcode:f64.convert_i32_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8940,12 +9481,13 @@ wasm:opcode:f64.convert_i32_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
 }
 
 wasm:opcode:f64.convert_i32_u:after {
@@ -8954,12 +9496,13 @@ wasm:opcode:f64.convert_i32_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
 }
 
 wasm:opcode:f64.convert_i32_u:alt {
@@ -8968,12 +9511,13 @@ wasm:opcode:f64.convert_i32_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -8985,12 +9529,13 @@ wasm:opcode:f64.convert_i64_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:f64.convert_i64_s:after {
@@ -8999,12 +9544,13 @@ wasm:opcode:f64.convert_i64_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:f64.convert_i64_s:alt {
@@ -9013,12 +9559,13 @@ wasm:opcode:f64.convert_i64_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9030,12 +9577,13 @@ wasm:opcode:f64.convert_i64_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
 }
 
 wasm:opcode:f64.convert_i64_u:after {
@@ -9044,12 +9592,13 @@ wasm:opcode:f64.convert_i64_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
 }
 
 wasm:opcode:f64.convert_i64_u:alt {
@@ -9058,12 +9607,13 @@ wasm:opcode:f64.convert_i64_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9075,12 +9625,13 @@ wasm:opcode:f64.promote_f32:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f64.promote_f32:after {
@@ -9089,12 +9640,13 @@ wasm:opcode:f64.promote_f32:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:f64.promote_f32:alt {
@@ -9103,12 +9655,13 @@ wasm:opcode:f64.promote_f32:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9120,12 +9673,13 @@ wasm:opcode:i32.reinterpret_f32:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i32.reinterpret_f32:after {
@@ -9134,12 +9688,13 @@ wasm:opcode:i32.reinterpret_f32:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i32.reinterpret_f32:alt {
@@ -9148,12 +9703,13 @@ wasm:opcode:i32.reinterpret_f32:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9165,12 +9721,13 @@ wasm:opcode:i64.reinterpret_f64:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i64.reinterpret_f64:after {
@@ -9179,12 +9736,13 @@ wasm:opcode:i64.reinterpret_f64:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i64.reinterpret_f64:alt {
@@ -9193,12 +9751,13 @@ wasm:opcode:i64.reinterpret_f64:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9210,12 +9769,13 @@ wasm:opcode:f32.reinterpret_i32:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:f32.reinterpret_i32:after {
@@ -9224,12 +9784,13 @@ wasm:opcode:f32.reinterpret_i32:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:f32.reinterpret_i32:alt {
@@ -9238,12 +9799,13 @@ wasm:opcode:f32.reinterpret_i32:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9255,12 +9817,13 @@ wasm:opcode:f64.reinterpret_i64:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:f64.reinterpret_i64:after {
@@ -9269,12 +9832,13 @@ wasm:opcode:f64.reinterpret_i64:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:f64.reinterpret_i64:alt {
@@ -9283,12 +9847,13 @@ wasm:opcode:f64.reinterpret_i64:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9300,12 +9865,13 @@ wasm:opcode:i32.extend8_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i32.extend8_s:after {
@@ -9314,12 +9880,13 @@ wasm:opcode:i32.extend8_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i32.extend8_s:alt {
@@ -9328,12 +9895,13 @@ wasm:opcode:i32.extend8_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9345,12 +9913,13 @@ wasm:opcode:i32.extend16_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i32.extend16_s:after {
@@ -9359,12 +9928,13 @@ wasm:opcode:i32.extend16_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i32.extend16_s:alt {
@@ -9373,12 +9943,13 @@ wasm:opcode:i32.extend16_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9390,12 +9961,13 @@ wasm:opcode:i64.extend8_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.extend8_s:after {
@@ -9404,12 +9976,13 @@ wasm:opcode:i64.extend8_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.extend8_s:alt {
@@ -9418,12 +9991,13 @@ wasm:opcode:i64.extend8_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9435,12 +10009,13 @@ wasm:opcode:i64.extend16_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.extend16_s:after {
@@ -9449,12 +10024,13 @@ wasm:opcode:i64.extend16_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.extend16_s:alt {
@@ -9463,12 +10039,13 @@ wasm:opcode:i64.extend16_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9480,12 +10057,13 @@ wasm:opcode:i64.extend32_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.extend32_s:after {
@@ -9494,12 +10072,13 @@ wasm:opcode:i64.extend32_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
 }
 
 wasm:opcode:i64.extend32_s:alt {
@@ -9508,12 +10087,13 @@ wasm:opcode:i64.extend32_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9525,14 +10105,15 @@ wasm:opcode:struct.new:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:struct.new:after {
@@ -9541,14 +10122,15 @@ wasm:opcode:struct.new:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:struct.new:alt {
@@ -9557,14 +10139,15 @@ wasm:opcode:struct.new:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9576,13 +10159,14 @@ wasm:opcode:struct.new_default:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
 }
 
 wasm:opcode:struct.new_default:after {
@@ -9591,13 +10175,14 @@ wasm:opcode:struct.new_default:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
 }
 
 wasm:opcode:struct.new_default:alt {
@@ -9606,13 +10191,14 @@ wasm:opcode:struct.new_default:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9624,16 +10210,17 @@ wasm:opcode:struct.get:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: u32 = tid;
-    var v13: u32 = field_idx;
-    var v14: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: u32 = tid;
+    var v14: u32 = field_idx;
+    var v15: i32 = arg0;
 }
 
 wasm:opcode:struct.get:after {
@@ -9642,16 +10229,17 @@ wasm:opcode:struct.get:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: u32 = tid;
-    var v13: u32 = field_idx;
-    var v14: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: u32 = tid;
+    var v14: u32 = field_idx;
+    var v15: i32 = arg0;
 }
 
 wasm:opcode:struct.get:alt {
@@ -9660,16 +10248,17 @@ wasm:opcode:struct.get:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: u32 = tid;
-    var v13: u32 = field_idx;
-    var v14: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: u32 = tid;
+    var v14: u32 = field_idx;
+    var v15: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9681,16 +10270,17 @@ wasm:opcode:struct.get_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: u32 = tid;
-    var v13: u32 = field_idx;
-    var v14: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: u32 = tid;
+    var v14: u32 = field_idx;
+    var v15: i32 = arg0;
 }
 
 wasm:opcode:struct.get_s:after {
@@ -9699,16 +10289,17 @@ wasm:opcode:struct.get_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: u32 = tid;
-    var v13: u32 = field_idx;
-    var v14: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: u32 = tid;
+    var v14: u32 = field_idx;
+    var v15: i32 = arg0;
 }
 
 wasm:opcode:struct.get_s:alt {
@@ -9717,16 +10308,17 @@ wasm:opcode:struct.get_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: u32 = tid;
-    var v13: u32 = field_idx;
-    var v14: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: u32 = tid;
+    var v14: u32 = field_idx;
+    var v15: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9738,16 +10330,17 @@ wasm:opcode:struct.get_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: u32 = tid;
-    var v13: u32 = field_idx;
-    var v14: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: u32 = tid;
+    var v14: u32 = field_idx;
+    var v15: i32 = arg0;
 }
 
 wasm:opcode:struct.get_u:after {
@@ -9756,16 +10349,17 @@ wasm:opcode:struct.get_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: u32 = tid;
-    var v13: u32 = field_idx;
-    var v14: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: u32 = tid;
+    var v14: u32 = field_idx;
+    var v15: i32 = arg0;
 }
 
 wasm:opcode:struct.get_u:alt {
@@ -9774,16 +10368,17 @@ wasm:opcode:struct.get_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: u32 = tid;
-    var v13: u32 = field_idx;
-    var v14: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: u32 = tid;
+    var v14: u32 = field_idx;
+    var v15: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9795,16 +10390,17 @@ wasm:opcode:struct.set:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: u32 = tid;
-    var v13: u32 = field_idx;
-    var v14: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: u32 = tid;
+    var v14: u32 = field_idx;
+    var v15: i32 = arg0;
 }
 
 wasm:opcode:struct.set:after {
@@ -9813,16 +10409,17 @@ wasm:opcode:struct.set:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: u32 = tid;
-    var v13: u32 = field_idx;
-    var v14: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: u32 = tid;
+    var v14: u32 = field_idx;
+    var v15: i32 = arg0;
 }
 
 wasm:opcode:struct.set:alt {
@@ -9831,16 +10428,17 @@ wasm:opcode:struct.set:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: u32 = tid;
-    var v13: u32 = field_idx;
-    var v14: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: u32 = tid;
+    var v14: u32 = field_idx;
+    var v15: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9852,15 +10450,16 @@ wasm:opcode:array.new:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = arg0;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = arg0;
+    var v14: i32 = arg0;
 }
 
 wasm:opcode:array.new:after {
@@ -9869,15 +10468,16 @@ wasm:opcode:array.new:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = arg0;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = arg0;
+    var v14: i32 = arg0;
 }
 
 wasm:opcode:array.new:alt {
@@ -9886,15 +10486,16 @@ wasm:opcode:array.new:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = arg0;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = arg0;
+    var v14: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9906,14 +10507,15 @@ wasm:opcode:array.new_default:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = arg0;
 }
 
 wasm:opcode:array.new_default:after {
@@ -9922,14 +10524,15 @@ wasm:opcode:array.new_default:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = arg0;
 }
 
 wasm:opcode:array.new_default:alt {
@@ -9938,14 +10541,15 @@ wasm:opcode:array.new_default:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -9957,15 +10561,16 @@ wasm:opcode:array.new_fixed:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
 }
 
 wasm:opcode:array.new_fixed:after {
@@ -9974,15 +10579,16 @@ wasm:opcode:array.new_fixed:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
 }
 
 wasm:opcode:array.new_fixed:alt {
@@ -9991,15 +10597,16 @@ wasm:opcode:array.new_fixed:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10011,16 +10618,17 @@ wasm:opcode:array.new_data:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
-    var v14: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
+    var v15: i32 = arg1;
 }
 
 wasm:opcode:array.new_data:after {
@@ -10029,16 +10637,17 @@ wasm:opcode:array.new_data:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
-    var v14: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
+    var v15: i32 = arg1;
 }
 
 wasm:opcode:array.new_data:alt {
@@ -10047,16 +10656,17 @@ wasm:opcode:array.new_data:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
-    var v14: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
+    var v15: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10068,16 +10678,17 @@ wasm:opcode:array.new_elem:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
-    var v14: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
+    var v15: i32 = arg1;
 }
 
 wasm:opcode:array.new_elem:after {
@@ -10086,16 +10697,17 @@ wasm:opcode:array.new_elem:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
-    var v14: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
+    var v15: i32 = arg1;
 }
 
 wasm:opcode:array.new_elem:alt {
@@ -10104,16 +10716,17 @@ wasm:opcode:array.new_elem:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
-    var v14: i32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
+    var v15: i32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10125,14 +10738,15 @@ wasm:opcode:array.get:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:array.get:after {
@@ -10141,14 +10755,15 @@ wasm:opcode:array.get:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:array.get:alt {
@@ -10157,14 +10772,15 @@ wasm:opcode:array.get:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10176,14 +10792,15 @@ wasm:opcode:array.get_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:array.get_s:after {
@@ -10192,14 +10809,15 @@ wasm:opcode:array.get_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:array.get_s:alt {
@@ -10208,14 +10826,15 @@ wasm:opcode:array.get_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10227,14 +10846,15 @@ wasm:opcode:array.get_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:array.get_u:after {
@@ -10243,14 +10863,15 @@ wasm:opcode:array.get_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:array.get_u:alt {
@@ -10259,14 +10880,15 @@ wasm:opcode:array.get_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10278,14 +10900,15 @@ wasm:opcode:array.set:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:array.set:after {
@@ -10294,14 +10917,15 @@ wasm:opcode:array.set:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:array.set:alt {
@@ -10310,14 +10934,15 @@ wasm:opcode:array.set:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10329,14 +10954,15 @@ wasm:opcode:array.len:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:array.len:after {
@@ -10345,14 +10971,15 @@ wasm:opcode:array.len:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:array.len:alt {
@@ -10361,14 +10988,15 @@ wasm:opcode:array.len:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10380,14 +11008,15 @@ wasm:opcode:array.fill:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:array.fill:after {
@@ -10396,14 +11025,15 @@ wasm:opcode:array.fill:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:array.fill:alt {
@@ -10412,14 +11042,15 @@ wasm:opcode:array.fill:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10431,14 +11062,15 @@ wasm:opcode:array.copy:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:array.copy:after {
@@ -10447,14 +11079,15 @@ wasm:opcode:array.copy:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: i32 = arg0;
 }
 
 wasm:opcode:array.copy:alt {
@@ -10463,14 +11096,15 @@ wasm:opcode:array.copy:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10482,15 +11116,16 @@ wasm:opcode:array.init_data:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
 }
 
 wasm:opcode:array.init_data:after {
@@ -10499,15 +11134,16 @@ wasm:opcode:array.init_data:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
 }
 
 wasm:opcode:array.init_data:alt {
@@ -10516,15 +11152,16 @@ wasm:opcode:array.init_data:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10536,15 +11173,16 @@ wasm:opcode:array.init_elem:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
 }
 
 wasm:opcode:array.init_elem:after {
@@ -10553,15 +11191,16 @@ wasm:opcode:array.init_elem:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
 }
 
 wasm:opcode:array.init_elem:alt {
@@ -10570,15 +11209,16 @@ wasm:opcode:array.init_elem:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = tid;
-    var v12: u32 = imm1;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = tid;
+    var v13: u32 = imm1;
+    var v14: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10590,13 +11230,14 @@ wasm:opcode:ref.test:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
+    var v12: i32 = arg0;
 }
 
 wasm:opcode:ref.test:after {
@@ -10605,13 +11246,14 @@ wasm:opcode:ref.test:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
+    var v12: i32 = arg0;
 }
 
 wasm:opcode:ref.test:alt {
@@ -10620,13 +11262,14 @@ wasm:opcode:ref.test:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
+    var v12: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10638,13 +11281,14 @@ wasm:opcode:ref.test_null:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
+    var v12: i32 = arg0;
 }
 
 wasm:opcode:ref.test_null:after {
@@ -10653,13 +11297,14 @@ wasm:opcode:ref.test_null:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
+    var v12: i32 = arg0;
 }
 
 wasm:opcode:ref.test_null:alt {
@@ -10668,13 +11313,14 @@ wasm:opcode:ref.test_null:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
+    var v12: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10686,13 +11332,14 @@ wasm:opcode:ref.cast:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
+    var v12: i32 = arg0;
 }
 
 wasm:opcode:ref.cast:after {
@@ -10701,13 +11348,14 @@ wasm:opcode:ref.cast:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
+    var v12: i32 = arg0;
 }
 
 wasm:opcode:ref.cast:alt {
@@ -10716,13 +11364,14 @@ wasm:opcode:ref.cast:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
+    var v12: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10734,13 +11383,14 @@ wasm:opcode:ref.cast_null:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
+    var v12: i32 = arg0;
 }
 
 wasm:opcode:ref.cast_null:after {
@@ -10749,13 +11399,14 @@ wasm:opcode:ref.cast_null:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
+    var v12: i32 = arg0;
 }
 
 wasm:opcode:ref.cast_null:alt {
@@ -10764,13 +11415,14 @@ wasm:opcode:ref.cast_null:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = imm0;
+    var v12: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10782,15 +11434,16 @@ wasm:opcode:br_on_cast:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = imm1;
-    var v12: i32 = imm2;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = imm1;
+    var v13: i32 = imm2;
+    var v14: i32 = arg0;
 }
 
 wasm:opcode:br_on_cast:after {
@@ -10799,15 +11452,16 @@ wasm:opcode:br_on_cast:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = imm1;
-    var v12: i32 = imm2;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = imm1;
+    var v13: i32 = imm2;
+    var v14: i32 = arg0;
 }
 
 wasm:opcode:br_on_cast:alt {
@@ -10816,15 +11470,16 @@ wasm:opcode:br_on_cast:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = imm1;
-    var v12: i32 = imm2;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = imm1;
+    var v13: i32 = imm2;
+    var v14: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10836,15 +11491,16 @@ wasm:opcode:br_on_cast_fail:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = imm1;
-    var v12: i32 = imm2;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = imm1;
+    var v13: i32 = imm2;
+    var v14: i32 = arg0;
 }
 
 wasm:opcode:br_on_cast_fail:after {
@@ -10853,15 +11509,16 @@ wasm:opcode:br_on_cast_fail:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = imm1;
-    var v12: i32 = imm2;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = imm1;
+    var v13: i32 = imm2;
+    var v14: i32 = arg0;
 }
 
 wasm:opcode:br_on_cast_fail:alt {
@@ -10870,15 +11527,16 @@ wasm:opcode:br_on_cast_fail:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = imm1;
-    var v12: i32 = imm2;
-    var v13: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = imm1;
+    var v13: i32 = imm2;
+    var v14: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10890,12 +11548,13 @@ wasm:opcode:any.convert_extern:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:any.convert_extern:after {
@@ -10904,12 +11563,13 @@ wasm:opcode:any.convert_extern:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:any.convert_extern:alt {
@@ -10918,12 +11578,13 @@ wasm:opcode:any.convert_extern:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10935,12 +11596,13 @@ wasm:opcode:extern.convert_any:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:extern.convert_any:after {
@@ -10949,12 +11611,13 @@ wasm:opcode:extern.convert_any:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:extern.convert_any:alt {
@@ -10963,12 +11626,13 @@ wasm:opcode:extern.convert_any:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -10980,12 +11644,13 @@ wasm:opcode:ref.i31:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:ref.i31:after {
@@ -10994,12 +11659,13 @@ wasm:opcode:ref.i31:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:ref.i31:alt {
@@ -11008,12 +11674,13 @@ wasm:opcode:ref.i31:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11025,12 +11692,13 @@ wasm:opcode:i31.get_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i31.get_s:after {
@@ -11039,12 +11707,13 @@ wasm:opcode:i31.get_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i31.get_s:alt {
@@ -11053,12 +11722,13 @@ wasm:opcode:i31.get_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11070,12 +11740,13 @@ wasm:opcode:i31.get_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i31.get_u:after {
@@ -11084,12 +11755,13 @@ wasm:opcode:i31.get_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:i31.get_u:alt {
@@ -11098,12 +11770,13 @@ wasm:opcode:i31.get_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11115,12 +11788,13 @@ wasm:opcode:i32.trunc_sat_f32_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i32.trunc_sat_f32_s:after {
@@ -11129,12 +11803,13 @@ wasm:opcode:i32.trunc_sat_f32_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i32.trunc_sat_f32_s:alt {
@@ -11143,12 +11818,13 @@ wasm:opcode:i32.trunc_sat_f32_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11160,12 +11836,13 @@ wasm:opcode:i32.trunc_sat_f32_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i32.trunc_sat_f32_u:after {
@@ -11174,12 +11851,13 @@ wasm:opcode:i32.trunc_sat_f32_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i32.trunc_sat_f32_u:alt {
@@ -11188,12 +11866,13 @@ wasm:opcode:i32.trunc_sat_f32_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11205,12 +11884,13 @@ wasm:opcode:i32.trunc_sat_f64_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i32.trunc_sat_f64_s:after {
@@ -11219,12 +11899,13 @@ wasm:opcode:i32.trunc_sat_f64_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i32.trunc_sat_f64_s:alt {
@@ -11233,12 +11914,13 @@ wasm:opcode:i32.trunc_sat_f64_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11250,12 +11932,13 @@ wasm:opcode:i32.trunc_sat_f64_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i32.trunc_sat_f64_u:after {
@@ -11264,12 +11947,13 @@ wasm:opcode:i32.trunc_sat_f64_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i32.trunc_sat_f64_u:alt {
@@ -11278,12 +11962,13 @@ wasm:opcode:i32.trunc_sat_f64_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11295,12 +11980,13 @@ wasm:opcode:i64.trunc_sat_f32_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i64.trunc_sat_f32_s:after {
@@ -11309,12 +11995,13 @@ wasm:opcode:i64.trunc_sat_f32_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i64.trunc_sat_f32_s:alt {
@@ -11323,12 +12010,13 @@ wasm:opcode:i64.trunc_sat_f32_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11340,12 +12028,13 @@ wasm:opcode:i64.trunc_sat_f32_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i64.trunc_sat_f32_u:after {
@@ -11354,12 +12043,13 @@ wasm:opcode:i64.trunc_sat_f32_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
 }
 
 wasm:opcode:i64.trunc_sat_f32_u:alt {
@@ -11368,12 +12058,13 @@ wasm:opcode:i64.trunc_sat_f32_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11385,12 +12076,13 @@ wasm:opcode:i64.trunc_sat_f64_s:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i64.trunc_sat_f64_s:after {
@@ -11399,12 +12091,13 @@ wasm:opcode:i64.trunc_sat_f64_s:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i64.trunc_sat_f64_s:alt {
@@ -11413,12 +12106,13 @@ wasm:opcode:i64.trunc_sat_f64_s:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11430,12 +12124,13 @@ wasm:opcode:i64.trunc_sat_f64_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i64.trunc_sat_f64_u:after {
@@ -11444,12 +12139,13 @@ wasm:opcode:i64.trunc_sat_f64_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
 }
 
 wasm:opcode:i64.trunc_sat_f64_u:alt {
@@ -11458,12 +12154,13 @@ wasm:opcode:i64.trunc_sat_f64_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: f64 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: f64 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11475,16 +12172,17 @@ wasm:opcode:memory.init:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: i32 = arg0;
-    var v13: i32 = arg1;
-    var v14: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: i32 = arg0;
+    var v14: i32 = arg1;
+    var v15: i32 = arg2;
     dup_at(0 as u32, 0 as u32);
 }
 
@@ -11494,16 +12192,17 @@ wasm:opcode:memory.init:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: i32 = arg0;
-    var v13: i32 = arg1;
-    var v14: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: i32 = arg0;
+    var v14: i32 = arg1;
+    var v15: i32 = arg2;
     dup_at(0 as u32, 0 as u32);
 }
 
@@ -11513,16 +12212,17 @@ wasm:opcode:memory.init:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: i32 = arg0;
-    var v13: i32 = arg1;
-    var v14: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: i32 = arg0;
+    var v14: i32 = arg1;
+    var v15: i32 = arg2;
     dup_at(0 as u32, 0 as u32);
     drop_args();
     alt_call_by_id(0 as i32);
@@ -11535,15 +12235,16 @@ wasm:opcode:memory.copy:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = arg1;
-    var v13: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = arg1;
+    var v14: i32 = arg2;
     dup_at(0 as u32, 0 as u32);
 }
 
@@ -11553,15 +12254,16 @@ wasm:opcode:memory.copy:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = arg1;
-    var v13: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = arg1;
+    var v14: i32 = arg2;
     dup_at(0 as u32, 0 as u32);
 }
 
@@ -11571,15 +12273,16 @@ wasm:opcode:memory.copy:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = arg1;
-    var v13: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = arg1;
+    var v14: i32 = arg2;
     dup_at(0 as u32, 0 as u32);
     drop_args();
     alt_call_by_id(0 as i32);
@@ -11592,15 +12295,16 @@ wasm:opcode:memory.fill:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = arg1;
-    var v13: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = arg1;
+    var v14: i32 = arg2;
     dup_at(0 as u32, 0 as u32);
 }
 
@@ -11610,15 +12314,16 @@ wasm:opcode:memory.fill:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = arg1;
-    var v13: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = arg1;
+    var v14: i32 = arg2;
     dup_at(0 as u32, 0 as u32);
 }
 
@@ -11628,15 +12333,16 @@ wasm:opcode:memory.fill:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = arg1;
-    var v13: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = arg1;
+    var v14: i32 = arg2;
     dup_at(0 as u32, 0 as u32);
     drop_args();
     alt_call_by_id(0 as i32);
@@ -11649,12 +12355,13 @@ wasm:opcode:data.drop:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
 }
 
 wasm:opcode:data.drop:after {
@@ -11663,12 +12370,13 @@ wasm:opcode:data.drop:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
 }
 
 wasm:opcode:data.drop:alt {
@@ -11677,12 +12385,13 @@ wasm:opcode:data.drop:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11694,12 +12403,13 @@ wasm:opcode:elem.drop:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
 }
 
 wasm:opcode:elem.drop:after {
@@ -11708,12 +12418,13 @@ wasm:opcode:elem.drop:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
 }
 
 wasm:opcode:elem.drop:alt {
@@ -11722,12 +12433,13 @@ wasm:opcode:elem.drop:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11739,16 +12451,17 @@ wasm:opcode:table.copy:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: i32 = arg0;
-    var v13: i32 = arg1;
-    var v14: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: i32 = arg0;
+    var v14: i32 = arg1;
+    var v15: i32 = arg2;
 }
 
 wasm:opcode:table.copy:after {
@@ -11757,16 +12470,17 @@ wasm:opcode:table.copy:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: i32 = arg0;
-    var v13: i32 = arg1;
-    var v14: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: i32 = arg0;
+    var v14: i32 = arg1;
+    var v15: i32 = arg2;
 }
 
 wasm:opcode:table.copy:alt {
@@ -11775,16 +12489,17 @@ wasm:opcode:table.copy:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: i32 = arg0;
-    var v13: i32 = arg1;
-    var v14: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: i32 = arg0;
+    var v14: i32 = arg1;
+    var v15: i32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11796,16 +12511,17 @@ wasm:opcode:table.init:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: i32 = arg0;
-    var v13: i32 = arg1;
-    var v14: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: i32 = arg0;
+    var v14: i32 = arg1;
+    var v15: i32 = arg2;
 }
 
 wasm:opcode:table.init:after {
@@ -11814,16 +12530,17 @@ wasm:opcode:table.init:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: i32 = arg0;
-    var v13: i32 = arg1;
-    var v14: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: i32 = arg0;
+    var v14: i32 = arg1;
+    var v15: i32 = arg2;
 }
 
 wasm:opcode:table.init:alt {
@@ -11832,16 +12549,17 @@ wasm:opcode:table.init:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: u32 = imm1;
-    var v12: i32 = arg0;
-    var v13: i32 = arg1;
-    var v14: i32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: u32 = imm1;
+    var v13: i32 = arg0;
+    var v14: i32 = arg1;
+    var v15: i32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11853,13 +12571,14 @@ wasm:opcode:table.fill:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
 }
 
 wasm:opcode:table.fill:after {
@@ -11868,13 +12587,14 @@ wasm:opcode:table.fill:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
 }
 
 wasm:opcode:table.fill:alt {
@@ -11883,13 +12603,14 @@ wasm:opcode:table.fill:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11901,16 +12622,17 @@ wasm:opcode:table.get:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = table_entry_idx;
-    var v13: funcref = target_funcref;
-    var v14: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = table_entry_idx;
+    var v14: funcref = target_funcref;
+    var v15: i32 = resolved_fid;
 }
 
 wasm:opcode:table.get:after {
@@ -11919,16 +12641,17 @@ wasm:opcode:table.get:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = table_entry_idx;
-    var v13: funcref = target_funcref;
-    var v14: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = table_entry_idx;
+    var v14: funcref = target_funcref;
+    var v15: i32 = resolved_fid;
 }
 
 wasm:opcode:table.get:alt {
@@ -11937,16 +12660,17 @@ wasm:opcode:table.get:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = table_entry_idx;
-    var v13: funcref = target_funcref;
-    var v14: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = table_entry_idx;
+    var v14: funcref = target_funcref;
+    var v15: i32 = resolved_fid;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -11958,14 +12682,15 @@ wasm:opcode:table.set:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = resolved_fid;
 }
 
 wasm:opcode:table.set:after {
@@ -11974,14 +12699,15 @@ wasm:opcode:table.set:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = resolved_fid;
 }
 
 wasm:opcode:table.set:alt {
@@ -11990,14 +12716,15 @@ wasm:opcode:table.set:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = resolved_fid;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12009,13 +12736,14 @@ wasm:opcode:table.grow:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
 }
 
 wasm:opcode:table.grow:after {
@@ -12024,13 +12752,14 @@ wasm:opcode:table.grow:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
 }
 
 wasm:opcode:table.grow:alt {
@@ -12039,13 +12768,14 @@ wasm:opcode:table.grow:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12057,12 +12787,13 @@ wasm:opcode:table.size:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
 }
 
 wasm:opcode:table.size:after {
@@ -12071,12 +12802,13 @@ wasm:opcode:table.size:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
 }
 
 wasm:opcode:table.size:alt {
@@ -12085,12 +12817,13 @@ wasm:opcode:table.size:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12102,19 +12835,20 @@ wasm:opcode:memory.atomic.notify:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = addr;
-    var v9: u32 = category_id;
-    var v10: str = category_name;
-    var v11: u32 = memory;
-    var v12: u32 = align;
-    var v13: u32 = effective_addr;
-    var v14: bool = is_write;
-    var v15: u64 = offset;
-    var v16: i32 = arg0;
-    var v17: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = addr;
+    var v10: u32 = category_id;
+    var v11: str = category_name;
+    var v12: u32 = memory;
+    var v13: u32 = align;
+    var v14: u32 = effective_addr;
+    var v15: bool = is_write;
+    var v16: u64 = offset;
+    var v17: i32 = arg0;
+    var v18: u32 = arg1;
 }
 
 wasm:opcode:memory.atomic.notify:after {
@@ -12123,19 +12857,20 @@ wasm:opcode:memory.atomic.notify:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = addr;
-    var v9: u32 = category_id;
-    var v10: str = category_name;
-    var v11: u32 = memory;
-    var v12: u32 = align;
-    var v13: u32 = effective_addr;
-    var v14: bool = is_write;
-    var v15: u64 = offset;
-    var v16: i32 = arg0;
-    var v17: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = addr;
+    var v10: u32 = category_id;
+    var v11: str = category_name;
+    var v12: u32 = memory;
+    var v13: u32 = align;
+    var v14: u32 = effective_addr;
+    var v15: bool = is_write;
+    var v16: u64 = offset;
+    var v17: i32 = arg0;
+    var v18: u32 = arg1;
 }
 
 wasm:opcode:memory.atomic.notify:alt {
@@ -12144,19 +12879,20 @@ wasm:opcode:memory.atomic.notify:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = addr;
-    var v9: u32 = category_id;
-    var v10: str = category_name;
-    var v11: u32 = memory;
-    var v12: u32 = align;
-    var v13: u32 = effective_addr;
-    var v14: bool = is_write;
-    var v15: u64 = offset;
-    var v16: i32 = arg0;
-    var v17: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = addr;
+    var v10: u32 = category_id;
+    var v11: str = category_name;
+    var v12: u32 = memory;
+    var v13: u32 = align;
+    var v14: u32 = effective_addr;
+    var v15: bool = is_write;
+    var v16: u64 = offset;
+    var v17: i32 = arg0;
+    var v18: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12168,20 +12904,21 @@ wasm:opcode:memory.atomic.wait32:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = addr;
-    var v9: u32 = category_id;
-    var v10: str = category_name;
-    var v11: u32 = memory;
-    var v12: u32 = align;
-    var v13: u32 = effective_addr;
-    var v14: bool = is_write;
-    var v15: u64 = offset;
-    var v16: i64 = arg0;
-    var v17: i32 = arg1;
-    var v18: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = addr;
+    var v10: u32 = category_id;
+    var v11: str = category_name;
+    var v12: u32 = memory;
+    var v13: u32 = align;
+    var v14: u32 = effective_addr;
+    var v15: bool = is_write;
+    var v16: u64 = offset;
+    var v17: i64 = arg0;
+    var v18: i32 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:memory.atomic.wait32:after {
@@ -12190,20 +12927,21 @@ wasm:opcode:memory.atomic.wait32:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = addr;
-    var v9: u32 = category_id;
-    var v10: str = category_name;
-    var v11: u32 = memory;
-    var v12: u32 = align;
-    var v13: u32 = effective_addr;
-    var v14: bool = is_write;
-    var v15: u64 = offset;
-    var v16: i64 = arg0;
-    var v17: i32 = arg1;
-    var v18: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = addr;
+    var v10: u32 = category_id;
+    var v11: str = category_name;
+    var v12: u32 = memory;
+    var v13: u32 = align;
+    var v14: u32 = effective_addr;
+    var v15: bool = is_write;
+    var v16: u64 = offset;
+    var v17: i64 = arg0;
+    var v18: i32 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:memory.atomic.wait32:alt {
@@ -12212,20 +12950,21 @@ wasm:opcode:memory.atomic.wait32:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = addr;
-    var v9: u32 = category_id;
-    var v10: str = category_name;
-    var v11: u32 = memory;
-    var v12: u32 = align;
-    var v13: u32 = effective_addr;
-    var v14: bool = is_write;
-    var v15: u64 = offset;
-    var v16: i64 = arg0;
-    var v17: i32 = arg1;
-    var v18: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = addr;
+    var v10: u32 = category_id;
+    var v11: str = category_name;
+    var v12: u32 = memory;
+    var v13: u32 = align;
+    var v14: u32 = effective_addr;
+    var v15: bool = is_write;
+    var v16: u64 = offset;
+    var v17: i64 = arg0;
+    var v18: i32 = arg1;
+    var v19: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12237,20 +12976,21 @@ wasm:opcode:memory.atomic.wait64:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = addr;
-    var v9: u32 = category_id;
-    var v10: str = category_name;
-    var v11: u32 = memory;
-    var v12: u32 = align;
-    var v13: u32 = effective_addr;
-    var v14: bool = is_write;
-    var v15: u64 = offset;
-    var v16: i64 = arg0;
-    var v17: i64 = arg1;
-    var v18: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = addr;
+    var v10: u32 = category_id;
+    var v11: str = category_name;
+    var v12: u32 = memory;
+    var v13: u32 = align;
+    var v14: u32 = effective_addr;
+    var v15: bool = is_write;
+    var v16: u64 = offset;
+    var v17: i64 = arg0;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:memory.atomic.wait64:after {
@@ -12259,20 +12999,21 @@ wasm:opcode:memory.atomic.wait64:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = addr;
-    var v9: u32 = category_id;
-    var v10: str = category_name;
-    var v11: u32 = memory;
-    var v12: u32 = align;
-    var v13: u32 = effective_addr;
-    var v14: bool = is_write;
-    var v15: u64 = offset;
-    var v16: i64 = arg0;
-    var v17: i64 = arg1;
-    var v18: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = addr;
+    var v10: u32 = category_id;
+    var v11: str = category_name;
+    var v12: u32 = memory;
+    var v13: u32 = align;
+    var v14: u32 = effective_addr;
+    var v15: bool = is_write;
+    var v16: u64 = offset;
+    var v17: i64 = arg0;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
 }
 
 wasm:opcode:memory.atomic.wait64:alt {
@@ -12281,20 +13022,21 @@ wasm:opcode:memory.atomic.wait64:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = addr;
-    var v9: u32 = category_id;
-    var v10: str = category_name;
-    var v11: u32 = memory;
-    var v12: u32 = align;
-    var v13: u32 = effective_addr;
-    var v14: bool = is_write;
-    var v15: u64 = offset;
-    var v16: i64 = arg0;
-    var v17: i64 = arg1;
-    var v18: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = addr;
+    var v10: u32 = category_id;
+    var v11: str = category_name;
+    var v12: u32 = memory;
+    var v13: u32 = align;
+    var v14: u32 = effective_addr;
+    var v15: bool = is_write;
+    var v16: u64 = offset;
+    var v17: i64 = arg0;
+    var v18: i64 = arg1;
+    var v19: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12306,11 +13048,12 @@ wasm:opcode:atomic.fence:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:atomic.fence:after {
@@ -12319,11 +13062,12 @@ wasm:opcode:atomic.fence:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
 }
 
 wasm:opcode:atomic.fence:alt {
@@ -12332,11 +13076,12 @@ wasm:opcode:atomic.fence:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12348,20 +13093,21 @@ wasm:opcode:i32.atomic.load:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i32 = res0;
 }
 
 wasm:opcode:i32.atomic.load:after {
@@ -12370,20 +13116,21 @@ wasm:opcode:i32.atomic.load:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i32 = res0;
 }
 
 wasm:opcode:i32.atomic.load:alt {
@@ -12392,20 +13139,21 @@ wasm:opcode:i32.atomic.load:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i32 = res0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12417,20 +13165,21 @@ wasm:opcode:i64.atomic.load:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i64 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i64 = res0;
 }
 
 wasm:opcode:i64.atomic.load:after {
@@ -12439,20 +13188,21 @@ wasm:opcode:i64.atomic.load:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i64 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i64 = res0;
 }
 
 wasm:opcode:i64.atomic.load:alt {
@@ -12461,20 +13211,21 @@ wasm:opcode:i64.atomic.load:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i64 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i64 = res0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12486,20 +13237,21 @@ wasm:opcode:i32.atomic.load8_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i32 = res0;
 }
 
 wasm:opcode:i32.atomic.load8_u:after {
@@ -12508,20 +13260,21 @@ wasm:opcode:i32.atomic.load8_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i32 = res0;
 }
 
 wasm:opcode:i32.atomic.load8_u:alt {
@@ -12530,20 +13283,21 @@ wasm:opcode:i32.atomic.load8_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i32 = res0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12555,20 +13309,21 @@ wasm:opcode:i32.atomic.load16_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i32 = res0;
 }
 
 wasm:opcode:i32.atomic.load16_u:after {
@@ -12577,20 +13332,21 @@ wasm:opcode:i32.atomic.load16_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i32 = res0;
 }
 
 wasm:opcode:i32.atomic.load16_u:alt {
@@ -12599,20 +13355,21 @@ wasm:opcode:i32.atomic.load16_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i32 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i32 = res0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12624,20 +13381,21 @@ wasm:opcode:i64.atomic.load8_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i64 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i64 = res0;
 }
 
 wasm:opcode:i64.atomic.load8_u:after {
@@ -12646,20 +13404,21 @@ wasm:opcode:i64.atomic.load8_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i64 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i64 = res0;
 }
 
 wasm:opcode:i64.atomic.load8_u:alt {
@@ -12668,20 +13427,21 @@ wasm:opcode:i64.atomic.load8_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i64 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i64 = res0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12693,20 +13453,21 @@ wasm:opcode:i64.atomic.load16_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i64 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i64 = res0;
 }
 
 wasm:opcode:i64.atomic.load16_u:after {
@@ -12715,20 +13476,21 @@ wasm:opcode:i64.atomic.load16_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i64 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i64 = res0;
 }
 
 wasm:opcode:i64.atomic.load16_u:alt {
@@ -12737,20 +13499,21 @@ wasm:opcode:i64.atomic.load16_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i64 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i64 = res0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12762,20 +13525,21 @@ wasm:opcode:i64.atomic.load32_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i64 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i64 = res0;
 }
 
 wasm:opcode:i64.atomic.load32_u:after {
@@ -12784,20 +13548,21 @@ wasm:opcode:i64.atomic.load32_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i64 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i64 = res0;
 }
 
 wasm:opcode:i64.atomic.load32_u:alt {
@@ -12806,20 +13571,21 @@ wasm:opcode:i64.atomic.load32_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: u32 = arg0;
-    var v18: i64 = res0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: u32 = arg0;
+    var v19: i64 = res0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12831,20 +13597,21 @@ wasm:opcode:i32.atomic.store:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.store:after {
@@ -12853,20 +13620,21 @@ wasm:opcode:i32.atomic.store:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.store:alt {
@@ -12875,20 +13643,21 @@ wasm:opcode:i32.atomic.store:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12900,20 +13669,21 @@ wasm:opcode:i32.atomic.store8:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.store8:after {
@@ -12922,20 +13692,21 @@ wasm:opcode:i32.atomic.store8:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.store8:alt {
@@ -12944,20 +13715,21 @@ wasm:opcode:i32.atomic.store8:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -12969,20 +13741,21 @@ wasm:opcode:i32.atomic.store16:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.store16:after {
@@ -12991,20 +13764,21 @@ wasm:opcode:i32.atomic.store16:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.store16:alt {
@@ -13013,20 +13787,21 @@ wasm:opcode:i32.atomic.store16:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -13038,20 +13813,21 @@ wasm:opcode:i64.atomic.store:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.store:after {
@@ -13060,20 +13836,21 @@ wasm:opcode:i64.atomic.store:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.store:alt {
@@ -13082,20 +13859,21 @@ wasm:opcode:i64.atomic.store:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -13107,20 +13885,21 @@ wasm:opcode:i64.atomic.store8:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.store8:after {
@@ -13129,20 +13908,21 @@ wasm:opcode:i64.atomic.store8:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.store8:alt {
@@ -13151,20 +13931,21 @@ wasm:opcode:i64.atomic.store8:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -13176,20 +13957,21 @@ wasm:opcode:i64.atomic.store16:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.store16:after {
@@ -13198,20 +13980,21 @@ wasm:opcode:i64.atomic.store16:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.store16:alt {
@@ -13220,20 +14003,21 @@ wasm:opcode:i64.atomic.store16:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -13245,20 +14029,21 @@ wasm:opcode:i64.atomic.store32:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.store32:after {
@@ -13267,20 +14052,21 @@ wasm:opcode:i64.atomic.store32:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.store32:alt {
@@ -13289,20 +14075,21 @@ wasm:opcode:i64.atomic.store32:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -13314,20 +14101,21 @@ wasm:opcode:i32.atomic.rmw.add:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw.add:after {
@@ -13336,20 +14124,21 @@ wasm:opcode:i32.atomic.rmw.add:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw.add:alt {
@@ -13358,20 +14147,21 @@ wasm:opcode:i32.atomic.rmw.add:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -13383,20 +14173,21 @@ wasm:opcode:i32.atomic.rmw8.add_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw8.add_u:after {
@@ -13405,20 +14196,21 @@ wasm:opcode:i32.atomic.rmw8.add_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw8.add_u:alt {
@@ -13427,20 +14219,21 @@ wasm:opcode:i32.atomic.rmw8.add_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -13452,20 +14245,21 @@ wasm:opcode:i32.atomic.rmw16.add_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw16.add_u:after {
@@ -13474,20 +14268,21 @@ wasm:opcode:i32.atomic.rmw16.add_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw16.add_u:alt {
@@ -13496,20 +14291,21 @@ wasm:opcode:i32.atomic.rmw16.add_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -13521,20 +14317,21 @@ wasm:opcode:i64.atomic.rmw.add:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw.add:after {
@@ -13543,20 +14340,21 @@ wasm:opcode:i64.atomic.rmw.add:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw.add:alt {
@@ -13565,20 +14363,21 @@ wasm:opcode:i64.atomic.rmw.add:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -13590,20 +14389,21 @@ wasm:opcode:i64.atomic.rmw8.add_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw8.add_u:after {
@@ -13612,20 +14412,21 @@ wasm:opcode:i64.atomic.rmw8.add_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw8.add_u:alt {
@@ -13634,20 +14435,21 @@ wasm:opcode:i64.atomic.rmw8.add_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -13659,20 +14461,21 @@ wasm:opcode:i64.atomic.rmw16.add_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw16.add_u:after {
@@ -13681,20 +14484,21 @@ wasm:opcode:i64.atomic.rmw16.add_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw16.add_u:alt {
@@ -13703,20 +14507,21 @@ wasm:opcode:i64.atomic.rmw16.add_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -13728,20 +14533,21 @@ wasm:opcode:i64.atomic.rmw32.add_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw32.add_u:after {
@@ -13750,20 +14556,21 @@ wasm:opcode:i64.atomic.rmw32.add_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw32.add_u:alt {
@@ -13772,20 +14579,21 @@ wasm:opcode:i64.atomic.rmw32.add_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -13797,20 +14605,21 @@ wasm:opcode:i32.atomic.rmw.sub:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw.sub:after {
@@ -13819,20 +14628,21 @@ wasm:opcode:i32.atomic.rmw.sub:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw.sub:alt {
@@ -13841,20 +14651,21 @@ wasm:opcode:i32.atomic.rmw.sub:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -13866,20 +14677,21 @@ wasm:opcode:i32.atomic.rmw8.sub_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw8.sub_u:after {
@@ -13888,20 +14700,21 @@ wasm:opcode:i32.atomic.rmw8.sub_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw8.sub_u:alt {
@@ -13910,20 +14723,21 @@ wasm:opcode:i32.atomic.rmw8.sub_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -13935,20 +14749,21 @@ wasm:opcode:i32.atomic.rmw16.sub_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw16.sub_u:after {
@@ -13957,20 +14772,21 @@ wasm:opcode:i32.atomic.rmw16.sub_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw16.sub_u:alt {
@@ -13979,20 +14795,21 @@ wasm:opcode:i32.atomic.rmw16.sub_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14004,20 +14821,21 @@ wasm:opcode:i64.atomic.rmw.sub:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw.sub:after {
@@ -14026,20 +14844,21 @@ wasm:opcode:i64.atomic.rmw.sub:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw.sub:alt {
@@ -14048,20 +14867,21 @@ wasm:opcode:i64.atomic.rmw.sub:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14073,20 +14893,21 @@ wasm:opcode:i64.atomic.rmw8.sub_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw8.sub_u:after {
@@ -14095,20 +14916,21 @@ wasm:opcode:i64.atomic.rmw8.sub_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw8.sub_u:alt {
@@ -14117,20 +14939,21 @@ wasm:opcode:i64.atomic.rmw8.sub_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14142,20 +14965,21 @@ wasm:opcode:i64.atomic.rmw16.sub_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw16.sub_u:after {
@@ -14164,20 +14988,21 @@ wasm:opcode:i64.atomic.rmw16.sub_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw16.sub_u:alt {
@@ -14186,20 +15011,21 @@ wasm:opcode:i64.atomic.rmw16.sub_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14211,20 +15037,21 @@ wasm:opcode:i64.atomic.rmw32.sub_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw32.sub_u:after {
@@ -14233,20 +15060,21 @@ wasm:opcode:i64.atomic.rmw32.sub_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw32.sub_u:alt {
@@ -14255,20 +15083,21 @@ wasm:opcode:i64.atomic.rmw32.sub_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14280,20 +15109,21 @@ wasm:opcode:i32.atomic.rmw.and:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw.and:after {
@@ -14302,20 +15132,21 @@ wasm:opcode:i32.atomic.rmw.and:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw.and:alt {
@@ -14324,20 +15155,21 @@ wasm:opcode:i32.atomic.rmw.and:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14349,20 +15181,21 @@ wasm:opcode:i32.atomic.rmw8.and_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw8.and_u:after {
@@ -14371,20 +15204,21 @@ wasm:opcode:i32.atomic.rmw8.and_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw8.and_u:alt {
@@ -14393,20 +15227,21 @@ wasm:opcode:i32.atomic.rmw8.and_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14418,20 +15253,21 @@ wasm:opcode:i32.atomic.rmw16.and_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw16.and_u:after {
@@ -14440,20 +15276,21 @@ wasm:opcode:i32.atomic.rmw16.and_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw16.and_u:alt {
@@ -14462,20 +15299,21 @@ wasm:opcode:i32.atomic.rmw16.and_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14487,20 +15325,21 @@ wasm:opcode:i64.atomic.rmw.and:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw.and:after {
@@ -14509,20 +15348,21 @@ wasm:opcode:i64.atomic.rmw.and:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw.and:alt {
@@ -14531,20 +15371,21 @@ wasm:opcode:i64.atomic.rmw.and:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14556,20 +15397,21 @@ wasm:opcode:i64.atomic.rmw8.and_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw8.and_u:after {
@@ -14578,20 +15420,21 @@ wasm:opcode:i64.atomic.rmw8.and_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw8.and_u:alt {
@@ -14600,20 +15443,21 @@ wasm:opcode:i64.atomic.rmw8.and_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14625,20 +15469,21 @@ wasm:opcode:i64.atomic.rmw16.and_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw16.and_u:after {
@@ -14647,20 +15492,21 @@ wasm:opcode:i64.atomic.rmw16.and_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw16.and_u:alt {
@@ -14669,20 +15515,21 @@ wasm:opcode:i64.atomic.rmw16.and_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14694,20 +15541,21 @@ wasm:opcode:i64.atomic.rmw32.and_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw32.and_u:after {
@@ -14716,20 +15564,21 @@ wasm:opcode:i64.atomic.rmw32.and_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw32.and_u:alt {
@@ -14738,20 +15587,21 @@ wasm:opcode:i64.atomic.rmw32.and_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14763,20 +15613,21 @@ wasm:opcode:i32.atomic.rmw.or:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw.or:after {
@@ -14785,20 +15636,21 @@ wasm:opcode:i32.atomic.rmw.or:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw.or:alt {
@@ -14807,20 +15659,21 @@ wasm:opcode:i32.atomic.rmw.or:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14832,20 +15685,21 @@ wasm:opcode:i32.atomic.rmw8.or_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw8.or_u:after {
@@ -14854,20 +15708,21 @@ wasm:opcode:i32.atomic.rmw8.or_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw8.or_u:alt {
@@ -14876,20 +15731,21 @@ wasm:opcode:i32.atomic.rmw8.or_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14901,20 +15757,21 @@ wasm:opcode:i32.atomic.rmw16.or_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw16.or_u:after {
@@ -14923,20 +15780,21 @@ wasm:opcode:i32.atomic.rmw16.or_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw16.or_u:alt {
@@ -14945,20 +15803,21 @@ wasm:opcode:i32.atomic.rmw16.or_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -14970,20 +15829,21 @@ wasm:opcode:i64.atomic.rmw.or:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw.or:after {
@@ -14992,20 +15852,21 @@ wasm:opcode:i64.atomic.rmw.or:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw.or:alt {
@@ -15014,20 +15875,21 @@ wasm:opcode:i64.atomic.rmw.or:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -15039,20 +15901,21 @@ wasm:opcode:i64.atomic.rmw8.or_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw8.or_u:after {
@@ -15061,20 +15924,21 @@ wasm:opcode:i64.atomic.rmw8.or_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw8.or_u:alt {
@@ -15083,20 +15947,21 @@ wasm:opcode:i64.atomic.rmw8.or_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -15108,20 +15973,21 @@ wasm:opcode:i64.atomic.rmw16.or_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw16.or_u:after {
@@ -15130,20 +15996,21 @@ wasm:opcode:i64.atomic.rmw16.or_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw16.or_u:alt {
@@ -15152,20 +16019,21 @@ wasm:opcode:i64.atomic.rmw16.or_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -15177,20 +16045,21 @@ wasm:opcode:i64.atomic.rmw32.or_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw32.or_u:after {
@@ -15199,20 +16068,21 @@ wasm:opcode:i64.atomic.rmw32.or_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw32.or_u:alt {
@@ -15221,20 +16091,21 @@ wasm:opcode:i64.atomic.rmw32.or_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -15246,20 +16117,21 @@ wasm:opcode:i32.atomic.rmw.xor:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw.xor:after {
@@ -15268,20 +16140,21 @@ wasm:opcode:i32.atomic.rmw.xor:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw.xor:alt {
@@ -15290,20 +16163,21 @@ wasm:opcode:i32.atomic.rmw.xor:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -15315,20 +16189,21 @@ wasm:opcode:i32.atomic.rmw8.xor_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw8.xor_u:after {
@@ -15337,20 +16212,21 @@ wasm:opcode:i32.atomic.rmw8.xor_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw8.xor_u:alt {
@@ -15359,20 +16235,21 @@ wasm:opcode:i32.atomic.rmw8.xor_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -15384,20 +16261,21 @@ wasm:opcode:i32.atomic.rmw16.xor_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw16.xor_u:after {
@@ -15406,20 +16284,21 @@ wasm:opcode:i32.atomic.rmw16.xor_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw16.xor_u:alt {
@@ -15428,20 +16307,21 @@ wasm:opcode:i32.atomic.rmw16.xor_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -15453,20 +16333,21 @@ wasm:opcode:i64.atomic.rmw.xor:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw.xor:after {
@@ -15475,20 +16356,21 @@ wasm:opcode:i64.atomic.rmw.xor:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw.xor:alt {
@@ -15497,20 +16379,21 @@ wasm:opcode:i64.atomic.rmw.xor:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -15522,20 +16405,21 @@ wasm:opcode:i64.atomic.rmw8.xor_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw8.xor_u:after {
@@ -15544,20 +16428,21 @@ wasm:opcode:i64.atomic.rmw8.xor_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw8.xor_u:alt {
@@ -15566,20 +16451,21 @@ wasm:opcode:i64.atomic.rmw8.xor_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -15591,20 +16477,21 @@ wasm:opcode:i64.atomic.rmw16.xor_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw16.xor_u:after {
@@ -15613,20 +16500,21 @@ wasm:opcode:i64.atomic.rmw16.xor_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw16.xor_u:alt {
@@ -15635,20 +16523,21 @@ wasm:opcode:i64.atomic.rmw16.xor_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -15660,20 +16549,21 @@ wasm:opcode:i64.atomic.rmw32.xor_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw32.xor_u:after {
@@ -15682,20 +16572,21 @@ wasm:opcode:i64.atomic.rmw32.xor_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw32.xor_u:alt {
@@ -15704,20 +16595,21 @@ wasm:opcode:i64.atomic.rmw32.xor_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -15729,20 +16621,21 @@ wasm:opcode:i32.atomic.rmw.xchg:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw.xchg:after {
@@ -15751,20 +16644,21 @@ wasm:opcode:i32.atomic.rmw.xchg:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw.xchg:alt {
@@ -15773,20 +16667,21 @@ wasm:opcode:i32.atomic.rmw.xchg:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -15798,20 +16693,21 @@ wasm:opcode:i32.atomic.rmw8.xchg_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw8.xchg_u:after {
@@ -15820,20 +16716,21 @@ wasm:opcode:i32.atomic.rmw8.xchg_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw8.xchg_u:alt {
@@ -15842,20 +16739,21 @@ wasm:opcode:i32.atomic.rmw8.xchg_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -15867,20 +16765,21 @@ wasm:opcode:i32.atomic.rmw16.xchg_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw16.xchg_u:after {
@@ -15889,20 +16788,21 @@ wasm:opcode:i32.atomic.rmw16.xchg_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i32.atomic.rmw16.xchg_u:alt {
@@ -15911,20 +16811,21 @@ wasm:opcode:i32.atomic.rmw16.xchg_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -15936,20 +16837,21 @@ wasm:opcode:i64.atomic.rmw.xchg:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw.xchg:after {
@@ -15958,20 +16860,21 @@ wasm:opcode:i64.atomic.rmw.xchg:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw.xchg:alt {
@@ -15980,20 +16883,21 @@ wasm:opcode:i64.atomic.rmw.xchg:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16005,20 +16909,21 @@ wasm:opcode:i64.atomic.rmw8.xchg_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw8.xchg_u:after {
@@ -16027,20 +16932,21 @@ wasm:opcode:i64.atomic.rmw8.xchg_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw8.xchg_u:alt {
@@ -16049,20 +16955,21 @@ wasm:opcode:i64.atomic.rmw8.xchg_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16074,20 +16981,21 @@ wasm:opcode:i64.atomic.rmw16.xchg_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw16.xchg_u:after {
@@ -16096,20 +17004,21 @@ wasm:opcode:i64.atomic.rmw16.xchg_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw16.xchg_u:alt {
@@ -16118,20 +17027,21 @@ wasm:opcode:i64.atomic.rmw16.xchg_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16143,20 +17053,21 @@ wasm:opcode:i64.atomic.rmw32.xchg_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw32.xchg_u:after {
@@ -16165,20 +17076,21 @@ wasm:opcode:i64.atomic.rmw32.xchg_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
 }
 
 wasm:opcode:i64.atomic.rmw32.xchg_u:alt {
@@ -16187,20 +17099,21 @@ wasm:opcode:i64.atomic.rmw32.xchg_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: u32 = arg1;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: u32 = arg1;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16212,21 +17125,22 @@ wasm:opcode:i32.atomic.rmw.cmpxchg:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: i32 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: i32 = arg1;
+    var v20: u32 = arg2;
 }
 
 wasm:opcode:i32.atomic.rmw.cmpxchg:after {
@@ -16235,21 +17149,22 @@ wasm:opcode:i32.atomic.rmw.cmpxchg:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: i32 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: i32 = arg1;
+    var v20: u32 = arg2;
 }
 
 wasm:opcode:i32.atomic.rmw.cmpxchg:alt {
@@ -16258,21 +17173,22 @@ wasm:opcode:i32.atomic.rmw.cmpxchg:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: i32 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: i32 = arg1;
+    var v20: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16284,21 +17200,22 @@ wasm:opcode:i32.atomic.rmw8.cmpxchg_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: i32 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: i32 = arg1;
+    var v20: u32 = arg2;
 }
 
 wasm:opcode:i32.atomic.rmw8.cmpxchg_u:after {
@@ -16307,21 +17224,22 @@ wasm:opcode:i32.atomic.rmw8.cmpxchg_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: i32 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: i32 = arg1;
+    var v20: u32 = arg2;
 }
 
 wasm:opcode:i32.atomic.rmw8.cmpxchg_u:alt {
@@ -16330,21 +17248,22 @@ wasm:opcode:i32.atomic.rmw8.cmpxchg_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: i32 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: i32 = arg1;
+    var v20: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16356,21 +17275,22 @@ wasm:opcode:i32.atomic.rmw16.cmpxchg_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: i32 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: i32 = arg1;
+    var v20: u32 = arg2;
 }
 
 wasm:opcode:i32.atomic.rmw16.cmpxchg_u:after {
@@ -16379,21 +17299,22 @@ wasm:opcode:i32.atomic.rmw16.cmpxchg_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: i32 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: i32 = arg1;
+    var v20: u32 = arg2;
 }
 
 wasm:opcode:i32.atomic.rmw16.cmpxchg_u:alt {
@@ -16402,21 +17323,22 @@ wasm:opcode:i32.atomic.rmw16.cmpxchg_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i32 = arg0;
-    var v18: i32 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i32 = arg0;
+    var v19: i32 = arg1;
+    var v20: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16428,21 +17350,22 @@ wasm:opcode:i64.atomic.rmw.cmpxchg:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: i64 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: i64 = arg1;
+    var v20: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw.cmpxchg:after {
@@ -16451,21 +17374,22 @@ wasm:opcode:i64.atomic.rmw.cmpxchg:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: i64 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: i64 = arg1;
+    var v20: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw.cmpxchg:alt {
@@ -16474,21 +17398,22 @@ wasm:opcode:i64.atomic.rmw.cmpxchg:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: i64 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: i64 = arg1;
+    var v20: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16500,21 +17425,22 @@ wasm:opcode:i64.atomic.rmw8.cmpxchg_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: i64 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: i64 = arg1;
+    var v20: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw8.cmpxchg_u:after {
@@ -16523,21 +17449,22 @@ wasm:opcode:i64.atomic.rmw8.cmpxchg_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: i64 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: i64 = arg1;
+    var v20: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw8.cmpxchg_u:alt {
@@ -16546,21 +17473,22 @@ wasm:opcode:i64.atomic.rmw8.cmpxchg_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: i64 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: i64 = arg1;
+    var v20: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16572,21 +17500,22 @@ wasm:opcode:i64.atomic.rmw16.cmpxchg_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: i64 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: i64 = arg1;
+    var v20: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw16.cmpxchg_u:after {
@@ -16595,21 +17524,22 @@ wasm:opcode:i64.atomic.rmw16.cmpxchg_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: i64 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: i64 = arg1;
+    var v20: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw16.cmpxchg_u:alt {
@@ -16618,21 +17548,22 @@ wasm:opcode:i64.atomic.rmw16.cmpxchg_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: i64 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: i64 = arg1;
+    var v20: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16644,21 +17575,22 @@ wasm:opcode:i64.atomic.rmw32.cmpxchg_u:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: i64 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: i64 = arg1;
+    var v20: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw32.cmpxchg_u:after {
@@ -16667,21 +17599,22 @@ wasm:opcode:i64.atomic.rmw32.cmpxchg_u:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: i64 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: i64 = arg1;
+    var v20: u32 = arg2;
 }
 
 wasm:opcode:i64.atomic.rmw32.cmpxchg_u:alt {
@@ -16690,21 +17623,22 @@ wasm:opcode:i64.atomic.rmw32.cmpxchg_u:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = data_size;
-    var v9: u32 = addr;
-    var v10: u32 = category_id;
-    var v11: str = category_name;
-    var v12: u32 = memory;
-    var v13: u32 = align;
-    var v14: u32 = effective_addr;
-    var v15: bool = is_write;
-    var v16: u64 = offset;
-    var v17: i64 = arg0;
-    var v18: i64 = arg1;
-    var v19: u32 = arg2;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = data_size;
+    var v10: u32 = addr;
+    var v11: u32 = category_id;
+    var v12: str = category_name;
+    var v13: u32 = memory;
+    var v14: u32 = align;
+    var v15: u32 = effective_addr;
+    var v16: bool = is_write;
+    var v17: u64 = offset;
+    var v18: i64 = arg0;
+    var v19: i64 = arg1;
+    var v20: u32 = arg2;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16716,14 +17650,15 @@ wasm:opcode:call_ref:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = resolved_fid;
 }
 
 wasm:opcode:call_ref:after {
@@ -16732,14 +17667,15 @@ wasm:opcode:call_ref:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = resolved_fid;
 }
 
 wasm:opcode:call_ref:alt {
@@ -16748,14 +17684,15 @@ wasm:opcode:call_ref:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = resolved_fid;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16767,14 +17704,15 @@ wasm:opcode:return_call_ref:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = resolved_fid;
 }
 
 wasm:opcode:return_call_ref:after {
@@ -16783,14 +17721,15 @@ wasm:opcode:return_call_ref:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = resolved_fid;
 }
 
 wasm:opcode:return_call_ref:alt {
@@ -16799,14 +17738,15 @@ wasm:opcode:return_call_ref:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
-    var v12: i32 = resolved_fid;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
+    var v13: i32 = resolved_fid;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16818,12 +17758,13 @@ wasm:opcode:ref.as_non_null:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:ref.as_non_null:after {
@@ -16832,12 +17773,13 @@ wasm:opcode:ref.as_non_null:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:ref.as_non_null:alt {
@@ -16846,12 +17788,13 @@ wasm:opcode:ref.as_non_null:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16863,12 +17806,13 @@ wasm:opcode:br_on_null:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:br_on_null:after {
@@ -16877,12 +17821,13 @@ wasm:opcode:br_on_null:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
 }
 
 wasm:opcode:br_on_null:alt {
@@ -16891,12 +17836,13 @@ wasm:opcode:br_on_null:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");
@@ -16908,13 +17854,14 @@ wasm:opcode:br_on_non_null:before {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
 }
 
 wasm:opcode:br_on_non_null:after {
@@ -16923,13 +17870,14 @@ wasm:opcode:br_on_non_null:after {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
 }
 
 wasm:opcode:br_on_non_null:alt {
@@ -16938,13 +17886,14 @@ wasm:opcode:br_on_non_null:alt {
     var v2: u32 = opidx;
     var v3: bool = at_func_end;
     var v4: str = fname;
-    var v5: i32 = local0;
-    var v6: str = opname;
-    var v7: u16 = bytecode;
-    var v8: u32 = category_id;
-    var v9: str = category_name;
-    var v10: u32 = imm0;
-    var v11: i32 = arg0;
+    var v5: bytes = app_bytes;
+    var v6: i32 = local0;
+    var v7: str = opname;
+    var v8: u16 = bytecode;
+    var v9: u32 = category_id;
+    var v10: str = category_name;
+    var v11: u32 = imm0;
+    var v12: i32 = arg0;
     drop_args();
     alt_call_by_id(0 as i32);
     alt_call_by_name("");

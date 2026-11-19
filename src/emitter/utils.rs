@@ -1315,7 +1315,39 @@ fn handle_type_utils_call<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
             injector,
             ctx,
         ),
+        DataType::Bytes => handle_type_utils_bytes(
+            target_var_name,
+            target_var_def,
+            target_fn_name,
+            strategy,
+            injector,
+            ctx,
+        ),
         _ => unreachable!("unhandled type utils variant: {:?}", target_var_ty),
+    }
+}
+fn handle_type_utils_bytes<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
+    target_var_name: &str,
+    target_var_def: Definition,
+    target_fn_name: String,
+    strategy: InjectStrategy,
+    injector: &mut T,
+    ctx: &mut EmitCtx,
+) -> bool {
+    let target = Expr::VarId {
+        name: target_var_name.to_string(),
+        definition: target_var_def,
+        loc: None,
+    };
+    match target_fn_name.as_str() {
+        "addr" => StringUtils::addr_of(&target, strategy, injector, ctx),
+        "len" => StringUtils::len_dynamic(&target, strategy, injector, ctx),
+        _ => {
+            unreachable!(
+                "{} Could not find handler for bytes utility function with name: {}",
+                ctx.err_msg, target_fn_name
+            );
+        }
     }
 }
 fn handle_type_utils_string<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
@@ -2585,6 +2617,17 @@ fn emit_value<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                     ctx.err_msg
                 );
             }
+        }
+        Value::Bytes { addr, len } => {
+            let to_emit = [*addr, *len];
+            if let Some(idx) = idx {
+                injector.u32_const(to_emit[idx]);
+            } else {
+                for i in to_emit.iter() {
+                    injector.u32_const(*i);
+                }
+            }
+            is_success &= true;
         }
         Value::Tuple { vals, .. } => {
             for val in vals.iter() {

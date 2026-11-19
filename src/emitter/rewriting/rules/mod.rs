@@ -30,6 +30,7 @@ pub fn get_loc_info_for_active_probes(
     at_func_end: bool,
     instr: &Operator,
     ast: &mut SimpleAST,
+    app_bytes_addr: Option<(u32, u32)>,
     err: &mut ErrorGen,
 ) -> Option<LocInfo> {
     let mut res: Option<LocInfo> = None;
@@ -52,7 +53,8 @@ pub fn get_loc_info_for_active_probes(
         }
     }
     if let Some(r) = &mut res {
-        r.static_data.extend(init_whamm_bound_vars(app_wasm, err));
+        r.static_data
+            .extend(init_whamm_bound_vars(app_wasm, app_bytes_addr, err));
         reject_invalid_opcode_var_deps(r, err);
     }
     res
@@ -97,8 +99,10 @@ fn reject_invalid_opcode_var_deps(loc_info: &mut LocInfo, err: &mut ErrorGen) {
     }
 }
 
+pub const APP_BYTES_VAR_NAME: &str = "app_bytes";
 pub fn init_whamm_bound_vars(
     app_wasm: &Module,
+    app_bytes_addr: Option<(u32, u32)>,
     err: &mut ErrorGen,
 ) -> HashMap<String, Option<Value>> {
     let mut vars = HashMap::new();
@@ -107,6 +111,12 @@ pub fn init_whamm_bound_vars(
         .map_err(|e| err.add_instr_error(&e))
         .unwrap_or(MemoryID(0));
     vars.insert("APP_MEMID".to_string(), Some(Value::gen_u32(*memid)));
+
+    let (addr, len) = app_bytes_addr.unwrap_or((0, 0));
+    vars.insert(
+        APP_BYTES_VAR_NAME.to_string(),
+        Some(Value::Bytes { addr, len }),
+    );
 
     vars
 }
@@ -3416,6 +3426,17 @@ impl LocInfo {
                 DataType::Str,
                 Expr::Primitive {
                     val: Value::Str { val: val.clone() },
+                    loc: None,
+                },
+            ),
+            Value::Bytes { addr, len } => self.add_dynamic_assign(
+                name,
+                DataType::Bytes,
+                Expr::Primitive {
+                    val: Value::Bytes {
+                        addr: *addr,
+                        len: *len,
+                    },
                     loc: None,
                 },
             ),

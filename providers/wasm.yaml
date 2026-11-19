@@ -33,6 +33,11 @@ providers:
         derived_from: null
         lifetime: static
         docs: The name of the function the probe is located in. Empty string if not defined.
+      - name: app_bytes
+        type: bytes
+        derived_from: null
+        lifetime: static
+        docs: A (ptr, len) pair into app memory holding the original (pre-instrumentation) bytes of the target Wasm module. Use .addr()/.len() to read the pointer and length.
       - name: local[0:9]+
         type: any
         docs: The value of the Nth local variable in the function, N should match the following pattern [0:9]+.
