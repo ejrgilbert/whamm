@@ -143,43 +143,36 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
     pub fn next_instr(&mut self) -> bool {
         self.app_iter.next().is_some()
     }
-
     pub fn before(&mut self) {
         self.app_iter.before();
     }
-
     pub fn after(&mut self) {
         self.app_iter.after();
     }
-
     pub fn alternate(&mut self) {
         self.app_iter.alternate();
     }
-
     pub fn semantic_after(&mut self) {
         self.app_iter.semantic_after();
     }
-
+    pub fn back_edge(&mut self) {
+        self.app_iter.back_edge();
+    }
     pub fn block_entry(&mut self) {
         self.app_iter.block_entry();
     }
-
     pub fn block_exit(&mut self) {
         self.app_iter.block_exit();
     }
-
     pub fn block_alt(&mut self) {
         self.app_iter.block_alt();
     }
-
     pub fn func_entry(&mut self) {
         self.app_iter.func_entry();
     }
-
     pub fn func_exit(&mut self) {
         self.app_iter.func_exit();
     }
-
     pub fn finish_instr(&mut self) {
         self.app_iter.finish_instr();
     }

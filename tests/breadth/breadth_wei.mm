@@ -77,6 +77,10 @@ wasm:opcode:loop:after {
     var v0: i32 = probe_id;
 }
 
+wasm:opcode:loop:back_edge {
+    var v0: i32 = probe_id;
+}
+
 wasm:opcode:loop:alt {
     var v0: i32 = probe_id;
 }
