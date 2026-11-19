@@ -18,7 +18,7 @@ use wirm::ir::id::{FunctionID, GlobalID, LocalID};
 use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value};
 use wirm::module_builder::AddLocal;
 use wirm::opcode::MacroOpcode;
-use wirm::wasmparser::MemArg;
+use wirm::wasmparser::{MemArg, MemArgTarget};
 use wirm::{InitInstr, Module, Opcode};
 
 pub const NULL_PTR_IN_MEM: i32 = -1;
@@ -482,7 +482,8 @@ impl ReportVars {
                 align: 0,
                 max_align: 0,
                 offset: curr_offset,
-                memory: mem_id,
+                target: MemArgTarget::Memory(mem_id),
+                ordering: None,
             };
             curr_offset += num_bytes as u64;
             arg
@@ -661,7 +662,8 @@ impl ReportVars {
             align: 0,
             max_align: 0,
             offset: 0,
-            memory: mem_id,
+            target: MemArgTarget::Memory(mem_id),
+            ordering: None,
         };
 
         // ================================= REPORT CSV FLUSH ====================================
@@ -1434,7 +1436,8 @@ impl ReportVars {
             align: 0,
             max_align: 0,
             offset: var_offset as u64,
-            memory: mem_id,
+            target: MemArgTarget::Memory(mem_id),
+            ordering: None,
         });
         used_bytes += size_of_val(&NULL_PTR_IN_GLOBAL);
 
@@ -1503,7 +1506,8 @@ impl ReportVars {
                     max_align: 0,
                     // offset: used_bytes as u64,
                     offset: 0,
-                    memory: mem_id,
+                    target: MemArgTarget::Memory(mem_id),
+                    ordering: None,
                 })
             .end();
 

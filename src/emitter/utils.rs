@@ -20,7 +20,7 @@ use wirm::ir::id::{FunctionID, GlobalID, LocalID, MemoryID};
 use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmValue};
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{MacroOpcode, Opcode};
-use wirm::wasmparser::MemArg;
+use wirm::wasmparser::{MemArg, MemArgTarget};
 use wirm::{InitInstr, Module};
 // ==================================================================
 // ================ Emitter Helper Functions ========================
@@ -332,7 +332,8 @@ fn handle_resolve_funcref<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
         align: 2,
         max_align: 0,
         offset: 0,
-        memory: mem_id,
+        target: MemArgTarget::Memory(mem_id),
+        ordering: None,
     });
     injector.else_stmt();
     injector.i32_const(crate::emitter::rewriting::visiting_emitter::UNKNOWN_FID);

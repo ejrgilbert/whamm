@@ -37,7 +37,7 @@ use wirm::iterator::iterator_trait::{IteratingInstrumenter, Iterator as WirmIter
 use wirm::iterator::module_iterator::ModuleIterator;
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{Instrumenter, MacroOpcode, Opcode};
-use wirm::wasmparser::Operator;
+use wirm::wasmparser::{MemArgTarget, Operator};
 use wirm::Location;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -760,12 +760,12 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
             return;
         };
         let fid_to_store = prev_ref_func_fid.map(|n| n as i32).unwrap_or(UNKNOWN_FID);
-        let mem_id = self.mem_allocator.mem_id;
         let memarg = wirm::wasmparser::MemArg {
             align: 2,
             max_align: 0,
             offset: 0,
-            memory: mem_id,
+            target: MemArgTarget::Memory(self.mem_allocator.mem_id),
+            ordering: None,
         };
 
         // Stack on entry: [..., idx, fref]. Save both, bounds-check, store fid,
@@ -1847,5 +1847,5 @@ fn override_dst_mem<'a>(op: &mut Operator<'a>, dst_mem: u32) {
         _ => panic!("Operator does not contain a MemArg: {:?}", op),
     };
 
-    memarg.memory = dst_mem;
+    memarg.target = MemArgTarget::Memory(dst_mem);
 }

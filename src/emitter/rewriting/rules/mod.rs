@@ -18,7 +18,7 @@ use wirm::ir::module::module_globals::{GlobalKind, ImportedGlobal, LocalGlobal};
 use wirm::ir::module::module_types::Types;
 use wirm::ir::module::Module;
 use wirm::ir::types::{DataType as WirmType, InstrumentationMode};
-use wirm::wasmparser::{BlockType, BrTable, GlobalType, MemArg, Operator};
+use wirm::wasmparser::{BlockType, BrTable, GlobalType, MemArg, MemArgTarget, Operator};
 use wirm::Location;
 
 pub(crate) mod data_segments;
@@ -561,7 +561,7 @@ fn handle_opcode_events(
         Operator::I32Load {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.load" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -570,7 +570,7 @@ fn handle_opcode_events(
         Operator::I64Load {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.load" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -579,7 +579,7 @@ fn handle_opcode_events(
         Operator::F32Load {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "f32.load" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -588,7 +588,7 @@ fn handle_opcode_events(
         Operator::F64Load {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "f64.load" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -597,7 +597,7 @@ fn handle_opcode_events(
         Operator::I32Load8S {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.load8_s" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -606,7 +606,7 @@ fn handle_opcode_events(
         Operator::I32Load8U {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.load8_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -615,7 +615,7 @@ fn handle_opcode_events(
         Operator::I32Load16S {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.load16_s" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -624,7 +624,7 @@ fn handle_opcode_events(
         Operator::I32Load16U {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.load16_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -633,7 +633,7 @@ fn handle_opcode_events(
         Operator::I64Load8S {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.load8_s" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -642,7 +642,7 @@ fn handle_opcode_events(
         Operator::I64Load8U {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.load8_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -651,7 +651,7 @@ fn handle_opcode_events(
         Operator::I64Load16S {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.load16_s" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -660,7 +660,7 @@ fn handle_opcode_events(
         Operator::I64Load16U {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.load16_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -669,7 +669,7 @@ fn handle_opcode_events(
         Operator::I64Load32S {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.load32_s" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -678,7 +678,7 @@ fn handle_opcode_events(
         Operator::I64Load32U {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.load32_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -687,7 +687,7 @@ fn handle_opcode_events(
         Operator::I32Store {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.store" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -696,7 +696,7 @@ fn handle_opcode_events(
         Operator::I64Store {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.store" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -705,7 +705,7 @@ fn handle_opcode_events(
         Operator::F32Store {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "f32.store" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -714,7 +714,7 @@ fn handle_opcode_events(
         Operator::F64Store {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "f64.store" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -723,7 +723,7 @@ fn handle_opcode_events(
         Operator::I32Store8 {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.store8" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -732,7 +732,7 @@ fn handle_opcode_events(
         Operator::I32Store16 {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.store16" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -741,7 +741,7 @@ fn handle_opcode_events(
         Operator::I64Store8 {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.store8" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -750,7 +750,7 @@ fn handle_opcode_events(
         Operator::I64Store16 {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.store16" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -759,7 +759,7 @@ fn handle_opcode_events(
         Operator::I64Store32 {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.store32" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1377,7 +1377,7 @@ fn handle_opcode_events(
         Operator::MemoryAtomicNotify {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "memory.atomic.notify" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1386,7 +1386,7 @@ fn handle_opcode_events(
         Operator::MemoryAtomicWait32 {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "memory.atomic.wait32" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1395,19 +1395,19 @@ fn handle_opcode_events(
         Operator::MemoryAtomicWait64 {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "memory.atomic.wait64" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
-        Operator::AtomicFence => if event == "atomic.fence" {
+        Operator::AtomicFence { .. } => if event == "atomic.fence" {
             loc_info.add_probes(probe_rule.clone(), evt, None);
         },
         Operator::I32AtomicLoad {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.load" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1416,7 +1416,7 @@ fn handle_opcode_events(
         Operator::I64AtomicLoad {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.load" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1425,7 +1425,7 @@ fn handle_opcode_events(
         Operator::I32AtomicLoad8U {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.load8_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1434,7 +1434,7 @@ fn handle_opcode_events(
         Operator::I32AtomicLoad16U {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.load16_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1443,7 +1443,7 @@ fn handle_opcode_events(
         Operator::I64AtomicLoad8U {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.load8_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1452,7 +1452,7 @@ fn handle_opcode_events(
         Operator::I64AtomicLoad16U {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.load16_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1461,7 +1461,7 @@ fn handle_opcode_events(
         Operator::I64AtomicLoad32U {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.load32_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1470,7 +1470,7 @@ fn handle_opcode_events(
         Operator::I32AtomicStore {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.store" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1479,7 +1479,7 @@ fn handle_opcode_events(
         Operator::I32AtomicStore8 {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.store8" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1488,7 +1488,7 @@ fn handle_opcode_events(
         Operator::I32AtomicStore16 {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.store16" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1497,7 +1497,7 @@ fn handle_opcode_events(
         Operator::I64AtomicStore {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.store" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1506,7 +1506,7 @@ fn handle_opcode_events(
         Operator::I64AtomicStore8 {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.store8" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1515,7 +1515,7 @@ fn handle_opcode_events(
         Operator::I64AtomicStore16 {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.store16" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1524,7 +1524,7 @@ fn handle_opcode_events(
         Operator::I64AtomicStore32 {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.store32" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1533,7 +1533,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmwAdd {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw.add" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1542,7 +1542,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmw8AddU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw8.add_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1551,7 +1551,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmw16AddU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw16.add_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1560,7 +1560,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmwAdd {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw.add" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1569,7 +1569,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw8AddU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw8.add_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1578,7 +1578,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw16AddU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw16.add_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1587,7 +1587,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw32AddU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw32.add_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1596,7 +1596,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmwSub {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw.sub" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1605,7 +1605,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmw8SubU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw8.sub_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1614,7 +1614,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmw16SubU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw16.sub_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1623,7 +1623,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmwSub {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw.sub" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1632,7 +1632,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw8SubU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw8.sub_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1641,7 +1641,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw16SubU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw16.sub_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1650,7 +1650,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw32SubU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw32.sub_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1659,7 +1659,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmwAnd {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw.and" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1668,7 +1668,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmw8AndU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw8.and_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1677,7 +1677,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmw16AndU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw16.and_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1686,7 +1686,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmwAnd {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw.and" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1695,7 +1695,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw8AndU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw8.and_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1704,7 +1704,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw16AndU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw16.and_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1713,7 +1713,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw32AndU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw32.and_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1722,7 +1722,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmwOr {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw.or" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1731,7 +1731,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmw8OrU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw8.or_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1740,7 +1740,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmw16OrU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw16.or_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1749,7 +1749,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmwOr {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw.or" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1758,7 +1758,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw8OrU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw8.or_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1767,7 +1767,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw16OrU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw16.or_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1776,7 +1776,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw32OrU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw32.or_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1785,7 +1785,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmwXor {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw.xor" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1794,7 +1794,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmw8XorU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw8.xor_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1803,7 +1803,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmw16XorU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw16.xor_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1812,7 +1812,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmwXor {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw.xor" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1821,7 +1821,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw8XorU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw8.xor_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1830,7 +1830,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw16XorU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw16.xor_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1839,7 +1839,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw32XorU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw32.xor_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1848,7 +1848,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmwXchg {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw.xchg" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1857,7 +1857,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmw8XchgU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw8.xchg_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1866,7 +1866,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmw16XchgU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw16.xchg_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1875,7 +1875,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmwXchg {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw.xchg" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1884,7 +1884,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw8XchgU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw8.xchg_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1893,7 +1893,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw16XchgU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw16.xchg_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1902,7 +1902,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw32XchgU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw32.xchg_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1911,7 +1911,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmwCmpxchg {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw.cmpxchg" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1920,7 +1920,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmw8CmpxchgU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw8.cmpxchg_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1929,7 +1929,7 @@ fn handle_opcode_events(
         Operator::I32AtomicRmw16CmpxchgU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i32.atomic.rmw16.cmpxchg_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1938,7 +1938,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmwCmpxchg {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw.cmpxchg" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1947,7 +1947,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw8CmpxchgU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw8.cmpxchg_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1956,7 +1956,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw16CmpxchgU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw16.cmpxchg_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -1965,7 +1965,7 @@ fn handle_opcode_events(
         Operator::I64AtomicRmw32CmpxchgU {memarg: MemArg {
             align,
             offset,
-            memory,
+            target: MemArgTarget::Memory(memory),
             ..
         }} => if event == "i64.atomic.rmw32.cmpxchg_u" {
             bind_vars_memarg(*align, *offset, *memory, &mut loc_info, all_params);
@@ -2796,7 +2796,7 @@ pub fn get_ty_info_for_instr(
             | Operator::DataDrop { .. }
             | Operator::ElemDrop { .. }
             | Operator::Return
-            | Operator::AtomicFence => (vec![], vec![], None),
+            | Operator::AtomicFence { .. } => (vec![], vec![], None),
             Operator::LocalGet { .. } | Operator::GlobalGet { .. } => (vec![], vec![None], None),
             Operator::I32Const { .. }
             | Operator::MemorySize { .. }

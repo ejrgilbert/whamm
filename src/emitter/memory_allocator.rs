@@ -12,7 +12,7 @@ use wirm::ir::types::DataType as WirmType;
 use wirm::ir::types::{BlockType, InitExpr, Value as WirmValue};
 use wirm::module_builder::AddLocal;
 use wirm::opcode::MacroOpcode;
-use wirm::wasmparser::MemArg;
+use wirm::wasmparser::{MemArg, MemArgTarget};
 use wirm::{DataSegment, DataSegmentKind, InitInstr, Module, Opcode};
 
 pub const WASM_PAGE_SIZE: u32 = 65_536;
@@ -102,61 +102,71 @@ impl MemoryAllocator {
         self.emit_addr(table, injector);
 
         // perform the correct load based on the type of data at this memory location
+        let target = MemArgTarget::Memory(mem_id);
         match ty {
             DataType::U8 => injector.i32_load8_u(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: var_offset as u64,
-                memory: mem_id,
+                target,
+                ordering: None,
             }),
             DataType::I8 => injector.i32_load8_s(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: var_offset as u64,
-                memory: mem_id,
+                target,
+                ordering: None,
             }),
             DataType::U16 => injector.i32_load16_u(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: var_offset as u64,
-                memory: mem_id,
+                target,
+                ordering: None,
             }),
             DataType::I16 => injector.i32_load16_s(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: var_offset as u64,
-                memory: mem_id,
+                target,
+                ordering: None,
             }),
             DataType::U32 | DataType::I32 | DataType::Boolean => injector.i32_load(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: var_offset as u64,
-                memory: mem_id,
+                target,
+                ordering: None,
             }),
             DataType::F32 => injector.f32_load(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: var_offset as u64,
-                memory: mem_id,
+                target,
+                ordering: None,
             }),
             DataType::U64 | DataType::I64 => injector.i64_load(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: var_offset as u64,
-                memory: mem_id,
+                target,
+                ordering: None,
             }),
             DataType::F64 => injector.f64_load(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: var_offset as u64,
-                memory: mem_id,
+                target,
+                ordering: None,
             }),
             DataType::Str => {
                 injector.i32_load(MemArg {
                     align: 0,
                     max_align: 0,
                     offset: var_offset as u64,
-                    memory: mem_id,
+                    target,
+                    ordering: None,
                 });
 
                 // load len
@@ -166,7 +176,8 @@ impl MemoryAllocator {
                     max_align: 0,
                     // shift by 4 bytes to load len
                     offset: var_offset as u64 + 4,
-                    memory: mem_id,
+                    target,
+                    ordering: None,
                 })
             }
             DataType::Tuple { ty_info } => {
@@ -184,7 +195,8 @@ impl MemoryAllocator {
                         align: 0,
                         max_align: 0,
                         offset: byte_offset as u64,
-                        memory: mem_id,
+                        target,
+                        ordering: None,
                     };
                     match elem_ty {
                         DataType::U8 => {
@@ -248,42 +260,49 @@ impl MemoryAllocator {
         injector: &mut T,
     ) {
         // perform the correct store based on the type of data at this memory location
+        let target = MemArgTarget::Memory(mem_id);
         match ty {
             DataType::U8 | DataType::I8 => injector.i32_store8(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: var_offset as u64,
-                memory: mem_id,
+                target,
+                ordering: None,
             }),
             DataType::U16 | DataType::I16 => injector.i32_store16(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: var_offset as u64,
-                memory: mem_id,
+                target,
+                ordering: None,
             }),
             DataType::U32 | DataType::I32 | DataType::Boolean => injector.i32_store(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: var_offset as u64,
-                memory: mem_id,
+                target,
+                ordering: None,
             }),
             DataType::F32 => injector.f32_store(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: var_offset as u64,
-                memory: mem_id,
+                target,
+                ordering: None,
             }),
             DataType::U64 | DataType::I64 => injector.i64_store(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: var_offset as u64,
-                memory: mem_id,
+                target,
+                ordering: None,
             }),
             DataType::F64 => injector.f64_store(MemArg {
                 align: 0,
                 max_align: 0,
                 offset: var_offset as u64,
-                memory: mem_id,
+                target,
+                ordering: None,
             }),
             DataType::Str => {
                 let offset = if let Some(idx) = idx {
@@ -302,7 +321,8 @@ impl MemoryAllocator {
                     align: 0,
                     max_align: 0,
                     offset,
-                    memory: mem_id,
+                    target,
+                    ordering: None,
                 })
             }
             DataType::Tuple { ty_info } => {
@@ -528,7 +548,8 @@ impl MemoryAllocator {
             align: 0,
             max_align: 0,
             offset: curr_offset as u64,
-            memory: mem_id, // instrumentation memory!
+            target: MemArgTarget::Memory(mem_id), // instrumentation memory!
+            ordering: None,
         });
 
         DataType::from_wasm_type(local_ty).num_bytes().unwrap() as u32
@@ -550,7 +571,8 @@ impl MemoryAllocator {
             align: 0,
             max_align: 0,
             offset: curr_offset as u64,
-            memory: mem_id, // instrumentation memory!
+            target: MemArgTarget::Memory(mem_id), // instrumentation memory!
+            ordering: None,
         });
 
         size_of::<u8>() as u32
