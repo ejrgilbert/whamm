@@ -2617,7 +2617,7 @@ fn emit_value<'ir, T: Opcode<'ir> + MacroOpcode<'ir> + AddLocal>(
                 );
             }
         }
-        Value::Bytes { addr, len } => {
+        Value::Bytes { addr, len, .. } => {
             let to_emit = [*addr, *len];
             if let Some(idx) = idx {
                 injector.u32_const(to_emit[idx]);

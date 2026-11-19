@@ -154,7 +154,7 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
         loc: &Option<Location>,
         err: &mut ErrorGen,
     ) -> Expr {
-        let Value::Bytes { addr, len } = val else {
+        let Value::Bytes { addr, len, .. } = val else {
             err.add_internal_error(
                 &format!("expected a bytes value for a bytes utility call, got: {val:?}"),
                 loc,
@@ -1908,26 +1908,51 @@ impl<'a, 'ir> ExprFolder<'a, 'ir> {
     }
 
     fn handle_mem(&mut self, args: &[Expr], table: &SymbolTable, err: &mut ErrorGen) -> Expr {
-        // Assume the correct args since we've gone through typechecking at this point!
-        let (libname, loc) = match args.iter().next() {
-            Some(arg @ Expr::VarId { name, .. }) => (name.clone(), arg.loc().clone()),
-            _ => unreachable!(),
-        };
-        let Some(Record::Library { mem_id, .. }) = table.lookup_lib(libname.as_str(), false) else {
-            unreachable!("unexpected type for {libname}");
-        };
-        if let Some(mem_id) = mem_id {
-            Expr::Primitive {
-                val: Value::gen_u32(*mem_id),
-                loc: None,
+        // `memid` is overloaded: takes a library handle/bytes/or str
+        let arg = &args[0];
+        let loc = arg.loc().clone();
+
+        // Library handle -> its imported memory.
+        if let Expr::VarId { name, .. } = arg {
+            if let Some(Record::Library { mem_id, .. }) = table.lookup_lib(name, false) {
+                return match mem_id {
+                    Some(mem_id) => Expr::Primitive {
+                        val: Value::gen_u32(*mem_id),
+                        loc: None,
+                    },
+                    None => {
+                        err.add_instr_error_at(
+                            &format!("memory has not been imported for library `{name}`"),
+                            &loc,
+                        );
+                        zero(&DataType::U32, None)
+                    }
+                };
             }
-        } else {
-            err.add_instr_error_at(
-                &format!("memory has not been imported for library `{libname}`"),
-                &loc,
-            );
-            zero(&DataType::U32, None)
         }
+
+        // bytes / str: instrumentation memory!
+        if let Expr::Primitive {
+            val: Value::Bytes { mem_id, .. },
+            ..
+        } = self.fold_expr_inner(arg, table, err)
+        {
+            return Expr::Primitive {
+                val: Value::gen_u32(mem_id),
+                loc,
+            };
+        }
+        if let Some(str_addr) = self.emitted_strings.values().next() {
+            return Expr::Primitive {
+                val: Value::gen_u32(str_addr.mem_id),
+                loc,
+            };
+        }
+        err.add_instr_error_at(
+            "cannot resolve the memory for this value (no bytes were emitted for it)",
+            &loc,
+        );
+        zero(&DataType::U32, None)
     }
 
     fn fold_var_id(&mut self, var_id: &Expr, table: &SymbolTable) -> Expr {
