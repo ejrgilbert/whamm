@@ -164,10 +164,7 @@ impl AstVisitor<bool> for MapLibPackage {
     }
 
     fn visit_formal_param(&mut self, param: &(Expr, DataType)) -> bool {
-        if self.visit_datatype(&param.1) {
-            return true;
-        }
-        false
+        self.visit_datatype(&param.1)
     }
 
     fn visit_block(&mut self, block: &Block) -> bool {
