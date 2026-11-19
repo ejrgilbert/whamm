@@ -1365,13 +1365,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                     if let Some(flush_fid) = var_flush_fid {
                         on_exit.call(FunctionID(flush_fid));
                         let op_idx = on_exit.curr_instr_len() as u32;
-                        on_exit.append_tag_at(
-                            get_probe_tag_data(&None, op_idx),
-                            Location::Module {
-                                func_idx: FunctionID(*fid),
-                                instr_idx: 0,
-                            },
-                        );
+                        on_exit.append_tag_at(get_probe_tag_data(&None, op_idx), 0);
                     }
                 }
                 fid

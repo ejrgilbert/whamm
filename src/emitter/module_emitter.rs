@@ -790,14 +790,7 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
         );
 
         let op_idx = start.curr_instr_len() as u32;
-        start.append_tag_at(
-            get_probe_tag_data(stmt.loc(), op_idx),
-            // location is unused
-            wirm::Location::Module {
-                func_idx: FunctionID(0),
-                instr_idx: 0,
-            },
-        );
+        start.append_tag_at(get_probe_tag_data(stmt.loc(), op_idx), 0);
         start.finish_instr();
 
         if was_created {

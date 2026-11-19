@@ -12,13 +12,12 @@ use wirm::ir::id::{FunctionID, LocalID};
 use wirm::ir::types::DataType as WirmType;
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{Instrumenter, MacroOpcode};
-use wirm::{Location as WirmLocation, Module, Opcode};
+use wirm::{Module, Opcode};
 
 const UNEXPECTED_ERR_MSG: &str =
     "MapLibAdapter: Looks like you've found a bug...please report this behavior!";
 
 const PRINT_MAP: &str = "print_map";
-// pub const MAP_LIB_MEM_OFFSET: u32 = 1_071_584 + 4_000;
 pub const MAP_LIB_MEM_OFFSET: u32 = 0;
 
 pub struct MapLibAdapter {
@@ -485,14 +484,7 @@ impl MapLibAdapter {
         };
 
         let op_idx = init_fn.curr_instr_len() as u32;
-        init_fn.append_tag_at(
-            get_probe_tag_data(loc, op_idx),
-            // location is unused
-            WirmLocation::Module {
-                func_idx: FunctionID(0),
-                instr_idx: 0,
-            },
-        );
+        init_fn.append_tag_at(get_probe_tag_data(loc, op_idx), 0);
 
         init_fn.finish_instr();
         map_id
