@@ -336,7 +336,8 @@ fn synth_literal(ty: &DataType) -> Option<String> {
         DataType::F32 | DataType::F64 => format!("0.0 as {}", ty),
         DataType::Boolean => "false".to_string(),
         DataType::Str => "\"\"".to_string(),
-        DataType::FuncRef
+        DataType::Bytes
+        | DataType::FuncRef
         | DataType::Tuple { .. }
         | DataType::Map { .. }
         | DataType::Lib

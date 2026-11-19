@@ -219,6 +219,10 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
         let (loc, at_func_end) = self.app_iter.curr_loc();
 
         if let Some(curr_instr) = self.app_iter.curr_op() {
+            let app_bytes_addr = self
+                .mem_allocator
+                .app_bytes_addr
+                .map(|addr| (addr.mem_offset as u32, addr.len as u32));
             get_loc_info_for_active_probes(
                 self.app_iter.module,
                 state,
@@ -226,6 +230,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                 at_func_end,
                 curr_instr,
                 ast,
+                app_bytes_addr,
                 err,
             )
         } else {

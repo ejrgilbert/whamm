@@ -239,6 +239,7 @@ fn generate_instrumented_bin_wast(
             &core_lib,
             &def_yamls,
             &mut module_to_instrument,
+            &[],
             &test_case.whamm_script,
             Default::default(),
             0,

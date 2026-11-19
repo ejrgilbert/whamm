@@ -562,7 +562,8 @@ wasm::call:alt /
     // 15 scopes: whamm, strcmp, strcontains, drop_args, mem, memcpy, page_size, mem_size, active_data_start, active_data_len, write_str, read_str, script0, wasm, alt_call_by_name, alt_call_by_id, opcode, call, alt, probe itself
     let num_scopes = 20;
     // records: num_scopes PLUS (memid, memid, APP_MEMID, str_addr, needle, src_mem, src_ptr, dst_me, dst_ptr, len, at_func_end, str_addr, s, mem, addr, len, starts_with, resN, ends_with, contains, target_mem, ptr, s, src_mem, ptr, l, func_id, func_name, value, probe_id, fid, fname, opidx, pc, opname, bytecode, localN, target_imp_name, target_fn_name, target_fn_type, target_imp_module, imm0, arg[0:9]+, category_name, category_id)
-    let num_recs = num_scopes + 46;
+    // PLUS app_bytes (provider bound var) and the `bytes` type-utils (library record + addr, len)
+    let num_recs = num_scopes + 46 + 4;
     // asserts on very high level table structure
     assert_eq!(num_scopes, table.scopes.len());
 
@@ -621,6 +622,37 @@ pub fn test_arity_checks() {
         assert!(
             res && !err.has_errors,
             "expected valid (correct arity): {script}"
+        );
+    }
+
+    for script in &[
+        "wasm:opcode:drop:before { var a: u32 = app_bytes.addr(); }",
+        "wasm:opcode:drop:before { var n: u32 = app_bytes.len(); }",
+        "wasm:opcode:drop:before {
+            var a: u32 = app_bytes.addr();
+            var n: u32 = app_bytes.len();
+        }",
+    ] {
+        let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+        let res = is_valid_script(script, &mut err);
+        err.report();
+        assert!(
+            res && !err.has_errors,
+            "expected valid app_bytes use: {script}"
+        );
+    }
+
+    for script in &[
+        // `.starts_with` is a str-only utility, not available on bytes.
+        "wasm:opcode:drop:before { var b: bool = app_bytes.starts_with(\"ab\"); }",
+        // bytes is not implicitly an integer.
+        "wasm:opcode:drop:before { var n: u32 = app_bytes + 1; }",
+    ] {
+        let mut err = ErrorGen::new("".to_string(), "".to_string(), 0);
+        let res = is_valid_script(script, &mut err);
+        assert!(
+            !res && err.has_errors,
+            "expected bytes misuse error: {script}"
         );
     }
 
