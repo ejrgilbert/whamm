@@ -15,7 +15,7 @@ use wirm::ir::id::{GlobalID, LocalID};
 use wirm::ir::types::{BlockType, DataType as WirmType, InitExpr, Value as WirmValue};
 use wirm::module_builder::AddLocal;
 use wirm::opcode::MacroOpcode;
-use wirm::wasmparser::MemArg;
+use wirm::wasmparser::{MemArg, MemArgTarget};
 use wirm::{InitInstr, Module, Opcode};
 
 pub struct UnsharedVarHandler {
@@ -364,7 +364,8 @@ impl UnsharedVarHandler {
                 align: 0,
                 max_align: 0,
                 offset: *var_offset as u64,
-                memory: *mem_id,
+                target: MemArgTarget::Memory(*mem_id),
+                ordering: None,
             });
         }
     }
@@ -535,7 +536,8 @@ impl UnsharedVarHandler {
                 align: 0,
                 max_align: 0,
                 offset: (curr_offset + bytes_used) as u64,
-                memory: mem_id, // instrumentation memory!
+                target: MemArgTarget::Memory(mem_id), // instrumentation memory!
+                ordering: None,
             });
         bytes_used += size_of_val(&name_ptr) as u32;
 
@@ -549,7 +551,8 @@ impl UnsharedVarHandler {
                 align: 0,
                 max_align: 0,
                 offset: (curr_offset + bytes_used) as u64,
-                memory: mem_id, // instrumentation memory!
+                target: MemArgTarget::Memory(mem_id), // instrumentation memory!
+                ordering: None,
             });
         bytes_used += size_of_val(&name_len) as u32;
 
@@ -560,7 +563,8 @@ impl UnsharedVarHandler {
                 align: 0,
                 max_align: 0,
                 offset: (curr_offset + bytes_used) as u64,
-                memory: mem_id, // instrumentation memory!
+                target: MemArgTarget::Memory(mem_id), // instrumentation memory!
+                ordering: None,
             });
         bytes_used += size_of_val(script_id) as u32;
 
@@ -578,7 +582,8 @@ impl UnsharedVarHandler {
                 align: 0,
                 max_align: 0,
                 offset: (curr_offset + bytes_used) as u64,
-                memory: mem_id, // instrumentation memory!
+                target: MemArgTarget::Memory(mem_id), // instrumentation memory!
+                ordering: None,
             });
         bytes_used += size_of_val(&probe_id_ptr) as u32;
 
@@ -592,7 +597,8 @@ impl UnsharedVarHandler {
                 align: 0,
                 max_align: 0,
                 offset: (curr_offset + bytes_used) as u64,
-                memory: mem_id, // instrumentation memory!
+                target: MemArgTarget::Memory(mem_id), // instrumentation memory!
+                ordering: None,
             });
         bytes_used += size_of_val(&probe_id_len) as u32;
 

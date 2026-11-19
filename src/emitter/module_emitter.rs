@@ -25,7 +25,7 @@ use wirm::ir::types::{
 };
 use wirm::module_builder::AddLocal;
 use wirm::opcode::{Instrumenter, Opcode};
-use wirm::wasmparser::MemArg;
+use wirm::wasmparser::{MemArg, MemArgTarget};
 use wirm::InitInstr;
 
 const UNEXPECTED_ERR_MSG: &str =
@@ -466,7 +466,8 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
                     align: 0,
                     max_align: 0,
                     offset: 0,
-                    memory: self.mem_allocator.mem_id // app memory!
+                    target: MemArgTarget::Memory(self.mem_allocator.mem_id), // app memory!
+                    ordering: None,
                 }
             )
             .local_set(str0_char)
@@ -481,7 +482,8 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
                     align: 0,
                     max_align: 0,
                     offset: 0,
-                    memory: self.mem_allocator.mem_id // instr memory!
+                    target: MemArgTarget::Memory(self.mem_allocator.mem_id), // app memory!
+                    ordering: None,
                 }
             )
             .local_set(str1_char)
