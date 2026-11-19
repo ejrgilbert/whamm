@@ -928,6 +928,7 @@ pub enum Value {
     Bytes {
         addr: u32,
         len: u32,
+        mem_id: u32,
     },
     Tuple {
         ty: DataType,
@@ -944,7 +945,9 @@ impl Display for Value {
             Value::Number { val, .. } => write!(f, "{val}"),
             Value::Boolean { val } => write!(f, "{val}"),
             Value::Str { val } => write!(f, "\"{val}\""),
-            Value::Bytes { addr, len } => write!(f, "bytes(addr={addr}, len={len})"),
+            Value::Bytes { addr, len, mem_id } => {
+                write!(f, "bytes(mem={mem_id}, addr={addr}, len={len})")
+            }
             Value::Tuple { vals, .. } => {
                 let mut vals_str = "".to_string();
                 for val in vals.iter() {

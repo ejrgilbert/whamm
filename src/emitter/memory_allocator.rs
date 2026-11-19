@@ -599,6 +599,7 @@ impl MemoryAllocator {
         wasm.data.push(data_segment);
 
         let addr = StringAddr {
+            mem_id: self.mem_id,
             mem_offset: self.curr_mem_offset,
             len: bytes.len(),
         };
@@ -680,6 +681,7 @@ impl MemoryAllocator {
 
 #[derive(Clone, Copy)]
 pub struct StringAddr {
+    pub mem_id: u32,
     pub mem_offset: usize,
     pub len: usize,
 }

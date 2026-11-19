@@ -1248,6 +1248,14 @@ impl<'a> TypeChecker<'a> {
                 for (i, (expected, actual)) in
                     params.iter().zip(actual_param_tys.iter()).enumerate()
                 {
+                    if fn_name == "memid"
+                        && matches!(
+                            actual,
+                            Some(DataType::Lib | DataType::Str | DataType::Bytes)
+                        )
+                    {
+                        continue;
+                    }
                     match (expected, actual) {
                         (Some(expected), Some(actual)) => {
                             // if actual is a tuple, it's not structurally equal

@@ -137,13 +137,11 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_> {
     }
 
     fn visit_global_stmts(&mut self, stmts: &mut [Statement]) -> bool {
-        let app_bytes_addr = self
-            .emitter
-            .mem_allocator
-            .app_bytes_addr
-            .map(|addr| (addr.mem_offset as u32, addr.len as u32));
-        let whamm_bound_vars =
-            init_whamm_bound_vars(self.emitter.app_wasm, app_bytes_addr, self.err);
+        let whamm_bound_vars = init_whamm_bound_vars(
+            self.emitter.app_wasm,
+            self.emitter.mem_allocator.app_bytes_addr,
+            self.err,
+        );
         self.emitter
             .table
             .override_record_vals(&whamm_bound_vars, false);
