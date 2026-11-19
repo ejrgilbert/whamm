@@ -81,6 +81,7 @@ TY_I64 = @{ "i64" }
 TY_F64 = @{ "f64" }
 TY_BOOL = @{ "bool" }
 TY_STRING = @{ "str" }
+TY_BYTES = @{ "bytes" }
 TY_FUNCREF = @{ "funcref" }
 
 // A type-parameter reference: a capitalized identifier used in a type position.
@@ -109,6 +110,7 @@ TYPE_PRIMITIVE = _{
     TY_F64 |
     TY_BOOL |
     TY_STRING |
+    TY_BYTES |
     TY_FUNCREF |
     TY_TYPEPARAM
 }

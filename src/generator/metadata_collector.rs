@@ -1,6 +1,7 @@
 use crate::api::instrument::Config;
 use crate::common::error::ErrorGen;
 use crate::common::rule_tracker::RuleTracker;
+use crate::emitter::rewriting::rules::APP_BYTES_VAR_NAME;
 use crate::generator::analysis_visitor::AnalysisVisitor;
 use crate::generator::ast::{Probe, Script, StackReq, WhammParam, WhammParams};
 use crate::lang_features::report_vars::{BytecodeLoc, LocationData, Metadata as ReportMetadata};
@@ -78,6 +79,7 @@ pub struct MetadataCollector<'a> {
     pub used_user_library_mems: HashSet<String>,
     pub used_bound_fns: HashSet<(String, String)>,
     pub used_report_var_dts: HashSet<DataType>,
+    pub used_app_bytes: bool,
     pub check_strcmp: bool,
     pub strings_to_emit: Vec<String>,
     pub has_probe_state_init: bool,
@@ -118,6 +120,7 @@ impl<'a> MetadataCollector<'a> {
             curr_user_lib: Default::default(),
             used_bound_fns: Default::default(),
             used_report_var_dts: Default::default(),
+            used_app_bytes: Default::default(),
             check_strcmp: Default::default(),
             strings_to_emit: Default::default(),
             has_probe_state_init: Default::default(),
@@ -175,6 +178,9 @@ impl<'a> MetadataCollector<'a> {
         self.get_curr_params().req_args.combine(&req_args);
     }
     fn push_metadata(&mut self, name: &str, ty: &DataType) {
+        if name == APP_BYTES_VAR_NAME {
+            self.used_app_bytes = true;
+        }
         if !self.curr_user_lib.is_empty() {
             self.curr_lib_call_args.push(
                 WhammParam {
@@ -335,8 +341,7 @@ impl<'a> MetadataCollector<'a> {
                             );
                             return expr.clone();
                         };
-                        // Type-util-specific bookkeeping that the old
-                        // ObjCall arm performed.
+                        // Type-util-specific bookkeeping
                         if fn_name == "contains" {
                             self.used_bound_fns
                                 .insert(("whamm".to_string(), "strcmp".to_string()));
@@ -349,6 +354,10 @@ impl<'a> MetadataCollector<'a> {
                             if receiver_def.is_comp_defined() {
                                 self.push_metadata(receiver_var, receiver_ty);
                             }
+                        }
+                        if matches!(receiver_ty, DataType::Bytes) && receiver_def.is_comp_defined()
+                        {
+                            self.push_metadata(receiver_var, receiver_ty);
                         }
                         let Some(ret_ty) =
                             single_result_ty(&results, &fn_name, expr.loc(), self.err)

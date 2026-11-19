@@ -669,6 +669,9 @@ impl<'a, 'ir> ModuleEmitter<'a, 'ir> {
         }
     }
 
+    pub fn emit_app_bytes(&mut self) {
+        self.mem_allocator.emit_app_bytes(self.app_wasm);
+    }
     pub fn emit_string(&mut self, value: &mut Value) -> bool {
         match value {
             Value::Str { val, .. } => {

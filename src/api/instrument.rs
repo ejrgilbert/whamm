@@ -89,10 +89,13 @@ pub fn instrument_module_with_rewriting(
 ) -> Result<Instrumented, Diagnostics> {
     let core_lib = resolve_core_lib(core_lib);
     let defs = resolve_defs(defs);
+
+    let app_bytes = target_wasm.encode().unwrap_or_default();
     match instr::run_on_module_and_encode(
         &core_lib,
         &defs,
         target_wasm,
+        &app_bytes,
         script,
         user_libs,
         MAX_ERRORS,

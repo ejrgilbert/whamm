@@ -35,6 +35,7 @@ impl InitGenerator<'_, '_, '_> {
         whamm: &mut Whamm,
         used_bound_funcs: HashSet<(String, String)>,
         strings_to_emit: Vec<String>,
+        used_app_bytes: bool,
         has_probe_state_init: bool,
     ) -> bool {
         // Reset the symbol table in the emitter just in case
@@ -43,6 +44,9 @@ impl InitGenerator<'_, '_, '_> {
             .extend(self.emitter.setup_module(true, has_probe_state_init));
         emit_needed_funcs(used_bound_funcs, &mut self.emitter, self.injected_funcs);
         self.emitter.emit_strings(strings_to_emit);
+        if used_app_bytes {
+            self.emitter.emit_app_bytes();
+        }
         // Generate globals and fns defined by `whamm` (this should modify the app_wasm)
         self.visit_whamm(whamm)
     }
@@ -133,7 +137,11 @@ impl GeneratingVisitor for InitGenerator<'_, '_, '_> {
     }
 
     fn visit_global_stmts(&mut self, stmts: &mut [Statement]) -> bool {
-        let whamm_bound_vars = init_whamm_bound_vars(self.emitter.app_wasm, self.err);
+        let whamm_bound_vars = init_whamm_bound_vars(
+            self.emitter.app_wasm,
+            self.emitter.mem_allocator.app_bytes_addr,
+            self.err,
+        );
         self.emitter
             .table
             .override_record_vals(&whamm_bound_vars, false);

@@ -1,4 +1,5 @@
 use crate::common::error::ErrorGen;
+use crate::emitter::memory_allocator::StringAddr;
 use crate::emitter::rewriting::mono;
 use crate::emitter::rewriting::rules::data_segments::get_first_local_mem_id;
 use crate::emitter::rewriting::visiting_emitter::{VisitingEmitter, UNKNOWN_FID};
@@ -30,6 +31,7 @@ pub fn get_loc_info_for_active_probes(
     at_func_end: bool,
     instr: &Operator,
     ast: &mut SimpleAST,
+    app_bytes_addr: Option<StringAddr>,
     err: &mut ErrorGen,
 ) -> Option<LocInfo> {
     let mut res: Option<LocInfo> = None;
@@ -52,7 +54,8 @@ pub fn get_loc_info_for_active_probes(
         }
     }
     if let Some(r) = &mut res {
-        r.static_data.extend(init_whamm_bound_vars(app_wasm, err));
+        r.static_data
+            .extend(init_whamm_bound_vars(app_wasm, app_bytes_addr, err));
         reject_invalid_opcode_var_deps(r, err);
     }
     res
@@ -97,8 +100,10 @@ fn reject_invalid_opcode_var_deps(loc_info: &mut LocInfo, err: &mut ErrorGen) {
     }
 }
 
+pub const APP_BYTES_VAR_NAME: &str = "app_bytes";
 pub fn init_whamm_bound_vars(
     app_wasm: &Module,
+    app_bytes_addr: Option<StringAddr>,
     err: &mut ErrorGen,
 ) -> HashMap<String, Option<Value>> {
     let mut vars = HashMap::new();
@@ -107,6 +112,20 @@ pub fn init_whamm_bound_vars(
         .map_err(|e| err.add_instr_error(&e))
         .unwrap_or(MemoryID(0));
     vars.insert("APP_MEMID".to_string(), Some(Value::gen_u32(*memid)));
+
+    let bytes = app_bytes_addr.unwrap_or(StringAddr {
+        mem_id: 0,
+        mem_offset: 0,
+        len: 0,
+    });
+    vars.insert(
+        APP_BYTES_VAR_NAME.to_string(),
+        Some(Value::Bytes {
+            addr: bytes.mem_offset as u32,
+            len: bytes.len as u32,
+            mem_id: bytes.mem_id,
+        }),
+    );
 
     vars
 }
@@ -3416,6 +3435,18 @@ impl LocInfo {
                 DataType::Str,
                 Expr::Primitive {
                     val: Value::Str { val: val.clone() },
+                    loc: None,
+                },
+            ),
+            Value::Bytes { addr, len, mem_id } => self.add_dynamic_assign(
+                name,
+                DataType::Bytes,
+                Expr::Primitive {
+                    val: Value::Bytes {
+                        addr: *addr,
+                        len: *len,
+                        mem_id: *mem_id,
+                    },
                     loc: None,
                 },
             ),

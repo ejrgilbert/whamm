@@ -695,7 +695,7 @@ impl<'a> TypeChecker<'a> {
                 *ty = tuple_ty.clone();
                 InferTy::Known(tuple_ty)
             }
-            Value::Str { .. } | Value::U32U32Map { .. } => val.ty().into(),
+            Value::Str { .. } | Value::Bytes { .. } | Value::U32U32Map { .. } => val.ty().into(),
         }
     }
 
@@ -1248,6 +1248,14 @@ impl<'a> TypeChecker<'a> {
                 for (i, (expected, actual)) in
                     params.iter().zip(actual_param_tys.iter()).enumerate()
                 {
+                    if fn_name == "memid"
+                        && matches!(
+                            actual,
+                            Some(DataType::Lib | DataType::Str | DataType::Bytes)
+                        )
+                    {
+                        continue;
+                    }
                     match (expected, actual) {
                         (Some(expected), Some(actual)) => {
                             // if actual is a tuple, it's not structurally equal

@@ -99,6 +99,7 @@ pub enum DataType {
     F64,
     Boolean,
     Str,
+    Bytes,
     FuncRef,
     Tuple {
         ty_info: Vec<DataType>,
@@ -129,6 +130,7 @@ impl Display for DataType {
             DataType::F64 => write!(f, "f64"),
             DataType::Boolean => write!(f, "bool"),
             DataType::Str => write!(f, "str"),
+            DataType::Bytes => write!(f, "bytes"),
             DataType::FuncRef => write!(f, "funcref"),
             DataType::Lib => write!(f, "lib"),
             DataType::Tuple { ty_info } => {
@@ -189,6 +191,7 @@ impl DataType {
             DataType::F32
             | DataType::F64
             | DataType::Str
+            | DataType::Bytes
             | DataType::FuncRef
             | DataType::Lib
             | DataType::TypeParam(..)
@@ -218,7 +221,7 @@ impl DataType {
             DataType::FuncRef => vec![WirmType::FuncRefNull],
             // the ID used to track this var in the lib
             DataType::Map { .. } => vec![WirmType::I32],
-            DataType::Str => vec![WirmType::I32, WirmType::I32],
+            DataType::Str | DataType::Bytes => vec![WirmType::I32, WirmType::I32],
             // Flatten each element's wasm types: e.g. (i32, str) → [I32, I32, I32]
             DataType::Tuple { ty_info } => ty_info.iter().flat_map(|t| t.to_wasm_type()).collect(),
             DataType::TypeParam(name) => {
@@ -293,6 +296,7 @@ impl DataType {
             }
             DataType::Boolean
             | DataType::Str
+            | DataType::Bytes
             | DataType::FuncRef
             // | DataType::Tuple { .. }
             | DataType::Map { .. }
@@ -322,6 +326,7 @@ impl DataType {
             DataType::Lib => 16,
             DataType::TypeParam(..) => 17,
             DataType::BoundVar(..) => 19,
+            DataType::Bytes => 20,
         }
     }
     pub fn num_bytes(&self) -> Option<usize> {
@@ -344,7 +349,7 @@ impl DataType {
                 }
                 Some(size)
             }
-            DataType::Str => Some(8), // (two i32s)
+            DataType::Str | DataType::Bytes => Some(8), // (addr, len) -- two i32s
             DataType::FuncRef |
             DataType::TypeParam(..) |
             DataType::Lib |
@@ -392,6 +397,9 @@ impl DataType {
             }
             DataType::Str => {
                 yellow(true, "str".to_string(), buffer);
+            }
+            DataType::Bytes => {
+                yellow(true, "bytes".to_string(), buffer);
             }
             DataType::FuncRef => {
                 yellow(true, "funcref".to_string(), buffer);
@@ -442,7 +450,7 @@ impl DataType {
             DataType::U64 |
             DataType::I64 => vec![Val::I64(0)],
             DataType::F64 => vec![Val::F64(0)],
-            DataType::Str => vec![Val::I32(0), Val::I32(0)], // (addr, len)
+            DataType::Str | DataType::Bytes => vec![Val::I32(0), Val::I32(0)], // (addr, len)
             DataType::Tuple { ty_info } => {
                 let mut res = vec![];
                 for ty in ty_info.iter() {
@@ -917,6 +925,11 @@ pub enum Value {
     Str {
         val: String,
     },
+    Bytes {
+        addr: u32,
+        len: u32,
+        mem_id: u32,
+    },
     Tuple {
         ty: DataType,
         vals: Vec<Expr>,
@@ -932,6 +945,9 @@ impl Display for Value {
             Value::Number { val, .. } => write!(f, "{val}"),
             Value::Boolean { val } => write!(f, "{val}"),
             Value::Str { val } => write!(f, "\"{val}\""),
+            Value::Bytes { addr, len, mem_id } => {
+                write!(f, "bytes(mem={mem_id}, addr={addr}, len={len})")
+            }
             Value::Tuple { vals, .. } => {
                 let mut vals_str = "".to_string();
                 for val in vals.iter() {
@@ -952,6 +968,7 @@ impl Value {
             Self::Number { val, .. } => val.encode(),
             Self::Boolean { .. }
             | Self::Str { .. }
+            | Self::Bytes { .. }
             | Self::Tuple { .. }
             | Self::U32U32Map { .. } => {
                 todo!()
@@ -1032,6 +1049,7 @@ impl Value {
             Value::Number { ty, .. } => Some(ty.clone()),
             Value::Boolean { .. } => Some(DataType::Boolean),
             Value::Str { .. } => Some(DataType::Str),
+            Value::Bytes { .. } => Some(DataType::Bytes),
             Value::Tuple { ty, .. } => Some(ty.clone()),
             Value::U32U32Map { .. } => Some(DataType::Map {
                 key_ty: Box::new(DataType::U32),
@@ -1201,7 +1219,9 @@ pub(crate) fn whamm_value_to_wasm_val(v: &Value) -> Option<Val> {
                 Some(Val::I32(0))
             }
         }
-        Value::Str { .. } | Value::Tuple { .. } | Value::U32U32Map { .. } => None,
+        Value::Str { .. } | Value::Bytes { .. } | Value::Tuple { .. } | Value::U32U32Map { .. } => {
+            None
+        }
     }
 }
 
@@ -1765,6 +1785,8 @@ pub struct Whamm {
     pub bound_vars: Vec<BoundVar>, // Comp-provided
     // The utility functions that can be invoked on a `str` type
     pub utils_strings: Vec<BoundFunction>,
+    // The utility functions that can be invoked on a `bytes` type
+    pub utils_bytes: Vec<BoundFunction>,
 
     pub scripts: Vec<Script>,
 }
@@ -1774,6 +1796,7 @@ impl Whamm {
             fns: Whamm::get_bound_fns(),
             bound_vars: Whamm::get_bound_vars(),
             utils_strings: Whamm::get_utils_strings(),
+            utils_bytes: Whamm::get_utils_bytes(),
 
             scripts: vec![],
         }
@@ -2111,6 +2134,9 @@ impl Whamm {
             Self::def_ends_with(),
             Self::def_contains(),
         ]
+    }
+    pub(crate) fn get_utils_bytes() -> Vec<BoundFunction> {
+        vec![Self::def_addr(), Self::def_len()]
     }
     fn def_addr() -> BoundFunction {
         BoundFunction::new(

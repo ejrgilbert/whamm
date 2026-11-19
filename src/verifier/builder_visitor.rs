@@ -756,6 +756,7 @@ impl WhammVisitorMut<()> for SymbolTableBuilder<'_, '_> {
 
         // visit type utils
         self.visit_type_utils(&DataType::Str, &whamm.utils_strings);
+        self.visit_type_utils(&DataType::Bytes, &whamm.utils_bytes);
 
         // visit scripts
         whamm

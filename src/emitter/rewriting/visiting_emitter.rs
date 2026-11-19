@@ -226,6 +226,7 @@ impl<'a, 'ir> VisitingEmitter<'a, 'ir> {
                 at_func_end,
                 curr_instr,
                 ast,
+                self.mem_allocator.app_bytes_addr,
                 err,
             )
         } else {

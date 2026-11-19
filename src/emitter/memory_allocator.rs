@@ -35,6 +35,10 @@ pub struct MemoryAllocator {
     // Constant pool for strings emitted thus far
     pub emitted_strings: HashMap<String, StringAddr>,
 
+    // The original (pre-instrumentation) bytes of the target module
+    pub app_bytes_src: Vec<u8>,
+    pub app_bytes_addr: Option<StringAddr>,
+
     // The Wasm func ID for a function that can be called to check
     // the used memory (mem_tracker_global value) vs. the current memory size.
     // It will grow the memory if necessary.
@@ -49,6 +53,7 @@ impl MemoryAllocator {
         alloc_var_mem_tracker_global: Option<GlobalID>,
         engine_mem_id: Option<u32>,
         engine_mem_start_global: Option<GlobalID>,
+        app_bytes_src: &[u8],
     ) -> Self {
         Self {
             mem_id,
@@ -59,6 +64,8 @@ impl MemoryAllocator {
             engine_mem_start_global,
             curr_mem_offset: 0,
             emitted_strings: HashMap::new(),
+            app_bytes_src: app_bytes_src.to_owned(),
+            app_bytes_addr: None,
             base_mem_checker_fid: None,
             alloc_mem_checker_fid: None,
         }
@@ -160,7 +167,7 @@ impl MemoryAllocator {
                 target,
                 ordering: None,
             }),
-            DataType::Str => {
+            DataType::Str | DataType::Bytes => {
                 injector.i32_load(MemArg {
                     align: 0,
                     max_align: 0,
@@ -223,7 +230,7 @@ impl MemoryAllocator {
                         DataType::F64 => {
                             injector.f64_load(memarg);
                         }
-                        DataType::Str => {
+                        DataType::Str | DataType::Bytes => {
                             // ptr
                             injector.i32_load(memarg);
                             // len (needs its own addr push)
@@ -304,7 +311,7 @@ impl MemoryAllocator {
                 target,
                 ordering: None,
             }),
-            DataType::Str => {
+            DataType::Str | DataType::Bytes => {
                 let offset = if let Some(idx) = idx {
                     if idx == 0 {
                         // store ptr
@@ -577,15 +584,10 @@ impl MemoryAllocator {
 
         size_of::<u8>() as u32
     }
-    pub fn emit_string(&mut self, wasm: &mut Module, val: &mut String) -> bool {
-        if self.emitted_strings.contains_key(val) {
-            // the string has already been emitted into the module, don't emit again
-            return true;
-        }
-        // assuming that the data ID is the index of the object in the Vec
-        let val_bytes = val.as_bytes().to_owned();
+
+    fn emit_bytes(&mut self, wasm: &mut Module, bytes: &[u8]) -> StringAddr {
         let data_segment = DataSegment {
-            data: val_bytes,
+            data: bytes.to_owned(),
             kind: DataSegmentKind::Active {
                 memory_index: self.mem_id,
                 offset_expr: InitExpr::new(vec![InitInstr::Value(WirmValue::I32(
@@ -596,18 +598,33 @@ impl MemoryAllocator {
         };
         wasm.data.push(data_segment);
 
-        // save the memory addresses/lens, so they can be used as appropriate
-        self.emitted_strings.insert(
-            val.clone(),
-            StringAddr {
-                mem_offset: self.curr_mem_offset,
-                len: val.len(),
-            },
-        );
-
+        let addr = StringAddr {
+            mem_id: self.mem_id,
+            mem_offset: self.curr_mem_offset,
+            len: bytes.len(),
+        };
         // update curr_mem_offset to account for new data
-        self.curr_mem_offset += val.len();
+        self.curr_mem_offset += bytes.len();
+        addr
+    }
+    pub fn emit_string(&mut self, wasm: &mut Module, val: &mut String) -> bool {
+        if self.emitted_strings.contains_key(val) {
+            // the string has already been emitted into the module, don't emit again
+            return true;
+        }
+        // Strings and byte blobs lower to the same active-data-segment operation.
+        let addr = self.emit_bytes(wasm, val.as_bytes());
+        // save the memory addresses/lens, so they can be used as appropriate
+        self.emitted_strings.insert(val.clone(), addr);
         true
+    }
+    pub fn emit_app_bytes(&mut self, wasm: &mut Module) {
+        if self.app_bytes_addr.is_some() {
+            // already emitted
+            return;
+        }
+        let src = std::mem::take(&mut self.app_bytes_src);
+        self.app_bytes_addr = Some(self.emit_bytes(wasm, &src));
     }
     pub fn lookup_emitted_string(&self, s: &str) -> (u32, u32) {
         if let Some(str_addr) = self.emitted_strings.get(s) {
@@ -622,7 +639,7 @@ impl MemoryAllocator {
 
     pub(crate) fn memory_grow(&mut self, wasm: &mut Module) {
         // If we've allocated any memory, bump the app's memory up to account for that
-        if !self.emitted_strings.is_empty() {
+        if self.curr_mem_offset > 0 {
             if let Some(mem) = wasm.memories.get_mut(MemoryID(self.mem_id)) {
                 let req_pages = (((self.curr_mem_offset as i32 + ENGINE_BUFFER_MAX_SIZE) as u32
                     / WASM_PAGE_SIZE)
@@ -662,7 +679,9 @@ impl MemoryAllocator {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct StringAddr {
+    pub mem_id: u32,
     pub mem_offset: usize,
     pub len: usize,
 }
