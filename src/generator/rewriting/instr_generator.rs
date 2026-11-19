@@ -144,7 +144,6 @@ impl<'a, 'ir> InstrGenerator<'a, 'ir> {
             InstrumentationMode::BlockEntry => self.emitter.block_entry(),
             InstrumentationMode::BlockExit => self.emitter.block_exit(),
             InstrumentationMode::BlockAlt => self.emitter.block_alt(),
-            _ => unreachable!("invalid probe mode: {:?}", mode),
         }
         true
     }
